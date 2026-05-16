@@ -1,0 +1,4 @@
+.env
+node_modules
+.env**
+go-eat-service-acc-id.json

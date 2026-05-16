@@ -1,0 +1,47 @@
+services:
+  api:
+    build:
+      context: .
+      target: build # Use build stage for dev to have dev dependencies
+    volumes:
+      - .:/app
+      - /app/node_modules # Don't overwrite container's node_modules with host's
+    ports:
+      - "5000:5000"
+    depends_on:
+      - redis
+      - mongodb
+    environment:
+      - PORT=5000
+      - NODE_ENV=development
+      - REDIS_URL=redis://redis:6379
+      - MONGODB_URI=mongodb://mongodb:27017/go-eat
+    env_file:
+      - .env
+    command: npm run dev
+    restart: always
+
+  redis:
+    image: redis:alpine
+    ports:
+      - "6379:6379"
+    networks:
+      - default
+    restart: always
+
+  mongodb:
+    image: mongo:latest
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - default
+    restart: always
+
+networks:
+  default:
+    name: go-eat-network
+
+volumes:
+  mongodb_data:

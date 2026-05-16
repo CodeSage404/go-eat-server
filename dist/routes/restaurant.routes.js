@@ -1,0 +1,101 @@
+"use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const restaurant_controller_1 = __importDefault(require("../controllers/restaurant.controller"));
+const auth_middleware_1 = require("../middleware/auth.middleware");
+const user_model_1 = require("../models/user.model");
+const router = (0, express_1.Router)();
+// Public routes
+/**
+ * @openapi
+ * /api/v1/restaurants:
+ *   get:
+ *     tags:
+ *       - Restaurants
+ *     summary: Get all restaurants
+ *     description: Retrieve a list of restaurants with optional filters for cuisine and location.
+ *     parameters:
+ *       - in: query
+ *         name: cuisine
+ *         schema:
+ *           type: string
+ *         description: Filter by cuisine type
+ *       - in: query
+ *         name: lat
+ *         schema:
+ *           type: number
+ *         description: Latitude for nearby search
+ *       - in: query
+ *         name: lng
+ *         schema:
+ *           type: number
+ *         description: Longitude for nearby search
+ *       - in: query
+ *         name: distance
+ *         schema:
+ *           type: number
+ *           default: 5
+ *         description: Search radius in kilometers
+ *     responses:
+ *       200:
+ *         description: List of restaurants
+ */
+router.get('/', restaurant_controller_1.default.getAllRestaurants);
+/**
+ * @openapi
+ * /api/v1/restaurants/{id}:
+ *   get:
+ *     tags:
+ *       - Restaurants
+ *     summary: Get restaurant by ID
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Restaurant details
+ */
+router.get('/:id', restaurant_controller_1.default.getRestaurantById);
+// Protected routes
+router.use(auth_middleware_1.protect);
+/**
+ * @openapi
+ * /api/v1/restaurants:
+ *   post:
+ *     tags:
+ *       - Restaurants
+ *     summary: Create a restaurant (Vendor only)
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [name, description, address, location, openingHours]
+ *             properties:
+ *               name:
+ *                 type: string
+ *               description:
+ *                 type: string
+ *               address:
+ *                 type: object
+ *               location:
+ *                 type: object
+ *               openingHours:
+ *                 type: object
+ *     responses:
+ *       201:
+ *         description: Restaurant created
+ */
+router.post('/', (0, auth_middleware_1.restrictTo)(user_model_1.UserRole.VENDOR, user_model_1.UserRole.ADMIN), restaurant_controller_1.default.createRestaurant);
+router.patch('/:id', (0, auth_middleware_1.restrictTo)(user_model_1.UserRole.VENDOR, user_model_1.UserRole.ADMIN), restaurant_controller_1.default.updateRestaurant);
+router.delete('/:id', (0, auth_middleware_1.restrictTo)(user_model_1.UserRole.VENDOR, user_model_1.UserRole.ADMIN), restaurant_controller_1.default.deleteRestaurant);
+exports.default = router;
