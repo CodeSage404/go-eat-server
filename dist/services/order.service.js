@@ -155,5 +155,22 @@ class OrderService {
     async getRiderOrders(riderId) {
         return await order_model_1.default.find({ rider: riderId }).sort({ createdAt: -1 });
     }
+    async reorder(orderId, customerId) {
+        const originalOrder = await order_model_1.default.findById(orderId);
+        if (!originalOrder)
+            throw new appError_1.default('Original order not found', 404);
+        // Create a new order object with same items and restaurant
+        const newOrderData = {
+            customer: customerId,
+            restaurant: originalOrder.restaurant,
+            items: originalOrder.items,
+            totalAmount: originalOrder.totalAmount,
+            deliveryFee: originalOrder.deliveryFee,
+            deliveryAddress: originalOrder.deliveryAddress,
+            paymentMethod: originalOrder.paymentMethod,
+            status: order_model_1.OrderStatus.PENDING
+        };
+        return await this.placeOrder(newOrderData);
+    }
 }
 exports.default = new OrderService();

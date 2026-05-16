@@ -83,6 +83,17 @@ class OrderController {
                 data: { orders },
             });
         });
+        /**
+         * Quick reorder from history
+         */
+        this.reorder = (0, catchAsync_1.catchAsync)(async (req, res) => {
+            const { orderId } = req.params;
+            const newOrder = await order_service_1.default.reorder(orderId, req.user._id);
+            res.status(201).json({
+                status: 'success',
+                data: { order: newOrder },
+            });
+        });
     }
 }
 exports.default = new OrderController();

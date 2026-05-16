@@ -21,9 +21,9 @@ const menu_routes_1 = __importDefault(require("./routes/menu.routes"));
 const order_routes_1 = __importDefault(require("./routes/order.routes"));
 const user_routes_1 = __importDefault(require("./routes/user.routes"));
 const review_routes_1 = __importDefault(require("./routes/review.routes"));
+const search_routes_1 = __importDefault(require("./routes/search.routes"));
 const swagger_ui_express_1 = __importDefault(require("swagger-ui-express"));
 const swagger_1 = require("./config/swagger");
-const redoc_express_1 = __importDefault(require("redoc-express"));
 dotenv_1.default.config();
 class App {
     constructor() {
@@ -69,12 +69,33 @@ class App {
         this.app.use('/api/v1/orders', order_routes_1.default);
         this.app.use('/api/v1/users', user_routes_1.default);
         this.app.use('/api/v1/reviews', review_routes_1.default);
+        this.app.use('/api/v1/search', search_routes_1.default);
         // Documentation Routes
         this.app.use('/api-docs', swagger_ui_express_1.default.serve, swagger_ui_express_1.default.setup(swagger_1.swaggerSpec));
-        this.app.get('/redoc', (0, redoc_express_1.default)({
-            title: 'Go-eat API Docs',
-            specUrl: '/swagger.json'
-        }));
+        this.app.get('/redoc', (req, res) => {
+            res.send(`
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <title>Go-eat API Documentation</title>
+            <!-- needed for adaptive design -->
+            <meta charset="utf-8"/>
+            <meta name="viewport" content="width=device-width, initial-scale=1">
+            <link href="https://fonts.googleapis.com/css?family=Montserrat:300,400,700|Roboto:300,400,700" rel="stylesheet">
+            <style>
+              body {
+                margin: 0;
+                padding: 0;
+              }
+            </style>
+          </head>
+          <body>
+            <redoc spec-url='/swagger.json'></redoc>
+            <script src="https://cdn.redoc.ly/redoc/latest/bundles/redoc.standalone.js"> </script>
+          </body>
+        </html>
+      `);
+        });
         // Serve swagger spec as JSON
         this.app.get('/swagger.json', (req, res) => {
             res.setHeader('Content-Type', 'application/json');

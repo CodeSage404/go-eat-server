@@ -140,6 +140,12 @@ const userSchema = new mongoose_1.Schema({
             isDefault: { type: Boolean, default: false },
         },
     ],
+    favorites: [
+        {
+            type: mongoose_1.Schema.Types.ObjectId,
+            ref: 'Restaurant',
+        },
+    ],
 }, {
     timestamps: true,
 });

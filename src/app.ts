@@ -19,7 +19,6 @@ import reviewRoutes from './routes/review.routes';
 import searchRoutes from './routes/search.routes';
 import swaggerUi from 'swagger-ui-express';
 import { swaggerSpec } from './config/swagger';
-import redoc from 'redoc-express';
 
 dotenv.config();
 
@@ -87,14 +86,20 @@ class App {
         <html>
           <head>
             <title>Go-eat API Documentation</title>
+            <!-- needed for adaptive design -->
             <meta charset="utf-8"/>
             <meta name="viewport" content="width=device-width, initial-scale=1">
             <link href="https://fonts.googleapis.com/css?family=Montserrat:300,400,700|Roboto:300,400,700" rel="stylesheet">
-            <style>body { margin: 0; padding: 0; }</style>
+            <style>
+              body {
+                margin: 0;
+                padding: 0;
+              }
+            </style>
           </head>
           <body>
             <redoc spec-url='/swagger.json'></redoc>
-            <script src="https://cdn.redoc.ly/redoc/latest/bundles/redoc.standalone.js"></script>
+            <script src="https://cdn.redoc.ly/redoc/latest/bundles/redoc.standalone.js"> </script>
           </body>
         </html>
       `);
@@ -102,7 +107,8 @@ class App {
 
     // Serve swagger spec as JSON
     this.app.get('/swagger.json', (req: Request, res: Response) => {
-      res.json(swaggerSpec);
+      res.setHeader('Content-Type', 'application/json');
+      res.send(swaggerSpec);
     });
 
     this.app.get('/', (req: Request, res: Response) => {

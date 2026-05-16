@@ -111,4 +111,24 @@ router.patch('/:id/status', order_controller_1.default.updateStatus);
  *         description: Delivery job accepted
  */
 router.patch('/:id/accept', (0, auth_middleware_1.restrictTo)(user_model_1.UserRole.RIDER), order_controller_1.default.acceptDelivery);
+/**
+ * @openapi
+ * /api/v1/orders/{id}/reorder:
+ *   post:
+ *     tags:
+ *       - Orders
+ *     summary: Reorder a previous meal
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       201:
+ *         description: New order created from history.
+ */
+router.post('/:id/reorder', (0, auth_middleware_1.restrictTo)(user_model_1.UserRole.CUSTOMER), order_controller_1.default.reorder);
 exports.default = router;

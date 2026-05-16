@@ -58,6 +58,25 @@ const options = {
                         totalAmount: { type: 'number' },
                     },
                 },
+                Review: {
+                    type: 'object',
+                    properties: {
+                        id: { type: 'string' },
+                        rating: { type: 'number', minimum: 1, maximum: 5 },
+                        comment: { type: 'string' },
+                        user: { $ref: '#/components/schemas/User' },
+                    },
+                },
+                FoodItem: {
+                    type: 'object',
+                    properties: {
+                        id: { type: 'string' },
+                        name: { type: 'string' },
+                        price: { type: 'number' },
+                        description: { type: 'string' },
+                        isAvailable: { type: 'boolean' },
+                    },
+                },
             },
         },
         security: [

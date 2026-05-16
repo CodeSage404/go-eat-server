@@ -74,4 +74,39 @@ router.route('/addresses')
  *         description: Address removed.
  */
 router.delete('/addresses/:id', user_controller_1.default.deleteAddress);
+/**
+ * @openapi
+ * /api/v1/users/favorites:
+ *   get:
+ *     tags:
+ *       - Favorites
+ *     summary: Get favorite restaurants
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of favorited restaurants.
+ *   post:
+ *     tags:
+ *       - Favorites
+ *     summary: Toggle restaurant favorite
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [restaurantId]
+ *             properties:
+ *               restaurantId:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Updated favorites list.
+ */
+router.route('/favorites')
+    .get(user_controller_1.default.getFavorites)
+    .post(user_controller_1.default.toggleFavorite);
 exports.default = router;

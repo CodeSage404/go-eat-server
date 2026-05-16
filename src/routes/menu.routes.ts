@@ -99,7 +99,68 @@ router.post('/categories', menuController.createCategory);
  */
 router.post('/items', menuController.addFoodItem);
 
+/**
+ * @openapi
+ * /api/v1/restaurants/{restaurantId}/menu/items/{id}:
+ *   patch:
+ *     tags:
+ *       - Menu
+ *     summary: Update a food item
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: restaurantId
+ *         required: true
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: false
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *               price:
+ *                 type: number
+ *               isAvailable:
+ *                 type: boolean
+ *     responses:
+ *       200:
+ *         description: Food item updated successfully
+ */
 router.patch('/items/:id', menuController.updateFoodItem);
+/**
+ * @openapi
+ * /api/v1/restaurants/{restaurantId}/menu/items/{id}:
+ *   delete:
+ *     tags:
+ *       - Menu
+ *     summary: Delete a food item
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: restaurantId
+ *         required: true
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       204:
+ *         description: Food item deleted
+ */
 router.delete('/items/:id', menuController.deleteFoodItem);
 
 export default router;

@@ -49,6 +49,37 @@ class UserController {
                 data: { addresses: user.savedAddresses },
             });
         });
+        /**
+         * Toggle a restaurant in favorites
+         */
+        this.toggleFavorite = (0, catchAsync_1.catchAsync)(async (req, res) => {
+            const { restaurantId } = req.body;
+            const user = await user_model_1.default.findById(req.user._id);
+            if (!user)
+                throw new appError_1.default('User not found', 404);
+            const index = user.favorites.indexOf(restaurantId);
+            if (index === -1) {
+                user.favorites.push(restaurantId);
+            }
+            else {
+                user.favorites.splice(index, 1);
+            }
+            await user.save();
+            res.status(200).json({
+                status: 'success',
+                data: { favorites: user.favorites },
+            });
+        });
+        /**
+         * Get all favorite restaurants
+         */
+        this.getFavorites = (0, catchAsync_1.catchAsync)(async (req, res) => {
+            const user = await user_model_1.default.findById(req.user._id).populate('favorites');
+            res.status(200).json({
+                status: 'success',
+                data: { favorites: user?.favorites || [] },
+            });
+        });
     }
 }
 exports.default = new UserController();

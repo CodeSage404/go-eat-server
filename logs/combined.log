@@ -3667,3 +3667,59 @@
 2026-05-16 09:46:01 [info]: 	⚡ Redis Client Connected
 2026-05-16 09:46:02 [info]: 	🚀 Server running in development mode on port 5000
 2026-05-16 09:46:05 [info]: 	🚀 Connected to MongoDB: ac-hjwrplp-shard-00-01.dupeyhe.mongodb.net
+2026-05-16 10:06:17 [info]: 	🔥 Firebase Admin initialized
+2026-05-16 10:06:24 [info]: 	⚡ Redis Client Connected
+2026-05-16 10:06:25 [info]: 	🚀 Server running in development mode on port 5000
+2026-05-16 10:06:28 [info]: 	🚀 Connected to MongoDB: ac-hjwrplp-shard-00-02.dupeyhe.mongodb.net
+2026-05-16 10:12:59 [info]: 	🔥 Firebase Admin initialized
+2026-05-16 10:13:33 [error]: Error: Connection timeout
+    at TLSSocket.onTimeout (C:\Users\Immanuel\Desktop\CodeSage\Go-Eat\server\node_modules\@redis\client\lib\client\socket.ts:298:40)
+    at Object.onceWrapper (node:events:622:28)
+    at TLSSocket.emit (node:events:508:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at TLSSocket.Socket._onTimeout (node:net:604:8)
+    at listOnTimeout (node:internal/timers:605:17)
+    at processTimers (node:internal/timers:541:7)
+2026-05-16 10:13:38 [info]: 	⚡ Redis Client Connected
+2026-05-16 10:13:40 [info]: 	🚀 Server running in development mode on port 5000
+2026-05-16 10:13:45 [info]: 	🚀 Connected to MongoDB: ac-hjwrplp-shard-00-02.dupeyhe.mongodb.net
+2026-05-16 10:23:40 [info]: 	🔥 Firebase Admin initialized
+2026-05-16 10:24:03 [error]: Error: Connection timeout
+    at TLSSocket.onTimeout (C:\Users\Immanuel\Desktop\CodeSage\Go-Eat\server\node_modules\@redis\client\lib\client\socket.ts:298:40)
+    at Object.onceWrapper (node:events:622:28)
+    at TLSSocket.emit (node:events:508:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at TLSSocket.Socket._onTimeout (node:net:604:8)
+    at listOnTimeout (node:internal/timers:605:17)
+    at processTimers (node:internal/timers:541:7)
+2026-05-16 10:24:08 [error]: Error: Connection timeout
+    at TLSSocket.onTimeout (C:\Users\Immanuel\Desktop\CodeSage\Go-Eat\server\node_modules\@redis\client\lib\client\socket.ts:298:40)
+    at Object.onceWrapper (node:events:622:28)
+    at TLSSocket.emit (node:events:508:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at TLSSocket.Socket._onTimeout (node:net:604:8)
+    at listOnTimeout (node:internal/timers:605:17)
+    at processTimers (node:internal/timers:541:7)
+2026-05-16 10:24:13 [error]: Error: Connection timeout
+    at TLSSocket.onTimeout (C:\Users\Immanuel\Desktop\CodeSage\Go-Eat\server\node_modules\@redis\client\lib\client\socket.ts:298:40)
+    at Object.onceWrapper (node:events:622:28)
+    at TLSSocket.emit (node:events:508:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at TLSSocket.Socket._onTimeout (node:net:604:8)
+    at listOnTimeout (node:internal/timers:605:17)
+    at processTimers (node:internal/timers:541:7)
+2026-05-16 10:24:26 [error]: Error: Connection timeout
+    at TLSSocket.onTimeout (C:\Users\Immanuel\Desktop\CodeSage\Go-Eat\server\node_modules\@redis\client\lib\client\socket.ts:298:40)
+    at Object.onceWrapper (node:events:622:28)
+    at TLSSocket.emit (node:events:508:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at TLSSocket.Socket._onTimeout (node:net:604:8)
+    at listOnTimeout (node:internal/timers:605:17)
+    at processTimers (node:internal/timers:541:7)
+2026-05-16 10:24:30 [info]: 	⚡ Redis Client Connected
+2026-05-16 10:24:32 [info]: 	🚀 Server running in development mode on port 5000
+2026-05-16 10:24:41 [info]: 	🚀 Connected to MongoDB: ac-hjwrplp-shard-00-00.dupeyhe.mongodb.net
+2026-05-16 10:39:47 [info]: 	🔥 Firebase Admin initialized
+2026-05-16 10:40:26 [info]: 	⚡ Redis Client Connected
+2026-05-16 10:40:27 [info]: 	🚀 Server running in development mode on port 5000
+2026-05-16 10:40:35 [info]: 	🚀 Connected to MongoDB: ac-hjwrplp-shard-00-01.dupeyhe.mongodb.net
