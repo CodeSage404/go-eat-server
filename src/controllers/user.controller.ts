@@ -45,7 +45,7 @@ class UserController {
     user.savedAddresses = user.savedAddresses.filter(
       (addr: any) => addr._id.toString() !== req.params.id
     );
-    
+
     await user.save();
 
     res.status(200).json({

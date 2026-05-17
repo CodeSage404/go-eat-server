@@ -54,12 +54,12 @@ class OrderService {
       if (!restaurant || restaurant.owner.toString() !== userId) {
         throw new AppError('You do not have permission to manage this restaurant\'s orders', 403);
       }
-      
+
       const allowedVendorStatuses = [OrderStatus.ACCEPTED, OrderStatus.PREPARING, OrderStatus.READY, OrderStatus.CANCELLED];
       if (!allowedVendorStatuses.includes(status)) {
         throw new AppError(`Vendors cannot set order status to ${status}`, 400);
       }
-    } 
+    }
     else if (role === 'rider') {
       if (!order.rider || order.rider._id.toString() !== userId) {
         throw new AppError('You are not the assigned courier for this order', 403);
@@ -73,7 +73,7 @@ class OrderService {
     else if (role !== 'admin') {
       throw new AppError('Unauthorized to update order status', 403);
     }
-    
+
     order.status = status;
     await order.save();
 
