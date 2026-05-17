@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import { upload } from '../utils/cloudinary';
+import { upload } from '../utils/upload';
 import { protect } from '../middleware/auth.middleware';
 import { catchAsync } from '../utils/catchAsync';
 import AppError from '../utils/appError';
@@ -54,7 +54,7 @@ router.post(
     res.status(200).json({
       status: 'success',
       data: {
-        imageUrl: req.file.path, // Cloudinary URL
+        imageUrl: `${req.protocol}://${req.get('host')}/uploads/${req.file.filename}`,
       },
     });
   })

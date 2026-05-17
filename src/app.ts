@@ -1,4 +1,5 @@
 import express, { Application, Request, Response, NextFunction } from 'express';
+import path from 'path';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
@@ -61,6 +62,7 @@ class App {
     this.app.use(cors());
     this.app.use(helmet());
     this.app.use(morgan('dev'));
+    this.app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
   }
 
   private routes(): void {

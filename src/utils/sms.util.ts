@@ -3,48 +3,58 @@ import logger from './logger';
 
 /**
  * Sends a transactional SMS to a destination phone number.
- * Uses Termii (standard Nigerian SMS provider) if TERMII_API_KEY is configured.
+ * Uses Twilio if TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, and TWILIO_PHONE_NUMBER are configured.
  * Otherwise, falls back to logging the SMS to the console for frictionless local testing.
  * 
- * @param to Phone number in international format (e.g. +2348012345678 or 2348012345678)
+ * @param to Phone number in E.164 format (e.g. +2348012345678 or 08012345678)
  * @param message The text content of the SMS
  */
 export const sendSMS = async (to: string, message: string): Promise<boolean> => {
-  const apiKey = process.env.TERMII_API_KEY;
-  const senderId = process.env.TERMII_SENDER_ID || 'GoEat';
+  const accountSid = process.env.TWILIO_ACCOUNT_SID;
+  const authToken = process.env.TWILIO_AUTH_TOKEN;
+  const from = process.env.TWILIO_PHONE_NUMBER;
 
-  // Format phone number to international standard if it starts with 0
+  // Format phone number to E.164 standard (e.g. +2348012345678)
   let formattedTo = to.trim();
   if (formattedTo.startsWith('0')) {
-    formattedTo = '234' + formattedTo.substring(1);
-  } else if (formattedTo.startsWith('+')) {
-    formattedTo = formattedTo.substring(1);
+    formattedTo = '+234' + formattedTo.substring(1);
+  } else if (!formattedTo.startsWith('+')) {
+    formattedTo = '+' + formattedTo;
   }
 
-  if (!apiKey) {
-    logger.warn(`⚠️ [SMS MOCK] Termii API Key not configured. Message: "${message}" to ${formattedTo}`);
+  if (!accountSid || !authToken || !from) {
+    logger.warn(`⚠️ [SMS MOCK] Twilio not fully configured. Message: "${message}" to ${formattedTo}`);
     return true;
   }
 
   try {
-    const response = await axios.post('https://api.ng.termii.com/api/sms/send', {
-      to: formattedTo,
-      from: senderId,
-      sms: message,
-      type: 'plain',
-      channel: 'generic',
-      api_key: apiKey,
-    });
+    const params = new URLSearchParams();
+    params.append('To', formattedTo);
+    params.append('From', from);
+    params.append('Body', message);
 
-    if (response.data && (response.data.code === 'ok' || response.data.message === 'Successfully Sent')) {
-      logger.info(`📱 SMS sent successfully to ${formattedTo} via Termii`);
+    const auth = Buffer.from(`${accountSid}:${authToken}`).toString('base64');
+
+    const response = await axios.post(
+      `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`,
+      params,
+      {
+        headers: {
+          'Authorization': `Basic ${auth}`,
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+      }
+    );
+
+    if (response.status === 201) {
+      logger.info(`📱 SMS sent successfully to ${formattedTo} via Twilio`);
       return true;
     } else {
-      logger.error('❌ Termii SMS sending failed:', response.data);
+      logger.error('❌ Twilio SMS sending failed:', response.data);
       return false;
     }
-  } catch (error) {
-    logger.error('❌ Error sending SMS via Termii:', error);
+  } catch (error: any) {
+    logger.error('❌ Error sending SMS via Twilio:', error.response?.data || error.message);
     return false;
   }
 };

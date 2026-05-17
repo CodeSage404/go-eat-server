@@ -47,15 +47,15 @@ class AdminController {
          * Get platform-wide statistics for the super-admin dashboard
          */
         this.getPlatformStats = (0, catchAsync_1.catchAsync)(async (req, res) => {
-            // 1. User count breakdown
+            // User count breakdown
             const userStats = await user_model_1.default.aggregate([
                 { $group: { _id: '$role', count: { $sum: 1 } } }
             ]);
-            // 2. Order status breakdown
+            // Order status breakdown
             const orderStats = await order_model_1.default.aggregate([
                 { $group: { _id: '$status', count: { $sum: 1 } } }
             ]);
-            // 3. Financial summaries
+            // Financial summaries
             const financialStats = await order_model_1.default.aggregate([
                 { $match: { status: order_model_1.OrderStatus.DELIVERED } },
                 {

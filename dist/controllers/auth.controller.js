@@ -287,7 +287,7 @@ class AuthController {
             await email_util_1.default.sendOTP(identifier, otp);
         }
         else {
-            // Send real SMS OTP via Termii
+            // Send real SMS OTP via Twilio
             const message = `Your Go-Eat verification code is ${otp}. Valid for 10 minutes.`;
             await (0, sms_util_1.sendSMS)(identifier, message);
             // Also send via Push Notification if FCM is available on device
