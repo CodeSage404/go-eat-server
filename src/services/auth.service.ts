@@ -17,9 +17,17 @@ class AuthService {
   }
 
   public async register(userData: Partial<IUser>): Promise<{ user: IUser; token: string }> {
-    const existingUser = await User.findOne({ email: userData.email });
-    if (existingUser) {
-      throw new AppError('Email already in use', 400);
+    if (userData.phoneNumber) {
+      const existingUser = await User.findOne({ phoneNumber: userData.phoneNumber });
+      if (existingUser) {
+        throw new AppError('Phone number already in use', 400);
+      }
+    }
+    if (userData.email) {
+      const existingUser = await User.findOne({ email: userData.email });
+      if (existingUser) {
+        throw new AppError('Email already in use', 400);
+      }
     }
 
     const user = await User.create(userData);
@@ -27,25 +35,30 @@ class AuthService {
 
     user.password = undefined;
 
-    logger.info(`👤 New user registered: ${user.email} as ${user.role}`);
+    logger.info(`👤 New user registered: ${user.phoneNumber || user.email} as ${user.role}`);
     return { user, token };
   }
 
-  public async login(email: string, password: string): Promise<{ user: IUser; token: string }> {
-    if (!email || !password) {
-      throw new AppError('Please provide email and password', 400);
+  public async login(identifier: string, password: string): Promise<{ user: IUser; token: string }> {
+    if (!identifier || !password) {
+      throw new AppError('Please provide email/phone and password', 400);
     }
-    const user = await User.findOne({ email }).select('+password');
+    const user = await User.findOne({
+      $or: [
+        { email: identifier.toLowerCase() },
+        { phoneNumber: identifier }
+      ]
+    }).select('+password');
 
     if (!user || !(await user.comparePassword(password))) {
-      throw new AppError('Incorrect email or password', 401);
+      throw new AppError('Incorrect email/phone or password', 401);
     }
 
     const token = this.signToken(user._id as unknown as string);
 
     user.password = undefined;
 
-    logger.info(`👤 User logged in: ${user.email}`);
+    logger.info(`👤 User logged in: ${user.phoneNumber || user.email}`);
     return { user, token };
   }
 

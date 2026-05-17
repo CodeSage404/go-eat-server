@@ -51,13 +51,12 @@ const userSchema = new Schema<IUser>(
   {
     name: {
       type: String,
-      required: [true, 'Please provide your name'],
       trim: true,
     },
     email: {
       type: String,
-      required: [true, 'Please provide your email'],
       unique: true,
+      sparse: true,
       lowercase: true,
       trim: true,
       match: [/^\S+@\S+\.\S+$/, 'Please provide a valid email address'],
@@ -80,6 +79,8 @@ const userSchema = new Schema<IUser>(
     },
     phoneNumber: {
       type: String,
+      unique: true,
+      sparse: true,
       trim: true,
     },
     profileImage: {

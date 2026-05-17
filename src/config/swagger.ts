@@ -16,6 +16,10 @@ const options: swaggerJsdoc.Options = {
         url: 'http://localhost:5000',
         description: 'Development server',
       },
+      {
+        url: 'https://go-eat-server.onrender.com',
+        description: 'Production server on Render',
+      },
     ],
     components: {
       securitySchemes: {

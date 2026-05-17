@@ -55,13 +55,12 @@ var UserStatus;
 const userSchema = new mongoose_1.Schema({
     name: {
         type: String,
-        required: [true, 'Please provide your name'],
         trim: true,
     },
     email: {
         type: String,
-        required: [true, 'Please provide your email'],
         unique: true,
+        sparse: true,
         lowercase: true,
         trim: true,
         match: [/^\S+@\S+\.\S+$/, 'Please provide a valid email address'],
@@ -84,6 +83,8 @@ const userSchema = new mongoose_1.Schema({
     },
     phoneNumber: {
         type: String,
+        unique: true,
+        sparse: true,
         trim: true,
     },
     profileImage: {

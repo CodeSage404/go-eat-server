@@ -268,6 +268,34 @@ router.get('/me', auth_controller_1.default.getMe);
 router.patch('/update-me', auth_controller_1.default.updateMe);
 /**
  * @openapi
+ * /api/v1/auth/complete-profile:
+ *   post:
+ *     tags:
+ *       - User Profile
+ *     summary: Complete User Profile
+ *     description: Allows user to set their fullname (name) and email address after phone registration, and triggers email verification.
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *                 example: Immanuel John
+ *               email:
+ *                 type: string
+ *                 example: user@example.com
+ *     responses:
+ *       200:
+ *         description: Profile successfully completed / email OTP sent.
+ */
+router.post('/complete-profile', auth_controller_1.default.completeProfile);
+/**
+ * @openapi
  * /api/v1/auth/change-password:
  *   patch:
  *     tags:

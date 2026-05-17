@@ -34,6 +34,10 @@ class OrderController {
             if (!validatedData.success) {
                 throw new appError_1.default(validatedData.error.issues.map(i => i.message).join(', '), 400);
             }
+            // Ensure profile is complete (must have name and email) before ordering
+            if (!req.user.name || !req.user.email) {
+                throw new appError_1.default('Please complete your profile (add name and email) before placing an order.', 400);
+            }
             const order = await order_service_1.default.placeOrder({
                 ...req.body,
                 customer: req.user._id,

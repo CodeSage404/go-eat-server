@@ -43,12 +43,16 @@ const email_util_1 = __importDefault(require("../utils/email.util"));
 const catchAsync_1 = require("../utils/catchAsync");
 const appError_1 = __importDefault(require("../utils/appError"));
 const user_model_1 = __importStar(require("../models/user.model"));
+const logger_1 = __importDefault(require("../utils/logger"));
+const sms_util_1 = require("../utils/sms.util");
+const notification_service_1 = __importDefault(require("../services/notification.service"));
 // Validation Schemas
 const userSignupSchema = zod_1.z.object({
-    name: zod_1.z.string().min(2, 'Name is too short'),
-    email: zod_1.z.string().email('Invalid email address'),
+    phoneNumber: zod_1.z.string().min(8, 'Phone number must be at least 8 digits').max(11, 'Phone number must be at most 11 digits'),
     password: zod_1.z.string().min(8, 'Password must be at least 8 characters'),
-    phoneNumber: zod_1.z.string().optional(),
+    name: zod_1.z.string().optional(),
+    email: zod_1.z.string().email('Invalid email address').optional(),
+    referralCode: zod_1.z.string().optional(),
 });
 const courierSignupSchema = userSignupSchema.extend({
     vehicleType: zod_1.z.string().min(1, 'Vehicle type is required'),
@@ -60,7 +64,8 @@ const vendorSignupSchema = userSignupSchema.extend({
     businessType: zod_1.z.string().min(1, 'Business type is required'),
 });
 const verifyOTPSchema = zod_1.z.object({
-    email: zod_1.z.string().email('Invalid email address'),
+    email: zod_1.z.string().email('Invalid email address').optional(),
+    phoneNumber: zod_1.z.string().optional(),
     otp: zod_1.z.string().length(6, 'OTP must be 6 digits'),
 });
 const socialLoginSchema = zod_1.z.object({
@@ -83,14 +88,21 @@ class AuthController {
             if (!validatedData.success) {
                 throw new appError_1.default(validatedData.error.issues.map(i => i.message).join(', '), 400);
             }
+            let referredBy;
+            if (req.body.referralCode) {
+                const referrer = await user_model_1.default.findOne({ referralCode: req.body.referralCode.toUpperCase() });
+                if (referrer)
+                    referredBy = referrer._id;
+            }
             const { user, token } = await auth_service_1.default.register({
                 ...req.body,
                 role: user_model_1.UserRole.CUSTOMER,
+                referredBy,
             });
-            await this.initiateVerification(user.email);
+            await this.initiateVerification(user.phoneNumber, 'phone');
             res.status(201).json({
                 status: 'success',
-                message: 'Signup successful. Please check your email for the OTP.',
+                message: 'Signup successful. Please verify your phone number with the OTP.',
                 token,
                 data: { user },
             });
@@ -100,15 +112,22 @@ class AuthController {
             if (!validatedData.success) {
                 throw new appError_1.default(validatedData.error.issues.map(i => i.message).join(', '), 400);
             }
+            let referredBy;
+            if (req.body.referralCode) {
+                const referrer = await user_model_1.default.findOne({ referralCode: req.body.referralCode.toUpperCase() });
+                if (referrer)
+                    referredBy = referrer._id;
+            }
             const { user, token } = await auth_service_1.default.register({
                 ...req.body,
                 role: user_model_1.UserRole.RIDER,
                 status: user_model_1.UserStatus.PENDING, // Couriers need verification
+                referredBy,
             });
-            await this.initiateVerification(user.email);
+            await this.initiateVerification(user.phoneNumber, 'phone');
             res.status(201).json({
                 status: 'success',
-                message: 'Courier signup successful. Please verify your email.',
+                message: 'Courier signup successful. Please verify your phone number.',
                 token,
                 data: { user },
             });
@@ -118,15 +137,22 @@ class AuthController {
             if (!validatedData.success) {
                 throw new appError_1.default(validatedData.error.issues.map(i => i.message).join(', '), 400);
             }
+            let referredBy;
+            if (req.body.referralCode) {
+                const referrer = await user_model_1.default.findOne({ referralCode: req.body.referralCode.toUpperCase() });
+                if (referrer)
+                    referredBy = referrer._id;
+            }
             const { user, token } = await auth_service_1.default.register({
                 ...req.body,
                 role: user_model_1.UserRole.VENDOR,
                 status: user_model_1.UserStatus.PENDING, // Vendors need verification
+                referredBy,
             });
-            await this.initiateVerification(user.email);
+            await this.initiateVerification(user.phoneNumber, 'phone');
             res.status(201).json({
                 status: 'success',
-                message: 'Vendor signup successful. Please verify your email.',
+                message: 'Vendor signup successful. Please verify your phone number.',
                 token,
                 data: { user },
             });
@@ -136,24 +162,32 @@ class AuthController {
             if (!validatedData.success) {
                 throw new appError_1.default('Invalid request details', 400);
             }
-            const { email, otp } = req.body;
-            const isValid = await otp_util_1.default.verifyOTP(email, otp);
+            const { email, phoneNumber, otp } = req.body;
+            const identifier = email || phoneNumber;
+            if (!identifier) {
+                throw new appError_1.default('Please provide email or phone number', 400);
+            }
+            const isValid = await otp_util_1.default.verifyOTP(identifier, otp);
             if (!isValid) {
                 throw new appError_1.default('Invalid or expired OTP', 400);
             }
-            // Update user verification status
-            const user = await user_model_1.default.findOneAndUpdate({ email }, { isVerified: true }, { new: true });
+            // Update user verification status based on query
+            const query = email ? { email: email.toLowerCase() } : { phoneNumber };
+            const user = await user_model_1.default.findOneAndUpdate(query, { isVerified: true }, { new: true });
             if (!user) {
                 throw new appError_1.default('User not found', 404);
             }
             res.status(200).json({
                 status: 'success',
-                message: 'Email verified successfully',
+                message: email ? 'Email verified successfully' : 'Phone number verified successfully',
                 data: { user },
             });
         });
         this.login = (0, catchAsync_1.catchAsync)(async (req, res) => {
-            const { user, token } = await auth_service_1.default.login(req.body.email, req.body.password);
+            // Allows either email or phone login
+            const { email, phoneNumber, password } = req.body;
+            const identifier = email || phoneNumber;
+            const { user, token } = await auth_service_1.default.login(identifier, password);
             res.status(200).json({
                 status: 'success',
                 token,
@@ -186,7 +220,6 @@ class AuthController {
         });
         // User Profile Methods
         this.getMe = (0, catchAsync_1.catchAsync)(async (req, res) => {
-            // req.user is set by the protect middleware
             res.status(200).json({
                 status: 'success',
                 data: { user: req.user },
@@ -201,6 +234,33 @@ class AuthController {
             res.status(200).json({
                 status: 'success',
                 data: { user: updatedUser },
+            });
+        });
+        /**
+         * Complete user profile: Add name, add email, and trigger verification OTP for the new email
+         */
+        this.completeProfile = (0, catchAsync_1.catchAsync)(async (req, res) => {
+            const { name, email } = req.body;
+            const user = await user_model_1.default.findById(req.user._id);
+            if (!user)
+                throw new appError_1.default('User not found', 404);
+            if (name)
+                user.name = name;
+            if (email && email.toLowerCase() !== user.email) {
+                // Check if this email is already registered by someone else
+                const existingUser = await user_model_1.default.findOne({ email: email.toLowerCase() });
+                if (existingUser) {
+                    throw new appError_1.default('Email is already registered by another user', 400);
+                }
+                user.email = email.toLowerCase();
+                // Trigger email verification
+                await this.initiateVerification(user.email, 'email');
+            }
+            await user.save();
+            res.status(200).json({
+                status: 'success',
+                message: email ? 'Profile updated. Please verify the new email with the OTP sent.' : 'Profile completed successfully.',
+                data: { user },
             });
         });
         this.changePassword = (0, catchAsync_1.catchAsync)(async (req, res) => {
@@ -220,10 +280,27 @@ class AuthController {
             });
         });
     }
-    async initiateVerification(email) {
+    async initiateVerification(identifier, type) {
         const otp = otp_util_1.default.generateOTP();
-        await otp_util_1.default.storeOTP(email, otp);
-        await email_util_1.default.sendOTP(email, otp);
+        await otp_util_1.default.storeOTP(identifier, otp);
+        if (type === 'email') {
+            await email_util_1.default.sendOTP(identifier, otp);
+        }
+        else {
+            // Send real SMS OTP via Termii
+            const message = `Your Go-Eat verification code is ${otp}. Valid for 10 minutes.`;
+            await (0, sms_util_1.sendSMS)(identifier, message);
+            // Also send via Push Notification if FCM is available on device
+            try {
+                const user = await user_model_1.default.findOne({ phoneNumber: identifier });
+                if (user && user.fcmToken) {
+                    await notification_service_1.default.sendNotification(user._id.toString(), 'Phone Verification OTP 🔑', `Your verification code is ${otp}`);
+                }
+            }
+            catch (err) {
+                logger_1.default.error('Failed to dispatch OTP via push notification:', err);
+            }
+        }
     }
 }
 exports.default = new AuthController();

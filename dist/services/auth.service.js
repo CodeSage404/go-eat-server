@@ -51,27 +51,40 @@ class AuthService {
         return jsonwebtoken_1.default.sign({ id }, process.env.JWT_SECRET, options);
     }
     async register(userData) {
-        const existingUser = await user_model_1.default.findOne({ email: userData.email });
-        if (existingUser) {
-            throw new appError_1.default('Email already in use', 400);
+        if (userData.phoneNumber) {
+            const existingUser = await user_model_1.default.findOne({ phoneNumber: userData.phoneNumber });
+            if (existingUser) {
+                throw new appError_1.default('Phone number already in use', 400);
+            }
+        }
+        if (userData.email) {
+            const existingUser = await user_model_1.default.findOne({ email: userData.email });
+            if (existingUser) {
+                throw new appError_1.default('Email already in use', 400);
+            }
         }
         const user = await user_model_1.default.create(userData);
         const token = this.signToken(user._id);
         user.password = undefined;
-        logger_1.default.info(`👤 New user registered: ${user.email} as ${user.role}`);
+        logger_1.default.info(`👤 New user registered: ${user.phoneNumber || user.email} as ${user.role}`);
         return { user, token };
     }
-    async login(email, password) {
-        if (!email || !password) {
-            throw new appError_1.default('Please provide email and password', 400);
+    async login(identifier, password) {
+        if (!identifier || !password) {
+            throw new appError_1.default('Please provide email/phone and password', 400);
         }
-        const user = await user_model_1.default.findOne({ email }).select('+password');
+        const user = await user_model_1.default.findOne({
+            $or: [
+                { email: identifier.toLowerCase() },
+                { phoneNumber: identifier }
+            ]
+        }).select('+password');
         if (!user || !(await user.comparePassword(password))) {
-            throw new appError_1.default('Incorrect email or password', 401);
+            throw new appError_1.default('Incorrect email/phone or password', 401);
         }
         const token = this.signToken(user._id);
         user.password = undefined;
-        logger_1.default.info(`👤 User logged in: ${user.email}`);
+        logger_1.default.info(`👤 User logged in: ${user.phoneNumber || user.email}`);
         return { user, token };
     }
     async socialLogin(type, token, role = user_model_1.UserRole.CUSTOMER) {
