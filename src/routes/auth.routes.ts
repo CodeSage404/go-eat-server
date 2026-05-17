@@ -17,13 +17,17 @@ const router = Router();
  *         application/json:
  *           schema:
  *             type: object
- *             required: [name, email, password]
+ *             required: [phoneNumber, password]
  *             properties:
+ *               phoneNumber:
+ *                 type: string
+ *               password:
+ *                 type: string
  *               name:
  *                 type: string
  *               email:
  *                 type: string
- *               password:
+ *               referralCode:
  *                 type: string
  *     responses:
  *       201:
@@ -44,15 +48,21 @@ router.post('/signup/user', authController.signupUser);
  *         application/json:
  *           schema:
  *             type: object
- *             required: [name, email, password, phoneNumber]
+ *             required: [phoneNumber, password, vehicleType, licenseNumber]
  *             properties:
+ *               phoneNumber:
+ *                 type: string
+ *               password:
+ *                 type: string
  *               name:
  *                 type: string
  *               email:
  *                 type: string
- *               password:
+ *               referralCode:
  *                 type: string
- *               phoneNumber:
+ *               vehicleType:
+ *                 type: string
+ *               licenseNumber:
  *                 type: string
  *     responses:
  *       201:
@@ -73,13 +83,23 @@ router.post('/signup/courier', authController.signupCourier);
  *         application/json:
  *           schema:
  *             type: object
- *             required: [name, email, password]
+ *             required: [phoneNumber, password, restaurantName, address, businessType]
  *             properties:
+ *               phoneNumber:
+ *                 type: string
+ *               password:
+ *                 type: string
  *               name:
  *                 type: string
  *               email:
  *                 type: string
- *               password:
+ *               referralCode:
+ *                 type: string
+ *               restaurantName:
+ *                 type: string
+ *               address:
+ *                 type: string
+ *               businessType:
  *                 type: string
  *     responses:
  *       201:
@@ -101,9 +121,11 @@ router.post('/signup/vendor', authController.signupVendor);
  *         application/json:
  *           schema:
  *             type: object
- *             required: [email, otp]
+ *             required: [otp]
  *             properties:
  *               email:
+ *                 type: string
+ *               phoneNumber:
  *                 type: string
  *               otp:
  *                 type: string
@@ -128,13 +150,14 @@ router.post('/verify-otp', authController.verifyOTP);
  *         application/json:
  *           schema:
  *             type: object
- *             required:
- *               - email
- *               - password
+ *             required: [password]
  *             properties:
  *               email:
  *                 type: string
  *                 example: user@example.com
+ *               phoneNumber:
+ *                 type: string
+ *                 example: "08012345678"
  *               password:
  *                 type: string
  *                 example: password123
@@ -173,31 +196,6 @@ router.post('/login', authController.login);
  */
 router.post('/google', authController.googleLogin);
 
-/**
- * @openapi
- * /api/v1/auth/apple:
- *   post:
- *     tags:
- *       - Auth
- *     summary: Apple Social Login
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required: [token]
- *             properties:
- *               token:
- *                 type: string
- *                 description: Apple ID Token
- *               role:
- *                 type: string
- *                 enum: [customer, vendor, rider]
- *     responses:
- *       200:
- *         description: Social login successful.
- */
 /**
  * @openapi
  * /api/v1/auth/apple:
