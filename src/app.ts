@@ -17,6 +17,12 @@ import orderRoutes from './routes/order.routes';
 import userRoutes from './routes/user.routes';
 import reviewRoutes from './routes/review.routes';
 import searchRoutes from './routes/search.routes';
+import paymentRoutes from './routes/payment.routes';
+import promoRoutes from './routes/promo.routes';
+import analyticsRoutes from './routes/analytics.routes';
+import supportRoutes from './routes/support.routes';
+import uploadRoutes from './routes/upload.routes';
+import walletRoutes from './routes/wallet.routes';
 import swaggerUi from 'swagger-ui-express';
 import { swaggerSpec } from './config/swagger';
 
@@ -76,6 +82,12 @@ class App {
     this.app.use('/api/v1/users', userRoutes);
     this.app.use('/api/v1/reviews', reviewRoutes);
     this.app.use('/api/v1/search', searchRoutes);
+    this.app.use('/api/v1/payments', paymentRoutes);
+    this.app.use('/api/v1/promos', promoRoutes);
+    this.app.use('/api/v1/analytics', analyticsRoutes);
+    this.app.use('/api/v1/support', supportRoutes);
+    this.app.use('/api/v1/upload', uploadRoutes);
+    this.app.use('/api/v1/wallets', walletRoutes);
 
     // Documentation Routes
     this.app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));

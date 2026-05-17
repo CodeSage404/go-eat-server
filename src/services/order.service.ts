@@ -5,6 +5,8 @@ import { emitToUser } from '../io';
 import notificationService from './notification.service';
 import mapsService from './maps.service';
 import AppError from '../utils/appError';
+import Wallet from '../models/wallet.model';
+import Transaction, { TransactionType, TransactionStatus } from '../models/transaction.model';
 import { APP_CONSTANTS, SOCKET_EVENTS } from '../types/constants';
 
 class OrderService {
@@ -81,6 +83,25 @@ class OrderService {
       order._id.toString(),
       order.status
     );
+
+    // If order is DELIVERED, credit the Rider's wallet
+    if (status === OrderStatus.DELIVERED && order.rider) {
+      const riderId = order.rider._id.toString();
+      let wallet = await Wallet.findOne({ user: riderId });
+      if (!wallet) wallet = await Wallet.create({ user: riderId });
+
+      wallet.balance += order.deliveryFee || 0;
+      await wallet.save();
+
+      await Transaction.create({
+        wallet: wallet._id,
+        amount: order.deliveryFee || 0,
+        type: TransactionType.EARNING,
+        status: TransactionStatus.COMPLETED,
+        description: `Delivery fee for order ${order._id}`,
+        reference: order._id.toString(),
+      });
+    }
 
     // If order is READY, notify nearby riders
     if (status === OrderStatus.READY) {

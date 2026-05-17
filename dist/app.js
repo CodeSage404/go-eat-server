@@ -22,6 +22,12 @@ const order_routes_1 = __importDefault(require("./routes/order.routes"));
 const user_routes_1 = __importDefault(require("./routes/user.routes"));
 const review_routes_1 = __importDefault(require("./routes/review.routes"));
 const search_routes_1 = __importDefault(require("./routes/search.routes"));
+const payment_routes_1 = __importDefault(require("./routes/payment.routes"));
+const promo_routes_1 = __importDefault(require("./routes/promo.routes"));
+const analytics_routes_1 = __importDefault(require("./routes/analytics.routes"));
+const support_routes_1 = __importDefault(require("./routes/support.routes"));
+const upload_routes_1 = __importDefault(require("./routes/upload.routes"));
+const wallet_routes_1 = __importDefault(require("./routes/wallet.routes"));
 const swagger_ui_express_1 = __importDefault(require("swagger-ui-express"));
 const swagger_1 = require("./config/swagger");
 dotenv_1.default.config();
@@ -70,6 +76,12 @@ class App {
         this.app.use('/api/v1/users', user_routes_1.default);
         this.app.use('/api/v1/reviews', review_routes_1.default);
         this.app.use('/api/v1/search', search_routes_1.default);
+        this.app.use('/api/v1/payments', payment_routes_1.default);
+        this.app.use('/api/v1/promos', promo_routes_1.default);
+        this.app.use('/api/v1/analytics', analytics_routes_1.default);
+        this.app.use('/api/v1/support', support_routes_1.default);
+        this.app.use('/api/v1/upload', upload_routes_1.default);
+        this.app.use('/api/v1/wallets', wallet_routes_1.default);
         // Documentation Routes
         this.app.use('/api-docs', swagger_ui_express_1.default.serve, swagger_ui_express_1.default.setup(swagger_1.swaggerSpec));
         this.app.get('/redoc', (req, res) => {

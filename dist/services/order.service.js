@@ -43,6 +43,8 @@ const io_1 = require("../io");
 const notification_service_1 = __importDefault(require("./notification.service"));
 const maps_service_1 = __importDefault(require("./maps.service"));
 const appError_1 = __importDefault(require("../utils/appError"));
+const wallet_model_1 = __importDefault(require("../models/wallet.model"));
+const transaction_model_1 = __importStar(require("../models/transaction.model"));
 const constants_1 = require("../types/constants");
 class OrderService {
     /**
@@ -100,6 +102,23 @@ class OrderService {
         await order.save();
         // Notify Customer via Push and Socket
         await notification_service_1.default.notifyOrderStatusUpdate(order.customer._id.toString(), order._id.toString(), order.status);
+        // If order is DELIVERED, credit the Rider's wallet
+        if (status === order_model_1.OrderStatus.DELIVERED && order.rider) {
+            const riderId = order.rider._id.toString();
+            let wallet = await wallet_model_1.default.findOne({ user: riderId });
+            if (!wallet)
+                wallet = await wallet_model_1.default.create({ user: riderId });
+            wallet.balance += order.deliveryFee || 0;
+            await wallet.save();
+            await transaction_model_1.default.create({
+                wallet: wallet._id,
+                amount: order.deliveryFee || 0,
+                type: transaction_model_1.TransactionType.EARNING,
+                status: transaction_model_1.TransactionStatus.COMPLETED,
+                description: `Delivery fee for order ${order._id}`,
+                reference: order._id.toString(),
+            });
+        }
         // If order is READY, notify nearby riders
         if (status === order_model_1.OrderStatus.READY) {
             this.notifyNearbyRiders(order);

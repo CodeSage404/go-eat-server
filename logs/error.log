@@ -3671,3 +3671,233 @@
     at TLSSocket.Socket._onTimeout (node:net:604:8)
     at listOnTimeout (node:internal/timers:605:17)
     at processTimers (node:internal/timers:541:7)
+2026-05-16 10:53:36 [error]: Error: Connection timeout
+    at TLSSocket.onTimeout (C:\Users\Immanuel\Desktop\CodeSage\Go-Eat\server\node_modules\@redis\client\lib\client\socket.ts:298:40)
+    at Object.onceWrapper (node:events:622:28)
+    at TLSSocket.emit (node:events:508:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at TLSSocket.Socket._onTimeout (node:net:604:8)
+    at listOnTimeout (node:internal/timers:605:17)
+    at processTimers (node:internal/timers:541:7)
+2026-05-16 10:59:32 [error]: Error: Connection timeout
+    at TLSSocket.onTimeout (C:\Users\Immanuel\Desktop\CodeSage\Go-Eat\server\node_modules\@redis\client\lib\client\socket.ts:298:40)
+    at Object.onceWrapper (node:events:622:28)
+    at TLSSocket.emit (node:events:508:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at TLSSocket.Socket._onTimeout (node:net:604:8)
+    at listOnTimeout (node:internal/timers:605:17)
+    at processTimers (node:internal/timers:541:7)
+2026-05-16 18:50:57 [error]: Error: read ECONNRESET
+    at TLSWrap.onStreamRead (node:internal/stream_base_commons:216:20)
+2026-05-16 18:50:57 [error]: Error: getaddrinfo ENOTFOUND magnetic-jackal-83413.upstash.io
+    at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26)
+2026-05-16 18:50:58 [error]: Error: getaddrinfo ENOTFOUND magnetic-jackal-83413.upstash.io
+    at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26)
+2026-05-16 18:50:58 [error]: Error: getaddrinfo ENOTFOUND magnetic-jackal-83413.upstash.io
+    at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26)
+2026-05-16 18:50:58 [error]: Error: getaddrinfo ENOTFOUND magnetic-jackal-83413.upstash.io
+    at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26)
+2026-05-16 18:50:59 [error]: Error: getaddrinfo ENOTFOUND magnetic-jackal-83413.upstash.io
+    at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26)
+2026-05-16 18:51:00 [error]: Error: getaddrinfo ENOTFOUND magnetic-jackal-83413.upstash.io
+    at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26)
+2026-05-16 18:51:01 [error]: Error: getaddrinfo ENOTFOUND magnetic-jackal-83413.upstash.io
+    at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26)
+2026-05-16 18:51:03 [error]: Error: getaddrinfo ENOTFOUND magnetic-jackal-83413.upstash.io
+    at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26)
+2026-05-16 18:51:06 [error]: Error: getaddrinfo ENOTFOUND magnetic-jackal-83413.upstash.io
+    at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26)
+2026-05-16 18:51:08 [error]: Error: getaddrinfo ENOTFOUND magnetic-jackal-83413.upstash.io
+    at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26)
+2026-05-16 18:51:10 [error]: Error: getaddrinfo ENOTFOUND magnetic-jackal-83413.upstash.io
+    at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26)
+2026-05-16 18:51:12 [error]: Error: getaddrinfo ENOTFOUND magnetic-jackal-83413.upstash.io
+    at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26)
+2026-05-16 18:51:14 [error]: Error: getaddrinfo ENOTFOUND magnetic-jackal-83413.upstash.io
+    at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26)
+2026-05-16 18:51:17 [error]: Error: getaddrinfo ENOTFOUND magnetic-jackal-83413.upstash.io
+    at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26)
+2026-05-16 18:51:19 [error]: Error: getaddrinfo ENOTFOUND magnetic-jackal-83413.upstash.io
+    at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26)
+2026-05-16 18:51:21 [error]: Error: getaddrinfo ENOTFOUND magnetic-jackal-83413.upstash.io
+    at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26)
+2026-05-16 18:51:23 [error]: Error: getaddrinfo ENOTFOUND magnetic-jackal-83413.upstash.io
+    at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26)
+2026-05-16 18:51:26 [error]: Error: getaddrinfo ENOTFOUND magnetic-jackal-83413.upstash.io
+    at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26)
+2026-05-16 18:51:28 [error]: Error: getaddrinfo ENOTFOUND magnetic-jackal-83413.upstash.io
+    at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26)
+2026-05-16 18:51:30 [error]: Error: getaddrinfo ENOTFOUND magnetic-jackal-83413.upstash.io
+    at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26)
+2026-05-16 18:51:32 [error]: Error: getaddrinfo ENOTFOUND magnetic-jackal-83413.upstash.io
+    at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26)
+2026-05-16 18:51:34 [error]: Error: getaddrinfo ENOTFOUND magnetic-jackal-83413.upstash.io
+    at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26)
+2026-05-16 18:51:36 [error]: Error: getaddrinfo ENOTFOUND magnetic-jackal-83413.upstash.io
+    at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26)
+2026-05-16 18:51:38 [error]: Error: getaddrinfo ENOTFOUND magnetic-jackal-83413.upstash.io
+    at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26)
+2026-05-16 18:51:40 [error]: Error: getaddrinfo ENOTFOUND magnetic-jackal-83413.upstash.io
+    at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26)
+2026-05-16 18:51:43 [error]: Error: getaddrinfo ENOTFOUND magnetic-jackal-83413.upstash.io
+    at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26)
+2026-05-16 18:51:45 [error]: Error: getaddrinfo ENOTFOUND magnetic-jackal-83413.upstash.io
+    at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26)
+2026-05-16 18:51:47 [error]: Error: getaddrinfo ENOTFOUND magnetic-jackal-83413.upstash.io
+    at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26)
+2026-05-16 18:51:49 [error]: Error: getaddrinfo ENOTFOUND magnetic-jackal-83413.upstash.io
+    at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26)
+2026-05-17 11:37:58 [error]: Error: getaddrinfo ENOTFOUND magnetic-jackal-83413.upstash.io
+    at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26)
+2026-05-17 11:38:00 [error]: Error: getaddrinfo ENOTFOUND magnetic-jackal-83413.upstash.io
+    at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26)
+2026-05-17 11:38:02 [error]: Error: getaddrinfo ENOTFOUND magnetic-jackal-83413.upstash.io
+    at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26)
+2026-05-17 11:38:04 [error]: Error: getaddrinfo ENOTFOUND magnetic-jackal-83413.upstash.io
+    at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26)
+2026-05-17 11:38:06 [error]: Error: getaddrinfo ENOTFOUND magnetic-jackal-83413.upstash.io
+    at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26)
+2026-05-17 11:38:09 [error]: Error: getaddrinfo ENOTFOUND magnetic-jackal-83413.upstash.io
+    at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26)
+2026-05-17 11:38:11 [error]: Error: getaddrinfo ENOTFOUND magnetic-jackal-83413.upstash.io
+    at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26)
+2026-05-17 11:38:13 [error]: Error: getaddrinfo ENOTFOUND magnetic-jackal-83413.upstash.io
+    at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26)
+2026-05-17 11:38:15 [error]: Error: getaddrinfo ENOTFOUND magnetic-jackal-83413.upstash.io
+    at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26)
+2026-05-17 11:38:24 [error]: Error: getaddrinfo ENOTFOUND magnetic-jackal-83413.upstash.io
+    at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26)
+2026-05-17 11:38:26 [error]: Error: getaddrinfo ENOTFOUND magnetic-jackal-83413.upstash.io
+    at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26)
+2026-05-17 11:38:28 [error]: Error: getaddrinfo ENOTFOUND magnetic-jackal-83413.upstash.io
+    at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26)
+2026-05-17 11:38:30 [error]: Error: getaddrinfo ENOTFOUND magnetic-jackal-83413.upstash.io
+    at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26)
+2026-05-17 11:38:32 [error]: Error: getaddrinfo ENOTFOUND magnetic-jackal-83413.upstash.io
+    at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26)
+2026-05-17 11:38:34 [error]: Error: getaddrinfo ENOTFOUND magnetic-jackal-83413.upstash.io
+    at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26)
+2026-05-17 11:38:36 [error]: Error: getaddrinfo ENOTFOUND magnetic-jackal-83413.upstash.io
+    at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26)
+2026-05-17 11:38:39 [error]: Error: getaddrinfo ENOTFOUND magnetic-jackal-83413.upstash.io
+    at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26)
+2026-05-17 11:38:41 [error]: Error: getaddrinfo ENOTFOUND magnetic-jackal-83413.upstash.io
+    at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26)
+2026-05-17 11:38:43 [error]: Error: getaddrinfo ENOTFOUND magnetic-jackal-83413.upstash.io
+    at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26)
+2026-05-17 11:38:45 [error]: Error: getaddrinfo ENOTFOUND magnetic-jackal-83413.upstash.io
+    at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26)
+2026-05-17 11:38:47 [error]: Error: getaddrinfo ENOTFOUND magnetic-jackal-83413.upstash.io
+    at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26)
+2026-05-17 11:38:49 [error]: Error: getaddrinfo ENOTFOUND magnetic-jackal-83413.upstash.io
+    at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26)
+2026-05-17 11:38:51 [error]: Error: getaddrinfo ENOTFOUND magnetic-jackal-83413.upstash.io
+    at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26)
+2026-05-17 11:38:53 [error]: Error: getaddrinfo ENOTFOUND magnetic-jackal-83413.upstash.io
+    at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26)
+2026-05-17 11:38:55 [error]: Error: getaddrinfo ENOTFOUND magnetic-jackal-83413.upstash.io
+    at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26)
+2026-05-17 11:38:57 [error]: Error: getaddrinfo ENOTFOUND magnetic-jackal-83413.upstash.io
+    at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26)
+2026-05-17 11:39:00 [error]: Error: getaddrinfo ENOTFOUND magnetic-jackal-83413.upstash.io
+    at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26)
+2026-05-17 11:39:02 [error]: Error: getaddrinfo ENOTFOUND magnetic-jackal-83413.upstash.io
+    at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26)
+2026-05-17 11:39:04 [error]: Error: getaddrinfo ENOTFOUND magnetic-jackal-83413.upstash.io
+    at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26)
+2026-05-17 11:39:06 [error]: Error: getaddrinfo ENOTFOUND magnetic-jackal-83413.upstash.io
+    at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26)
+2026-05-17 11:39:08 [error]: Error: getaddrinfo ENOTFOUND magnetic-jackal-83413.upstash.io
+    at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26)
+2026-05-17 11:39:10 [error]: Error: getaddrinfo ENOTFOUND magnetic-jackal-83413.upstash.io
+    at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26)
+2026-05-17 11:39:12 [error]: Error: getaddrinfo ENOTFOUND magnetic-jackal-83413.upstash.io
+    at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26)
+2026-05-17 11:39:14 [error]: Error: getaddrinfo ENOTFOUND magnetic-jackal-83413.upstash.io
+    at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26)
+2026-05-17 11:39:16 [error]: Error: getaddrinfo ENOTFOUND magnetic-jackal-83413.upstash.io
+    at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26)
+2026-05-17 11:39:18 [error]: Error: getaddrinfo ENOTFOUND magnetic-jackal-83413.upstash.io
+    at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26)
+2026-05-17 11:39:20 [error]: Error: getaddrinfo ENOTFOUND magnetic-jackal-83413.upstash.io
+    at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26)
+2026-05-17 11:39:23 [error]: Error: getaddrinfo ENOTFOUND magnetic-jackal-83413.upstash.io
+    at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26)
+2026-05-17 11:39:25 [error]: Error: getaddrinfo ENOTFOUND magnetic-jackal-83413.upstash.io
+    at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26)
+2026-05-17 11:39:27 [error]: Error: getaddrinfo ENOTFOUND magnetic-jackal-83413.upstash.io
+    at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26)
+2026-05-17 11:39:29 [error]: Error: getaddrinfo ENOTFOUND magnetic-jackal-83413.upstash.io
+    at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26)
+2026-05-17 11:39:31 [error]: Error: getaddrinfo ENOTFOUND magnetic-jackal-83413.upstash.io
+    at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26)
+2026-05-17 11:39:33 [error]: Error: getaddrinfo ENOTFOUND magnetic-jackal-83413.upstash.io
+    at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26)
+2026-05-17 11:39:35 [error]: Error: getaddrinfo ENOTFOUND magnetic-jackal-83413.upstash.io
+    at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26)
+2026-05-17 11:39:37 [error]: Error: getaddrinfo ENOTFOUND magnetic-jackal-83413.upstash.io
+    at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26)
+2026-05-17 11:39:39 [error]: Error: getaddrinfo ENOTFOUND magnetic-jackal-83413.upstash.io
+    at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26)
+2026-05-17 11:39:41 [error]: Error: getaddrinfo ENOTFOUND magnetic-jackal-83413.upstash.io
+    at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26)
+2026-05-17 11:39:44 [error]: Error: getaddrinfo ENOTFOUND magnetic-jackal-83413.upstash.io
+    at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26)
+2026-05-17 11:39:46 [error]: Error: getaddrinfo ENOTFOUND magnetic-jackal-83413.upstash.io
+    at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26)
+2026-05-17 11:39:48 [error]: Error: getaddrinfo ENOTFOUND magnetic-jackal-83413.upstash.io
+    at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26)
+2026-05-17 11:39:53 [error]: Error: getaddrinfo EAI_AGAIN magnetic-jackal-83413.upstash.io
+    at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26)
+2026-05-17 11:39:57 [error]: Error: getaddrinfo EAI_AGAIN magnetic-jackal-83413.upstash.io
+    at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26)
+2026-05-17 11:40:03 [error]: Error: getaddrinfo EAI_AGAIN magnetic-jackal-83413.upstash.io
+    at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26)
+2026-05-17 11:40:05 [error]: Error: getaddrinfo EAI_AGAIN magnetic-jackal-83413.upstash.io
+    at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26)
+2026-05-17 11:47:59 [error]: Error: Connection timeout
+    at TLSSocket.onTimeout (C:\Users\Immanuel\Desktop\CodeSage\Go-Eat\server\node_modules\@redis\client\lib\client\socket.ts:298:40)
+    at Object.onceWrapper (node:events:622:28)
+    at TLSSocket.emit (node:events:508:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at TLSSocket.Socket._onTimeout (node:net:604:8)
+    at listOnTimeout (node:internal/timers:605:17)
+    at processTimers (node:internal/timers:541:7)
+2026-05-17 11:48:25 [error]: Error: read ECONNRESET
+    at TLSWrap.onStreamRead (node:internal/stream_base_commons:216:20)
+2026-05-17 11:48:25 [error]: Error: getaddrinfo ENOTFOUND magnetic-jackal-83413.upstash.io
+    at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26)
+2026-05-17 11:48:25 [error]: Error: getaddrinfo ENOTFOUND magnetic-jackal-83413.upstash.io
+    at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26)
+2026-05-17 11:48:25 [error]: Error: getaddrinfo ENOTFOUND magnetic-jackal-83413.upstash.io
+    at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26)
+2026-05-17 11:48:26 [error]: Error: getaddrinfo ENOTFOUND magnetic-jackal-83413.upstash.io
+    at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26)
+2026-05-17 11:48:26 [error]: Error: getaddrinfo ENOTFOUND magnetic-jackal-83413.upstash.io
+    at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26)
+2026-05-17 11:48:27 [error]: Error: getaddrinfo ENOTFOUND magnetic-jackal-83413.upstash.io
+    at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26)
+2026-05-17 11:48:29 [error]: Error: getaddrinfo ENOTFOUND magnetic-jackal-83413.upstash.io
+    at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26)
+2026-05-17 11:48:31 [error]: Error: getaddrinfo ENOTFOUND magnetic-jackal-83413.upstash.io
+    at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26)
+2026-05-17 11:48:33 [error]: Error: getaddrinfo ENOTFOUND magnetic-jackal-83413.upstash.io
+    at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26)
+2026-05-17 11:48:35 [error]: Error: getaddrinfo ENOTFOUND magnetic-jackal-83413.upstash.io
+    at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26)
+2026-05-17 11:48:37 [error]: Error: getaddrinfo ENOTFOUND magnetic-jackal-83413.upstash.io
+    at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26)
+2026-05-17 11:48:41 [error]: Error: getaddrinfo ENOTFOUND magnetic-jackal-83413.upstash.io
+    at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26)
+2026-05-17 11:48:43 [error]: Error: getaddrinfo ENOTFOUND magnetic-jackal-83413.upstash.io
+    at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26)
+2026-05-17 11:48:45 [error]: Error: getaddrinfo ENOTFOUND magnetic-jackal-83413.upstash.io
+    at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26)
+2026-05-17 11:48:48 [error]: Error: getaddrinfo ENOTFOUND magnetic-jackal-83413.upstash.io
+    at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26)
+2026-05-17 11:48:50 [error]: Error: getaddrinfo ENOTFOUND magnetic-jackal-83413.upstash.io
+    at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26)
+2026-05-17 11:48:52 [error]: Error: getaddrinfo ENOTFOUND magnetic-jackal-83413.upstash.io
+    at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26)
+2026-05-17 11:48:54 [error]: Error: getaddrinfo ENOTFOUND magnetic-jackal-83413.upstash.io
+    at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26)

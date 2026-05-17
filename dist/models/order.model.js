@@ -101,6 +101,12 @@ const orderSchema = new mongoose_1.Schema({
         enum: ['pending', 'completed', 'failed'],
         default: 'pending',
     },
+    paymentResult: {
+        id: { type: String },
+        status: { type: String },
+        update_time: { type: String },
+        email_address: { type: String },
+    },
     status: {
         type: String,
         enum: Object.values(OrderStatus),

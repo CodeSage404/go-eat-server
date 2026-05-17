@@ -96,6 +96,61 @@ router.use(auth_middleware_1.protect);
  *         description: Restaurant created
  */
 router.post('/', (0, auth_middleware_1.restrictTo)(user_model_1.UserRole.VENDOR, user_model_1.UserRole.ADMIN), restaurant_controller_1.default.createRestaurant);
+/**
+ * @openapi
+ * /api/v1/restaurants/{id}:
+ *   patch:
+ *     tags:
+ *       - Restaurants
+ *     summary: Update a restaurant (Vendor/Admin only)
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: false
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *               description:
+ *                 type: string
+ *               deliveryFee:
+ *                 type: number
+ *     responses:
+ *       200:
+ *         description: Restaurant updated successfully
+ *       403:
+ *         description: Unauthorized
+ */
 router.patch('/:id', (0, auth_middleware_1.restrictTo)(user_model_1.UserRole.VENDOR, user_model_1.UserRole.ADMIN), restaurant_controller_1.default.updateRestaurant);
+/**
+ * @openapi
+ * /api/v1/restaurants/{id}:
+ *   delete:
+ *     tags:
+ *       - Restaurants
+ *     summary: Delete a restaurant (Vendor/Admin only)
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       204:
+ *         description: Restaurant deleted
+ *       403:
+ *         description: Unauthorized
+ */
 router.delete('/:id', (0, auth_middleware_1.restrictTo)(user_model_1.UserRole.VENDOR, user_model_1.UserRole.ADMIN), restaurant_controller_1.default.deleteRestaurant);
 exports.default = router;
