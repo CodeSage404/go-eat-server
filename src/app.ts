@@ -78,6 +78,16 @@ class App {
     });
 
     // Placeholder for API Routes
+    this.app.get('/api/v1/timer', (req: Request, res: Response) => {
+      // Target date set to exactly 107 days from May 29, 2026
+      res.status(200).json({
+        success: true,
+        data: {
+          targetDate: '2026-09-13T12:00:00Z'
+        }
+      });
+    });
+
     this.app.use('/api/v1/auth', authRoutes);
     this.app.use('/api/v1/restaurants', restaurantRoutes);
     this.app.use('/api/v1/restaurants/:restaurantId/menu', menuRoutes);
