@@ -149,6 +149,72 @@ class AdminController {
       data: { restaurant }
     });
   });
+
+  /**
+   * Manually create a vendor user and their restaurant profile
+   */
+  public manuallyCreateRestaurant = catchAsync(async (req: Request, res: Response) => {
+    const { 
+      ownerName, 
+      ownerEmail, 
+      ownerPhone, 
+      ownerPassword, 
+      restaurantName, 
+      description, 
+      address, 
+      location, 
+      cuisine,
+      openingHours 
+    } = req.body;
+
+    if (!ownerEmail || !ownerPassword || !restaurantName || !address) {
+      throw new AppError('Please provide all required fields (ownerEmail, ownerPassword, restaurantName, address)', 400);
+    }
+
+    // Check if user already exists
+    const existingUser = await User.findOne({ 
+      $or: [
+        { email: ownerEmail }, 
+        ...(ownerPhone ? [{ phoneNumber: ownerPhone }] : [])
+      ] 
+    });
+    
+    if (existingUser) {
+      throw new AppError('A user with this email or phone number already exists', 400);
+    }
+
+    // Create the vendor user
+    const user = await User.create({
+      name: ownerName,
+      email: ownerEmail,
+      phoneNumber: ownerPhone,
+      password: ownerPassword,
+      role: UserRole.VENDOR,
+      status: UserStatus.ACTIVE,
+      isVerified: true, // Auto-verified since created by admin
+    });
+
+    // Create the restaurant
+    const restaurant = await Restaurant.create({
+      owner: user._id,
+      name: restaurantName,
+      description: description || `Welcome to ${restaurantName}`,
+      address,
+      location: location || { type: 'Point', coordinates: [0, 0] }, // Default fallback coordinates
+      cuisine: cuisine || [],
+      openingHours: openingHours || { open: '08:00', close: '22:00' },
+      status: RestaurantStatus.ACTIVE, // Auto-approved
+    });
+
+    res.status(201).json({
+      status: 'success',
+      message: 'Vendor and restaurant successfully created',
+      data: {
+        user,
+        restaurant
+      }
+    });
+  });
 }
 
 export default new AdminController();

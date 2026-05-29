@@ -132,4 +132,49 @@ router.get('/restaurants', adminController.getAllRestaurants);
  */
 router.post('/restaurants/:id/status', adminController.updateRestaurantStatus);
 
+/**
+ * @openapi
+ * /api/v1/admin/restaurants/manual-signup:
+ *   post:
+ *     tags:
+ *       - Admin Dashboard
+ *     summary: Manually create a vendor user and their restaurant profile
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [ownerEmail, ownerPassword, restaurantName, address]
+ *             properties:
+ *               ownerName:
+ *                 type: string
+ *               ownerEmail:
+ *                 type: string
+ *               ownerPhone:
+ *                 type: string
+ *               ownerPassword:
+ *                 type: string
+ *               restaurantName:
+ *                 type: string
+ *               description:
+ *                 type: string
+ *               address:
+ *                 type: object
+ *               location:
+ *                 type: object
+ *               cuisine:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *               openingHours:
+ *                 type: object
+ *     responses:
+ *       201:
+ *         description: Vendor and restaurant successfully created
+ */
+router.post('/restaurants/manual-signup', adminController.manuallyCreateRestaurant);
+
 export default router;
