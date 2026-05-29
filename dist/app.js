@@ -27,7 +27,7 @@ const payment_routes_1 = __importDefault(require("./routes/payment.routes"));
 const promo_routes_1 = __importDefault(require("./routes/promo.routes"));
 const analytics_routes_1 = __importDefault(require("./routes/analytics.routes"));
 const support_routes_1 = __importDefault(require("./routes/support.routes"));
-const upload_routes_1 = __importDefault(require("./routes/upload.routes"));
+// import uploadRoutes from './routes/upload.routes';
 const wallet_routes_1 = __importDefault(require("./routes/wallet.routes"));
 const admin_routes_1 = __importDefault(require("./routes/admin.routes"));
 const swagger_ui_express_1 = __importDefault(require("swagger-ui-express"));
@@ -72,6 +72,15 @@ class App {
             });
         });
         // Placeholder for API Routes
+        this.app.get('/api/v1/timer', (req, res) => {
+            // Target date set to exactly 107 days from May 29, 2026
+            res.status(200).json({
+                success: true,
+                data: {
+                    targetDate: '2026-09-13T12:00:00Z'
+                }
+            });
+        });
         this.app.use('/api/v1/auth', auth_routes_1.default);
         this.app.use('/api/v1/restaurants', restaurant_routes_1.default);
         this.app.use('/api/v1/restaurants/:restaurantId/menu', menu_routes_1.default);
@@ -83,7 +92,7 @@ class App {
         this.app.use('/api/v1/promos', promo_routes_1.default);
         this.app.use('/api/v1/analytics', analytics_routes_1.default);
         this.app.use('/api/v1/support', support_routes_1.default);
-        this.app.use('/api/v1/upload', upload_routes_1.default);
+        // this.app.use('/api/v1/upload', uploadRoutes);
         this.app.use('/api/v1/wallets', wallet_routes_1.default);
         this.app.use('/api/v1/admin', admin_routes_1.default);
         // Documentation Routes
