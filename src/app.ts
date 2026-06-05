@@ -11,6 +11,7 @@ import connectDB from './config/db';
 import logger from './utils/logger';
 import mongoose from 'mongoose';
 import { handleSocketEvents } from './io';
+
 import authRoutes from './routes/auth.routes';
 import restaurantRoutes from './routes/restaurant.routes';
 import menuRoutes from './routes/menu.routes';
@@ -25,6 +26,7 @@ import supportRoutes from './routes/support.routes';
 // import uploadRoutes from './routes/upload.routes';
 import walletRoutes from './routes/wallet.routes';
 import adminRoutes from './routes/admin.routes';
+
 import swaggerUi from 'swagger-ui-express';
 import { swaggerSpec } from './config/swagger';
 
@@ -77,12 +79,12 @@ class App {
       });
     });
 
-    // Active Real-Time Countdown Target (107 Days from current moment)
+    // Active Real-Time Countdown Target (102 Days from June 5, 2026)
     this.app.get('/api/v1/timer', (req: Request, res: Response) => {
-      const durationInDays = 107;
+      const durationInDays = 102;
       
-      const targetTimeMs = Date.now() + (durationInDays * 24 * 60 * 60 * 1000);
-      const targetDate = new Date(targetTimeMs).toISOString();
+      // Fixed static date for exactly 102 days from now, rather than dynamically recalculating it
+      const targetDate = '2026-09-15T12:00:00Z';
 
       res.status(200).json({
         success: true,

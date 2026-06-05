@@ -158,6 +158,54 @@ class AdminController {
                 data: { restaurant }
             });
         });
+        /**
+         * Manually create a vendor user and their restaurant profile
+         */
+        this.manuallyCreateRestaurant = (0, catchAsync_1.catchAsync)(async (req, res) => {
+            const { ownerName, ownerEmail, ownerPhone, ownerPassword, restaurantName, description, address, location, cuisine, openingHours } = req.body;
+            if (!ownerEmail || !ownerPassword || !restaurantName || !address) {
+                throw new appError_1.default('Please provide all required fields (ownerEmail, ownerPassword, restaurantName, address)', 400);
+            }
+            // Check if user already exists
+            const existingUser = await user_model_1.default.findOne({
+                $or: [
+                    { email: ownerEmail },
+                    ...(ownerPhone ? [{ phoneNumber: ownerPhone }] : [])
+                ]
+            });
+            if (existingUser) {
+                throw new appError_1.default('A user with this email or phone number already exists', 400);
+            }
+            // Create the vendor user
+            const user = await user_model_1.default.create({
+                name: ownerName,
+                email: ownerEmail,
+                phoneNumber: ownerPhone,
+                password: ownerPassword,
+                role: user_model_1.UserRole.VENDOR,
+                status: user_model_1.UserStatus.ACTIVE,
+                isVerified: true, // Auto-verified since created by admin
+            });
+            // Create the restaurant
+            const restaurant = await restaurant_model_1.default.create({
+                owner: user._id,
+                name: restaurantName,
+                description: description || `Welcome to ${restaurantName}`,
+                address,
+                location: location || { type: 'Point', coordinates: [0, 0] }, // Default fallback coordinates
+                cuisine: cuisine || [],
+                openingHours: openingHours || { open: '08:00', close: '22:00' },
+                status: restaurant_model_1.RestaurantStatus.ACTIVE, // Auto-approved
+            });
+            res.status(201).json({
+                status: 'success',
+                message: 'Vendor and restaurant successfully created',
+                data: {
+                    user,
+                    restaurant
+                }
+            });
+        });
     }
 }
 exports.default = new AdminController();
