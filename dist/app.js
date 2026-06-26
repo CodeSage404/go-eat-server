@@ -71,11 +71,11 @@ class App {
                 timestamp: new Date().toISOString()
             });
         });
-        // Active Real-Time Countdown Target (107 Days from current moment)
+        // Active Real-Time Countdown Target (102 Days from June 5, 2026)
         this.app.get('/api/v1/timer', (req, res) => {
-            const durationInDays = 107;
-            const targetTimeMs = Date.now() + (durationInDays * 24 * 60 * 60 * 1000);
-            const targetDate = new Date(targetTimeMs).toISOString();
+            const durationInDays = 102;
+            // Fixed static date for exactly 102 days from now, rather than dynamically recalculating it
+            const targetDate = '2026-09-15T12:00:00Z';
             res.status(200).json({
                 success: true,
                 data: {

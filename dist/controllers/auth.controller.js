@@ -44,24 +44,34 @@ const catchAsync_1 = require("../utils/catchAsync");
 const appError_1 = __importDefault(require("../utils/appError"));
 const user_model_1 = __importStar(require("../models/user.model"));
 const logger_1 = __importDefault(require("../utils/logger"));
-const sms_util_1 = require("../utils/sms.util");
+const whatsapp_util_1 = require("../utils/whatsapp.util");
 const notification_service_1 = __importDefault(require("../services/notification.service"));
 // Validation Schemas
-const userSignupSchema = zod_1.z.object({
-    phoneNumber: zod_1.z.string().min(8, 'Phone number must be at least 8 digits').max(11, 'Phone number must be at most 11 digits'),
+const baseUserSignupSchema = zod_1.z.object({
+    phoneNumber: zod_1.z.string().min(8, 'Phone number must be at least 8 digits').max(11, 'Phone number must be at most 11 digits').optional(),
     password: zod_1.z.string().min(8, 'Password must be at least 8 characters'),
     name: zod_1.z.string().optional(),
     email: zod_1.z.string().email('Invalid email address').optional(),
     referralCode: zod_1.z.string().optional(),
 });
-const courierSignupSchema = userSignupSchema.extend({
+const userSignupSchema = baseUserSignupSchema.refine((data) => data.phoneNumber || data.email, {
+    message: 'Either phone number or email is required',
+    path: ['phoneNumber', 'email'],
+});
+const courierSignupSchema = baseUserSignupSchema.extend({
     vehicleType: zod_1.z.string().min(1, 'Vehicle type is required'),
     licenseNumber: zod_1.z.string().min(1, 'License number is required'),
+}).refine((data) => data.phoneNumber || data.email, {
+    message: 'Either phone number or email is required',
+    path: ['phoneNumber', 'email'],
 });
-const vendorSignupSchema = userSignupSchema.extend({
+const vendorSignupSchema = baseUserSignupSchema.extend({
     restaurantName: zod_1.z.string().min(1, 'Restaurant name is required'),
     address: zod_1.z.string().min(1, 'Address is required'),
     businessType: zod_1.z.string().min(1, 'Business type is required'),
+}).refine((data) => data.phoneNumber || data.email, {
+    message: 'Either phone number or email is required',
+    path: ['phoneNumber', 'email'],
 });
 const verifyOTPSchema = zod_1.z.object({
     email: zod_1.z.string().email('Invalid email address').optional(),
@@ -99,10 +109,21 @@ class AuthController {
                 role: user_model_1.UserRole.CUSTOMER,
                 referredBy,
             });
-            await this.initiateVerification(user.phoneNumber, 'phone');
+            const verifyByPhone = !!user.phoneNumber;
+            if (verifyByPhone) {
+                await this.initiateVerification(user.phoneNumber, 'phone');
+            }
+            else if (user.email) {
+                await this.initiateVerification(user.email, 'email');
+            }
+            else {
+                throw new appError_1.default('Verification identifier missing', 400);
+            }
             res.status(201).json({
                 status: 'success',
-                message: 'Signup successful. Please verify your phone number with the OTP.',
+                message: verifyByPhone
+                    ? 'Signup successful. Please verify your phone number with the OTP.'
+                    : 'Signup successful. Please verify your email with the OTP.',
                 token,
                 data: { user },
             });
@@ -124,10 +145,21 @@ class AuthController {
                 status: user_model_1.UserStatus.PENDING, // Couriers need verification
                 referredBy,
             });
-            await this.initiateVerification(user.phoneNumber, 'phone');
+            const verifyByPhone = !!user.phoneNumber;
+            if (verifyByPhone) {
+                await this.initiateVerification(user.phoneNumber, 'phone');
+            }
+            else if (user.email) {
+                await this.initiateVerification(user.email, 'email');
+            }
+            else {
+                throw new appError_1.default('Verification identifier missing', 400);
+            }
             res.status(201).json({
                 status: 'success',
-                message: 'Courier signup successful. Please verify your phone number.',
+                message: verifyByPhone
+                    ? 'Courier signup successful. Please verify your phone number.'
+                    : 'Courier signup successful. Please verify your email.',
                 token,
                 data: { user },
             });
@@ -149,10 +181,21 @@ class AuthController {
                 status: user_model_1.UserStatus.PENDING, // Vendors need verification
                 referredBy,
             });
-            await this.initiateVerification(user.phoneNumber, 'phone');
+            const verifyByPhone = !!user.phoneNumber;
+            if (verifyByPhone) {
+                await this.initiateVerification(user.phoneNumber, 'phone');
+            }
+            else if (user.email) {
+                await this.initiateVerification(user.email, 'email');
+            }
+            else {
+                throw new appError_1.default('Verification identifier missing', 400);
+            }
             res.status(201).json({
                 status: 'success',
-                message: 'Vendor signup successful. Please verify your phone number.',
+                message: verifyByPhone
+                    ? 'Vendor signup successful. Please verify your phone number.'
+                    : 'Vendor signup successful. Please verify your email.',
                 token,
                 data: { user },
             });
@@ -287,9 +330,9 @@ class AuthController {
             await email_util_1.default.sendOTP(identifier, otp);
         }
         else {
-            // Send real SMS OTP via Twilio
+            // Send real WhatsApp OTP via Twilio
             const message = `Your Go-Eat verification code is ${otp}. Valid for 10 minutes.`;
-            await (0, sms_util_1.sendSMS)(identifier, message);
+            await (0, whatsapp_util_1.sendWhatsApp)(identifier, message);
             // Also send via Push Notification if FCM is available on device
             try {
                 const user = await user_model_1.default.findOne({ phoneNumber: identifier });

@@ -7,28 +7,48 @@ import { catchAsync } from '../utils/catchAsync';
 import AppError from '../utils/appError';
 import User, { UserRole, UserStatus } from '../models/user.model';
 import logger from '../utils/logger';
-import { sendSMS } from '../utils/sms.util';
+import { sendWhatsApp } from '../utils/whatsapp.util';
 import notificationService from '../services/notification.service';
 
 // Validation Schemas
-const userSignupSchema = z.object({
-  phoneNumber: z.string().min(8, 'Phone number must be at least 8 digits').max(11, 'Phone number must be at most 11 digits'),
+const baseUserSignupSchema = z.object({
+  phoneNumber: z.string().min(8, 'Phone number must be at least 8 digits').max(11, 'Phone number must be at most 11 digits').optional(),
   password: z.string().min(8, 'Password must be at least 8 characters'),
   name: z.string().optional(),
   email: z.string().email('Invalid email address').optional(),
   referralCode: z.string().optional(),
 });
 
-const courierSignupSchema = userSignupSchema.extend({
+const userSignupSchema = baseUserSignupSchema.refine(
+  (data) => data.phoneNumber || data.email,
+  {
+    message: 'Either phone number or email is required',
+    path: ['phoneNumber', 'email'],
+  }
+);
+
+const courierSignupSchema = baseUserSignupSchema.extend({
   vehicleType: z.string().min(1, 'Vehicle type is required'),
   licenseNumber: z.string().min(1, 'License number is required'),
-});
+}).refine(
+  (data) => data.phoneNumber || data.email,
+  {
+    message: 'Either phone number or email is required',
+    path: ['phoneNumber', 'email'],
+  }
+);
 
-const vendorSignupSchema = userSignupSchema.extend({
+const vendorSignupSchema = baseUserSignupSchema.extend({
   restaurantName: z.string().min(1, 'Restaurant name is required'),
   address: z.string().min(1, 'Address is required'),
   businessType: z.string().min(1, 'Business type is required'),
-});
+}).refine(
+  (data) => data.phoneNumber || data.email,
+  {
+    message: 'Either phone number or email is required',
+    path: ['phoneNumber', 'email'],
+  }
+);
 
 const verifyOTPSchema = z.object({
   email: z.string().email('Invalid email address').optional(),
@@ -61,9 +81,9 @@ class AuthController {
     if (type === 'email') {
       await emailUtil.sendOTP(identifier, otp);
     } else {
-      // Send real SMS OTP via Twilio
+      // Send real WhatsApp OTP via Twilio
       const message = `Your Go-Eat verification code is ${otp}. Valid for 10 minutes.`;
-      await sendSMS(identifier, message);
+      await sendWhatsApp(identifier, message);
 
       // Also send via Push Notification if FCM is available on device
       try {
@@ -99,11 +119,20 @@ class AuthController {
       referredBy,
     });
 
-    await this.initiateVerification(user.phoneNumber!, 'phone');
+    const verifyByPhone = !!user.phoneNumber;
+    if (verifyByPhone) {
+      await this.initiateVerification(user.phoneNumber!, 'phone');
+    } else if (user.email) {
+      await this.initiateVerification(user.email, 'email');
+    } else {
+      throw new AppError('Verification identifier missing', 400);
+    }
 
     res.status(201).json({
       status: 'success',
-      message: 'Signup successful. Please verify your phone number with the OTP.',
+      message: verifyByPhone
+        ? 'Signup successful. Please verify your phone number with the OTP.'
+        : 'Signup successful. Please verify your email with the OTP.',
       token,
       data: { user },
     });
@@ -128,11 +157,20 @@ class AuthController {
       referredBy,
     });
 
-    await this.initiateVerification(user.phoneNumber!, 'phone');
+    const verifyByPhone = !!user.phoneNumber;
+    if (verifyByPhone) {
+      await this.initiateVerification(user.phoneNumber!, 'phone');
+    } else if (user.email) {
+      await this.initiateVerification(user.email, 'email');
+    } else {
+      throw new AppError('Verification identifier missing', 400);
+    }
 
     res.status(201).json({
       status: 'success',
-      message: 'Courier signup successful. Please verify your phone number.',
+      message: verifyByPhone
+        ? 'Courier signup successful. Please verify your phone number.'
+        : 'Courier signup successful. Please verify your email.',
       token,
       data: { user },
     });
@@ -157,11 +195,20 @@ class AuthController {
       referredBy,
     });
 
-    await this.initiateVerification(user.phoneNumber!, 'phone');
+    const verifyByPhone = !!user.phoneNumber;
+    if (verifyByPhone) {
+      await this.initiateVerification(user.phoneNumber!, 'phone');
+    } else if (user.email) {
+      await this.initiateVerification(user.email, 'email');
+    } else {
+      throw new AppError('Verification identifier missing', 400);
+    }
 
     res.status(201).json({
       status: 'success',
-      message: 'Vendor signup successful. Please verify your phone number.',
+      message: verifyByPhone
+        ? 'Vendor signup successful. Please verify your phone number.'
+        : 'Vendor signup successful. Please verify your email.',
       token,
       data: { user },
     });
