@@ -44,7 +44,7 @@ const catchAsync_1 = require("../utils/catchAsync");
 const appError_1 = __importDefault(require("../utils/appError"));
 const user_model_1 = __importStar(require("../models/user.model"));
 const logger_1 = __importDefault(require("../utils/logger"));
-const whatsapp_util_1 = require("../utils/whatsapp.util");
+const twilioVerify_util_1 = require("../utils/twilioVerify.util");
 const notification_service_1 = __importDefault(require("../services/notification.service"));
 // Validation Schemas
 const baseUserSignupSchema = zod_1.z.object({
@@ -210,7 +210,13 @@ class AuthController {
             if (!identifier) {
                 throw new appError_1.default('Please provide email or phone number', 400);
             }
-            const isValid = await otp_util_1.default.verifyOTP(identifier, otp);
+            let isValid = false;
+            if (phoneNumber) {
+                isValid = await (0, twilioVerify_util_1.checkWhatsAppVerification)(phoneNumber, otp);
+            }
+            else if (email) {
+                isValid = await otp_util_1.default.verifyOTP(email.toLowerCase(), otp);
+            }
             if (!isValid) {
                 throw new appError_1.default('Invalid or expired OTP', 400);
             }
@@ -324,20 +330,19 @@ class AuthController {
         });
     }
     async initiateVerification(identifier, type) {
-        const otp = otp_util_1.default.generateOTP();
-        await otp_util_1.default.storeOTP(identifier, otp);
         if (type === 'email') {
+            const otp = otp_util_1.default.generateOTP();
+            await otp_util_1.default.storeOTP(identifier, otp);
             await email_util_1.default.sendOTP(identifier, otp);
         }
         else {
-            // Send real WhatsApp OTP via Twilio
-            const message = `Your Go-Eat verification code is ${otp}. Valid for 10 minutes.`;
-            await (0, whatsapp_util_1.sendWhatsApp)(identifier, message);
+            // Send real WhatsApp OTP via Twilio Verify API v2
+            await (0, twilioVerify_util_1.startWhatsAppVerification)(identifier);
             // Also send via Push Notification if FCM is available on device
             try {
                 const user = await user_model_1.default.findOne({ phoneNumber: identifier });
                 if (user && user.fcmToken) {
-                    await notification_service_1.default.sendNotification(user._id.toString(), 'Phone Verification OTP 🔑', `Your verification code is ${otp}`);
+                    await notification_service_1.default.sendNotification(user._id.toString(), 'Phone Verification OTP 🔑', 'Your verification code has been sent to your WhatsApp.');
                 }
             }
             catch (err) {

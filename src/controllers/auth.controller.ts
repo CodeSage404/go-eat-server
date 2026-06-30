@@ -8,6 +8,7 @@ import AppError from '../utils/appError';
 import User, { UserRole, UserStatus } from '../models/user.model';
 import logger from '../utils/logger';
 import { sendWhatsApp } from '../utils/whatsapp.util';
+import { startWhatsAppVerification, checkWhatsAppVerification } from '../utils/twilioVerify.util';
 import notificationService from '../services/notification.service';
 
 // Validation Schemas
@@ -76,14 +77,13 @@ class AuthController {
   protect: any;
 
   private async initiateVerification(identifier: string, type: 'email' | 'phone') {
-    const otp = otpUtil.generateOTP();
-    await otpUtil.storeOTP(identifier, otp);
     if (type === 'email') {
+      const otp = otpUtil.generateOTP();
+      await otpUtil.storeOTP(identifier, otp);
       await emailUtil.sendOTP(identifier, otp);
     } else {
-      // Send real WhatsApp OTP via Twilio
-      const message = `Your Go-Eat verification code is ${otp}. Valid for 10 minutes.`;
-      await sendWhatsApp(identifier, message);
+      // Send real WhatsApp OTP via Twilio Verify API v2
+      await startWhatsAppVerification(identifier);
 
       // Also send via Push Notification if FCM is available on device
       try {
@@ -92,7 +92,7 @@ class AuthController {
           await notificationService.sendNotification(
             user._id.toString(),
             'Phone Verification OTP 🔑',
-            `Your verification code is ${otp}`
+            'Your verification code has been sent to your WhatsApp.'
           );
         }
       } catch (err) {
@@ -227,7 +227,12 @@ class AuthController {
       throw new AppError('Please provide email or phone number', 400);
     }
 
-    const isValid = await otpUtil.verifyOTP(identifier, otp);
+    let isValid = false;
+    if (phoneNumber) {
+      isValid = await checkWhatsAppVerification(phoneNumber, otp);
+    } else if (email) {
+      isValid = await otpUtil.verifyOTP(email.toLowerCase(), otp);
+    }
 
     if (!isValid) {
       throw new AppError('Invalid or expired OTP', 400);

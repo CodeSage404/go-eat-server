@@ -4210,3 +4210,21 @@
     at processTimers (node:internal/timers:541:7)
 2026-06-26 23:56:15 [error]: Error: read ECONNRESET
     at TLSWrap.onStreamRead (node:internal/stream_base_commons:216:20)
+2026-06-27 14:23:20 [error]: Error: read ECONNRESET
+    at TLSWrap.onStreamRead (node:internal/stream_base_commons:216:20)
+2026-06-27 14:23:33 [error]: Error: getaddrinfo ENOTFOUND magnetic-jackal-83413.upstash.io
+    at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26)
+2026-06-27 14:23:35 [error]: Error: getaddrinfo ENOTFOUND magnetic-jackal-83413.upstash.io
+    at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26)
+2026-06-27 14:23:35 [error]: Error: getaddrinfo ENOTFOUND magnetic-jackal-83413.upstash.io
+    at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26)
+2026-06-27 14:23:35 [error]: Error: getaddrinfo ENOTFOUND magnetic-jackal-83413.upstash.io
+    at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26)
+2026-06-27 14:23:37 [error]: Error: getaddrinfo ENOTFOUND magnetic-jackal-83413.upstash.io
+    at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26)
+2026-06-27 14:23:38 [error]: Error: getaddrinfo ENOTFOUND magnetic-jackal-83413.upstash.io
+    at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26)
+2026-06-27 14:23:39 [error]: Error: getaddrinfo ENOTFOUND magnetic-jackal-83413.upstash.io
+    at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26)
+2026-06-27 14:23:42 [error]: Error: getaddrinfo ENOTFOUND magnetic-jackal-83413.upstash.io
+    at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26)

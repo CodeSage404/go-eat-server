@@ -4338,3 +4338,48 @@
 2026-06-26 23:56:15 [error]: Error: read ECONNRESET
     at TLSWrap.onStreamRead (node:internal/stream_base_commons:216:20)
 2026-06-26 23:56:19 [info]: 	⚡ Redis Client Connected
+2026-06-27 14:23:09 [info]: 	⚡ MongoDB Reconnected
+2026-06-27 14:23:19 [info]: 	⚡ MongoDB Reconnected
+2026-06-27 14:23:20 [error]: Error: read ECONNRESET
+    at TLSWrap.onStreamRead (node:internal/stream_base_commons:216:20)
+2026-06-27 14:23:33 [error]: Error: getaddrinfo ENOTFOUND magnetic-jackal-83413.upstash.io
+    at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26)
+2026-06-27 14:23:35 [error]: Error: getaddrinfo ENOTFOUND magnetic-jackal-83413.upstash.io
+    at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26)
+2026-06-27 14:23:35 [error]: Error: getaddrinfo ENOTFOUND magnetic-jackal-83413.upstash.io
+    at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26)
+2026-06-27 14:23:35 [error]: Error: getaddrinfo ENOTFOUND magnetic-jackal-83413.upstash.io
+    at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26)
+2026-06-27 14:23:37 [error]: Error: getaddrinfo ENOTFOUND magnetic-jackal-83413.upstash.io
+    at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26)
+2026-06-27 14:23:38 [error]: Error: getaddrinfo ENOTFOUND magnetic-jackal-83413.upstash.io
+    at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26)
+2026-06-27 14:23:39 [error]: Error: getaddrinfo ENOTFOUND magnetic-jackal-83413.upstash.io
+    at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26)
+2026-06-27 14:23:42 [error]: Error: getaddrinfo ENOTFOUND magnetic-jackal-83413.upstash.io
+    at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26)
+2026-06-29 15:04:35 [info]: 	🔥 Firebase Admin initialized
+2026-06-29 15:04:44 [info]: 	⚡ Redis Client Connected
+2026-06-29 15:04:44 [info]: 	🚀 Server running in development mode on port 5000
+2026-06-29 15:04:47 [info]: 	🚀 Connected to MongoDB: ac-hjwrplp-shard-00-00.dupeyhe.mongodb.net
+2026-06-29 15:08:12 [info]: 	🔥 Firebase Admin initialized
+2026-06-29 15:08:17 [info]: 	⚡ Redis Client Connected
+2026-06-29 15:08:17 [info]: 	🚀 Server running in development mode on port 5000
+2026-06-29 15:08:19 [info]: 	🚀 Connected to MongoDB: ac-hjwrplp-shard-00-01.dupeyhe.mongodb.net
+2026-06-29 15:08:39 [info]: 	📧 Email transporter: Gmail
+2026-06-29 15:08:39 [info]: 	🔥 Firebase Admin initialized
+2026-06-29 15:08:43 [info]: 	⚡ Redis Client Connected
+2026-06-29 15:08:43 [info]: 	🚀 Server running in development mode on port 5000
+2026-06-29 15:08:44 [info]: 	🚀 Connected to MongoDB: ac-hjwrplp-shard-00-01.dupeyhe.mongodb.net
+2026-06-30 13:32:06 [info]: 	📱 Twilio client initialized for Verify service
+2026-06-30 13:32:18 [info]: 	📱 WhatsApp verification initiated. Sid: VEde557c9290c8ba01a0b75caa7b873f2e to +2349121059853
+2026-06-30 13:41:22 [info]: 	📱 Twilio client initialized for Verify service
+2026-06-30 13:41:34 [info]: 	📱 WhatsApp verification initiated. Sid: VEde557c9290c8ba01a0b75caa7b873f2e to +2349121059853
+2026-06-30 13:52:58 [info]: 	📱 Twilio client initialized for Verify service
+2026-06-30 13:53:04 [info]: 	📱 WhatsApp verification initiated. Sid: VEcdc88d638f3064be7db02b9c6ae3720b to +2349121059853
+2026-06-30 13:53:30 [info]: 	📱 Twilio client initialized for Verify service
+2026-06-30 13:53:36 [info]: 	📱 WhatsApp verification initiated. Sid: VE1c46186a3b8c70f1036e7e62610f5e42 to +2348148436330
+2026-06-30 14:41:07 [info]: 	📱 Twilio client initialized for Verify service
+2026-06-30 14:41:13 [info]: 	📱 WhatsApp verification initiated. Sid: VE2fb039bd30bb485b44c132e2216b2b14 to +2349121059853
+2026-06-30 14:49:42 [info]: 	📱 Twilio client initialized for Verify service
+2026-06-30 14:49:47 [info]: 	📱 WhatsApp verification initiated. Sid: VE2fb039bd30bb485b44c132e2216b2b14 to +2349121059853
