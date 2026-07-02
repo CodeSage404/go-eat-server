@@ -8,9 +8,13 @@ const admin_controller_1 = __importDefault(require("../controllers/admin.control
 const auth_middleware_1 = require("../middleware/auth.middleware");
 const user_model_1 = require("../models/user.model");
 const router = (0, express_1.Router)();
+// Public Admin Auth Routes
+router.post('/auth/login', admin_controller_1.default.adminLogin);
 // Enforce auth & restrict all endpoints to platform Admins only
 router.use(auth_middleware_1.protect);
 router.use((0, auth_middleware_1.restrictTo)(user_model_1.UserRole.ADMIN));
+// Protected Admin Auth Routes
+router.post('/auth/reset-password', admin_controller_1.default.adminResetPassword);
 /**
  * @openapi
  * /api/v1/admin/platform-stats:
@@ -96,8 +100,27 @@ router.post('/users/:id/status', admin_controller_1.default.updateUserStatus);
  *     responses:
  *       200:
  *         description: List of restaurants returned
+router.get('/restaurants', adminController.getAllRestaurants);
+
+/**
+ * @openapi
+ * /api/v1/admin/orders:
+ *   get:
+ *     tags:
+ *       - Admin Dashboard
+ *     summary: Retrieve list of all orders across the platform
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: List of orders returned
  */
-router.get('/restaurants', admin_controller_1.default.getAllRestaurants);
+router.get('/orders', admin_controller_1.default.getAllOrders);
 /**
  * @openapi
  * /api/v1/admin/restaurants/{id}/status:

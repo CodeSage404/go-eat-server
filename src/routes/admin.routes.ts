@@ -5,9 +5,15 @@ import { UserRole } from '../models/user.model';
 
 const router = Router();
 
+// Public Admin Auth Routes
+router.post('/auth/login', adminController.adminLogin);
+
 // Enforce auth & restrict all endpoints to platform Admins only
 router.use(protect);
 router.use(restrictTo(UserRole.ADMIN));
+
+// Protected Admin Auth Routes
+router.post('/auth/reset-password', adminController.adminResetPassword);
 
 /**
  * @openapi
@@ -97,8 +103,27 @@ router.post('/users/:id/status', adminController.updateUserStatus);
  *     responses:
  *       200:
  *         description: List of restaurants returned
- */
 router.get('/restaurants', adminController.getAllRestaurants);
+
+/**
+ * @openapi
+ * /api/v1/admin/orders:
+ *   get:
+ *     tags:
+ *       - Admin Dashboard
+ *     summary: Retrieve list of all orders across the platform
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: List of orders returned
+ */
+router.get('/orders', adminController.getAllOrders);
 
 /**
  * @openapi

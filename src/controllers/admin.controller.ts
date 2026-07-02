@@ -1,4 +1,7 @@
 import { Request, Response } from 'express';
+import jwt from 'jsonwebtoken';
+import fs from 'fs';
+import path from 'path';
 import User, { UserRole, UserStatus } from '../models/user.model';
 import Restaurant, { RestaurantStatus } from '../models/restaurant.model';
 import Order, { OrderStatus } from '../models/order.model';
@@ -123,6 +126,28 @@ class AdminController {
   });
 
   /**
+   * Get all orders with optional status filtering for platform auditing
+   */
+  public getAllOrders = catchAsync(async (req: Request, res: Response) => {
+    const { status } = req.query;
+    const filter: any = {};
+
+    if (status) filter.status = status;
+
+    const orders = await Order.find(filter)
+      .populate('customer', 'name email phoneNumber')
+      .populate('restaurant', 'name')
+      .populate('rider', 'name phoneNumber')
+      .sort({ createdAt: -1 });
+
+    res.status(200).json({
+      status: 'success',
+      results: orders.length,
+      data: { orders }
+    });
+  });
+
+  /**
    * Approve or Suspend a restaurant (Critical for Marketplace Quality Control)
    */
   public updateRestaurantStatus = catchAsync(async (req: Request, res: Response) => {
@@ -151,31 +176,138 @@ class AdminController {
   });
 
   /**
+   * Admin Login using environment credentials
+   */
+  public adminLogin = catchAsync(async (req: Request, res: Response) => {
+    const { email, password } = req.body;
+
+    if (!email || !password) {
+      throw new AppError('Please provide email and password', 400);
+    }
+
+    const adminEmail = (process.env.ADMIN_EMAIL || 'admin@goeat.com').toLowerCase();
+    const adminPass = process.env.ADMIN_PASS || 'AdminPass123!';
+
+    if (email.toLowerCase() !== adminEmail || password !== adminPass) {
+      throw new AppError('Incorrect email or password', 401);
+    }
+
+    // Find or create admin user in DB to maintain integrity with authentication middleware
+    let user = await User.findOne({ email: adminEmail }).select('+password');
+    if (!user) {
+      user = await User.create({
+        name: 'Platform Admin',
+        email: adminEmail,
+        password: adminPass,
+        role: UserRole.ADMIN,
+        status: UserStatus.ACTIVE,
+        isVerified: true,
+      });
+    } else {
+      // Keep DB password in sync with process.env.ADMIN_PASS
+      const isPasswordMatch = await user.comparePassword(adminPass);
+      if (!isPasswordMatch) {
+        user.password = adminPass;
+        await user.save();
+      }
+    }
+
+    // Sign JWT token
+    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET as string, {
+      expiresIn: (process.env.JWT_EXPIRES_IN as any) || '90d',
+    });
+
+    user.password = undefined;
+
+    res.status(200).json({
+      status: 'success',
+      token,
+      data: {
+        user,
+      },
+    });
+  });
+
+  /**
+   * Reset Admin Password (updates memory, file, and DB user)
+   */
+  public adminResetPassword = catchAsync(async (req: Request, res: Response) => {
+    const { currentPassword, newPassword } = req.body;
+
+    if (!currentPassword || !newPassword) {
+      throw new AppError('Please provide current password and new password', 400);
+    }
+
+    if (newPassword.length < 8) {
+      throw new AppError('New password must be at least 8 characters long', 400);
+    }
+
+    const adminPass = process.env.ADMIN_PASS || 'AdminPass123!';
+
+    if (currentPassword !== adminPass) {
+      throw new AppError('Current password is incorrect', 401);
+    }
+
+    // 1. Update in-memory env variable
+    process.env.ADMIN_PASS = newPassword;
+
+    // 2. Update .env file on disk
+    try {
+      const envPath = path.join(__dirname, '../../.env');
+      if (fs.existsSync(envPath)) {
+        let envContent = fs.readFileSync(envPath, 'utf8');
+        
+        // Match ADMIN_PASS=...
+        const regex = /^ADMIN_PASS=.*$/m;
+        if (regex.test(envContent)) {
+          envContent = envContent.replace(regex, `ADMIN_PASS=${newPassword}`);
+        } else {
+          // If not found, append it
+          envContent += `\nADMIN_PASS=${newPassword}`;
+        }
+        
+        fs.writeFileSync(envPath, envContent, 'utf8');
+      }
+    } catch (err) {
+      console.error('Error updating .env file:', err);
+    }
+
+    // 3. Update database user password
+    const adminEmail = (process.env.ADMIN_EMAIL || 'admin@goeat.com').toLowerCase();
+    const user = await User.findOne({ email: adminEmail });
+    if (user) {
+      user.password = newPassword;
+      await user.save();
+    }
+
+    res.status(200).json({
+      status: 'success',
+      message: 'Admin password reset successfully',
+    });
+  });
+
+  /**
    * Manually create a vendor user and their restaurant profile
    */
   public manuallyCreateRestaurant = catchAsync(async (req: Request, res: Response) => {
-    const { 
-      ownerName, 
-      ownerEmail, 
-      ownerPhone, 
-      ownerPassword, 
-      restaurantName, 
-      description, 
-      address, 
-      location, 
-      cuisine,
-      openingHours 
-    } = req.body;
-
-    if (!ownerEmail || !ownerPassword || !restaurantName || !address) {
-      throw new AppError('Please provide all required fields (ownerEmail, ownerPassword, restaurantName, address)', 400);
+    // Supplying compatibility for both standard payload format & admin frontend onboarding form fields
+    const name = req.body.restaurantName || req.body.businessName || req.body['Business Name'] || req.body['businessName'];
+    const email = req.body.ownerEmail || req.body.emailAddress || req.body.platformUsername || req.body['Email Address'] || req.body['Platform Username'] || req.body['emailAddress'] || req.body['platformUsername'];
+    const password = req.body.ownerPassword || req.body.loginPassword || req.body['Login Password'] || req.body['loginPassword'];
+    
+    const oName = req.body.ownerName || req.body['Owner Name'] || req.body['ownerName'] || 'Manual Owner';
+    const phone = req.body.ownerPhone || req.body.phoneContact || req.body['Phone Contact'] || req.body['phoneContact'];
+    const description = req.body.description || `Welcome to ${name}`;
+    
+    if (!email || !password || !name) {
+      throw new AppError('Please provide all required fields (email/username, password, and restaurant/business name)', 400);
     }
 
     // Check if user already exists
     const existingUser = await User.findOne({ 
       $or: [
-        { email: ownerEmail }, 
-        ...(ownerPhone ? [{ phoneNumber: ownerPhone }] : [])
+        { email: email.toLowerCase() }, 
+        ...(phone ? [{ phoneNumber: phone }] : [])
       ] 
     });
     
@@ -185,24 +317,51 @@ class AdminController {
 
     // Create the vendor user
     const user = await User.create({
-      name: ownerName,
-      email: ownerEmail,
-      phoneNumber: ownerPhone,
-      password: ownerPassword,
+      name: oName,
+      email: email.toLowerCase(),
+      phoneNumber: phone,
+      password: password,
       role: UserRole.VENDOR,
       status: UserStatus.ACTIVE,
       isVerified: true, // Auto-verified since created by admin
     });
 
+    // Extract cuisine from different possible types/fields
+    const rawCuisine = req.body.cuisine || req.body.restaurantCategory || req.body['Restaurant Category'] || req.body['restaurantCategory'];
+    let cuisineArray: string[] = [];
+    if (Array.isArray(rawCuisine)) {
+      cuisineArray = rawCuisine;
+    } else if (typeof rawCuisine === 'string') {
+      cuisineArray = rawCuisine.split(',').map((c: string) => c.trim()).filter(Boolean);
+    }
+
+    // Fallbacks for DB schema required fields not present in Step 1/Step 5 of frontend manual onboarding
+    const finalAddress = req.body.address || {
+      street: 'Manual Onboarding',
+      city: 'Unknown',
+      state: 'Unknown',
+      zipCode: '000000'
+    };
+
+    const finalLocation = req.body.location || {
+      type: 'Point',
+      coordinates: [0, 0]
+    };
+
+    const finalOpeningHours = req.body.openingHours || {
+      open: '08:00',
+      close: '22:00'
+    };
+
     // Create the restaurant
     const restaurant = await Restaurant.create({
       owner: user._id,
-      name: restaurantName,
-      description: description || `Welcome to ${restaurantName}`,
-      address,
-      location: location || { type: 'Point', coordinates: [0, 0] }, // Default fallback coordinates
-      cuisine: cuisine || [],
-      openingHours: openingHours || { open: '08:00', close: '22:00' },
+      name: name,
+      description: description,
+      address: finalAddress,
+      location: finalLocation,
+      cuisine: cuisineArray,
+      openingHours: finalOpeningHours,
       status: RestaurantStatus.ACTIVE, // Auto-approved
     });
 
