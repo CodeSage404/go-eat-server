@@ -36,6 +36,7 @@ const router = Router();
  */
 router.post('/admin/auth/login', adminController.adminLogin);
 
+
 // Enforce auth & restrict all endpoints to platform Admins only
 router.use(protect);
 router.use(restrictTo(UserRole.ADMIN));
