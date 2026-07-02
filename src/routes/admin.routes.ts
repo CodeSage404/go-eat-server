@@ -6,13 +6,73 @@ import { UserRole } from '../models/user.model';
 const router = Router();
 
 // Public Admin Auth Routes
-router.post('/auth/login', adminController.adminLogin);
+/**
+ * @openapi
+ * /api/v1/admin/auth/login:
+ *   post:
+ *     tags:
+ *       - Admin Auth
+ *     summary: Authenticate admin user
+ *     description: Verify admin credentials from env and return a signed JWT.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [email, password]
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 example: admin@goeat.com
+ *               password:
+ *                 type: string
+ *                 example: AdminPass123!
+ *     responses:
+ *       200:
+ *         description: Login successful. Token returned.
+ *       401:
+ *         description: Invalid email or password.
+ */
+router.post('/admin/auth/login', adminController.adminLogin);
 
 // Enforce auth & restrict all endpoints to platform Admins only
 router.use(protect);
 router.use(restrictTo(UserRole.ADMIN));
 
 // Protected Admin Auth Routes
+/**
+ * @openapi
+ * /api/v1/admin/auth/reset-password:
+ *   post:
+ *     tags:
+ *       - Admin Auth
+ *     summary: Reset admin password
+ *     description: Update the master password in memory, local env file, and db.
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [currentPassword, newPassword]
+ *             properties:
+ *               currentPassword:
+ *                 type: string
+ *                 example: AdminPass123!
+ *               newPassword:
+ *                 type: string
+ *                 example: NewAdminPass123!
+ *     responses:
+ *       200:
+ *         description: Password successfully updated.
+ *       400:
+ *         description: Password validation error.
+ *       401:
+ *         description: Incorrect current password.
+ */
 router.post('/auth/reset-password', adminController.adminResetPassword);
 
 /**
