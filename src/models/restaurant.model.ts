@@ -4,6 +4,7 @@ export enum RestaurantStatus {
   ACTIVE = 'active',
   INACTIVE = 'inactive',
   PENDING = 'pending',
+  SUSPENDED = 'suspended',
 }
 
 export interface IRestaurant extends Document {
@@ -18,14 +19,14 @@ export interface IRestaurant extends Document {
   };
   location: {
     type: 'Point';
-    coordinates: [number, number]; // [longitude, latitude]
+    coordinates: [number, number]; 
   };
   cuisine: string[];
   rating: number;
   numReviews: number;
   openingHours: {
-    open: string; // e.g., "09:00"
-    close: string; // e.g., "22:00"
+    open: string; 
+    close: string; 
   };
   images: {
     logo: string;
@@ -69,7 +70,7 @@ const restaurantSchema = new Schema<IRestaurant>(
         required: true,
       },
       coordinates: {
-        type: [Number], // [longitude, latitude]
+        type: [Number],
         required: true,
       },
     },
@@ -104,7 +105,7 @@ const restaurantSchema = new Schema<IRestaurant>(
       default: 0,
     },
     estimatedDeliveryTime: {
-      type: Number, // in minutes
+      type: Number,
       default: 30,
     },
     isSelfPickup: {
