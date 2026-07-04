@@ -34,7 +34,7 @@ const router = Router();
  *       401:
  *         description: Invalid email or password.
  */
-router.post('/admin/auth/login', adminController.adminLogin);
+router.post('/auth/login', adminController.adminLogin);
 
 
 // Enforce auth & restrict all endpoints to platform Admins only
@@ -164,6 +164,7 @@ router.post('/users/:id/status', adminController.updateUserStatus);
  *     responses:
  *       200:
  *         description: List of restaurants returned
+ */
 router.get('/restaurants', adminController.getAllRestaurants);
 
 /**
