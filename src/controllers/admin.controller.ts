@@ -248,10 +248,10 @@ class AdminController {
       throw new AppError('Current password is incorrect', 401);
     }
 
-    // 1. Update in-memory env variable
+    // Update in-memory env variable
     process.env.ADMIN_PASS = newPassword;
 
-    // 2. Update .env file on disk
+    // Update .env file on disk
     try {
       const envPath = path.join(__dirname, '../../.env');
       if (fs.existsSync(envPath)) {
@@ -323,7 +323,7 @@ class AdminController {
       password: password,
       role: UserRole.VENDOR,
       status: UserStatus.ACTIVE,
-      isVerified: true, // Auto-verified since created by admin
+      isVerified: true, 
     });
 
     // Extract cuisine from different possible types/fields
