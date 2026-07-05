@@ -219,6 +219,89 @@ router.get('/orders', adminController.getAllOrders);
  */
 router.post('/restaurants/:id/status', adminController.updateRestaurantStatus);
 
+// Add these to your admin routes list
+// router.get('/restaurants/:id', adminController.getRestaurantById);
+// router.get('/restaurants/:id/orders', adminController.getRestaurantOrders);
+
+/**
+ * @openapi
+ * /api/v1/admin/restaurants/{id}:
+ * get:
+ * tags:
+ * - Admin Dashboard
+ * summary: Get profile details of a single restaurant by ID
+ * security:
+ * - bearerAuth: []
+ * parameters:
+ * - in: path
+ * name: id
+ * required: true
+ * schema:
+ * type: string
+ * description: The unique MongoDB ID of the restaurant
+ * responses:
+ * 200:
+ * description: Restaurant details retrieved successfully
+ * content:
+ * application/json:
+ * schema:
+ * type: object
+ * properties:
+ * status:
+ * type: string
+ * example: success
+ * data:
+ * type: object
+ * properties:
+ * restaurant:
+ * type: object
+ * 404:
+ * description: Restaurant not found
+ */
+router.get('/restaurants/:id', adminController.getRestaurantById);
+
+/**
+ * @openapi
+ * /api/v1/admin/restaurants/{id}/orders:
+ * get:
+ * tags:
+ * - Admin Dashboard
+ * summary: Get all historical and pending orders for a specific restaurant
+ * security:
+ * - bearerAuth: []
+ * parameters:
+ * - in: path
+ * name: id
+ * required: true
+ * schema:
+ * type: string
+ * description: The unique MongoDB ID of the restaurant
+ * responses:
+ * 200:
+ * description: Restaurant order history retrieved successfully
+ * content:
+ * application/json:
+ * schema:
+ * type: object
+ * properties:
+ * status:
+ * type: string
+ * example: success
+ * results:
+ * type: integer
+ * example: 12
+ * data:
+ * type: object
+ * properties:
+ * orders:
+ * type: array
+ * items:
+ * type: object
+ * 404:
+ * description: Restaurant not found
+ */
+router.get('/restaurants/:id/orders', adminController.getRestaurantOrders);
+
 /**
  * @openapi
  * /api/v1/admin/restaurants/manual-signup:
