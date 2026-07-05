@@ -125,48 +125,6 @@ class AdminController {
     });
   });
 
-/**
-   * Get a single restaurant by ID
-   */
-  public getRestaurantById = catchAsync(async (req: Request, res: Response) => {
-    const { id } = req.params;
-
-    const restaurant = await Restaurant.findById(id).populate('owner', 'name email phoneNumber');
-
-    if (!restaurant) {
-      throw new AppError('Resource not found', 404);
-    }
-
-    res.status(200).json({
-      status: 'success',
-      data: { restaurant }
-    });
-  });
-
-  /**
-   * Get all orders belonging to a specific restaurant
-   */
-  public getRestaurantOrders = catchAsync(async (req: Request, res: Response) => {
-    const { id } = req.params;
-
-    // Verify the restaurant exists first
-    const restaurantExists = await Restaurant.exists({ _id: id });
-    if (!restaurantExists) {
-      throw new AppError('Resource not found', 404);
-    }
-
-    const orders = await Order.find({ restaurant: id })
-      .populate('customer', 'name email phoneNumber')
-      .populate('rider', 'name phoneNumber')
-      .sort({ createdAt: -1 });
-
-    res.status(200).json({
-      status: 'success',
-      results: orders.length,
-      data: { orders }
-    });
-  });
-
   /**
    * Get all orders with optional status filtering for platform auditing
    */
