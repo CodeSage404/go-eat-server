@@ -42,9 +42,11 @@ const path_1 = __importDefault(require("path"));
 const user_model_1 = __importStar(require("../models/user.model"));
 const restaurant_model_1 = __importStar(require("../models/restaurant.model"));
 const order_model_1 = __importStar(require("../models/order.model"));
+const transaction_model_1 = __importDefault(require("../models/transaction.model"));
 const foodItem_model_1 = __importDefault(require("../models/foodItem.model"));
 const auditLog_model_1 = __importDefault(require("../models/auditLog.model"));
 const systemLog_model_1 = __importDefault(require("../models/systemLog.model"));
+const booking_model_1 = __importDefault(require("../models/booking.model"));
 const catchAsync_1 = require("../utils/catchAsync");
 const appError_1 = __importDefault(require("../utils/appError"));
 class AdminController {
@@ -306,7 +308,7 @@ class AdminController {
             const user = await user_model_1.default.create({
                 name: oName,
                 email: email.toLowerCase(),
-                phoneNumber: phone,
+                phoneNumber: phone || undefined,
                 password: password,
                 role: user_model_1.UserRole.VENDOR,
                 status: user_model_1.UserStatus.ACTIVE,
@@ -436,6 +438,152 @@ class AdminController {
                 status: 'success',
                 results: logs.length,
                 data: { logs }
+            });
+        });
+        /**
+         * Refresh admin JWT token
+         */
+        this.refreshAdminToken = (0, catchAsync_1.catchAsync)(async (req, res) => {
+            const token = jsonwebtoken_1.default.sign({ id: req.user._id }, process.env.JWT_SECRET, {
+                expiresIn: process.env.JWT_EXPIRES_IN || '90d',
+            });
+            res.status(200).json({
+                status: 'success',
+                token,
+                data: {
+                    user: req.user
+                }
+            });
+        });
+        /**
+         * Get all bookings
+         */
+        this.getAllBookings = (0, catchAsync_1.catchAsync)(async (req, res) => {
+            const bookings = await booking_model_1.default.find()
+                .populate('customer', 'name email phoneNumber')
+                .populate('restaurant', 'name')
+                .sort({ createdAt: -1 });
+            res.status(200).json({
+                status: 'success',
+                results: bookings.length,
+                data: { bookings }
+            });
+        });
+        /**
+         * Get single booking by ID
+         */
+        this.getBookingById = (0, catchAsync_1.catchAsync)(async (req, res) => {
+            const booking = await booking_model_1.default.findById(req.params.id)
+                .populate('customer', 'name email phoneNumber')
+                .populate('restaurant', 'name address');
+            if (!booking) {
+                throw new appError_1.default('Booking not found', 404);
+            }
+            res.status(200).json({
+                status: 'success',
+                data: { booking }
+            });
+        });
+        /**
+         * Update booking status
+         */
+        this.updateBookingStatus = (0, catchAsync_1.catchAsync)(async (req, res) => {
+            const { status } = req.body;
+            if (!['confirmed', 'cancelled'].includes(status)) {
+                throw new appError_1.default('Invalid booking status', 400);
+            }
+            const booking = await booking_model_1.default.findByIdAndUpdate(req.params.id, { status }, { new: true, runValidators: true });
+            if (!booking) {
+                throw new appError_1.default('Booking not found', 404);
+            }
+            res.status(200).json({
+                status: 'success',
+                message: `Booking has been successfully ${status}`,
+                data: { booking }
+            });
+        });
+        /**
+         * Get all transactions
+         */
+        this.getAllTransactions = (0, catchAsync_1.catchAsync)(async (req, res) => {
+            const transactions = await transaction_model_1.default.find()
+                .populate({
+                path: 'wallet',
+                populate: {
+                    path: 'user',
+                    select: 'name email role'
+                }
+            })
+                .sort({ createdAt: -1 });
+            res.status(200).json({
+                status: 'success',
+                results: transactions.length,
+                data: { transactions }
+            });
+        });
+        /**
+         * Get single menu item by ID
+         */
+        this.getMenuItemById = (0, catchAsync_1.catchAsync)(async (req, res) => {
+            const menuItem = await foodItem_model_1.default.findById(req.params.id).populate('restaurant', 'name');
+            if (!menuItem) {
+                throw new appError_1.default('Menu item not found', 404);
+            }
+            res.status(200).json({
+                status: 'success',
+                data: { menuItem }
+            });
+        });
+        /**
+         * Create global menu item (Admin)
+         */
+        this.createMenuItem = (0, catchAsync_1.catchAsync)(async (req, res) => {
+            const { name, description, price, category, restaurantId, isAvailable, isVegetarian, isSpicy, calories } = req.body;
+            if (!name || !price || !category || !restaurantId) {
+                throw new appError_1.default('Please provide name, price, category and restaurantId', 400);
+            }
+            const menuItem = await foodItem_model_1.default.create({
+                name,
+                description: description || '',
+                price: Number(price),
+                category,
+                restaurant: restaurantId,
+                isAvailable: isAvailable ?? true,
+                isVegetarian: isVegetarian ?? false,
+                isSpicy: isSpicy ?? false,
+                calories: calories ? Number(calories) : undefined
+            });
+            res.status(201).json({
+                status: 'success',
+                message: 'Menu item created successfully',
+                data: { menuItem }
+            });
+        });
+        /**
+         * Update menu item (Admin)
+         */
+        this.updateMenuItem = (0, catchAsync_1.catchAsync)(async (req, res) => {
+            const menuItem = await foodItem_model_1.default.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
+            if (!menuItem) {
+                throw new appError_1.default('Menu item not found', 404);
+            }
+            res.status(200).json({
+                status: 'success',
+                message: 'Menu item updated successfully',
+                data: { menuItem }
+            });
+        });
+        /**
+         * Delete menu item (Admin)
+         */
+        this.deleteMenuItem = (0, catchAsync_1.catchAsync)(async (req, res) => {
+            const menuItem = await foodItem_model_1.default.findByIdAndDelete(req.params.id);
+            if (!menuItem) {
+                throw new appError_1.default('Menu item not found', 404);
+            }
+            res.status(200).json({
+                status: 'success',
+                message: 'Menu item deleted successfully'
             });
         });
     }

@@ -350,6 +350,17 @@ router.post('/restaurants/manual-signup', adminController.manuallyCreateRestaura
 
 router.get('/orders/:id', adminController.getOrderById);
 router.get('/menu-items', adminController.getAllMenuItems);
+router.get('/menu-items/:id', adminController.getMenuItemById);
+router.post('/menu-items', adminController.createMenuItem);
+router.patch('/menu-items/:id', adminController.updateMenuItem);
+router.delete('/menu-items/:id', adminController.deleteMenuItem);
+
+router.get('/bookings', adminController.getAllBookings);
+router.get('/bookings/:id', adminController.getBookingById);
+router.patch('/bookings/:id/status', adminController.updateBookingStatus);
+
+router.get('/transactions', adminController.getAllTransactions);
+
 router.get('/audit-logs', adminController.getAuditLogs);
 router.get('/system-logs', adminController.getSystemLogs);
 

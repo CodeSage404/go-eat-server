@@ -9,6 +9,7 @@ import Transaction from '../models/transaction.model';
 import FoodItem from '../models/foodItem.model';
 import AuditLog from '../models/auditLog.model';
 import SystemLog from '../models/systemLog.model';
+import Booking from '../models/booking.model';
 import { catchAsync } from '../utils/catchAsync';
 import AppError from '../utils/appError';
 
@@ -322,7 +323,7 @@ class AdminController {
     const user = await User.create({
       name: oName,
       email: email.toLowerCase(),
-      phoneNumber: phone,
+      phoneNumber: phone || undefined,
       password: password,
       role: UserRole.VENDOR,
       status: UserStatus.ACTIVE,
@@ -486,6 +487,167 @@ class AdminController {
       data: {
         user: req.user
       }
+    });
+  });
+
+  /**
+   * Get all bookings
+   */
+  public getAllBookings = catchAsync(async (req: Request, res: Response) => {
+    const bookings = await Booking.find()
+      .populate('customer', 'name email phoneNumber')
+      .populate('restaurant', 'name')
+      .sort({ createdAt: -1 });
+
+    res.status(200).json({
+      status: 'success',
+      results: bookings.length,
+      data: { bookings }
+    });
+  });
+
+  /**
+   * Get single booking by ID
+   */
+  public getBookingById = catchAsync(async (req: Request, res: Response) => {
+    const booking = await Booking.findById(req.params.id)
+      .populate('customer', 'name email phoneNumber')
+      .populate('restaurant', 'name address');
+
+    if (!booking) {
+      throw new AppError('Booking not found', 404);
+    }
+
+    res.status(200).json({
+      status: 'success',
+      data: { booking }
+    });
+  });
+
+  /**
+   * Update booking status
+   */
+  public updateBookingStatus = catchAsync(async (req: Request, res: Response) => {
+    const { status } = req.body;
+    if (!['confirmed', 'cancelled'].includes(status)) {
+      throw new AppError('Invalid booking status', 400);
+    }
+
+    const booking = await Booking.findByIdAndUpdate(
+      req.params.id,
+      { status },
+      { new: true, runValidators: true }
+    );
+
+    if (!booking) {
+      throw new AppError('Booking not found', 404);
+    }
+
+    res.status(200).json({
+      status: 'success',
+      message: `Booking has been successfully ${status}`,
+      data: { booking }
+    });
+  });
+
+  /**
+   * Get all transactions
+   */
+  public getAllTransactions = catchAsync(async (req: Request, res: Response) => {
+    const transactions = await Transaction.find()
+      .populate({
+        path: 'wallet',
+        populate: {
+          path: 'user',
+          select: 'name email role'
+        }
+      })
+      .sort({ createdAt: -1 });
+
+    res.status(200).json({
+      status: 'success',
+      results: transactions.length,
+      data: { transactions }
+    });
+  });
+
+  /**
+   * Get single menu item by ID
+   */
+  public getMenuItemById = catchAsync(async (req: Request, res: Response) => {
+    const menuItem = await FoodItem.findById(req.params.id).populate('restaurant', 'name');
+    if (!menuItem) {
+      throw new AppError('Menu item not found', 404);
+    }
+
+    res.status(200).json({
+      status: 'success',
+      data: { menuItem }
+    });
+  });
+
+  /**
+   * Create global menu item (Admin)
+   */
+  public createMenuItem = catchAsync(async (req: Request, res: Response) => {
+    const { name, description, price, category, restaurantId, isAvailable, isVegetarian, isSpicy, calories } = req.body;
+    
+    if (!name || !price || !category || !restaurantId) {
+      throw new AppError('Please provide name, price, category and restaurantId', 400);
+    }
+
+    const menuItem = await FoodItem.create({
+      name,
+      description: description || '',
+      price: Number(price),
+      category,
+      restaurant: restaurantId,
+      isAvailable: isAvailable ?? true,
+      isVegetarian: isVegetarian ?? false,
+      isSpicy: isSpicy ?? false,
+      calories: calories ? Number(calories) : undefined
+    });
+
+    res.status(201).json({
+      status: 'success',
+      message: 'Menu item created successfully',
+      data: { menuItem }
+    });
+  });
+
+  /**
+   * Update menu item (Admin)
+   */
+  public updateMenuItem = catchAsync(async (req: Request, res: Response) => {
+    const menuItem = await FoodItem.findByIdAndUpdate(
+      req.params.id,
+      req.body,
+      { new: true, runValidators: true }
+    );
+
+    if (!menuItem) {
+      throw new AppError('Menu item not found', 404);
+    }
+
+    res.status(200).json({
+      status: 'success',
+      message: 'Menu item updated successfully',
+      data: { menuItem }
+    });
+  });
+
+  /**
+   * Delete menu item (Admin)
+   */
+  public deleteMenuItem = catchAsync(async (req: Request, res: Response) => {
+    const menuItem = await FoodItem.findByIdAndDelete(req.params.id);
+    if (!menuItem) {
+      throw new AppError('Menu item not found', 404);
+    }
+
+    res.status(200).json({
+      status: 'success',
+      message: 'Menu item deleted successfully'
     });
   });
 }

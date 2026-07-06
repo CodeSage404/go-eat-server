@@ -75,6 +75,7 @@ router.use((0, auth_middleware_1.restrictTo)(user_model_1.UserRole.ADMIN));
  *         description: Incorrect current password.
  */
 router.post('/auth/reset-password', admin_controller_1.default.adminResetPassword);
+router.post('/auth/refresh-token', admin_controller_1.default.refreshAdminToken);
 /**
  * @openapi
  * /api/v1/admin/platform-stats:
@@ -338,6 +339,14 @@ router.get('/restaurants/:id/orders', admin_controller_1.default.getRestaurantOr
 router.post('/restaurants/manual-signup', admin_controller_1.default.manuallyCreateRestaurant);
 router.get('/orders/:id', admin_controller_1.default.getOrderById);
 router.get('/menu-items', admin_controller_1.default.getAllMenuItems);
+router.get('/menu-items/:id', admin_controller_1.default.getMenuItemById);
+router.post('/menu-items', admin_controller_1.default.createMenuItem);
+router.patch('/menu-items/:id', admin_controller_1.default.updateMenuItem);
+router.delete('/menu-items/:id', admin_controller_1.default.deleteMenuItem);
+router.get('/bookings', admin_controller_1.default.getAllBookings);
+router.get('/bookings/:id', admin_controller_1.default.getBookingById);
+router.patch('/bookings/:id/status', admin_controller_1.default.updateBookingStatus);
+router.get('/transactions', admin_controller_1.default.getAllTransactions);
 router.get('/audit-logs', admin_controller_1.default.getAuditLogs);
 router.get('/system-logs', admin_controller_1.default.getSystemLogs);
 exports.default = router;
