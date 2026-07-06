@@ -75,6 +75,7 @@ router.use(restrictTo(UserRole.ADMIN));
  *         description: Incorrect current password.
  */
 router.post('/auth/reset-password', adminController.adminResetPassword);
+router.post('/auth/refresh-token', adminController.refreshAdminToken);
 
 /**
  * @openapi
@@ -346,5 +347,10 @@ router.get('/restaurants/:id/orders', adminController.getRestaurantOrders);
  *         description: Vendor and restaurant successfully created
  */
 router.post('/restaurants/manual-signup', adminController.manuallyCreateRestaurant);
+
+router.get('/orders/:id', adminController.getOrderById);
+router.get('/menu-items', adminController.getAllMenuItems);
+router.get('/audit-logs', adminController.getAuditLogs);
+router.get('/system-logs', adminController.getSystemLogs);
 
 export default router;

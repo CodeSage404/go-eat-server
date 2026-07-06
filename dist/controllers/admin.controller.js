@@ -42,6 +42,9 @@ const path_1 = __importDefault(require("path"));
 const user_model_1 = __importStar(require("../models/user.model"));
 const restaurant_model_1 = __importStar(require("../models/restaurant.model"));
 const order_model_1 = __importStar(require("../models/order.model"));
+const foodItem_model_1 = __importDefault(require("../models/foodItem.model"));
+const auditLog_model_1 = __importDefault(require("../models/auditLog.model"));
+const systemLog_model_1 = __importDefault(require("../models/systemLog.model"));
 const catchAsync_1 = require("../utils/catchAsync");
 const appError_1 = __importDefault(require("../utils/appError"));
 class AdminController {
@@ -241,9 +244,9 @@ class AdminController {
             if (currentPassword !== adminPass) {
                 throw new appError_1.default('Current password is incorrect', 401);
             }
-            // 1. Update in-memory env variable
+            // Update in-memory env variable
             process.env.ADMIN_PASS = newPassword;
-            // 2. Update .env file on disk
+            // Update .env file on disk
             try {
                 const envPath = path_1.default.join(__dirname, '../../.env');
                 if (fs_1.default.existsSync(envPath)) {
@@ -307,7 +310,7 @@ class AdminController {
                 password: password,
                 role: user_model_1.UserRole.VENDOR,
                 status: user_model_1.UserStatus.ACTIVE,
-                isVerified: true, // Auto-verified since created by admin
+                isVerified: true,
             });
             // Extract cuisine from different possible types/fields
             const rawCuisine = req.body.cuisine || req.body.restaurantCategory || req.body['Restaurant Category'] || req.body['restaurantCategory'];
@@ -351,6 +354,88 @@ class AdminController {
                     user,
                     restaurant
                 }
+            });
+        });
+        /**
+         * Get profile details of a single restaurant by ID
+         */
+        this.getRestaurantById = (0, catchAsync_1.catchAsync)(async (req, res) => {
+            const { id } = req.params;
+            const restaurant = await restaurant_model_1.default.findById(id).populate('owner', 'name email phoneNumber');
+            if (!restaurant) {
+                throw new appError_1.default('Restaurant not found', 404);
+            }
+            res.status(200).json({
+                status: 'success',
+                data: { restaurant }
+            });
+        });
+        /**
+         * Get historical and pending orders for a specific restaurant
+         */
+        this.getRestaurantOrders = (0, catchAsync_1.catchAsync)(async (req, res) => {
+            const { id } = req.params;
+            const orders = await order_model_1.default.find({ restaurant: id })
+                .populate('customer', 'name email phoneNumber')
+                .populate('rider', 'name phoneNumber')
+                .sort({ createdAt: -1 });
+            res.status(200).json({
+                status: 'success',
+                results: orders.length,
+                data: { orders }
+            });
+        });
+        /**
+         * Get all menu items across all restaurants
+         */
+        this.getAllMenuItems = (0, catchAsync_1.catchAsync)(async (req, res) => {
+            const items = await foodItem_model_1.default.find()
+                .populate('category', 'name')
+                .populate('restaurant', 'name')
+                .sort({ createdAt: -1 });
+            res.status(200).json({
+                status: 'success',
+                results: items.length,
+                data: { items }
+            });
+        });
+        /**
+         * Get detail of a specific order
+         */
+        this.getOrderById = (0, catchAsync_1.catchAsync)(async (req, res) => {
+            const { id } = req.params;
+            const order = await order_model_1.default.findById(id)
+                .populate('customer', 'name email phoneNumber')
+                .populate('restaurant', 'name address location phoneContact')
+                .populate('rider', 'name phoneNumber');
+            if (!order) {
+                throw new appError_1.default('Order not found', 404);
+            }
+            res.status(200).json({
+                status: 'success',
+                data: { order }
+            });
+        });
+        /**
+         * Get all platform audit logs
+         */
+        this.getAuditLogs = (0, catchAsync_1.catchAsync)(async (req, res) => {
+            const logs = await auditLog_model_1.default.find().sort({ createdAt: -1 });
+            res.status(200).json({
+                status: 'success',
+                results: logs.length,
+                data: { logs }
+            });
+        });
+        /**
+         * Get all platform system logs
+         */
+        this.getSystemLogs = (0, catchAsync_1.catchAsync)(async (req, res) => {
+            const logs = await systemLog_model_1.default.find().sort({ createdAt: -1 });
+            res.status(200).json({
+                status: 'success',
+                results: logs.length,
+                data: { logs }
             });
         });
     }

@@ -40,6 +40,7 @@ var RestaurantStatus;
     RestaurantStatus["ACTIVE"] = "active";
     RestaurantStatus["INACTIVE"] = "inactive";
     RestaurantStatus["PENDING"] = "pending";
+    RestaurantStatus["SUSPENDED"] = "suspended";
 })(RestaurantStatus || (exports.RestaurantStatus = RestaurantStatus = {}));
 const restaurantSchema = new mongoose_1.Schema({
     owner: {
@@ -69,7 +70,7 @@ const restaurantSchema = new mongoose_1.Schema({
             required: true,
         },
         coordinates: {
-            type: [Number], // [longitude, latitude]
+            type: [Number],
             required: true,
         },
     },
@@ -104,7 +105,7 @@ const restaurantSchema = new mongoose_1.Schema({
         default: 0,
     },
     estimatedDeliveryTime: {
-        type: Number, // in minutes
+        type: Number,
         default: 30,
     },
     isSelfPickup: {

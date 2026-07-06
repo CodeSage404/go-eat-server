@@ -9,11 +9,71 @@ const auth_middleware_1 = require("../middleware/auth.middleware");
 const user_model_1 = require("../models/user.model");
 const router = (0, express_1.Router)();
 // Public Admin Auth Routes
+/**
+ * @openapi
+ * /api/v1/admin/auth/login:
+ *   post:
+ *     tags:
+ *       - Admin Auth
+ *     summary: Authenticate admin user
+ *     description: Verify admin credentials from env and return a signed JWT.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [email, password]
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 example: admin@goeat.com
+ *               password:
+ *                 type: string
+ *                 example: AdminPass123!
+ *     responses:
+ *       200:
+ *         description: Login successful. Token returned.
+ *       401:
+ *         description: Invalid email or password.
+ */
 router.post('/auth/login', admin_controller_1.default.adminLogin);
 // Enforce auth & restrict all endpoints to platform Admins only
 router.use(auth_middleware_1.protect);
 router.use((0, auth_middleware_1.restrictTo)(user_model_1.UserRole.ADMIN));
 // Protected Admin Auth Routes
+/**
+ * @openapi
+ * /api/v1/admin/auth/reset-password:
+ *   post:
+ *     tags:
+ *       - Admin Auth
+ *     summary: Reset admin password
+ *     description: Update the master password in memory, local env file, and db.
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [currentPassword, newPassword]
+ *             properties:
+ *               currentPassword:
+ *                 type: string
+ *                 example: AdminPass123!
+ *               newPassword:
+ *                 type: string
+ *                 example: NewAdminPass123!
+ *     responses:
+ *       200:
+ *         description: Password successfully updated.
+ *       400:
+ *         description: Password validation error.
+ *       401:
+ *         description: Incorrect current password.
+ */
 router.post('/auth/reset-password', admin_controller_1.default.adminResetPassword);
 /**
  * @openapi
@@ -100,8 +160,8 @@ router.post('/users/:id/status', admin_controller_1.default.updateUserStatus);
  *     responses:
  *       200:
  *         description: List of restaurants returned
-router.get('/restaurants', adminController.getAllRestaurants);
-
+ */
+router.get('/restaurants', admin_controller_1.default.getAllRestaurants);
 /**
  * @openapi
  * /api/v1/admin/orders:
@@ -152,6 +212,86 @@ router.get('/orders', admin_controller_1.default.getAllOrders);
  *         description: Restaurant status updated successfully
  */
 router.post('/restaurants/:id/status', admin_controller_1.default.updateRestaurantStatus);
+// Add these to your admin routes list
+// router.get('/restaurants/:id', adminController.getRestaurantById);
+// router.get('/restaurants/:id/orders', adminController.getRestaurantOrders);
+/**
+ * @openapi
+ * /api/v1/admin/restaurants/{id}:
+ * get:
+ * tags:
+ * - Admin Dashboard
+ * summary: Get profile details of a single restaurant by ID
+ * security:
+ * - bearerAuth: []
+ * parameters:
+ * - in: path
+ * name: id
+ * required: true
+ * schema:
+ * type: string
+ * description: The unique MongoDB ID of the restaurant
+ * responses:
+ * 200:
+ * description: Restaurant details retrieved successfully
+ * content:
+ * application/json:
+ * schema:
+ * type: object
+ * properties:
+ * status:
+ * type: string
+ * example: success
+ * data:
+ * type: object
+ * properties:
+ * restaurant:
+ * type: object
+ * 404:
+ * description: Restaurant not found
+ */
+router.get('/restaurants/:id', admin_controller_1.default.getRestaurantById);
+/**
+ * @openapi
+ * /api/v1/admin/restaurants/{id}/orders:
+ * get:
+ * tags:
+ * - Admin Dashboard
+ * summary: Get all historical and pending orders for a specific restaurant
+ * security:
+ * - bearerAuth: []
+ * parameters:
+ * - in: path
+ * name: id
+ * required: true
+ * schema:
+ * type: string
+ * description: The unique MongoDB ID of the restaurant
+ * responses:
+ * 200:
+ * description: Restaurant order history retrieved successfully
+ * content:
+ * application/json:
+ * schema:
+ * type: object
+ * properties:
+ * status:
+ * type: string
+ * example: success
+ * results:
+ * type: integer
+ * example: 12
+ * data:
+ * type: object
+ * properties:
+ * orders:
+ * type: array
+ * items:
+ * type: object
+ * 404:
+ * description: Restaurant not found
+ */
+router.get('/restaurants/:id/orders', admin_controller_1.default.getRestaurantOrders);
 /**
  * @openapi
  * /api/v1/admin/restaurants/manual-signup:
@@ -196,4 +336,8 @@ router.post('/restaurants/:id/status', admin_controller_1.default.updateRestaura
  *         description: Vendor and restaurant successfully created
  */
 router.post('/restaurants/manual-signup', admin_controller_1.default.manuallyCreateRestaurant);
+router.get('/orders/:id', admin_controller_1.default.getOrderById);
+router.get('/menu-items', admin_controller_1.default.getAllMenuItems);
+router.get('/audit-logs', admin_controller_1.default.getAuditLogs);
+router.get('/system-logs', admin_controller_1.default.getSystemLogs);
 exports.default = router;

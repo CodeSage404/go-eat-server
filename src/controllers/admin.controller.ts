@@ -6,6 +6,9 @@ import User, { UserRole, UserStatus } from '../models/user.model';
 import Restaurant, { RestaurantStatus } from '../models/restaurant.model';
 import Order, { OrderStatus } from '../models/order.model';
 import Transaction from '../models/transaction.model';
+import FoodItem from '../models/foodItem.model';
+import AuditLog from '../models/auditLog.model';
+import SystemLog from '../models/systemLog.model';
 import { catchAsync } from '../utils/catchAsync';
 import AppError from '../utils/appError';
 
@@ -371,6 +374,117 @@ class AdminController {
       data: {
         user,
         restaurant
+      }
+    });
+  });
+
+  /**
+   * Get profile details of a single restaurant by ID
+   */
+  public getRestaurantById = catchAsync(async (req: Request, res: Response) => {
+    const { id } = req.params;
+    const restaurant = await Restaurant.findById(id).populate('owner', 'name email phoneNumber');
+
+    if (!restaurant) {
+      throw new AppError('Restaurant not found', 404);
+    }
+
+    res.status(200).json({
+      status: 'success',
+      data: { restaurant }
+    });
+  });
+
+  /**
+   * Get historical and pending orders for a specific restaurant
+   */
+  public getRestaurantOrders = catchAsync(async (req: Request, res: Response) => {
+    const { id } = req.params;
+    const orders = await Order.find({ restaurant: id })
+      .populate('customer', 'name email phoneNumber')
+      .populate('rider', 'name phoneNumber')
+      .sort({ createdAt: -1 });
+
+    res.status(200).json({
+      status: 'success',
+      results: orders.length,
+      data: { orders }
+    });
+  });
+
+  /**
+   * Get all menu items across all restaurants
+   */
+  public getAllMenuItems = catchAsync(async (req: Request, res: Response) => {
+    const items = await FoodItem.find()
+      .populate('category', 'name')
+      .populate('restaurant', 'name')
+      .sort({ createdAt: -1 });
+
+    res.status(200).json({
+      status: 'success',
+      results: items.length,
+      data: { items }
+    });
+  });
+
+  /**
+   * Get detail of a specific order
+   */
+  public getOrderById = catchAsync(async (req: Request, res: Response) => {
+    const { id } = req.params;
+    const order = await Order.findById(id)
+      .populate('customer', 'name email phoneNumber')
+      .populate('restaurant', 'name address location phoneContact')
+      .populate('rider', 'name phoneNumber');
+
+    if (!order) {
+      throw new AppError('Order not found', 404);
+    }
+
+    res.status(200).json({
+      status: 'success',
+      data: { order }
+    });
+  });
+
+  /**
+   * Get all platform audit logs
+   */
+  public getAuditLogs = catchAsync(async (req: Request, res: Response) => {
+    const logs = await AuditLog.find().sort({ createdAt: -1 });
+    res.status(200).json({
+      status: 'success',
+      results: logs.length,
+      data: { logs }
+    });
+  });
+
+  /**
+   * Get all platform system logs
+   */
+  public getSystemLogs = catchAsync(async (req: Request, res: Response) => {
+    const logs = await SystemLog.find().sort({ createdAt: -1 });
+    res.status(200).json({
+      status: 'success',
+      results: logs.length,
+      data: { logs }
+    });
+  });
+
+  /**
+   * Refresh admin JWT token
+   */
+  public refreshAdminToken = catchAsync(async (req: any, res: Response) => {
+    const token = jwt.sign({ id: req.user._id }, process.env.JWT_SECRET as string, {
+      expiresIn: (process.env.JWT_EXPIRES_IN as any) || '90d',
+    });
+
+    res.status(200).json({
+      status: 'success',
+      token,
+      data: {
+        user: req.user
       }
     });
   });
