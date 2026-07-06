@@ -10,6 +10,9 @@ import FoodItem from '../models/foodItem.model';
 import AuditLog from '../models/auditLog.model';
 import SystemLog from '../models/systemLog.model';
 import Booking from '../models/booking.model';
+import Promo from '../models/promo.model';
+import Notification from '../models/notification.model';
+import notificationService from '../services/notification.service';
 import { catchAsync } from '../utils/catchAsync';
 import AppError from '../utils/appError';
 
@@ -648,6 +651,131 @@ class AdminController {
     res.status(200).json({
       status: 'success',
       message: 'Menu item deleted successfully'
+    });
+  });
+
+  /**
+   * Get all promos/coupons (Admin)
+   */
+  public getAllPromos = catchAsync(async (req: Request, res: Response) => {
+    const promos = await Promo.find().populate('restaurant', 'name').sort({ createdAt: -1 });
+    res.status(200).json({
+      status: 'success',
+      results: promos.length,
+      data: { promos }
+    });
+  });
+
+  /**
+   * Create a promo/coupon code (Admin)
+   */
+  public createPromo = catchAsync(async (req: Request, res: Response) => {
+    const { code, discountPercentage, maxDiscountAmount, minOrderAmount, expiryDate, usageLimit, restaurantId } = req.body;
+    
+    if (!code || !discountPercentage || !expiryDate) {
+      throw new AppError('Please provide code, discountPercentage, and expiryDate', 400);
+    }
+
+    const promo = await Promo.create({
+      code: code.toUpperCase(),
+      discountPercentage: Number(discountPercentage),
+      maxDiscountAmount: maxDiscountAmount ? Number(maxDiscountAmount) : undefined,
+      minOrderAmount: minOrderAmount ? Number(minOrderAmount) : 0,
+      expiryDate: new Date(expiryDate),
+      usageLimit: usageLimit ? Number(usageLimit) : undefined,
+      restaurant: restaurantId || undefined
+    });
+
+    res.status(201).json({
+      status: 'success',
+      message: 'Promo/Coupon created successfully',
+      data: { promo }
+    });
+  });
+
+  /**
+   * Toggle promo/coupon active status (Admin)
+   */
+  public updatePromoStatus = catchAsync(async (req: Request, res: Response) => {
+    const { isActive } = req.body;
+    const promo = await Promo.findByIdAndUpdate(
+      req.params.id,
+      { isActive },
+      { new: true, runValidators: true }
+    );
+
+    if (!promo) {
+      throw new AppError('Promo not found', 404);
+    }
+
+    res.status(200).json({
+      status: 'success',
+      message: `Promo has been successfully ${isActive ? 'activated' : 'deactivated'}`,
+      data: { promo }
+    });
+  });
+
+  /**
+   * Delete promo/coupon (Admin)
+   */
+  public deletePromo = catchAsync(async (req: Request, res: Response) => {
+    const promo = await Promo.findByIdAndDelete(req.params.id);
+    if (!promo) {
+      throw new AppError('Promo not found', 404);
+    }
+
+    res.status(200).json({
+      status: 'success',
+      message: 'Promo permanently deleted successfully'
+    });
+  });
+
+  /**
+   * Get all broadcast notifications history
+   */
+  public getAllNotifications = catchAsync(async (req: Request, res: Response) => {
+    const notifications = await Notification.find().sort({ createdAt: -1 });
+    res.status(200).json({
+      status: 'success',
+      results: notifications.length,
+      data: { notifications }
+    });
+  });
+
+  /**
+   * Broadcast a notification to users of a specific role
+   */
+  public broadcastNotification = catchAsync(async (req: Request, res: Response) => {
+    const { title, body, targetRole } = req.body;
+    if (!title || !body || !targetRole) {
+      throw new AppError('Please provide title, body and targetRole', 400);
+    }
+
+    // Find targets
+    const query: any = {};
+    if (targetRole !== 'all') {
+      query.role = targetRole;
+    }
+    const targetUsers = await User.find(query).select('_id');
+
+    // Send pushes asynchronously
+    const sendPromises = targetUsers.map(user => 
+      notificationService.sendNotification(user._id.toString(), title, body, { type: 'BROADCAST' })
+    );
+    await Promise.all(sendPromises);
+
+    // Create log record
+    const notification = await Notification.create({
+      title,
+      body,
+      targetRole,
+      sentCount: targetUsers.length
+    });
+
+    res.status(201).json({
+      status: 'success',
+      message: `Notification broadcasted to ${targetUsers.length} users successfully.`,
+      data: { notification }
     });
   });
 }

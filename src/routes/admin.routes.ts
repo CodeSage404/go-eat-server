@@ -361,6 +361,14 @@ router.patch('/bookings/:id/status', adminController.updateBookingStatus);
 
 router.get('/transactions', adminController.getAllTransactions);
 
+router.get('/promos', adminController.getAllPromos);
+router.post('/promos', adminController.createPromo);
+router.patch('/promos/:id/status', adminController.updatePromoStatus);
+router.delete('/promos/:id', adminController.deletePromo);
+
+router.get('/notifications', adminController.getAllNotifications);
+router.post('/notifications/broadcast', adminController.broadcastNotification);
+
 router.get('/audit-logs', adminController.getAuditLogs);
 router.get('/system-logs', adminController.getSystemLogs);
 

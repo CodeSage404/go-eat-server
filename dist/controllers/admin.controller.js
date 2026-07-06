@@ -47,6 +47,9 @@ const foodItem_model_1 = __importDefault(require("../models/foodItem.model"));
 const auditLog_model_1 = __importDefault(require("../models/auditLog.model"));
 const systemLog_model_1 = __importDefault(require("../models/systemLog.model"));
 const booking_model_1 = __importDefault(require("../models/booking.model"));
+const promo_model_1 = __importDefault(require("../models/promo.model"));
+const notification_model_1 = __importDefault(require("../models/notification.model"));
+const notification_service_1 = __importDefault(require("../services/notification.service"));
 const catchAsync_1 = require("../utils/catchAsync");
 const appError_1 = __importDefault(require("../utils/appError"));
 class AdminController {
@@ -584,6 +587,109 @@ class AdminController {
             res.status(200).json({
                 status: 'success',
                 message: 'Menu item deleted successfully'
+            });
+        });
+        /**
+         * Get all promos/coupons (Admin)
+         */
+        this.getAllPromos = (0, catchAsync_1.catchAsync)(async (req, res) => {
+            const promos = await promo_model_1.default.find().populate('restaurant', 'name').sort({ createdAt: -1 });
+            res.status(200).json({
+                status: 'success',
+                results: promos.length,
+                data: { promos }
+            });
+        });
+        /**
+         * Create a promo/coupon code (Admin)
+         */
+        this.createPromo = (0, catchAsync_1.catchAsync)(async (req, res) => {
+            const { code, discountPercentage, maxDiscountAmount, minOrderAmount, expiryDate, usageLimit, restaurantId } = req.body;
+            if (!code || !discountPercentage || !expiryDate) {
+                throw new appError_1.default('Please provide code, discountPercentage, and expiryDate', 400);
+            }
+            const promo = await promo_model_1.default.create({
+                code: code.toUpperCase(),
+                discountPercentage: Number(discountPercentage),
+                maxDiscountAmount: maxDiscountAmount ? Number(maxDiscountAmount) : undefined,
+                minOrderAmount: minOrderAmount ? Number(minOrderAmount) : 0,
+                expiryDate: new Date(expiryDate),
+                usageLimit: usageLimit ? Number(usageLimit) : undefined,
+                restaurant: restaurantId || undefined
+            });
+            res.status(201).json({
+                status: 'success',
+                message: 'Promo/Coupon created successfully',
+                data: { promo }
+            });
+        });
+        /**
+         * Toggle promo/coupon active status (Admin)
+         */
+        this.updatePromoStatus = (0, catchAsync_1.catchAsync)(async (req, res) => {
+            const { isActive } = req.body;
+            const promo = await promo_model_1.default.findByIdAndUpdate(req.params.id, { isActive }, { new: true, runValidators: true });
+            if (!promo) {
+                throw new appError_1.default('Promo not found', 404);
+            }
+            res.status(200).json({
+                status: 'success',
+                message: `Promo has been successfully ${isActive ? 'activated' : 'deactivated'}`,
+                data: { promo }
+            });
+        });
+        /**
+         * Delete promo/coupon (Admin)
+         */
+        this.deletePromo = (0, catchAsync_1.catchAsync)(async (req, res) => {
+            const promo = await promo_model_1.default.findByIdAndDelete(req.params.id);
+            if (!promo) {
+                throw new appError_1.default('Promo not found', 404);
+            }
+            res.status(200).json({
+                status: 'success',
+                message: 'Promo permanently deleted successfully'
+            });
+        });
+        /**
+         * Get all broadcast notifications history
+         */
+        this.getAllNotifications = (0, catchAsync_1.catchAsync)(async (req, res) => {
+            const notifications = await notification_model_1.default.find().sort({ createdAt: -1 });
+            res.status(200).json({
+                status: 'success',
+                results: notifications.length,
+                data: { notifications }
+            });
+        });
+        /**
+         * Broadcast a notification to users of a specific role
+         */
+        this.broadcastNotification = (0, catchAsync_1.catchAsync)(async (req, res) => {
+            const { title, body, targetRole } = req.body;
+            if (!title || !body || !targetRole) {
+                throw new appError_1.default('Please provide title, body and targetRole', 400);
+            }
+            // Find targets
+            const query = {};
+            if (targetRole !== 'all') {
+                query.role = targetRole;
+            }
+            const targetUsers = await user_model_1.default.find(query).select('_id');
+            // Send pushes asynchronously
+            const sendPromises = targetUsers.map(user => notification_service_1.default.sendNotification(user._id.toString(), title, body, { type: 'BROADCAST' }));
+            await Promise.all(sendPromises);
+            // Create log record
+            const notification = await notification_model_1.default.create({
+                title,
+                body,
+                targetRole,
+                sentCount: targetUsers.length
+            });
+            res.status(201).json({
+                status: 'success',
+                message: `Notification broadcasted to ${targetUsers.length} users successfully.`,
+                data: { notification }
             });
         });
     }
