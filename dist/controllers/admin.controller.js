@@ -529,6 +529,44 @@ class AdminController {
             });
         });
         /**
+         * Get single transaction details by ID
+         */
+        this.getTransactionById = (0, catchAsync_1.catchAsync)(async (req, res) => {
+            const transaction = await transaction_model_1.default.findById(req.params.id)
+                .populate({
+                path: 'wallet',
+                populate: {
+                    path: 'user',
+                    select: 'name email role phoneNumber profileImage'
+                }
+            });
+            if (!transaction) {
+                throw new appError_1.default('Transaction not found', 404);
+            }
+            res.status(200).json({
+                status: 'success',
+                data: { transaction }
+            });
+        });
+        /**
+         * Update transaction status (Admin)
+         */
+        this.updateTransactionStatus = (0, catchAsync_1.catchAsync)(async (req, res) => {
+            const { status } = req.body;
+            if (!status) {
+                throw new appError_1.default('Please provide a status', 400);
+            }
+            const transaction = await transaction_model_1.default.findByIdAndUpdate(req.params.id, { status }, { new: true, runValidators: true });
+            if (!transaction) {
+                throw new appError_1.default('Transaction not found', 404);
+            }
+            res.status(200).json({
+                status: 'success',
+                message: 'Transaction status updated successfully',
+                data: { transaction }
+            });
+        });
+        /**
          * Get single menu item by ID
          */
         this.getMenuItemById = (0, catchAsync_1.catchAsync)(async (req, res) => {
@@ -761,6 +799,41 @@ class AdminController {
             });
         });
         /**
+         * Create a new role with permissions (Admin)
+         */
+        this.createRolePermissions = (0, catchAsync_1.catchAsync)(async (req, res) => {
+            const { roleName, permissions } = req.body;
+            if (!roleName) {
+                throw new appError_1.default('Please specify roleName', 400);
+            }
+            const existingRole = await role_model_1.default.findOne({ roleName: roleName.toLowerCase() });
+            if (existingRole) {
+                throw new appError_1.default('Role already exists. Use the matrix checklist to update it.', 400);
+            }
+            const role = await role_model_1.default.create({
+                roleName: roleName.toLowerCase(),
+                permissions: permissions || []
+            });
+            res.status(201).json({
+                status: 'success',
+                message: 'New role created successfully',
+                data: { role }
+            });
+        });
+        /**
+         * Get single user details by ID (Admin)
+         */
+        this.getUserById = (0, catchAsync_1.catchAsync)(async (req, res) => {
+            const user = await user_model_1.default.findById(req.params.id);
+            if (!user) {
+                throw new appError_1.default('User not found', 404);
+            }
+            res.status(200).json({
+                status: 'success',
+                data: { user }
+            });
+        });
+        /**
          * Create a new user (Admin)
          */
         this.createUser = (0, catchAsync_1.catchAsync)(async (req, res) => {
@@ -795,6 +868,24 @@ class AdminController {
                 status: 'success',
                 message: 'User updated successfully',
                 data: { user }
+            });
+        });
+        /**
+         * Get all referral details (Admin)
+         */
+        this.getAllReferrals = (0, catchAsync_1.catchAsync)(async (req, res) => {
+            const referredUsers = await user_model_1.default.find({ referredBy: { $exists: true, $ne: null } })
+                .populate('referredBy', 'name email role referralCode')
+                .sort({ createdAt: -1 });
+            const topReferrers = await user_model_1.default.find({ referralCount: { $gt: 0 } })
+                .sort({ referralCount: -1 })
+                .limit(10);
+            res.status(200).json({
+                status: 'success',
+                data: {
+                    referredUsers,
+                    topReferrers
+                }
             });
         });
         /**

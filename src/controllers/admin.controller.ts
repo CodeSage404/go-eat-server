@@ -301,7 +301,6 @@ class AdminController {
    * Manually create a vendor user and their restaurant profile
    */
   public manuallyCreateRestaurant = catchAsync(async (req: Request, res: Response) => {
-    // Supplying compatibility for both standard payload format & admin frontend onboarding form fields
     const name = req.body.restaurantName || req.body.businessName || req.body['Business Name'] || req.body['businessName'];
     const email = req.body.ownerEmail || req.body.emailAddress || req.body.platformUsername || req.body['Email Address'] || req.body['Platform Username'] || req.body['emailAddress'] || req.body['platformUsername'];
     const password = req.body.ownerPassword || req.body.loginPassword || req.body['Login Password'] || req.body['loginPassword'];
@@ -575,6 +574,55 @@ class AdminController {
       status: 'success',
       results: transactions.length,
       data: { transactions }
+    });
+  });
+
+  /**
+   * Get single transaction details by ID
+   */
+  public getTransactionById = catchAsync(async (req: Request, res: Response) => {
+    const transaction = await Transaction.findById(req.params.id)
+      .populate({
+        path: 'wallet',
+        populate: {
+          path: 'user',
+          select: 'name email role phoneNumber profileImage'
+        }
+      });
+
+    if (!transaction) {
+      throw new AppError('Transaction not found', 404);
+    }
+
+    res.status(200).json({
+      status: 'success',
+      data: { transaction }
+    });
+  });
+
+  /**
+   * Update transaction status (Admin)
+   */
+  public updateTransactionStatus = catchAsync(async (req: Request, res: Response) => {
+    const { status } = req.body;
+    if (!status) {
+      throw new AppError('Please provide a status', 400);
+    }
+
+    const transaction = await Transaction.findByIdAndUpdate(
+      req.params.id,
+      { status },
+      { new: true, runValidators: true }
+    );
+
+    if (!transaction) {
+      throw new AppError('Transaction not found', 404);
+    }
+
+    res.status(200).json({
+      status: 'success',
+      message: 'Transaction status updated successfully',
+      data: { transaction }
     });
   });
 
@@ -868,6 +916,47 @@ class AdminController {
   });
 
   /**
+   * Create a new role with permissions (Admin)
+   */
+  public createRolePermissions = catchAsync(async (req: Request, res: Response) => {
+    const { roleName, permissions } = req.body;
+    if (!roleName) {
+      throw new AppError('Please specify roleName', 400);
+    }
+
+    const existingRole = await RolePermission.findOne({ roleName: roleName.toLowerCase() });
+    if (existingRole) {
+      throw new AppError('Role already exists. Use the matrix checklist to update it.', 400);
+    }
+
+    const role = await RolePermission.create({
+      roleName: roleName.toLowerCase(),
+      permissions: permissions || []
+    });
+
+    res.status(201).json({
+      status: 'success',
+      message: 'New role created successfully',
+      data: { role }
+    });
+  });
+
+  /**
+   * Get single user details by ID (Admin)
+   */
+  public getUserById = catchAsync(async (req: Request, res: Response) => {
+    const user = await User.findById(req.params.id);
+    if (!user) {
+      throw new AppError('User not found', 404);
+    }
+
+    res.status(200).json({
+      status: 'success',
+      data: { user }
+    });
+  });
+
+  /**
    * Create a new user (Admin)
    */
   public createUser = catchAsync(async (req: Request, res: Response) => {
@@ -911,6 +1000,27 @@ class AdminController {
       status: 'success',
       message: 'User updated successfully',
       data: { user }
+    });
+  });
+
+  /**
+   * Get all referral details (Admin)
+   */
+  public getAllReferrals = catchAsync(async (req: Request, res: Response) => {
+    const referredUsers = await User.find({ referredBy: { $exists: true, $ne: null } })
+      .populate('referredBy', 'name email role referralCode')
+      .sort({ createdAt: -1 });
+
+    const topReferrers = await User.find({ referralCount: { $gt: 0 } })
+      .sort({ referralCount: -1 })
+      .limit(10);
+
+    res.status(200).json({
+      status: 'success',
+      data: {
+        referredUsers,
+        topReferrers
+      }
     });
   });
 

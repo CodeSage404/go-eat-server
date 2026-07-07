@@ -147,11 +147,31 @@ const userSchema = new mongoose_1.Schema({
             ref: 'Restaurant',
         },
     ],
+    referralCode: {
+        type: String,
+        unique: true,
+        sparse: true,
+    },
+    referredBy: {
+        type: mongoose_1.Schema.Types.ObjectId,
+        ref: 'User',
+    },
+    referralCount: {
+        type: Number,
+        default: 0,
+    },
+    referralEarnings: {
+        type: Number,
+        default: 0,
+    },
 }, {
     timestamps: true,
 });
-// Hash password before saving
+// Hash password before saving + generate referralCode
 userSchema.pre('save', async function () {
+    if (!this.referralCode) {
+        this.referralCode = `GE-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+    }
     if (!this.isModified('password'))
         return;
     this.password = await bcryptjs_1.default.hash(this.password, 12);

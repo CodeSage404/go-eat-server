@@ -6,63 +6,57 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const nodemailer_1 = __importDefault(require("nodemailer"));
 const logger_1 = __importDefault(require("./logger"));
 /**
- * Email Utility
- *
- * Supports two SMTP providers, auto-detected from environment variables:
- *
- *  Gmail (active by default — only needs user + pass):
- *    EMAIL_USER=your-gmail@gmail.com
- *    EMAIL_PASS=<16-char App Password>
- *
- *  cPanel SMTP (set EMAIL_HOST to activate):
- *    EMAIL_HOST=mail.yourdomain.com
- *    EMAIL_PORT=465
- *    EMAIL_USER=no-reply@yourdomain.com
- *    EMAIL_PASS=<cpanel_password>
- *    EMAIL_FROM="Go-eat Team" <no-reply@yourdomain.com>
- *
- *  To switch providers, just update the EMAIL_* values in .env and restart.
+ * Dynamic Multi-Channel Email Utility
+ * Manages separate connections for info@, partners@, and secure@ email interfaces.
  */
 class EmailUtil {
     constructor() {
-        const useGmail = !process.env.EMAIL_HOST;
-        if (useGmail) {
-            // nodemailer's built-in Gmail preset — no host/port needed
-            this.transporter = nodemailer_1.default.createTransport({
-                service: 'gmail',
-                auth: {
-                    user: process.env.EMAIL_USER,
-                    pass: process.env.EMAIL_PASS,
-                },
-            });
-            logger_1.default.info('📧 Email transporter: Gmail');
-        }
-        else {
-            // cPanel / custom SMTP
-            const port = Number(process.env.EMAIL_PORT) || 465;
-            this.transporter = nodemailer_1.default.createTransport({
-                host: process.env.EMAIL_HOST,
-                port,
-                secure: port === 465, // true for SSL (465), false for STARTTLS (587)
-                requireTLS: port !== 465,
-                auth: {
-                    user: process.env.EMAIL_USER,
-                    pass: process.env.EMAIL_PASS,
-                },
-                pool: true,
-                maxConnections: 5,
-                maxMessages: 100,
-            });
-            logger_1.default.info(`📧 Email transporter: cPanel (${process.env.EMAIL_HOST}:${port})`);
-        }
+        const host = process.env.EMAIL_HOST || 'mail.goeatng.com';
+        const port = Number(process.env.EMAIL_PORT) || 465;
+        const password = process.env.EMAIL_PASS || 'Ukolism_1_16!$';
+        // 1. Default info@goeatng.com transporter
+        this.defaultTransporter = nodemailer_1.default.createTransport({
+            host,
+            port,
+            secure: port === 465,
+            auth: {
+                user: 'info@goeatng.com',
+                pass: password,
+            },
+            pool: true,
+            maxConnections: 5,
+        });
+        // 2. partners@goeatng.com transporter
+        this.partnersTransporter = nodemailer_1.default.createTransport({
+            host,
+            port,
+            secure: port === 465,
+            auth: {
+                user: 'partners@goeatng.com',
+                pass: password,
+            },
+            pool: true,
+            maxConnections: 5,
+        });
+        // 3. secure@goeatng.com transporter
+        this.secureTransporter = nodemailer_1.default.createTransport({
+            host,
+            port,
+            secure: port === 465,
+            auth: {
+                user: 'secure@goeatng.com',
+                pass: password,
+            },
+            pool: true,
+            maxConnections: 5,
+        });
+        logger_1.default.info(`📧 Dynamic Email Transporters initialized (info, partners, secure) on ${host}`);
     }
     /**
-     * Send a 6-digit OTP verification email to the given address.
+     * Send a 6-digit OTP verification email using secure@goeatng.com
      */
     async sendOTP(email, otp) {
-        // Derive a sensible "from" address
-        const from = process.env.EMAIL_FROM ||
-            `"Go-eat Team" <${process.env.EMAIL_USER}>`;
+        const from = '"Go-eat Security" <secure@goeatng.com>';
         const html = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 10px;">
         <h2 style="color: #f59e0b; text-align: center;">Go-eat Verification Code</h2>
@@ -79,13 +73,13 @@ class EmailUtil {
       </div>
     `;
         try {
-            await this.transporter.sendMail({
+            await this.secureTransporter.sendMail({
                 from,
                 to: email,
                 subject: 'Your Go-eat verification code',
                 html,
             });
-            logger_1.default.info(`📧 OTP email sent to ${email}`);
+            logger_1.default.info(`📧 OTP email sent to ${email} via secure@goeatng.com`);
         }
         catch (error) {
             logger_1.default.error('❌ Error sending OTP email:', error);
@@ -93,22 +87,30 @@ class EmailUtil {
         }
     }
     /**
-     * Send a generic custom email.
+     * Send a custom email using a specific account (default to info@goeatng.com)
      */
-    async sendEmail(to, subject, html) {
-        const from = process.env.EMAIL_FROM ||
-            `"Go-eat Team" <${process.env.EMAIL_USER}>`;
+    async sendEmail(to, subject, html, senderType = 'default') {
+        let transporter = this.defaultTransporter;
+        let from = '"Go-eat Team" <info@goeatng.com>';
+        if (senderType === 'partners') {
+            transporter = this.partnersTransporter;
+            from = '"Go-eat Partners" <partners@goeatng.com>';
+        }
+        else if (senderType === 'secure') {
+            transporter = this.secureTransporter;
+            from = '"Go-eat Security" <secure@goeatng.com>';
+        }
         try {
-            await this.transporter.sendMail({
+            await transporter.sendMail({
                 from,
                 to,
                 subject,
                 html,
             });
-            logger_1.default.info(`📧 Custom email sent to ${to}`);
+            logger_1.default.info(`📧 Custom email sent to ${to} via ${from}`);
         }
         catch (error) {
-            logger_1.default.error('❌ Error sending custom email:', error);
+            logger_1.default.error(`❌ Error sending custom email via ${from}:`, error);
             throw error;
         }
     }

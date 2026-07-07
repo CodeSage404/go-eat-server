@@ -131,6 +131,27 @@ router.get('/users', adminController.getAllUsers);
 
 /**
  * @openapi
+ * /api/v1/admin/users/{id}:
+ *   get:
+ *     tags:
+ *       - Admin Dashboard
+ *     summary: Retrieve single user profile by ID
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: User profile details returned
+ */
+router.get('/users/:id', adminController.getUserById);
+
+/**
+ * @openapi
  * /api/v1/admin/users/{id}/status:
  *   patch:
  *     tags:
@@ -582,6 +603,59 @@ router.get('/transactions', adminController.getAllTransactions);
 
 /**
  * @openapi
+ * /api/v1/admin/transactions/{id}:
+ *   get:
+ *     tags:
+ *       - Admin Transactions
+ *     summary: Retrieve single transaction details by ID
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Transaction details returned successfully
+ */
+router.get('/transactions/:id', adminController.getTransactionById);
+
+/**
+ * @openapi
+ * /api/v1/admin/transactions/{id}/status:
+ *   patch:
+ *     tags:
+ *       - Admin Transactions
+ *     summary: Update status of a payment transaction
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [status]
+ *             properties:
+ *               status:
+ *                 type: string
+ *                 enum: [pending, completed, failed]
+ *     responses:
+ *       200:
+ *         description: Transaction status successfully updated
+ */
+router.patch('/transactions/:id/status', adminController.updateTransactionStatus);
+
+/**
+ * @openapi
  * /api/v1/admin/promos:
  *   get:
  *     tags:
@@ -837,6 +911,35 @@ router.get('/roles-permissions', adminController.getRolesPermissions);
 
 /**
  * @openapi
+ * /api/v1/admin/roles-permissions:
+ *   post:
+ *     tags:
+ *       - Admin Roles
+ *     summary: Create a new custom role with access permissions
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [roleName]
+ *             properties:
+ *               roleName:
+ *                 type: string
+ *               permissions:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *     responses:
+ *       201:
+ *         description: Role config successfully created
+ */
+router.post('/roles-permissions', adminController.createRolePermissions);
+
+/**
+ * @openapi
  * /api/v1/admin/roles-permissions/{id}:
  *   patch:
  *     tags:
@@ -897,5 +1000,20 @@ router.get('/audit-logs', adminController.getAuditLogs);
  *         description: System logs returned
  */
 router.get('/system-logs', adminController.getSystemLogs);
+
+/**
+ * @openapi
+ * /api/v1/admin/referrals:
+ *   get:
+ *     tags:
+ *       - Admin Referrals
+ *     summary: Retrieve referral statistics and lists of referred users
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Referral tree and top referrer leaderboards returned
+ */
+router.get('/referrals', adminController.getAllReferrals);
 
 export default router;

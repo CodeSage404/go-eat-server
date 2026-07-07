@@ -75,6 +75,18 @@ router.use((0, auth_middleware_1.restrictTo)(user_model_1.UserRole.ADMIN));
  *         description: Incorrect current password.
  */
 router.post('/auth/reset-password', admin_controller_1.default.adminResetPassword);
+/**
+ * @openapi
+ * /api/v1/admin/auth/refresh-token:
+ *   post:
+ *     tags:
+ *       - Admin Auth
+ *     summary: Refresh admin session token
+ *     description: Issue a fresh JWT token for the admin session.
+ *     responses:
+ *       200:
+ *         description: Token successfully refreshed.
+ */
 router.post('/auth/refresh-token', admin_controller_1.default.refreshAdminToken);
 /**
  * @openapi
@@ -113,6 +125,26 @@ router.get('/platform-stats', admin_controller_1.default.getPlatformStats);
  *         description: List of users returned
  */
 router.get('/users', admin_controller_1.default.getAllUsers);
+/**
+ * @openapi
+ * /api/v1/admin/users/{id}:
+ *   get:
+ *     tags:
+ *       - Admin Dashboard
+ *     summary: Retrieve single user profile by ID
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: User profile details returned
+ */
+router.get('/users/:id', admin_controller_1.default.getUserById);
 /**
  * @openapi
  * /api/v1/admin/users/{id}/status:
@@ -337,16 +369,269 @@ router.get('/restaurants/:id/orders', admin_controller_1.default.getRestaurantOr
  *         description: Vendor and restaurant successfully created
  */
 router.post('/restaurants/manual-signup', admin_controller_1.default.manuallyCreateRestaurant);
+/**
+ * @openapi
+ * /api/v1/admin/orders/{id}:
+ *   get:
+ *     tags:
+ *       - Admin Orders
+ *     summary: Get details of a specific order
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Order details returned successfully
+ */
 router.get('/orders/:id', admin_controller_1.default.getOrderById);
+/**
+ * @openapi
+ * /api/v1/admin/menu-items:
+ *   get:
+ *     tags:
+ *       - Admin Menu Items
+ *     summary: Get all menu items
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of menu items returned successfully
+ *   post:
+ *     tags:
+ *       - Admin Menu Items
+ *     summary: Create a new menu item
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [name, price, restaurantId]
+ *             properties:
+ *               name:
+ *                 type: string
+ *               price:
+ *                 type: number
+ *               restaurantId:
+ *                 type: string
+ *               description:
+ *                 type: string
+ *               category:
+ *                 type: string
+ *               image:
+ *                 type: string
+ *     responses:
+ *       201:
+ *         description: Menu item created successfully
+ */
 router.get('/menu-items', admin_controller_1.default.getAllMenuItems);
+/**
+ * @openapi
+ * /api/v1/admin/menu-items/{id}:
+ *   get:
+ *     tags:
+ *       - Admin Menu Items
+ *     summary: Get details of a specific menu item
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Menu item details returned
+ *   patch:
+ *     tags:
+ *       - Admin Menu Items
+ *     summary: Update details of a menu item
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *               price:
+ *                 type: number
+ *               description:
+ *                 type: string
+ *               category:
+ *                 type: string
+ *               status:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Menu item updated successfully
+ *   delete:
+ *     tags:
+ *       - Admin Menu Items
+ *     summary: Delete a menu item permanently
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Menu item deleted successfully
+ */
 router.get('/menu-items/:id', admin_controller_1.default.getMenuItemById);
 router.post('/menu-items', admin_controller_1.default.createMenuItem);
 router.patch('/menu-items/:id', admin_controller_1.default.updateMenuItem);
 router.delete('/menu-items/:id', admin_controller_1.default.deleteMenuItem);
+/**
+ * @openapi
+ * /api/v1/admin/bookings:
+ *   get:
+ *     tags:
+ *       - Admin Bookings
+ *     summary: Get list of all restaurant table bookings
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Bookings list returned
+ */
 router.get('/bookings', admin_controller_1.default.getAllBookings);
+/**
+ * @openapi
+ * /api/v1/admin/bookings/{id}:
+ *   get:
+ *     tags:
+ *       - Admin Bookings
+ *     summary: Get details of a booking
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Booking details returned
+ */
 router.get('/bookings/:id', admin_controller_1.default.getBookingById);
+/**
+ * @openapi
+ * /api/v1/admin/bookings/{id}/status:
+ *   patch:
+ *     tags:
+ *       - Admin Bookings
+ *     summary: Update status of a booking
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [status]
+ *             properties:
+ *               status:
+ *                 type: string
+ *                 enum: [pending, confirmed, cancelled]
+ *     responses:
+ *       200:
+ *         description: Booking status updated
+ */
 router.patch('/bookings/:id/status', admin_controller_1.default.updateBookingStatus);
+/**
+ * @openapi
+ * /api/v1/admin/transactions:
+ *   get:
+ *     tags:
+ *       - Admin Transactions
+ *     summary: Get list of all payment transactions
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Transactions list returned
+ */
 router.get('/transactions', admin_controller_1.default.getAllTransactions);
+/**
+ * @openapi
+ * /api/v1/admin/transactions/{id}:
+ *   get:
+ *     tags:
+ *       - Admin Transactions
+ *     summary: Retrieve single transaction details by ID
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Transaction details returned successfully
+ */
+router.get('/transactions/:id', admin_controller_1.default.getTransactionById);
+/**
+ * @openapi
+ * /api/v1/admin/transactions/{id}/status:
+ *   patch:
+ *     tags:
+ *       - Admin Transactions
+ *     summary: Update status of a payment transaction
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [status]
+ *             properties:
+ *               status:
+ *                 type: string
+ *                 enum: [pending, completed, failed]
+ *     responses:
+ *       200:
+ *         description: Transaction status successfully updated
+ */
+router.patch('/transactions/:id/status', admin_controller_1.default.updateTransactionStatus);
 /**
  * @openapi
  * /api/v1/admin/promos:
@@ -596,6 +881,34 @@ router.delete('/users/:id', admin_controller_1.default.deleteUser);
 router.get('/roles-permissions', admin_controller_1.default.getRolesPermissions);
 /**
  * @openapi
+ * /api/v1/admin/roles-permissions:
+ *   post:
+ *     tags:
+ *       - Admin Roles
+ *     summary: Create a new custom role with access permissions
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [roleName]
+ *             properties:
+ *               roleName:
+ *                 type: string
+ *               permissions:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *     responses:
+ *       201:
+ *         description: Role config successfully created
+ */
+router.post('/roles-permissions', admin_controller_1.default.createRolePermissions);
+/**
+ * @openapi
  * /api/v1/admin/roles-permissions/{id}:
  *   patch:
  *     tags:
@@ -654,4 +967,18 @@ router.get('/audit-logs', admin_controller_1.default.getAuditLogs);
  *         description: System logs returned
  */
 router.get('/system-logs', admin_controller_1.default.getSystemLogs);
+/**
+ * @openapi
+ * /api/v1/admin/referrals:
+ *   get:
+ *     tags:
+ *       - Admin Referrals
+ *     summary: Retrieve referral statistics and lists of referred users
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Referral tree and top referrer leaderboards returned
+ */
+router.get('/referrals', admin_controller_1.default.getAllReferrals);
 exports.default = router;
