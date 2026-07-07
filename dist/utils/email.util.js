@@ -14,7 +14,7 @@ class EmailUtil {
         const host = process.env.EMAIL_HOST || 'mail.goeatng.com';
         const port = Number(process.env.EMAIL_PORT) || 465;
         const password = process.env.EMAIL_PASS || 'Ukolism_1_16!$';
-        // 1. Default info@goeatng.com transporter
+        // Default info@goeatng.com transporter
         this.defaultTransporter = nodemailer_1.default.createTransport({
             host,
             port,
@@ -26,7 +26,7 @@ class EmailUtil {
             pool: true,
             maxConnections: 5,
         });
-        // 2. partners@goeatng.com transporter
+        // partners@goeatng.com transporter
         this.partnersTransporter = nodemailer_1.default.createTransport({
             host,
             port,
@@ -38,7 +38,7 @@ class EmailUtil {
             pool: true,
             maxConnections: 5,
         });
-        // 3. secure@goeatng.com transporter
+        // secure@goeatng.com transporter
         this.secureTransporter = nodemailer_1.default.createTransport({
             host,
             port,

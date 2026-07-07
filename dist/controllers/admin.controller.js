@@ -291,7 +291,6 @@ class AdminController {
          * Manually create a vendor user and their restaurant profile
          */
         this.manuallyCreateRestaurant = (0, catchAsync_1.catchAsync)(async (req, res) => {
-            // Supplying compatibility for both standard payload format & admin frontend onboarding form fields
             const name = req.body.restaurantName || req.body.businessName || req.body['Business Name'] || req.body['businessName'];
             const email = req.body.ownerEmail || req.body.emailAddress || req.body.platformUsername || req.body['Email Address'] || req.body['Platform Username'] || req.body['emailAddress'] || req.body['platformUsername'];
             const password = req.body.ownerPassword || req.body.loginPassword || req.body['Login Password'] || req.body['loginPassword'];
