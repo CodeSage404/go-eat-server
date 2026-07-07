@@ -75,6 +75,19 @@ router.use(restrictTo(UserRole.ADMIN));
  *         description: Incorrect current password.
  */
 router.post('/auth/reset-password', adminController.adminResetPassword);
+
+/**
+ * @openapi
+ * /api/v1/admin/auth/refresh-token:
+ *   post:
+ *     tags:
+ *       - Admin Auth
+ *     summary: Refresh admin session token
+ *     description: Issue a fresh JWT token for the admin session.
+ *     responses:
+ *       200:
+ *         description: Token successfully refreshed.
+ */
 router.post('/auth/refresh-token', adminController.refreshAdminToken);
 
 /**
