@@ -429,6 +429,25 @@ class AdminController {
             });
         });
         /**
+         * Update order status (Admin Override)
+         */
+        this.updateOrderStatus = (0, catchAsync_1.catchAsync)(async (req, res) => {
+            const { id } = req.params;
+            const { status } = req.body;
+            const order = await order_model_1.default.findByIdAndUpdate(id, { status }, { new: true, runValidators: true })
+                .populate('customer', 'name email phoneNumber')
+                .populate('restaurant', 'name address location phoneContact')
+                .populate('rider', 'name phoneNumber');
+            if (!order) {
+                throw new appError_1.default('Order not found', 404);
+            }
+            res.status(200).json({
+                status: 'success',
+                message: 'Order status updated successfully',
+                data: { order }
+            });
+        });
+        /**
          * Get all platform audit logs
          */
         this.getAuditLogs = (0, catchAsync_1.catchAsync)(async (req, res) => {

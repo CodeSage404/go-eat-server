@@ -460,6 +460,33 @@ class AdminController {
   });
 
   /**
+   * Update order status (Admin Override)
+   */
+  public updateOrderStatus = catchAsync(async (req: Request, res: Response) => {
+    const { id } = req.params;
+    const { status } = req.body;
+
+    const order = await Order.findByIdAndUpdate(
+      id,
+      { status },
+      { new: true, runValidators: true }
+    )
+    .populate('customer', 'name email phoneNumber')
+    .populate('restaurant', 'name address location phoneContact')
+    .populate('rider', 'name phoneNumber');
+
+    if (!order) {
+      throw new AppError('Order not found', 404);
+    }
+
+    res.status(200).json({
+      status: 'success',
+      message: 'Order status updated successfully',
+      data: { order }
+    });
+  });
+
+  /**
    * Get all platform audit logs
    */
   public getAuditLogs = catchAsync(async (req: Request, res: Response) => {

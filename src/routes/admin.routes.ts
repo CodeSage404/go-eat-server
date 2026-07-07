@@ -405,6 +405,38 @@ router.get('/orders/:id', adminController.getOrderById);
 
 /**
  * @openapi
+ * /api/v1/admin/orders/{id}/status:
+ *   patch:
+ *     tags:
+ *       - Admin Orders
+ *     summary: Update status of a specific order
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [status]
+ *             properties:
+ *               status:
+ *                 type: string
+ *                 enum: [pending, accepted, preparing, ready, out_for_delivery, delivered, cancelled]
+ *     responses:
+ *       200:
+ *         description: Order status updated successfully
+ */
+router.patch('/orders/:id/status', adminController.updateOrderStatus);
+
+/**
+ * @openapi
  * /api/v1/admin/menu-items:
  *   get:
  *     tags:

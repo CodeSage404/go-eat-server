@@ -391,6 +391,37 @@ router.post('/restaurants/manual-signup', admin_controller_1.default.manuallyCre
 router.get('/orders/:id', admin_controller_1.default.getOrderById);
 /**
  * @openapi
+ * /api/v1/admin/orders/{id}/status:
+ *   patch:
+ *     tags:
+ *       - Admin Orders
+ *     summary: Update status of a specific order
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [status]
+ *             properties:
+ *               status:
+ *                 type: string
+ *                 enum: [pending, accepted, preparing, ready, out_for_delivery, delivered, cancelled]
+ *     responses:
+ *       200:
+ *         description: Order status updated successfully
+ */
+router.patch('/orders/:id/status', admin_controller_1.default.updateOrderStatus);
+/**
+ * @openapi
  * /api/v1/admin/menu-items:
  *   get:
  *     tags:
