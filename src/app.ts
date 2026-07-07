@@ -24,6 +24,7 @@ import promoRoutes from './routes/promo.routes';
 import analyticsRoutes from './routes/analytics.routes';
 import supportRoutes from './routes/support.routes';
 import uploadRoutes from './routes/upload.routes';
+import { uploadDir } from './utils/upload';
 import walletRoutes from './routes/wallet.routes';
 import adminRoutes from './routes/admin.routes';
 
@@ -64,7 +65,7 @@ class App {
     this.app.use(cors());
     this.app.use(helmet());
     this.app.use(morgan('dev'));
-    this.app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+    this.app.use('/uploads', express.static(uploadDir));
   }
 
   private routes(): void {

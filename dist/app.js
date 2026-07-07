@@ -4,7 +4,6 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = __importDefault(require("express"));
-const path_1 = __importDefault(require("path"));
 const cors_1 = __importDefault(require("cors"));
 const helmet_1 = __importDefault(require("helmet"));
 const morgan_1 = __importDefault(require("morgan"));
@@ -28,6 +27,7 @@ const promo_routes_1 = __importDefault(require("./routes/promo.routes"));
 const analytics_routes_1 = __importDefault(require("./routes/analytics.routes"));
 const support_routes_1 = __importDefault(require("./routes/support.routes"));
 const upload_routes_1 = __importDefault(require("./routes/upload.routes"));
+const upload_1 = require("./utils/upload");
 const wallet_routes_1 = __importDefault(require("./routes/wallet.routes"));
 const admin_routes_1 = __importDefault(require("./routes/admin.routes"));
 const swagger_ui_express_1 = __importDefault(require("swagger-ui-express"));
@@ -58,7 +58,7 @@ class App {
         this.app.use((0, cors_1.default)());
         this.app.use((0, helmet_1.default)());
         this.app.use((0, morgan_1.default)('dev'));
-        this.app.use('/uploads', express_1.default.static(path_1.default.join(__dirname, '../uploads')));
+        this.app.use('/uploads', express_1.default.static(upload_1.uploadDir));
     }
     routes() {
         // Health Check

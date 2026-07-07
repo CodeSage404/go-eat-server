@@ -32,6 +32,10 @@ RUN npm install --omit=dev
 # Copy compiled code from build stage
 COPY --from=build /app/dist ./dist
 
+# Pre-create the uploads temp directory with correct permissions
+# /tmp is always writable by all users on Linux — this prevents EACCES errors
+RUN mkdir -p /tmp/uploads && chmod 777 /tmp/uploads
+
 # Create a non-root user for security
 # Alpine already has a 'node' user
 USER node
