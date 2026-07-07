@@ -12,7 +12,11 @@ import SystemLog from '../models/systemLog.model';
 import Booking from '../models/booking.model';
 import Promo from '../models/promo.model';
 import Notification from '../models/notification.model';
+import RolePermission from '../models/role.model';
 import notificationService from '../services/notification.service';
+import emailUtil from '../utils/email.util';
+import { sendSMS } from '../utils/sms.util';
+import logger from '../utils/logger';
 import { catchAsync } from '../utils/catchAsync';
 import AppError from '../utils/appError';
 
@@ -746,36 +750,182 @@ class AdminController {
    * Broadcast a notification to users of a specific role
    */
   public broadcastNotification = catchAsync(async (req: Request, res: Response) => {
-    const { title, body, targetRole } = req.body;
-    if (!title || !body || !targetRole) {
-      throw new AppError('Please provide title, body and targetRole', 400);
+    const { title, body, channels, recipientType, targetRole, userIds } = req.body;
+    
+    if (!title || !body || !channels || !Array.isArray(channels) || !recipientType) {
+      throw new AppError('Please provide title, body, channels array, and recipientType', 400);
     }
 
-    // Find targets
-    const query: any = {};
-    if (targetRole !== 'all') {
+    // Determine target users
+    let query: any = {};
+    if (recipientType === 'role' && targetRole && targetRole !== 'all') {
       query.role = targetRole;
+    } else if (recipientType === 'selected' && Array.isArray(userIds) && userIds.length > 0) {
+      query._id = { $in: userIds };
     }
-    const targetUsers = await User.find(query).select('_id');
 
-    // Send pushes asynchronously
-    const sendPromises = targetUsers.map(user => 
-      notificationService.sendNotification(user._id.toString(), title, body, { type: 'BROADCAST' })
-    );
-    await Promise.all(sendPromises);
+    const targetUsers = await User.find(query);
 
-    // Create log record
+    if (targetUsers.length === 0) {
+      throw new AppError('No target users found matching the criteria', 404);
+    }
+
+    // Send notifications concurrently
+    const notificationPromises = targetUsers.map(async (user) => {
+      const promises: Promise<any>[] = [];
+
+      // 1. Live Push Notifications (FCM / Socket.io)
+      if (channels.includes('push')) {
+        promises.push(
+          notificationService.sendNotification(user._id.toString(), title, body, { type: 'BROADCAST' })
+            .catch(err => logger.error(`Error sending push to ${user._id}:`, err))
+        );
+      }
+
+      // 2. Email Broadcast
+      if (channels.includes('email') && user.email) {
+        const emailHtml = `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 10px;">
+            <h2 style="color: #0F3725; text-align: center;">${title}</h2>
+            <p>Hello ${user.name},</p>
+            <p style="line-height: 1.6; color: #374151;">${body}</p>
+            <hr style="border: none; border-top: 1px solid #eeeeee; margin: 20px 0;" />
+            <p style="font-size: 11px; color: #6b7280; text-align: center;">
+              This is a global broadcast announcement from GoEat Admin.
+            </p>
+          </div>
+        `;
+        promises.push(
+          emailUtil.sendEmail(user.email, title, emailHtml)
+            .catch(err => logger.error(`Error sending email to ${user.email}:`, err))
+        );
+      }
+
+      // 3. SMS notification via Twilio
+      if (channels.includes('sms') && user.phoneNumber) {
+        promises.push(
+          sendSMS(user.phoneNumber, `${title}: ${body}`)
+            .catch(err => logger.error(`Error sending SMS to ${user.phoneNumber}:`, err))
+        );
+      }
+
+      return Promise.all(promises);
+    });
+
+    await Promise.all(notificationPromises);
+
+    // Save notification broadcast log to database
     const notification = await Notification.create({
       title,
       body,
-      targetRole,
+      targetRole: recipientType === 'role' ? targetRole : recipientType,
       sentCount: targetUsers.length
     });
 
     res.status(201).json({
       status: 'success',
-      message: `Notification broadcasted to ${targetUsers.length} users successfully.`,
+      message: `Notification broadcasted successfully via [${channels.join(', ')}] to ${targetUsers.length} users.`,
       data: { notification }
+    });
+  });
+
+  /**
+   * Get all role permission configurations
+   */
+  public getRolesPermissions = catchAsync(async (req: Request, res: Response) => {
+    const roles = await RolePermission.find().sort({ roleName: 1 });
+    res.status(200).json({
+      status: 'success',
+      results: roles.length,
+      data: { roles }
+    });
+  });
+
+  /**
+   * Update role permissions
+   */
+  public updateRolePermissions = catchAsync(async (req: Request, res: Response) => {
+    const { permissions } = req.body;
+    if (!Array.isArray(permissions)) {
+      throw new AppError('Permissions must be an array of strings', 400);
+    }
+
+    const role = await RolePermission.findByIdAndUpdate(
+      req.params.id,
+      { permissions },
+      { new: true, runValidators: true }
+    );
+
+    if (!role) {
+      throw new AppError('Role config not found', 404);
+    }
+
+    res.status(200).json({
+      status: 'success',
+      message: 'Role permissions updated successfully',
+      data: { role }
+    });
+  });
+
+  /**
+   * Create a new user (Admin)
+   */
+  public createUser = catchAsync(async (req: Request, res: Response) => {
+    const { name, email, password, phoneNumber, role, status } = req.body;
+    if (!name || !email || !password || !role) {
+      throw new AppError('Please specify name, email, password, and role', 400);
+    }
+
+    const user = await User.create({
+      name,
+      email: email.toLowerCase(),
+      password,
+      phoneNumber: phoneNumber || undefined,
+      role,
+      status: status || UserStatus.ACTIVE,
+      isVerified: true
+    });
+
+    res.status(201).json({
+      status: 'success',
+      message: 'User created successfully',
+      data: { user }
+    });
+  });
+
+  /**
+   * Update user details (Admin)
+   */
+  public updateUser = catchAsync(async (req: Request, res: Response) => {
+    const user = await User.findByIdAndUpdate(
+      req.params.id,
+      req.body,
+      { new: true, runValidators: true }
+    );
+
+    if (!user) {
+      throw new AppError('User not found', 404);
+    }
+
+    res.status(200).json({
+      status: 'success',
+      message: 'User updated successfully',
+      data: { user }
+    });
+  });
+
+  /**
+   * Delete user (Admin)
+   */
+  public deleteUser = catchAsync(async (req: Request, res: Response) => {
+    const user = await User.findByIdAndDelete(req.params.id);
+    if (!user) {
+      throw new AppError('User not found', 404);
+    }
+
+    res.status(200).json({
+      status: 'success',
+      message: 'User deleted successfully'
     });
   });
 }

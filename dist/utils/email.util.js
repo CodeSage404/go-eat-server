@@ -92,5 +92,25 @@ class EmailUtil {
             throw error;
         }
     }
+    /**
+     * Send a generic custom email.
+     */
+    async sendEmail(to, subject, html) {
+        const from = process.env.EMAIL_FROM ||
+            `"Go-eat Team" <${process.env.EMAIL_USER}>`;
+        try {
+            await this.transporter.sendMail({
+                from,
+                to,
+                subject,
+                html,
+            });
+            logger_1.default.info(`📧 Custom email sent to ${to}`);
+        }
+        catch (error) {
+            logger_1.default.error('❌ Error sending custom email:', error);
+            throw error;
+        }
+    }
 }
 exports.default = new EmailUtil();

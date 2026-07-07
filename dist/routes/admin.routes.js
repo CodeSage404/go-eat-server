@@ -347,12 +347,311 @@ router.get('/bookings', admin_controller_1.default.getAllBookings);
 router.get('/bookings/:id', admin_controller_1.default.getBookingById);
 router.patch('/bookings/:id/status', admin_controller_1.default.updateBookingStatus);
 router.get('/transactions', admin_controller_1.default.getAllTransactions);
+/**
+ * @openapi
+ * /api/v1/admin/promos:
+ *   get:
+ *     tags:
+ *       - Admin Promos
+ *     summary: Get all promo codes & coupons
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of promo codes returned
+ *   post:
+ *     tags:
+ *       - Admin Promos
+ *     summary: Create a new promo/coupon code
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [code, discountPercentage, expiryDate]
+ *             properties:
+ *               code:
+ *                 type: string
+ *               discountPercentage:
+ *                 type: number
+ *               expiryDate:
+ *                 type: string
+ *               maxDiscountAmount:
+ *                 type: number
+ *               minOrderAmount:
+ *                 type: number
+ *     responses:
+ *       201:
+ *         description: Promo created
+ */
 router.get('/promos', admin_controller_1.default.getAllPromos);
 router.post('/promos', admin_controller_1.default.createPromo);
+/**
+ * @openapi
+ * /api/v1/admin/promos/{id}/status:
+ *   patch:
+ *     tags:
+ *       - Admin Promos
+ *     summary: Toggle promo/coupon status
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [isActive]
+ *             properties:
+ *               isActive:
+ *                 type: boolean
+ *     responses:
+ *       200:
+ *         description: Status updated
+ */
 router.patch('/promos/:id/status', admin_controller_1.default.updatePromoStatus);
+/**
+ * @openapi
+ * /api/v1/admin/promos/{id}:
+ *   delete:
+ *     tags:
+ *       - Admin Promos
+ *     summary: Delete a promo/coupon code
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Promo deleted
+ */
 router.delete('/promos/:id', admin_controller_1.default.deletePromo);
+/**
+ * @openapi
+ * /api/v1/admin/notifications:
+ *   get:
+ *     tags:
+ *       - Admin Notifications
+ *     summary: Get notification broadcast log history
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Logs returned
+ */
 router.get('/notifications', admin_controller_1.default.getAllNotifications);
+/**
+ * @openapi
+ * /api/v1/admin/notifications/broadcast:
+ *   post:
+ *     tags:
+ *       - Admin Notifications
+ *     summary: Send a multi-channel broadcast (Push, Email, SMS)
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [title, body, channels, recipientType]
+ *             properties:
+ *               title:
+ *                 type: string
+ *               body:
+ *                 type: string
+ *               channels:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                   enum: [push, email, sms]
+ *               recipientType:
+ *                 type: string
+ *                 enum: [all, role, selected]
+ *               targetRole:
+ *                 type: string
+ *               userIds:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *     responses:
+ *       201:
+ *         description: Notification broadcast successfully queued/sent
+ */
 router.post('/notifications/broadcast', admin_controller_1.default.broadcastNotification);
+/**
+ * @openapi
+ * /api/v1/admin/users:
+ *   post:
+ *     tags:
+ *       - Admin User Management
+ *     summary: Create a new platform user account
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [name, email, password, role]
+ *             properties:
+ *               name:
+ *                 type: string
+ *               email:
+ *                 type: string
+ *               password:
+ *                 type: string
+ *               phoneNumber:
+ *                 type: string
+ *               role:
+ *                 type: string
+ *               status:
+ *                 type: string
+ *     responses:
+ *       201:
+ *         description: User created
+ */
+router.post('/users', admin_controller_1.default.createUser);
+/**
+ * @openapi
+ * /api/v1/admin/users/{id}:
+ *   patch:
+ *     tags:
+ *       - Admin User Management
+ *     summary: Update profile details or status of a user
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *               email:
+ *                 type: string
+ *               phoneNumber:
+ *                 type: string
+ *               role:
+ *                 type: string
+ *               status:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: User updated
+ *   delete:
+ *     tags:
+ *       - Admin User Management
+ *     summary: Delete a user account permanently
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: User deleted
+ */
+router.patch('/users/:id', admin_controller_1.default.updateUser);
+router.delete('/users/:id', admin_controller_1.default.deleteUser);
+/**
+ * @openapi
+ * /api/v1/admin/roles-permissions:
+ *   get:
+ *     tags:
+ *       - Admin Roles
+ *     summary: Get all roles & permissions matrix configs
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Matrix list returned
+ */
+router.get('/roles-permissions', admin_controller_1.default.getRolesPermissions);
+/**
+ * @openapi
+ * /api/v1/admin/roles-permissions/{id}:
+ *   patch:
+ *     tags:
+ *       - Admin Roles
+ *     summary: Update access permissions list for a role
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [permissions]
+ *             properties:
+ *               permissions:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *     responses:
+ *       200:
+ *         description: Permissions updated
+ */
+router.patch('/roles-permissions/:id', admin_controller_1.default.updateRolePermissions);
+/**
+ * @openapi
+ * /api/v1/admin/audit-logs:
+ *   get:
+ *     tags:
+ *       - Admin Audits
+ *     summary: Retrieve admin audit log events history
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Audit logs list returned
+ */
 router.get('/audit-logs', admin_controller_1.default.getAuditLogs);
+/**
+ * @openapi
+ * /api/v1/admin/system-logs:
+ *   get:
+ *     tags:
+ *       - Admin Audits
+ *     summary: Retrieve system diagnostic crash and event logs
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: System logs returned
+ */
 router.get('/system-logs', admin_controller_1.default.getSystemLogs);
 exports.default = router;

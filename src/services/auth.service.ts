@@ -31,6 +31,18 @@ class AuthService {
     }
 
     const user = await User.create(userData);
+    
+    if (user.referredBy) {
+      try {
+        await User.findByIdAndUpdate(user.referredBy, {
+          $inc: { referralCount: 1, referralEarnings: 500 }
+        });
+        logger.info(`🎁 Referral bonus applied to referrer: ${user.referredBy}`);
+      } catch (err) {
+        logger.error(`Failed to update referrer count:`, err);
+      }
+    }
+
     const token = this.signToken(user._id as unknown as string);
 
     user.password = undefined;

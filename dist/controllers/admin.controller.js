@@ -49,7 +49,11 @@ const systemLog_model_1 = __importDefault(require("../models/systemLog.model"));
 const booking_model_1 = __importDefault(require("../models/booking.model"));
 const promo_model_1 = __importDefault(require("../models/promo.model"));
 const notification_model_1 = __importDefault(require("../models/notification.model"));
+const role_model_1 = __importDefault(require("../models/role.model"));
 const notification_service_1 = __importDefault(require("../services/notification.service"));
+const email_util_1 = __importDefault(require("../utils/email.util"));
+const sms_util_1 = require("../utils/sms.util");
+const logger_1 = __importDefault(require("../utils/logger"));
 const catchAsync_1 = require("../utils/catchAsync");
 const appError_1 = __importDefault(require("../utils/appError"));
 class AdminController {
@@ -666,30 +670,144 @@ class AdminController {
          * Broadcast a notification to users of a specific role
          */
         this.broadcastNotification = (0, catchAsync_1.catchAsync)(async (req, res) => {
-            const { title, body, targetRole } = req.body;
-            if (!title || !body || !targetRole) {
-                throw new appError_1.default('Please provide title, body and targetRole', 400);
+            const { title, body, channels, recipientType, targetRole, userIds } = req.body;
+            if (!title || !body || !channels || !Array.isArray(channels) || !recipientType) {
+                throw new appError_1.default('Please provide title, body, channels array, and recipientType', 400);
             }
-            // Find targets
-            const query = {};
-            if (targetRole !== 'all') {
+            // Determine target users
+            let query = {};
+            if (recipientType === 'role' && targetRole && targetRole !== 'all') {
                 query.role = targetRole;
             }
-            const targetUsers = await user_model_1.default.find(query).select('_id');
-            // Send pushes asynchronously
-            const sendPromises = targetUsers.map(user => notification_service_1.default.sendNotification(user._id.toString(), title, body, { type: 'BROADCAST' }));
-            await Promise.all(sendPromises);
-            // Create log record
+            else if (recipientType === 'selected' && Array.isArray(userIds) && userIds.length > 0) {
+                query._id = { $in: userIds };
+            }
+            const targetUsers = await user_model_1.default.find(query);
+            if (targetUsers.length === 0) {
+                throw new appError_1.default('No target users found matching the criteria', 404);
+            }
+            // Send notifications concurrently
+            const notificationPromises = targetUsers.map(async (user) => {
+                const promises = [];
+                // 1. Live Push Notifications (FCM / Socket.io)
+                if (channels.includes('push')) {
+                    promises.push(notification_service_1.default.sendNotification(user._id.toString(), title, body, { type: 'BROADCAST' })
+                        .catch(err => logger_1.default.error(`Error sending push to ${user._id}:`, err)));
+                }
+                // 2. Email Broadcast
+                if (channels.includes('email') && user.email) {
+                    const emailHtml = `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 10px;">
+            <h2 style="color: #0F3725; text-align: center;">${title}</h2>
+            <p>Hello ${user.name},</p>
+            <p style="line-height: 1.6; color: #374151;">${body}</p>
+            <hr style="border: none; border-top: 1px solid #eeeeee; margin: 20px 0;" />
+            <p style="font-size: 11px; color: #6b7280; text-align: center;">
+              This is a global broadcast announcement from GoEat Admin.
+            </p>
+          </div>
+        `;
+                    promises.push(email_util_1.default.sendEmail(user.email, title, emailHtml)
+                        .catch(err => logger_1.default.error(`Error sending email to ${user.email}:`, err)));
+                }
+                // 3. SMS notification via Twilio
+                if (channels.includes('sms') && user.phoneNumber) {
+                    promises.push((0, sms_util_1.sendSMS)(user.phoneNumber, `${title}: ${body}`)
+                        .catch(err => logger_1.default.error(`Error sending SMS to ${user.phoneNumber}:`, err)));
+                }
+                return Promise.all(promises);
+            });
+            await Promise.all(notificationPromises);
+            // Save notification broadcast log to database
             const notification = await notification_model_1.default.create({
                 title,
                 body,
-                targetRole,
+                targetRole: recipientType === 'role' ? targetRole : recipientType,
                 sentCount: targetUsers.length
             });
             res.status(201).json({
                 status: 'success',
-                message: `Notification broadcasted to ${targetUsers.length} users successfully.`,
+                message: `Notification broadcasted successfully via [${channels.join(', ')}] to ${targetUsers.length} users.`,
                 data: { notification }
+            });
+        });
+        /**
+         * Get all role permission configurations
+         */
+        this.getRolesPermissions = (0, catchAsync_1.catchAsync)(async (req, res) => {
+            const roles = await role_model_1.default.find().sort({ roleName: 1 });
+            res.status(200).json({
+                status: 'success',
+                results: roles.length,
+                data: { roles }
+            });
+        });
+        /**
+         * Update role permissions
+         */
+        this.updateRolePermissions = (0, catchAsync_1.catchAsync)(async (req, res) => {
+            const { permissions } = req.body;
+            if (!Array.isArray(permissions)) {
+                throw new appError_1.default('Permissions must be an array of strings', 400);
+            }
+            const role = await role_model_1.default.findByIdAndUpdate(req.params.id, { permissions }, { new: true, runValidators: true });
+            if (!role) {
+                throw new appError_1.default('Role config not found', 404);
+            }
+            res.status(200).json({
+                status: 'success',
+                message: 'Role permissions updated successfully',
+                data: { role }
+            });
+        });
+        /**
+         * Create a new user (Admin)
+         */
+        this.createUser = (0, catchAsync_1.catchAsync)(async (req, res) => {
+            const { name, email, password, phoneNumber, role, status } = req.body;
+            if (!name || !email || !password || !role) {
+                throw new appError_1.default('Please specify name, email, password, and role', 400);
+            }
+            const user = await user_model_1.default.create({
+                name,
+                email: email.toLowerCase(),
+                password,
+                phoneNumber: phoneNumber || undefined,
+                role,
+                status: status || user_model_1.UserStatus.ACTIVE,
+                isVerified: true
+            });
+            res.status(201).json({
+                status: 'success',
+                message: 'User created successfully',
+                data: { user }
+            });
+        });
+        /**
+         * Update user details (Admin)
+         */
+        this.updateUser = (0, catchAsync_1.catchAsync)(async (req, res) => {
+            const user = await user_model_1.default.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
+            if (!user) {
+                throw new appError_1.default('User not found', 404);
+            }
+            res.status(200).json({
+                status: 'success',
+                message: 'User updated successfully',
+                data: { user }
+            });
+        });
+        /**
+         * Delete user (Admin)
+         */
+        this.deleteUser = (0, catchAsync_1.catchAsync)(async (req, res) => {
+            const user = await user_model_1.default.findByIdAndDelete(req.params.id);
+            if (!user) {
+                throw new appError_1.default('User not found', 404);
+            }
+            res.status(200).json({
+                status: 'success',
+                message: 'User deleted successfully'
             });
         });
     }

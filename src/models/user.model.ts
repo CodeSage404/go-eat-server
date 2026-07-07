@@ -42,6 +42,10 @@ export interface IUser extends Document {
     isDefault: boolean;
   }>;
   favorites: mongoose.Types.ObjectId[];
+  referralCode: string;
+  referredBy?: mongoose.Types.ObjectId;
+  referralCount: number;
+  referralEarnings: number;
   createdAt: Date;
   updatedAt: Date;
   comparePassword(password: string): Promise<boolean>;
@@ -143,14 +147,34 @@ const userSchema = new Schema<IUser>(
         ref: 'Restaurant',
       },
     ],
+    referralCode: {
+      type: String,
+      unique: true,
+      sparse: true,
+    },
+    referredBy: {
+      type: Schema.Types.ObjectId,
+      ref: 'User',
+    },
+    referralCount: {
+      type: Number,
+      default: 0,
+    },
+    referralEarnings: {
+      type: Number,
+      default: 0,
+    },
   },
   {
     timestamps: true,
   }
 );
 
-// Hash password before saving
+// Hash password before saving + generate referralCode
 userSchema.pre('save', async function () {
+  if (!this.referralCode) {
+    this.referralCode = `GE-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+  }
   if (!this.isModified('password')) return;
   this.password = await bcrypt.hash(this.password!, 12);
 });
