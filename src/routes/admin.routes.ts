@@ -361,17 +361,223 @@ router.get('/restaurants/:id/orders', adminController.getRestaurantOrders);
  */
 router.post('/restaurants/manual-signup', adminController.manuallyCreateRestaurant);
 
+/**
+ * @openapi
+ * /api/v1/admin/orders/{id}:
+ *   get:
+ *     tags:
+ *       - Admin Orders
+ *     summary: Get details of a specific order
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Order details returned successfully
+ */
 router.get('/orders/:id', adminController.getOrderById);
+
+/**
+ * @openapi
+ * /api/v1/admin/menu-items:
+ *   get:
+ *     tags:
+ *       - Admin Menu Items
+ *     summary: Get all menu items
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of menu items returned successfully
+ *   post:
+ *     tags:
+ *       - Admin Menu Items
+ *     summary: Create a new menu item
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [name, price, restaurantId]
+ *             properties:
+ *               name:
+ *                 type: string
+ *               price:
+ *                 type: number
+ *               restaurantId:
+ *                 type: string
+ *               description:
+ *                 type: string
+ *               category:
+ *                 type: string
+ *               image:
+ *                 type: string
+ *     responses:
+ *       201:
+ *         description: Menu item created successfully
+ */
 router.get('/menu-items', adminController.getAllMenuItems);
+
+/**
+ * @openapi
+ * /api/v1/admin/menu-items/{id}:
+ *   get:
+ *     tags:
+ *       - Admin Menu Items
+ *     summary: Get details of a specific menu item
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Menu item details returned
+ *   patch:
+ *     tags:
+ *       - Admin Menu Items
+ *     summary: Update details of a menu item
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *               price:
+ *                 type: number
+ *               description:
+ *                 type: string
+ *               category:
+ *                 type: string
+ *               status:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Menu item updated successfully
+ *   delete:
+ *     tags:
+ *       - Admin Menu Items
+ *     summary: Delete a menu item permanently
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Menu item deleted successfully
+ */
 router.get('/menu-items/:id', adminController.getMenuItemById);
 router.post('/menu-items', adminController.createMenuItem);
 router.patch('/menu-items/:id', adminController.updateMenuItem);
 router.delete('/menu-items/:id', adminController.deleteMenuItem);
 
+/**
+ * @openapi
+ * /api/v1/admin/bookings:
+ *   get:
+ *     tags:
+ *       - Admin Bookings
+ *     summary: Get list of all restaurant table bookings
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Bookings list returned
+ */
 router.get('/bookings', adminController.getAllBookings);
+
+/**
+ * @openapi
+ * /api/v1/admin/bookings/{id}:
+ *   get:
+ *     tags:
+ *       - Admin Bookings
+ *     summary: Get details of a booking
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Booking details returned
+ */
 router.get('/bookings/:id', adminController.getBookingById);
+
+/**
+ * @openapi
+ * /api/v1/admin/bookings/{id}/status:
+ *   patch:
+ *     tags:
+ *       - Admin Bookings
+ *     summary: Update status of a booking
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [status]
+ *             properties:
+ *               status:
+ *                 type: string
+ *                 enum: [pending, confirmed, cancelled]
+ *     responses:
+ *       200:
+ *         description: Booking status updated
+ */
 router.patch('/bookings/:id/status', adminController.updateBookingStatus);
 
+/**
+ * @openapi
+ * /api/v1/admin/transactions:
+ *   get:
+ *     tags:
+ *       - Admin Transactions
+ *     summary: Get list of all payment transactions
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Transactions list returned
+ */
 router.get('/transactions', adminController.getAllTransactions);
 
 /**
