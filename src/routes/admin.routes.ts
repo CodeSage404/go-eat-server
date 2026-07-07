@@ -1016,4 +1016,13 @@ router.get('/system-logs', adminController.getSystemLogs);
  */
 router.get('/referrals', adminController.getAllReferrals);
 
+// Reviews
+router.get('/reviews', adminController.getAllReviews);
+router.get('/reviews/:id', adminController.getReviewById);
+router.delete('/reviews/:id', adminController.deleteReview);
+
+// Platform Settings
+router.get('/settings', adminController.getSettings);
+router.patch('/settings', adminController.updateSettings);
+
 export default router;

@@ -13,6 +13,8 @@ import Booking from '../models/booking.model';
 import Promo from '../models/promo.model';
 import Notification from '../models/notification.model';
 import RolePermission from '../models/role.model';
+import Review from '../models/review.model';
+import Setting from '../models/setting.model';
 import notificationService from '../services/notification.service';
 import emailUtil from '../utils/email.util';
 import { sendSMS } from '../utils/sms.util';
@@ -1036,6 +1038,101 @@ class AdminController {
     res.status(200).json({
       status: 'success',
       message: 'User deleted successfully'
+    });
+  });
+
+  /**
+   * Get all customer reviews across the platform
+   */
+  public getAllReviews = catchAsync(async (req: Request, res: Response) => {
+    const { rating, restaurantId } = req.query;
+    const filter: any = {};
+    if (rating) filter.rating = Number(rating);
+    if (restaurantId) filter.restaurant = restaurantId;
+
+    const reviews = await Review.find(filter)
+      .populate('user', 'name email profileImage')
+      .populate('restaurant', 'name')
+      .populate('order', '_id totalAmount')
+      .sort({ createdAt: -1 });
+
+    res.status(200).json({
+      status: 'success',
+      results: reviews.length,
+      data: { reviews }
+    });
+  });
+
+  /**
+   * Get a single review by ID
+   */
+  public getReviewById = catchAsync(async (req: Request, res: Response) => {
+    const review = await Review.findById(req.params.id)
+      .populate('user', 'name email profileImage')
+      .populate('restaurant', 'name address')
+      .populate('order', '_id totalAmount createdAt');
+
+    if (!review) throw new AppError('Review not found', 404);
+
+    res.status(200).json({
+      status: 'success',
+      data: { review }
+    });
+  });
+
+  /**
+   * Delete a review (Admin moderation)
+   */
+  public deleteReview = catchAsync(async (req: Request, res: Response) => {
+    const review = await Review.findByIdAndDelete(req.params.id);
+    if (!review) throw new AppError('Review not found', 404);
+
+    res.status(200).json({
+      status: 'success',
+      message: 'Review removed successfully'
+    });
+  });
+
+  /**
+   * Get platform settings (singleton — auto-creates with defaults if not yet saved)
+   */
+  public getSettings = catchAsync(async (req: Request, res: Response) => {
+    let settings = await Setting.findOne();
+    if (!settings) {
+      settings = await Setting.create({});
+    }
+
+    res.status(200).json({
+      status: 'success',
+      data: { settings }
+    });
+  });
+
+  /**
+   * Update platform settings (upserts singleton)
+   */
+  public updateSettings = catchAsync(async (req: Request, res: Response) => {
+    const allowed = [
+      'appName', 'supportEmail', 'commissionRate', 'maxDeliveryDistance',
+      'maintenanceMode', 'enableNotifications', 'minOrderAmount',
+      'deliveryBaseFee', 'deliveryFeePerKm'
+    ];
+
+    const update: any = {};
+    allowed.forEach(key => {
+      if (req.body[key] !== undefined) update[key] = req.body[key];
+    });
+
+    const settings = await Setting.findOneAndUpdate(
+      {},
+      update,
+      { new: true, upsert: true, runValidators: true }
+    );
+
+    res.status(200).json({
+      status: 'success',
+      message: 'Platform settings updated successfully',
+      data: { settings }
     });
   });
 }

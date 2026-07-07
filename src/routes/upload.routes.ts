@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { v2 as cloudinary } from 'cloudinary';
+import multer from 'multer';
 import { upload } from '../utils/upload';
 import { protect } from '../middleware/auth.middleware';
 import { catchAsync } from '../utils/catchAsync';
@@ -7,9 +8,22 @@ import AppError from '../utils/appError';
 
 // Configure Cloudinary
 cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME || 'mock_cloud',
-  api_key: process.env.CLOUDINARY_API_KEY || 'mock_key',
-  api_secret: process.env.CLOUDINARY_API_SECRET || 'mock_secret',
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
+
+// In-memory multer for Cloudinary (no disk write needed)
+const memUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
+  fileFilter: (req, file, cb) => {
+    const allowed = /jpeg|jpg|png|webp/;
+    const ext = allowed.test(file.originalname.toLowerCase());
+    const mime = allowed.test(file.mimetype);
+    if (ext && mime) return cb(null, true);
+    cb(new Error('Only images (jpg, jpeg, png, webp) are allowed!'));
+  },
 });
 
 const router = Router();
@@ -74,7 +88,7 @@ router.post(
  *   post:
  *     tags:
  *       - Uploads
- *     summary: Upload an image file to Cloudinary
+ *     summary: Upload an image file to Cloudinary and receive a hosted URL
  *     security:
  *       - bearerAuth: []
  *     requestBody:
@@ -83,51 +97,61 @@ router.post(
  *         multipart/form-data:
  *           schema:
  *             type: object
+ *             required:
+ *               - image
  *             properties:
  *               image:
  *                 type: string
  *                 format: binary
+ *                 description: Image file (jpg, jpeg, png, webp, max 10MB)
  *     responses:
  *       200:
  *         description: Image uploaded to Cloudinary successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: success
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     imageUrl:
+ *                       type: string
+ *                       example: https://res.cloudinary.com/dqtjja88b/image/upload/v1234567890/sample.jpg
+ *       400:
+ *         description: No image provided or unsupported file type
+ *       500:
+ *         description: Cloudinary upload error
  */
 router.post(
   '/cloudinary',
-  upload.single('image'),
+  memUpload.single('image'),
   catchAsync(async (req: Request, res: Response) => {
     if (!req.file) {
       throw new AppError('No image file provided', 400);
     }
 
-    // Check if Cloudinary keys are configured
-    const isMock = 
-      !process.env.CLOUDINARY_CLOUD_NAME || 
-      process.env.CLOUDINARY_CLOUD_NAME.startsWith('your_') ||
-      process.env.CLOUDINARY_CLOUD_NAME === 'mock_cloud';
+    // Upload buffer directly to Cloudinary — no folder, returns hosted URL
+    const result = await new Promise<any>((resolve, reject) => {
+      const stream = cloudinary.uploader.upload_stream(
+        { resource_type: 'image' },
+        (err, result) => {
+          if (err || !result) return reject(err || new Error('Cloudinary upload failed'));
+          resolve(result);
+        }
+      );
+      stream.end(req.file!.buffer);
+    });
 
-    if (isMock) {
-      // Fallback mock upload locally
-      return res.status(200).json({
-        status: 'success',
-        data: {
-          imageUrl: `${req.protocol}://${req.get('host')}/uploads/${req.file.filename}`,
-        },
-      });
-    }
-
-    try {
-      const result = await cloudinary.uploader.upload(req.file.path, {
-        folder: 'go-eat',
-      });
-      res.status(200).json({
-        status: 'success',
-        data: {
-          imageUrl: result.secure_url,
-        },
-      });
-    } catch (err: any) {
-      throw new AppError(err.message || 'Cloudinary upload failed', 500);
-    }
+    res.status(200).json({
+      status: 'success',
+      data: {
+        imageUrl: result.secure_url,
+      },
+    });
   })
 );
 
