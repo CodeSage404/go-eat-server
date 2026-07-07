@@ -23,7 +23,7 @@ import paymentRoutes from './routes/payment.routes';
 import promoRoutes from './routes/promo.routes';
 import analyticsRoutes from './routes/analytics.routes';
 import supportRoutes from './routes/support.routes';
-// import uploadRoutes from './routes/upload.routes';
+import uploadRoutes from './routes/upload.routes';
 import walletRoutes from './routes/wallet.routes';
 import adminRoutes from './routes/admin.routes';
 
@@ -107,7 +107,7 @@ class App {
     this.app.use('/api/v1/promos', promoRoutes);
     this.app.use('/api/v1/analytics', analyticsRoutes);
     this.app.use('/api/v1/support', supportRoutes);
-    // this.app.use('/api/v1/upload', uploadRoutes);
+    this.app.use('/api/v1/upload', uploadRoutes);
     this.app.use('/api/v1/wallets', walletRoutes);
     this.app.use('/api/v1/admin', adminRoutes);
 
