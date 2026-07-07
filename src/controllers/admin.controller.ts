@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
 import fs from 'fs';
 import path from 'path';
+import mongoose from 'mongoose';
 import User, { UserRole, UserStatus } from '../models/user.model';
 import Restaurant, { RestaurantStatus } from '../models/restaurant.model';
 import Order, { OrderStatus } from '../models/order.model';
@@ -15,6 +16,7 @@ import Notification from '../models/notification.model';
 import RolePermission from '../models/role.model';
 import Review from '../models/review.model';
 import Setting from '../models/setting.model';
+import Category from '../models/category.model';
 import notificationService from '../services/notification.service';
 import emailUtil from '../utils/email.util';
 import { sendSMS } from '../utils/sms.util';
@@ -653,11 +655,28 @@ class AdminController {
       throw new AppError('Please provide name, price, category and restaurantId', 400);
     }
 
+    // Resolve category (find or create if it's a name instead of ObjectId)
+    let categoryId = category;
+    if (!mongoose.Types.ObjectId.isValid(category)) {
+      let existingCategory = await Category.findOne({
+        name: { $regex: new RegExp(`^${category.trim()}$`, 'i') },
+        restaurant: restaurantId
+      });
+      if (!existingCategory) {
+        existingCategory = await Category.create({
+          name: category.trim(),
+          restaurant: restaurantId,
+          order: 0
+        });
+      }
+      categoryId = existingCategory._id;
+    }
+
     const menuItem = await FoodItem.create({
       name,
       description: description || '',
       price: Number(price),
-      category,
+      category: categoryId,
       restaurant: restaurantId,
       isAvailable: isAvailable ?? true,
       isVegetarian: isVegetarian ?? false,

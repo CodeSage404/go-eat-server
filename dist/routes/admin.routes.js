@@ -981,4 +981,11 @@ router.get('/system-logs', admin_controller_1.default.getSystemLogs);
  *         description: Referral tree and top referrer leaderboards returned
  */
 router.get('/referrals', admin_controller_1.default.getAllReferrals);
+// Reviews
+router.get('/reviews', admin_controller_1.default.getAllReviews);
+router.get('/reviews/:id', admin_controller_1.default.getReviewById);
+router.delete('/reviews/:id', admin_controller_1.default.deleteReview);
+// Platform Settings
+router.get('/settings', admin_controller_1.default.getSettings);
+router.patch('/settings', admin_controller_1.default.updateSettings);
 exports.default = router;

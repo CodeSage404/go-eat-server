@@ -5,15 +5,29 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
 const cloudinary_1 = require("cloudinary");
+const multer_1 = __importDefault(require("multer"));
 const upload_1 = require("../utils/upload");
 const auth_middleware_1 = require("../middleware/auth.middleware");
 const catchAsync_1 = require("../utils/catchAsync");
 const appError_1 = __importDefault(require("../utils/appError"));
 // Configure Cloudinary
 cloudinary_1.v2.config({
-    cloud_name: process.env.CLOUDINARY_CLOUD_NAME || 'mock_cloud',
-    api_key: process.env.CLOUDINARY_API_KEY || 'mock_key',
-    api_secret: process.env.CLOUDINARY_API_SECRET || 'mock_secret',
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET,
+});
+// In-memory multer for Cloudinary (no disk write needed)
+const memUpload = (0, multer_1.default)({
+    storage: multer_1.default.memoryStorage(),
+    limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
+    fileFilter: (req, file, cb) => {
+        const allowed = /jpeg|jpg|png|webp/;
+        const ext = allowed.test(file.originalname.toLowerCase());
+        const mime = allowed.test(file.mimetype);
+        if (ext && mime)
+            return cb(null, true);
+        cb(new Error('Only images (jpg, jpeg, png, webp) are allowed!'));
+    },
 });
 const router = (0, express_1.Router)();
 router.use(auth_middleware_1.protect);
@@ -69,7 +83,7 @@ router.post('/image', upload_1.upload.single('image'), (0, catchAsync_1.catchAsy
  *   post:
  *     tags:
  *       - Uploads
- *     summary: Upload an image file to Cloudinary
+ *     summary: Upload an image file to Cloudinary and receive a hosted URL
  *     security:
  *       - bearerAuth: []
  *     requestBody:
@@ -78,44 +92,53 @@ router.post('/image', upload_1.upload.single('image'), (0, catchAsync_1.catchAsy
  *         multipart/form-data:
  *           schema:
  *             type: object
+ *             required:
+ *               - image
  *             properties:
  *               image:
  *                 type: string
  *                 format: binary
+ *                 description: Image file (jpg, jpeg, png, webp, max 10MB)
  *     responses:
  *       200:
  *         description: Image uploaded to Cloudinary successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: success
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     imageUrl:
+ *                       type: string
+ *                       example: https://res.cloudinary.com/dqtjja88b/image/upload/v1234567890/sample.jpg
+ *       400:
+ *         description: No image provided or unsupported file type
+ *       500:
+ *         description: Cloudinary upload error
  */
-router.post('/cloudinary', upload_1.upload.single('image'), (0, catchAsync_1.catchAsync)(async (req, res) => {
+router.post('/cloudinary', memUpload.single('image'), (0, catchAsync_1.catchAsync)(async (req, res) => {
     if (!req.file) {
         throw new appError_1.default('No image file provided', 400);
     }
-    // Check if Cloudinary keys are configured
-    const isMock = !process.env.CLOUDINARY_CLOUD_NAME ||
-        process.env.CLOUDINARY_CLOUD_NAME.startsWith('your_') ||
-        process.env.CLOUDINARY_CLOUD_NAME === 'mock_cloud';
-    if (isMock) {
-        // Fallback mock upload locally
-        return res.status(200).json({
-            status: 'success',
-            data: {
-                imageUrl: `${req.protocol}://${req.get('host')}/uploads/${req.file.filename}`,
-            },
+    // Upload buffer directly to Cloudinary — no folder, returns hosted URL
+    const result = await new Promise((resolve, reject) => {
+        const stream = cloudinary_1.v2.uploader.upload_stream({ resource_type: 'image' }, (err, result) => {
+            if (err || !result)
+                return reject(err || new Error('Cloudinary upload failed'));
+            resolve(result);
         });
-    }
-    try {
-        const result = await cloudinary_1.v2.uploader.upload(req.file.path, {
-            folder: 'go-eat',
-        });
-        res.status(200).json({
-            status: 'success',
-            data: {
-                imageUrl: result.secure_url,
-            },
-        });
-    }
-    catch (err) {
-        throw new appError_1.default(err.message || 'Cloudinary upload failed', 500);
-    }
+        stream.end(req.file.buffer);
+    });
+    res.status(200).json({
+        status: 'success',
+        data: {
+            imageUrl: result.secure_url,
+        },
+    });
 }));
 exports.default = router;

@@ -39,6 +39,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const fs_1 = __importDefault(require("fs"));
 const path_1 = __importDefault(require("path"));
+const mongoose_1 = __importDefault(require("mongoose"));
 const user_model_1 = __importStar(require("../models/user.model"));
 const restaurant_model_1 = __importStar(require("../models/restaurant.model"));
 const order_model_1 = __importStar(require("../models/order.model"));
@@ -50,6 +51,9 @@ const booking_model_1 = __importDefault(require("../models/booking.model"));
 const promo_model_1 = __importDefault(require("../models/promo.model"));
 const notification_model_1 = __importDefault(require("../models/notification.model"));
 const role_model_1 = __importDefault(require("../models/role.model"));
+const review_model_1 = __importDefault(require("../models/review.model"));
+const setting_model_1 = __importDefault(require("../models/setting.model"));
+const category_model_1 = __importDefault(require("../models/category.model"));
 const notification_service_1 = __importDefault(require("../services/notification.service"));
 const email_util_1 = __importDefault(require("../utils/email.util"));
 const sms_util_1 = require("../utils/sms.util");
@@ -586,11 +590,27 @@ class AdminController {
             if (!name || !price || !category || !restaurantId) {
                 throw new appError_1.default('Please provide name, price, category and restaurantId', 400);
             }
+            // Resolve category (find or create if it's a name instead of ObjectId)
+            let categoryId = category;
+            if (!mongoose_1.default.Types.ObjectId.isValid(category)) {
+                let existingCategory = await category_model_1.default.findOne({
+                    name: { $regex: new RegExp(`^${category.trim()}$`, 'i') },
+                    restaurant: restaurantId
+                });
+                if (!existingCategory) {
+                    existingCategory = await category_model_1.default.create({
+                        name: category.trim(),
+                        restaurant: restaurantId,
+                        order: 0
+                    });
+                }
+                categoryId = existingCategory._id;
+            }
             const menuItem = await foodItem_model_1.default.create({
                 name,
                 description: description || '',
                 price: Number(price),
-                category,
+                category: categoryId,
                 restaurant: restaurantId,
                 isAvailable: isAvailable ?? true,
                 isVegetarian: isVegetarian ?? false,
@@ -898,6 +918,88 @@ class AdminController {
             res.status(200).json({
                 status: 'success',
                 message: 'User deleted successfully'
+            });
+        });
+        /**
+         * Get all customer reviews across the platform
+         */
+        this.getAllReviews = (0, catchAsync_1.catchAsync)(async (req, res) => {
+            const { rating, restaurantId } = req.query;
+            const filter = {};
+            if (rating)
+                filter.rating = Number(rating);
+            if (restaurantId)
+                filter.restaurant = restaurantId;
+            const reviews = await review_model_1.default.find(filter)
+                .populate('user', 'name email profileImage')
+                .populate('restaurant', 'name')
+                .populate('order', '_id totalAmount')
+                .sort({ createdAt: -1 });
+            res.status(200).json({
+                status: 'success',
+                results: reviews.length,
+                data: { reviews }
+            });
+        });
+        /**
+         * Get a single review by ID
+         */
+        this.getReviewById = (0, catchAsync_1.catchAsync)(async (req, res) => {
+            const review = await review_model_1.default.findById(req.params.id)
+                .populate('user', 'name email profileImage')
+                .populate('restaurant', 'name address')
+                .populate('order', '_id totalAmount createdAt');
+            if (!review)
+                throw new appError_1.default('Review not found', 404);
+            res.status(200).json({
+                status: 'success',
+                data: { review }
+            });
+        });
+        /**
+         * Delete a review (Admin moderation)
+         */
+        this.deleteReview = (0, catchAsync_1.catchAsync)(async (req, res) => {
+            const review = await review_model_1.default.findByIdAndDelete(req.params.id);
+            if (!review)
+                throw new appError_1.default('Review not found', 404);
+            res.status(200).json({
+                status: 'success',
+                message: 'Review removed successfully'
+            });
+        });
+        /**
+         * Get platform settings (singleton — auto-creates with defaults if not yet saved)
+         */
+        this.getSettings = (0, catchAsync_1.catchAsync)(async (req, res) => {
+            let settings = await setting_model_1.default.findOne();
+            if (!settings) {
+                settings = await setting_model_1.default.create({});
+            }
+            res.status(200).json({
+                status: 'success',
+                data: { settings }
+            });
+        });
+        /**
+         * Update platform settings (upserts singleton)
+         */
+        this.updateSettings = (0, catchAsync_1.catchAsync)(async (req, res) => {
+            const allowed = [
+                'appName', 'supportEmail', 'commissionRate', 'maxDeliveryDistance',
+                'maintenanceMode', 'enableNotifications', 'minOrderAmount',
+                'deliveryBaseFee', 'deliveryFeePerKm'
+            ];
+            const update = {};
+            allowed.forEach(key => {
+                if (req.body[key] !== undefined)
+                    update[key] = req.body[key];
+            });
+            const settings = await setting_model_1.default.findOneAndUpdate({}, update, { new: true, upsert: true, runValidators: true });
+            res.status(200).json({
+                status: 'success',
+                message: 'Platform settings updated successfully',
+                data: { settings }
             });
         });
     }
