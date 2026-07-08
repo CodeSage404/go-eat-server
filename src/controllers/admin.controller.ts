@@ -326,7 +326,17 @@ class AdminController {
     });
     
     if (existingUser) {
-      throw new AppError('A user with this email or phone number already exists', 400);
+      if (existingUser.role === UserRole.VENDOR) {
+        const hasRestaurant = await Restaurant.findOne({ owner: existingUser._id });
+        if (!hasRestaurant) {
+          // Self-healing: Clean up dangling vendor user with no restaurant
+          await User.findByIdAndDelete(existingUser._id);
+        } else {
+          throw new AppError('A user with this email or phone number already exists', 400);
+        }
+      } else {
+        throw new AppError('A user with this email or phone number already exists', 400);
+      }
     }
 
     // Create the vendor user
@@ -367,26 +377,32 @@ class AdminController {
       close: '22:00'
     };
 
-    // Create the restaurant
-    const restaurant = await Restaurant.create({
-      owner: user._id,
-      name: name,
-      description: description,
-      address: finalAddress,
-      location: finalLocation,
-      cuisine: cuisineArray,
-      openingHours: finalOpeningHours,
-      status: RestaurantStatus.ACTIVE, // Auto-approved
-    });
+    try {
+      // Create the restaurant
+      const restaurant = await Restaurant.create({
+        owner: user._id,
+        name: name,
+        description: description,
+        address: finalAddress,
+        location: finalLocation,
+        cuisine: cuisineArray,
+        openingHours: finalOpeningHours,
+        status: RestaurantStatus.ACTIVE, // Auto-approved
+      });
 
-    res.status(201).json({
-      status: 'success',
-      message: 'Vendor and restaurant successfully created',
-      data: {
-        user,
-        restaurant
-      }
-    });
+      res.status(201).json({
+        status: 'success',
+        message: 'Vendor and restaurant successfully created',
+        data: {
+          user,
+          restaurant
+        }
+      });
+    } catch (err) {
+      // Clean up the created vendor user if restaurant creation fails
+      await User.findByIdAndDelete(user._id);
+      throw err;
+    }
   });
 
   /**

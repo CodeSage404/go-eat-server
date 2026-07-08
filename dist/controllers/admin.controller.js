@@ -312,7 +312,19 @@ class AdminController {
                 ]
             });
             if (existingUser) {
-                throw new appError_1.default('A user with this email or phone number already exists', 400);
+                if (existingUser.role === user_model_1.UserRole.VENDOR) {
+                    const hasRestaurant = await restaurant_model_1.default.findOne({ owner: existingUser._id });
+                    if (!hasRestaurant) {
+                        // Self-healing: Clean up dangling vendor user with no restaurant
+                        await user_model_1.default.findByIdAndDelete(existingUser._id);
+                    }
+                    else {
+                        throw new appError_1.default('A user with this email or phone number already exists', 400);
+                    }
+                }
+                else {
+                    throw new appError_1.default('A user with this email or phone number already exists', 400);
+                }
             }
             // Create the vendor user
             const user = await user_model_1.default.create({
@@ -348,25 +360,32 @@ class AdminController {
                 open: '08:00',
                 close: '22:00'
             };
-            // Create the restaurant
-            const restaurant = await restaurant_model_1.default.create({
-                owner: user._id,
-                name: name,
-                description: description,
-                address: finalAddress,
-                location: finalLocation,
-                cuisine: cuisineArray,
-                openingHours: finalOpeningHours,
-                status: restaurant_model_1.RestaurantStatus.ACTIVE, // Auto-approved
-            });
-            res.status(201).json({
-                status: 'success',
-                message: 'Vendor and restaurant successfully created',
-                data: {
-                    user,
-                    restaurant
-                }
-            });
+            try {
+                // Create the restaurant
+                const restaurant = await restaurant_model_1.default.create({
+                    owner: user._id,
+                    name: name,
+                    description: description,
+                    address: finalAddress,
+                    location: finalLocation,
+                    cuisine: cuisineArray,
+                    openingHours: finalOpeningHours,
+                    status: restaurant_model_1.RestaurantStatus.ACTIVE, // Auto-approved
+                });
+                res.status(201).json({
+                    status: 'success',
+                    message: 'Vendor and restaurant successfully created',
+                    data: {
+                        user,
+                        restaurant
+                    }
+                });
+            }
+            catch (err) {
+                // Clean up the created vendor user if restaurant creation fails
+                await user_model_1.default.findByIdAndDelete(user._id);
+                throw err;
+            }
         });
         /**
          * Get profile details of a single restaurant by ID
