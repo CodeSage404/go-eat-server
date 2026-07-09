@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
-import User, { IUser, UserRole } from '../models/user.model';
+import User, { IUser, UserRole, UserStatus } from '../models/user.model';
+import RolePermission from '../models/role.model';
 import { catchAsync } from '../utils/catchAsync';
 import AppError from '../utils/appError';
 
@@ -45,4 +46,28 @@ export const restrictTo = (...roles: UserRole[]) => {
     }
     next();
   };
+};
+
+export const checkPermission = (...permissions: string[]) => {
+  return catchAsync(async (req: AuthRequest, res: Response, next: NextFunction) => {
+    if (!req.user) {
+      return next(new AppError('You are not logged in!', 401));
+    }
+
+    // 1. Super Admin bypass
+    if (req.user.role === UserRole.ADMIN && (!req.user.customRole || req.user.customRole === 'super-admin')) {
+      return next();
+    }
+
+    // 2. Custom Admin checks
+    if (req.user.role === UserRole.ADMIN && req.user.customRole) {
+      const rolePerm = await RolePermission.findOne({ roleName: req.user.customRole });
+      if (rolePerm) {
+        const hasAny = permissions.some(p => rolePerm.permissions.includes(p));
+        if (hasAny) return next();
+      }
+    }
+
+    return next(new AppError('You do not have permission to perform this action', 403));
+  });
 };

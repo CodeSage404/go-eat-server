@@ -21,6 +21,7 @@ export interface IUser extends Document {
   role: UserRole;
   status: UserStatus;
   phoneNumber?: string;
+  customRole?: string;
   profileImage?: string;
   fcmToken?: string;
   notificationsEnabled: boolean;
@@ -85,6 +86,11 @@ const userSchema = new Schema<IUser>(
       type: String,
       unique: true,
       sparse: true,
+      trim: true,
+    },
+    customRole: {
+      type: String,
+      lowercase: true,
       trim: true,
     },
     profileImage: {

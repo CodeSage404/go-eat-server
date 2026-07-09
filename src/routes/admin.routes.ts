@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import adminController from '../controllers/admin.controller';
-import { protect, restrictTo } from '../middleware/auth.middleware';
+import { protect, restrictTo, checkPermission } from '../middleware/auth.middleware';
 import { UserRole } from '../models/user.model';
 
 const router = Router();
@@ -127,7 +127,7 @@ router.get('/platform-stats', adminController.getPlatformStats);
  *       200:
  *         description: List of users returned
  */
-router.get('/users', adminController.getAllUsers);
+router.get('/users', checkPermission('users.read'), adminController.getAllUsers);
 
 /**
  * @openapi
@@ -148,7 +148,7 @@ router.get('/users', adminController.getAllUsers);
  *       200:
  *         description: User profile details returned
  */
-router.get('/users/:id', adminController.getUserById);
+router.get('/users/:id', checkPermission('users.read'), adminController.getUserById);
 
 /**
  * @openapi
@@ -180,7 +180,7 @@ router.get('/users/:id', adminController.getUserById);
  *       200:
  *         description: Status updated
  */
-router.post('/users/:id/status', adminController.updateUserStatus);
+router.post('/users/:id/status', checkPermission('users.suspend'), adminController.updateUserStatus);
 
 /**
  * @openapi
@@ -200,7 +200,7 @@ router.post('/users/:id/status', adminController.updateUserStatus);
  *       200:
  *         description: List of restaurants returned
  */
-router.get('/restaurants', adminController.getAllRestaurants);
+router.get('/restaurants', checkPermission('restaurants.crud', 'restaurants.approve'), adminController.getAllRestaurants);
 
 /**
  * @openapi
@@ -220,7 +220,7 @@ router.get('/restaurants', adminController.getAllRestaurants);
  *       200:
  *         description: List of orders returned
  */
-router.get('/orders', adminController.getAllOrders);
+router.get('/orders', checkPermission('orders.read', 'orders.dispatch', 'orders.accept'), adminController.getAllOrders);
 
 /**
  * @openapi
@@ -252,7 +252,7 @@ router.get('/orders', adminController.getAllOrders);
  *       200:
  *         description: Restaurant status updated successfully
  */
-router.post('/restaurants/:id/status', adminController.updateRestaurantStatus);
+router.post('/restaurants/:id/status', checkPermission('restaurants.approve', 'restaurants.suspend'), adminController.updateRestaurantStatus);
 
 // Add these to your admin routes list
 // router.get('/restaurants/:id', adminController.getRestaurantById);
@@ -293,7 +293,7 @@ router.post('/restaurants/:id/status', adminController.updateRestaurantStatus);
  * 404:
  * description: Restaurant not found
  */
-router.get('/restaurants/:id', adminController.getRestaurantById);
+router.get('/restaurants/:id', checkPermission('restaurants.crud'), adminController.getRestaurantById);
 
 /**
  * @openapi
@@ -335,7 +335,7 @@ router.get('/restaurants/:id', adminController.getRestaurantById);
  * 404:
  * description: Restaurant not found
  */
-router.get('/restaurants/:id/orders', adminController.getRestaurantOrders);
+router.get('/restaurants/:id/orders', checkPermission('orders.read'), adminController.getRestaurantOrders);
 
 /**
  * @openapi
@@ -380,7 +380,7 @@ router.get('/restaurants/:id/orders', adminController.getRestaurantOrders);
  *       201:
  *         description: Vendor and restaurant successfully created
  */
-router.post('/restaurants/manual-signup', adminController.manuallyCreateRestaurant);
+router.post('/restaurants/manual-signup', checkPermission('restaurants.crud'), adminController.manuallyCreateRestaurant);
 
 /**
  * @openapi
@@ -401,7 +401,7 @@ router.post('/restaurants/manual-signup', adminController.manuallyCreateRestaura
  *       200:
  *         description: Order details returned successfully
  */
-router.get('/orders/:id', adminController.getOrderById);
+router.get('/orders/:id', checkPermission('orders.read'), adminController.getOrderById);
 
 /**
  * @openapi
@@ -433,7 +433,7 @@ router.get('/orders/:id', adminController.getOrderById);
  *       200:
  *         description: Order status updated successfully
  */
-router.patch('/orders/:id/status', adminController.updateOrderStatus);
+router.patch('/orders/:id/status', checkPermission('orders.accept', 'orders.dispatch'), adminController.updateOrderStatus);
 
 /**
  * @openapi
@@ -477,7 +477,7 @@ router.patch('/orders/:id/status', adminController.updateOrderStatus);
  *       201:
  *         description: Menu item created successfully
  */
-router.get('/menu-items', adminController.getAllMenuItems);
+router.get('/menu-items', checkPermission('restaurants.crud'), adminController.getAllMenuItems);
 
 /**
  * @openapi
@@ -545,10 +545,10 @@ router.get('/menu-items', adminController.getAllMenuItems);
  *       200:
  *         description: Menu item deleted successfully
  */
-router.get('/menu-items/:id', adminController.getMenuItemById);
-router.post('/menu-items', adminController.createMenuItem);
-router.patch('/menu-items/:id', adminController.updateMenuItem);
-router.delete('/menu-items/:id', adminController.deleteMenuItem);
+router.get('/menu-items/:id', checkPermission('restaurants.crud'), adminController.getMenuItemById);
+router.post('/menu-items', checkPermission('restaurants.crud'), adminController.createMenuItem);
+router.patch('/menu-items/:id', checkPermission('restaurants.crud'), adminController.updateMenuItem);
+router.delete('/menu-items/:id', checkPermission('restaurants.crud'), adminController.deleteMenuItem);
 
 /**
  * @openapi
@@ -563,7 +563,7 @@ router.delete('/menu-items/:id', adminController.deleteMenuItem);
  *       200:
  *         description: Bookings list returned
  */
-router.get('/bookings', adminController.getAllBookings);
+router.get('/bookings', checkPermission('orders.read'), adminController.getAllBookings);
 
 /**
  * @openapi
@@ -584,7 +584,7 @@ router.get('/bookings', adminController.getAllBookings);
  *       200:
  *         description: Booking details returned
  */
-router.get('/bookings/:id', adminController.getBookingById);
+router.get('/bookings/:id', checkPermission('orders.read'), adminController.getBookingById);
 
 /**
  * @openapi
@@ -616,7 +616,7 @@ router.get('/bookings/:id', adminController.getBookingById);
  *       200:
  *         description: Booking status updated
  */
-router.patch('/bookings/:id/status', adminController.updateBookingStatus);
+router.patch('/bookings/:id/status', checkPermission('orders.accept'), adminController.updateBookingStatus);
 
 /**
  * @openapi
@@ -631,7 +631,7 @@ router.patch('/bookings/:id/status', adminController.updateBookingStatus);
  *       200:
  *         description: Transactions list returned
  */
-router.get('/transactions', adminController.getAllTransactions);
+router.get('/transactions', checkPermission('payouts.manage'), adminController.getAllTransactions);
 
 /**
  * @openapi
@@ -652,7 +652,7 @@ router.get('/transactions', adminController.getAllTransactions);
  *       200:
  *         description: Transaction details returned successfully
  */
-router.get('/transactions/:id', adminController.getTransactionById);
+router.get('/transactions/:id', checkPermission('payouts.manage'), adminController.getTransactionById);
 
 /**
  * @openapi
@@ -684,7 +684,7 @@ router.get('/transactions/:id', adminController.getTransactionById);
  *       200:
  *         description: Transaction status successfully updated
  */
-router.patch('/transactions/:id/status', adminController.updateTransactionStatus);
+router.patch('/transactions/:id/status', checkPermission('payouts.manage'), adminController.updateTransactionStatus);
 
 /**
  * @openapi
@@ -726,8 +726,8 @@ router.patch('/transactions/:id/status', adminController.updateTransactionStatus
  *       201:
  *         description: Promo created
  */
-router.get('/promos', adminController.getAllPromos);
-router.post('/promos', adminController.createPromo);
+router.get('/promos', checkPermission('promo.manage'), adminController.getAllPromos);
+router.post('/promos', checkPermission('promo.manage'), adminController.createPromo);
 
 /**
  * @openapi
@@ -758,7 +758,7 @@ router.post('/promos', adminController.createPromo);
  *       200:
  *         description: Status updated
  */
-router.patch('/promos/:id/status', adminController.updatePromoStatus);
+router.patch('/promos/:id/status', checkPermission('promo.manage'), adminController.updatePromoStatus);
 
 /**
  * @openapi
@@ -779,7 +779,7 @@ router.patch('/promos/:id/status', adminController.updatePromoStatus);
  *       200:
  *         description: Promo deleted
  */
-router.delete('/promos/:id', adminController.deletePromo);
+router.delete('/promos/:id', checkPermission('promo.manage'), adminController.deletePromo);
 
 /**
  * @openapi
@@ -794,7 +794,7 @@ router.delete('/promos/:id', adminController.deletePromo);
  *       200:
  *         description: Logs returned
  */
-router.get('/notifications', adminController.getAllNotifications);
+router.get('/notifications', checkPermission('notifications.broadcast'), adminController.getAllNotifications);
 
 /**
  * @openapi
@@ -835,7 +835,7 @@ router.get('/notifications', adminController.getAllNotifications);
  *       201:
  *         description: Notification broadcast successfully queued/sent
  */
-router.post('/notifications/broadcast', adminController.broadcastNotification);
+router.post('/notifications/broadcast', checkPermission('notifications.broadcast'), adminController.broadcastNotification);
 
 /**
  * @openapi
@@ -870,7 +870,7 @@ router.post('/notifications/broadcast', adminController.broadcastNotification);
  *       201:
  *         description: User created
  */
-router.post('/users', adminController.createUser);
+router.post('/users', checkPermission('users.create'), adminController.createUser);
 
 /**
  * @openapi
@@ -923,8 +923,8 @@ router.post('/users', adminController.createUser);
  *       200:
  *         description: User deleted
  */
-router.patch('/users/:id', adminController.updateUser);
-router.delete('/users/:id', adminController.deleteUser);
+router.patch('/users/:id', checkPermission('users.update'), adminController.updateUser);
+router.delete('/users/:id', checkPermission('users.delete'), adminController.deleteUser);
 
 /**
  * @openapi
@@ -939,7 +939,7 @@ router.delete('/users/:id', adminController.deleteUser);
  *       200:
  *         description: Matrix list returned
  */
-router.get('/roles-permissions', adminController.getRolesPermissions);
+router.get('/roles-permissions', checkPermission(), adminController.getRolesPermissions);
 
 /**
  * @openapi
@@ -968,7 +968,7 @@ router.get('/roles-permissions', adminController.getRolesPermissions);
  *       201:
  *         description: Role config successfully created
  */
-router.post('/roles-permissions', adminController.createRolePermissions);
+router.post('/roles-permissions', checkPermission(), adminController.createRolePermissions);
 
 /**
  * @openapi
@@ -1001,7 +1001,7 @@ router.post('/roles-permissions', adminController.createRolePermissions);
  *       200:
  *         description: Permissions updated
  */
-router.patch('/roles-permissions/:id', adminController.updateRolePermissions);
+router.patch('/roles-permissions/:id', checkPermission(), adminController.updateRolePermissions);
 
 /**
  * @openapi
@@ -1016,7 +1016,7 @@ router.patch('/roles-permissions/:id', adminController.updateRolePermissions);
  *       200:
  *         description: Audit logs list returned
  */
-router.get('/audit-logs', adminController.getAuditLogs);
+router.get('/audit-logs', checkPermission(), adminController.getAuditLogs);
 
 /**
  * @openapi
@@ -1031,7 +1031,7 @@ router.get('/audit-logs', adminController.getAuditLogs);
  *       200:
  *         description: System logs returned
  */
-router.get('/system-logs', adminController.getSystemLogs);
+router.get('/system-logs', checkPermission(), adminController.getSystemLogs);
 
 /**
  * @openapi
@@ -1046,15 +1046,15 @@ router.get('/system-logs', adminController.getSystemLogs);
  *       200:
  *         description: Referral tree and top referrer leaderboards returned
  */
-router.get('/referrals', adminController.getAllReferrals);
+router.get('/referrals', checkPermission('analytics.view'), adminController.getAllReferrals);
 
 // Reviews
-router.get('/reviews', adminController.getAllReviews);
-router.get('/reviews/:id', adminController.getReviewById);
-router.delete('/reviews/:id', adminController.deleteReview);
+router.get('/reviews', checkPermission('users.read', 'restaurants.crud'), adminController.getAllReviews);
+router.get('/reviews/:id', checkPermission('users.read'), adminController.getReviewById);
+router.delete('/reviews/:id', checkPermission('users.delete'), adminController.deleteReview);
 
 // Platform Settings
-router.get('/settings', adminController.getSettings);
-router.patch('/settings', adminController.updateSettings);
+router.get('/settings', checkPermission(), adminController.getSettings);
+router.patch('/settings', checkPermission(), adminController.updateSettings);
 
 export default router;

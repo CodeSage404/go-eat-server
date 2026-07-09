@@ -71,10 +71,8 @@ class App {
                 timestamp: new Date().toISOString()
             });
         });
-        // Active Real-Time Countdown Target (102 Days from June 5, 2026)
         this.app.get('/api/v1/timer', (req, res) => {
             const durationInDays = 102;
-            // Fixed static date for exactly 102 days from now, rather than dynamically recalculating it
             const targetDate = '2026-09-15T12:00:00Z';
             res.status(200).json({
                 success: true,
@@ -125,7 +123,6 @@ class App {
         </html>
       `);
         });
-        // Serve swagger spec as JSON
         this.app.get('/swagger.json', (req, res) => {
             res.setHeader('Content-Type', 'application/json');
             res.send(swagger_1.swaggerSpec);
@@ -138,14 +135,12 @@ class App {
         (0, io_1.handleSocketEvents)(this.io);
     }
     handleErrors() {
-        // 404 handler
         this.app.use((req, res) => {
             res.status(404).json({
                 status: 'error',
                 message: 'Resource not found'
             });
         });
-        // Global error handler
         this.app.use((err, req, res, next) => {
             logger_1.default.error(err.stack);
             const statusCode = err.statusCode || 500;

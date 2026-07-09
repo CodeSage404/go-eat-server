@@ -203,27 +203,43 @@ class AdminController {
     const adminEmail = (process.env.ADMIN_EMAIL || 'admin@goeat.com').toLowerCase();
     const adminPass = process.env.ADMIN_PASS || 'AdminPass123!';
 
-    if (email.toLowerCase() !== adminEmail || password !== adminPass) {
-      throw new AppError('Incorrect email or password', 401);
-    }
+    let user: any;
 
-    // Find or create admin user in DB to maintain integrity with authentication middleware
-    let user = await User.findOne({ email: adminEmail }).select('+password');
-    if (!user) {
-      user = await User.create({
-        name: 'Platform Admin',
-        email: adminEmail,
-        password: adminPass,
-        role: UserRole.ADMIN,
-        status: UserStatus.ACTIVE,
-        isVerified: true,
-      });
+    if (email.toLowerCase() === adminEmail) {
+      if (password !== adminPass) {
+        throw new AppError('Incorrect email or password', 401);
+      }
+      user = await User.findOne({ email: adminEmail }).select('+password');
+      if (!user) {
+        user = await User.create({
+          name: 'Platform Admin',
+          email: adminEmail,
+          password: adminPass,
+          role: UserRole.ADMIN,
+          customRole: 'super-admin',
+          status: UserStatus.ACTIVE,
+          isVerified: true,
+        });
+      } else {
+        const isPasswordMatch = await user.comparePassword(adminPass);
+        if (!isPasswordMatch) {
+          user.password = adminPass;
+          await user.save();
+        }
+      }
     } else {
-      // Keep DB password in sync with process.env.ADMIN_PASS
-      const isPasswordMatch = await user.comparePassword(adminPass);
+      user = await User.findOne({ email: email.toLowerCase() }).select('+password');
+      if (!user || user.role !== UserRole.ADMIN) {
+        throw new AppError('Incorrect email or password', 401);
+      }
+
+      const isPasswordMatch = await user.comparePassword(password);
       if (!isPasswordMatch) {
-        user.password = adminPass;
-        await user.save();
+        throw new AppError('Incorrect email or password', 401);
+      }
+
+      if (user.status !== UserStatus.ACTIVE) {
+        throw new AppError('Your account has been suspended. Please contact support.', 403);
       }
     }
 
@@ -234,11 +250,34 @@ class AdminController {
 
     user.password = undefined;
 
+    // Resolve permissions for the login response
+    let permissions: string[] = [];
+    if (!user.customRole || user.customRole === 'super-admin') {
+      permissions = [
+        'users.create', 'users.read', 'users.update', 'users.suspend', 'users.delete',
+        'restaurants.approve', 'restaurants.suspend', 'restaurants.crud',
+        'orders.read', 'orders.dispatch', 'orders.accept',
+        'payouts.manage', 'analytics.view', 'promo.manage', 'notifications.broadcast'
+      ];
+    } else {
+      const rolePerm = await RolePermission.findOne({ roleName: user.customRole });
+      permissions = rolePerm ? rolePerm.permissions : [];
+    }
+
     res.status(200).json({
       status: 'success',
       token,
       data: {
-        user,
+        user: {
+          _id: user._id,
+          name: user.name,
+          email: user.email,
+          role: user.role,
+          customRole: user.customRole || 'super-admin',
+          status: user.status,
+          isVerified: user.isVerified,
+          permissions
+        },
       },
     });
   });
@@ -1024,7 +1063,7 @@ class AdminController {
    * Create a new user (Admin)
    */
   public createUser = catchAsync(async (req: Request, res: Response) => {
-    const { name, email, password, phoneNumber, role, status } = req.body;
+    const { name, email, password, phoneNumber, role, status, customRole } = req.body;
     if (!name || !email || !password || !role) {
       throw new AppError('Please specify name, email, password, and role', 400);
     }
@@ -1036,6 +1075,7 @@ class AdminController {
       phoneNumber: phoneNumber || undefined,
       role,
       status: status || UserStatus.ACTIVE,
+      customRole: role === 'admin' ? (customRole || 'super-admin') : undefined,
       isVerified: true
     });
 
@@ -1050,9 +1090,14 @@ class AdminController {
    * Update user details (Admin)
    */
   public updateUser = catchAsync(async (req: Request, res: Response) => {
+    const updateData = { ...req.body };
+    if (updateData.role && updateData.role !== 'admin') {
+      updateData.customRole = undefined;
+    }
+
     const user = await User.findByIdAndUpdate(
       req.params.id,
-      req.body,
+      updateData,
       { new: true, runValidators: true }
     );
 

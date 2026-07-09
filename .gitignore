@@ -4,3 +4,5 @@ node_modules
 go-eat-service-acc-id.json
 /scripts/*
 src-backup
+src-backup-v2
+src-backup-v3

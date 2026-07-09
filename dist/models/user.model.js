@@ -87,6 +87,11 @@ const userSchema = new mongoose_1.Schema({
         sparse: true,
         trim: true,
     },
+    customRole: {
+        type: String,
+        lowercase: true,
+        trim: true,
+    },
     profileImage: {
         type: String,
         default: 'default-profile.png',
