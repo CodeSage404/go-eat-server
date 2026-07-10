@@ -380,7 +380,7 @@ router.get('/restaurants/:id/orders', checkPermission('orders.read'), adminContr
  *       201:
  *         description: Vendor and restaurant successfully created
  */
-router.post('/restaurants/manual-signup', checkPermission('restaurants.crud'), adminController.manuallyCreateRestaurant);
+router.post('/restaurants/manual-signup', checkPermission('restaurants.crud', 'restaurants.onboard'), adminController.manuallyCreateRestaurant);
 
 /**
  * @openapi
@@ -1002,6 +1002,7 @@ router.post('/roles-permissions', checkPermission(), adminController.createRoleP
  *         description: Permissions updated
  */
 router.patch('/roles-permissions/:id', checkPermission(), adminController.updateRolePermissions);
+router.delete('/roles-permissions/:id', checkPermission(), adminController.deleteRolePermissions);
 
 /**
  * @openapi

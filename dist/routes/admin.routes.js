@@ -368,7 +368,7 @@ router.get('/restaurants/:id/orders', (0, auth_middleware_1.checkPermission)('or
  *       201:
  *         description: Vendor and restaurant successfully created
  */
-router.post('/restaurants/manual-signup', (0, auth_middleware_1.checkPermission)('restaurants.crud'), admin_controller_1.default.manuallyCreateRestaurant);
+router.post('/restaurants/manual-signup', (0, auth_middleware_1.checkPermission)('restaurants.crud', 'restaurants.onboard'), admin_controller_1.default.manuallyCreateRestaurant);
 /**
  * @openapi
  * /api/v1/admin/orders/{id}:
@@ -970,6 +970,7 @@ router.post('/roles-permissions', (0, auth_middleware_1.checkPermission)(), admi
  *         description: Permissions updated
  */
 router.patch('/roles-permissions/:id', (0, auth_middleware_1.checkPermission)(), admin_controller_1.default.updateRolePermissions);
+router.delete('/roles-permissions/:id', (0, auth_middleware_1.checkPermission)(), admin_controller_1.default.deleteRolePermissions);
 /**
  * @openapi
  * /api/v1/admin/audit-logs:

@@ -410,6 +410,28 @@ class AdminController {
                     openingHours: finalOpeningHours,
                     status: restaurant_model_1.RestaurantStatus.ACTIVE, // Auto-approved
                 });
+                // Send Welcome / Partner email to the vendor owner!
+                try {
+                    const emailHtml = `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px;">
+            <h2 style="color: #0F3725; text-align: center;">Welcome to Go-Eat Partner Program!</h2>
+            <p>Dear <strong>${oName}</strong>,</p>
+            <p>Congratulations! Your restaurant <strong>${name}</strong> has been successfully onboarded as a partner outlet on the Go-Eat Platform.</p>
+            <p>Here are your platform login credentials for your vendor dashboard:</p>
+            <div style="background-color: #f9f9f9; padding: 15px; border-radius: 6px; margin: 20px 0; border-left: 4px solid #0F3725;">
+              <p style="margin: 5px 0;"><strong>Login URL:</strong> <a href="${process.env.VENDOR_DASHBOARD_URL || 'https://partner.goeat.com'}" style="color: #0F3725; text-decoration: underline;">Partner Dashboard Portal</a></p>
+              <p style="margin: 5px 0;"><strong>Username / Email:</strong> ${email.toLowerCase()}</p>
+              <p style="margin: 5px 0;"><strong>Password:</strong> ${password}</p>
+            </div>
+            <p style="color: #555;">Please make sure to log in and update your password to protect your credentials.</p>
+            <p style="margin-top: 30px;">Best Regards,<br/><strong>The Go-Eat Administration Team</strong></p>
+          </div>
+        `;
+                    await email_util_1.default.sendEmail(email.toLowerCase(), 'Welcome to the Go-Eat Family — Partner Onboarding Successful!', emailHtml, 'partners');
+                }
+                catch (mailErr) {
+                    console.error('Failed to send partner onboarding welcome email:', mailErr);
+                }
                 res.status(201).json({
                     status: 'success',
                     message: 'Vendor and restaurant successfully created',
@@ -420,7 +442,7 @@ class AdminController {
                 });
             }
             catch (err) {
-                // Clean up the created vendor user if restaurant creation fails
+                // Clean up newly created user on failure
                 await user_model_1.default.findByIdAndDelete(user._id);
                 throw err;
             }
@@ -913,6 +935,19 @@ class AdminController {
                 status: 'success',
                 message: 'New role created successfully',
                 data: { role }
+            });
+        });
+        /**
+         * Delete a custom role configuration (Admin)
+         */
+        this.deleteRolePermissions = (0, catchAsync_1.catchAsync)(async (req, res) => {
+            const role = await role_model_1.default.findByIdAndDelete(req.params.id);
+            if (!role) {
+                throw new appError_1.default('Role config not found', 404);
+            }
+            res.status(200).json({
+                status: 'success',
+                message: 'Role deleted successfully'
             });
         });
         /**
