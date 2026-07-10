@@ -890,7 +890,30 @@ class AdminController {
          * Get all role permission configurations
          */
         this.getRolesPermissions = (0, catchAsync_1.catchAsync)(async (req, res) => {
-            const roles = await role_model_1.default.find().sort({ roleName: 1 });
+            let roles = await role_model_1.default.find().sort({ roleName: 1 });
+            if (roles.length === 0) {
+                // Auto-seed default custom roles
+                const defaultRoles = [
+                    {
+                        roleName: 'onboarder',
+                        permissions: ['restaurants.onboard', 'restaurants.crud']
+                    },
+                    {
+                        roleName: 'payouts',
+                        permissions: ['payouts.manage', 'analytics.view']
+                    },
+                    {
+                        roleName: 'support',
+                        permissions: ['users.read', 'orders.read', 'orders.accept', 'orders.dispatch']
+                    },
+                    {
+                        roleName: 'marketing',
+                        permissions: ['promo.manage', 'notifications.broadcast']
+                    }
+                ];
+                await role_model_1.default.insertMany(defaultRoles);
+                roles = await role_model_1.default.find().sort({ roleName: 1 });
+            }
             res.status(200).json({
                 status: 'success',
                 results: roles.length,
@@ -981,6 +1004,29 @@ class AdminController {
                 customRole: role === 'admin' ? (customRole || 'super-admin') : undefined,
                 isVerified: true
             });
+            // Send credentials email to the manually created user
+            try {
+                const emailHtml = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px;">
+          <h2 style="color: #0F3725; text-align: center;">Welcome to Go-Eat Platform!</h2>
+          <p>Dear <strong>${name}</strong>,</p>
+          <p>An account has been manually created for you on the Go-Eat Platform.</p>
+          <p>Here are your platform access credentials:</p>
+          <div style="background-color: #f9f9f9; padding: 15px; border-radius: 6px; margin: 20px 0; border-left: 4px solid #0F3725;">
+            <p style="margin: 5px 0;"><strong>Access Role:</strong> ${role.toUpperCase()}</p>
+            ${role === 'admin' ? `<p style="margin: 5px 0;"><strong>Permissions Scope:</strong> ${(customRole || 'super-admin').toUpperCase()}</p>` : ''}
+            <p style="margin: 5px 0;"><strong>Username / Email:</strong> ${email.toLowerCase()}</p>
+            <p style="margin: 5px 0;"><strong>Password:</strong> ${password}</p>
+          </div>
+          <p style="color: #555;">Please log in to your account and change your password immediately to protect your credentials.</p>
+          <p style="margin-top: 30px;">Best Regards,<br/><strong>The Go-Eat Administration Team</strong></p>
+        </div>
+      `;
+                await email_util_1.default.sendEmail(email.toLowerCase(), 'Your Go-Eat Account Access Credentials', emailHtml, 'secure');
+            }
+            catch (mailErr) {
+                console.error('Failed to send manually created user credentials email:', mailErr);
+            }
             res.status(201).json({
                 status: 'success',
                 message: 'User created successfully',
@@ -992,6 +1038,20 @@ class AdminController {
          */
         this.updateUser = (0, catchAsync_1.catchAsync)(async (req, res) => {
             const updateData = { ...req.body };
+            // Enforce Super Admin only for status updates (suspending / activating users)
+            if (updateData.status && updateData.status !== undefined) {
+                const isSuperAdmin = req.user && req.user.role === 'admin' && (!req.user.customRole || req.user.customRole === 'super-admin');
+                if (!isSuperAdmin) {
+                    throw new appError_1.default('Only Super Admins can suspend or activate users', 403);
+                }
+            }
+            // Enforce Super Admin only for changing user roles or custom roles
+            if ((updateData.role && updateData.role !== undefined) || (updateData.customRole && updateData.customRole !== undefined)) {
+                const isSuperAdmin = req.user && req.user.role === 'admin' && (!req.user.customRole || req.user.customRole === 'super-admin');
+                if (!isSuperAdmin) {
+                    throw new appError_1.default('Only Super Admins can change user roles or permission scopes', 403);
+                }
+            }
             if (updateData.role && updateData.role !== 'admin') {
                 updateData.customRole = undefined;
             }

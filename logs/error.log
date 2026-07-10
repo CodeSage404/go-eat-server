@@ -4228,3 +4228,7 @@
     at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26)
 2026-06-27 14:23:42 [error]: Error: getaddrinfo ENOTFOUND magnetic-jackal-83413.upstash.io
     at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26)
+2026-07-10 14:54:24 [error]: 	❌ Cannot send email to echinecherem729@gmail.com: Transporter for secure not initialized.
+2026-07-10 14:54:24 [error]: 	❌ Cannot send email to echinecherem729@gmail.com: Transporter for partners not initialized.
+2026-07-10 14:57:31 [error]: 	❌ Failed to send email to echinecherem729@gmail.com: getaddrinfo ENOTFOUND mail.goeatng.com
+2026-07-10 14:57:31 [error]: 	❌ Failed to send email to echinecherem729@gmail.com: getaddrinfo ENOTFOUND mail.goeatng.com
