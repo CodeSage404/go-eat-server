@@ -4409,3 +4409,24 @@
 2026-07-10 14:59:51 [info]: 	🔗 Fallback preview URL: https://ethereal.email/message/alD606tu2Pi79go9alD62EaRd.PIrnABAAAAAfgz.n.ys5xVSiPNEoPDcNg
 2026-07-10 14:59:54 [info]: 	📩 Email sent to echinecherem729@gmail.com [Channel: partners] [fallback: true]
 2026-07-10 14:59:54 [info]: 	🔗 Fallback preview URL: https://ethereal.email/message/alD606tu2Pi79go9alD62-h.E5oJ1KkkAAAAAu71ZpWrczTnDdOLctAW7v0
+2026-07-10 15:46:07 [warn]: 	⚠️ info@goeatng.com SMTP failed: getaddrinfo ENOTFOUND mail.goeatng.com. Enabling mock Ethereal fallback.
+2026-07-10 15:46:10 [info]: 	✅ Ethereal fallback initialized for channel "default": blllaoew6avf6cnw@ethereal.email
+2026-07-10 15:46:11 [warn]: 	⚠️ partners@goeatng.com SMTP failed: getaddrinfo ENOTFOUND mail.goeatng.com. Enabling mock Ethereal fallback.
+2026-07-10 15:46:11 [info]: 	✅ Ethereal fallback initialized for channel "partners": blllaoew6avf6cnw@ethereal.email
+2026-07-10 15:46:11 [warn]: 	⚠️ secure@goeatng.com SMTP failed: getaddrinfo ENOTFOUND mail.goeatng.com. Enabling mock Ethereal fallback.
+2026-07-10 15:46:11 [info]: 	✅ Ethereal fallback initialized for channel "secure": blllaoew6avf6cnw@ethereal.email
+2026-07-10 15:46:20 [info]: 	📩 Email sent to echinecherem729@gmail.com [Channel: secure] [fallback: true]
+2026-07-10 15:46:20 [info]: 	🔗 Fallback preview URL: https://ethereal.email/message/alEFs6tu2Pi7-VMdalEFvfsdSb1TYFZSAAAAAVjJhBQcDc7YsJEsEAke8BI
+2026-07-10 15:46:23 [info]: 	📩 Email sent to echinecherem729@gmail.com [Channel: partners] [fallback: true]
+2026-07-10 15:46:23 [info]: 	🔗 Fallback preview URL: https://ethereal.email/message/alEFs6tu2Pi7-VMdalEFwEaRd.PIrsOEAAAAAgUQrGQVN4wpDqEoOfLc0ZI
+2026-07-10 15:53:18 [warn]: 	⚠️ info@goeatng.com SMTP failed: getaddrinfo ENOTFOUND mail.goeatng.com. Enabling mock Ethereal fallback.
+2026-07-10 15:53:26 [info]: 	✅ Ethereal fallback initialized for channel "default": g2i6d44pt7ct3rcr@ethereal.email
+2026-07-10 15:53:26 [warn]: 	⚠️ partners@goeatng.com SMTP failed: getaddrinfo ENOTFOUND mail.goeatng.com. Enabling mock Ethereal fallback.
+2026-07-10 15:53:26 [info]: 	✅ Ethereal fallback initialized for channel "partners": g2i6d44pt7ct3rcr@ethereal.email
+2026-07-10 15:53:26 [warn]: 	⚠️ secure@goeatng.com SMTP failed: getaddrinfo ENOTFOUND mail.goeatng.com. Enabling mock Ethereal fallback.
+2026-07-10 15:53:26 [info]: 	✅ Ethereal fallback initialized for channel "secure": g2i6d44pt7ct3rcr@ethereal.email
+2026-07-10 15:53:32 [info]: 	📩 Email sent to echinecherem729@gmail.com [Channel: secure] [fallback: true]
+2026-07-10 15:53:32 [info]: 	🔗 Fallback preview URL: https://ethereal.email/message/alEHZ6tu2Pi7-XrralEHbPsdSb1TYF8DAAAAATGod7H1S5MLYPdhivOTGA4
+2026-07-10 15:53:38 [info]: 	📩 Email sent to echinecherem729@gmail.com [Channel: partners] [fallback: true]
+2026-07-10 15:53:38 [info]: 	🔗 Fallback preview URL: https://ethereal.email/message/alEHZ6tu2Pi7-XrralEHc0aRd.PIrsrrAAAAAm3pMpInZjN.ckI7U5kei5Y
+2026-07-11 16:39:49 [info]: 	📱 WhatsApp message sent successfully to whatsapp:+2349121059853 via Twilio

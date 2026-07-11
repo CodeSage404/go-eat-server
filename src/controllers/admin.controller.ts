@@ -431,26 +431,17 @@ class AdminController {
 
       // Send Welcome / Partner email to the vendor owner!
       try {
-        const emailHtml = `
-          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px;">
-            <h2 style="color: #0F3725; text-align: center;">Welcome to Go-Eat Partner Program!</h2>
-            <p>Dear <strong>${oName}</strong>,</p>
-            <p>Congratulations! Your restaurant <strong>${name}</strong> has been successfully onboarded as a partner outlet on the Go-Eat Platform.</p>
-            <p>Here are your platform login credentials for your vendor dashboard:</p>
-            <div style="background-color: #f9f9f9; padding: 15px; border-radius: 6px; margin: 20px 0; border-left: 4px solid #0F3725;">
-              <p style="margin: 5px 0;"><strong>Login URL:</strong> <a href="${process.env.VENDOR_DASHBOARD_URL || 'https://partner.goeat.com'}" style="color: #0F3725; text-decoration: underline;">Partner Dashboard Portal</a></p>
-              <p style="margin: 5px 0;"><strong>Username / Email:</strong> ${email.toLowerCase()}</p>
-              <p style="margin: 5px 0;"><strong>Password:</strong> ${password}</p>
-            </div>
-            <p style="color: #555;">Please make sure to log in and update your password to protect your credentials.</p>
-            <p style="margin-top: 30px;">Best Regards,<br/><strong>The Go-Eat Administration Team</strong></p>
-          </div>
-        `;
-        
-        await emailUtil.sendEmail(
+        await emailUtil.sendTemplateEmail(
           email.toLowerCase(),
+          'WELCOME_PARTNER',
           'Welcome to the Go-Eat Family — Partner Onboarding Successful!',
-          emailHtml,
+          {
+            partnerName: oName,
+            restaurantName: name,
+            loginUrl: process.env.VENDOR_DASHBOARD_URL || 'https://partner.goeat.com',
+            email: email.toLowerCase(),
+            password
+          },
           'partners'
         );
       } catch (mailErr) {
@@ -1150,27 +1141,17 @@ class AdminController {
 
     // Send credentials email to the manually created user
     try {
-      const emailHtml = `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px;">
-          <h2 style="color: #0F3725; text-align: center;">Welcome to Go-Eat Platform!</h2>
-          <p>Dear <strong>${name}</strong>,</p>
-          <p>An account has been manually created for you on the Go-Eat Platform.</p>
-          <p>Here are your platform access credentials:</p>
-          <div style="background-color: #f9f9f9; padding: 15px; border-radius: 6px; margin: 20px 0; border-left: 4px solid #0F3725;">
-            <p style="margin: 5px 0;"><strong>Access Role:</strong> ${role.toUpperCase()}</p>
-            ${role === 'admin' ? `<p style="margin: 5px 0;"><strong>Permissions Scope:</strong> ${(customRole || 'super-admin').toUpperCase()}</p>` : ''}
-            <p style="margin: 5px 0;"><strong>Username / Email:</strong> ${email.toLowerCase()}</p>
-            <p style="margin: 5px 0;"><strong>Password:</strong> ${password}</p>
-          </div>
-          <p style="color: #555;">Please log in to your account and change your password immediately to protect your credentials.</p>
-          <p style="margin-top: 30px;">Best Regards,<br/><strong>The Go-Eat Administration Team</strong></p>
-        </div>
-      `;
-      
-      await emailUtil.sendEmail(
+      await emailUtil.sendTemplateEmail(
         email.toLowerCase(),
+        'CREDENTIALS_ALERT',
         'Your Go-Eat Account Access Credentials',
-        emailHtml,
+        {
+          name,
+          role,
+          customRole: role === 'admin' ? (customRole || 'super-admin') : undefined,
+          email: email.toLowerCase(),
+          password
+        },
         'secure'
       );
     } catch (mailErr) {
