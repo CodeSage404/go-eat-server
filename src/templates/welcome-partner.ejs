@@ -1,0 +1,14 @@
+<h2 style="color: #0F3725; margin-top: 0; font-weight: 800;">Welcome to Go-Eat Partners!</h2>
+<p>Dear <strong><%= partnerName %></strong>,</p>
+<p>Congratulations! Your business, <strong><%= restaurantName %></strong>, is officially onboarded and activated on the Go-Eat Platform.</p>
+<p>You can now manage your menus, orders, payouts, and customer reviews through your partner dashboard.</p>
+<p>Below are your vendor portal credentials:</p>
+<div class="highlight-box">
+  <p style="margin: 4px 0;"><strong>Dashboard Link:</strong> <a href="<%= loginUrl %>" style="color: #0F3725;">Partner Portal</a></p>
+  <p style="margin: 4px 0;"><strong>Username / Email:</strong> <%= email %></p>
+  <p style="margin: 4px 0;"><strong>Password:</strong> <%= password %></p>
+</div>
+<p style="color: #4B5563;">For security reasons, we strongly recommend logging in and changing your password immediately.</p>
+<div style="text-align: center;">
+  <a href="<%= loginUrl %>" class="btn">Access Partner Dashboard</a>
+</div>

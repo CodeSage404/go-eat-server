@@ -71,6 +71,10 @@ const updateMeSchema = z.object({
   name: z.string().optional(),
   phoneNumber: z.string().optional(),
   notificationsEnabled: z.boolean().optional(),
+  location: z.object({
+    type: z.literal('Point'),
+    coordinates: z.array(z.number()).length(2),
+  }).optional(),
 });
 
 class AuthController {

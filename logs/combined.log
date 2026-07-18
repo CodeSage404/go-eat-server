@@ -4430,3 +4430,98 @@
 2026-07-10 15:53:38 [info]: 	📩 Email sent to echinecherem729@gmail.com [Channel: partners] [fallback: true]
 2026-07-10 15:53:38 [info]: 	🔗 Fallback preview URL: https://ethereal.email/message/alEHZ6tu2Pi7-XrralEHc0aRd.PIrsrrAAAAAm3pMpInZjN.ckI7U5kei5Y
 2026-07-11 16:39:49 [info]: 	📱 WhatsApp message sent successfully to whatsapp:+2349121059853 via Twilio
+2026-07-11 17:29:06 [error]: 	❌ Error sending WhatsApp via Twilio:
+2026-07-12 21:35:02 [info]: 	📱 WhatsApp message sent successfully to whatsapp:+2349121059853 via Twilio
+2026-07-12 21:37:24 [error]: 	❌ Error sending WhatsApp via Twilio:
+2026-07-18 11:53:46 [warn]: 	⚠️ support@GoEatOne.com SMTP failed: getaddrinfo ENOTFOUND mail.GoEatOne.com. Enabling mock Ethereal fallback.
+2026-07-18 11:54:01 [info]: 	✅ Ethereal fallback initialized for channel "default": n2xcqilewjqtiwnj@ethereal.email
+2026-07-18 11:54:01 [warn]: 	⚠️ partners@GoEatOne.com SMTP failed: getaddrinfo ENOTFOUND mail.GoEatOne.com. Enabling mock Ethereal fallback.
+2026-07-18 11:54:01 [info]: 	✅ Ethereal fallback initialized for channel "partners": n2xcqilewjqtiwnj@ethereal.email
+2026-07-18 11:54:01 [warn]: 	⚠️ secure@GoEatOne.com SMTP failed: getaddrinfo ENOTFOUND mail.GoEatOne.com. Enabling mock Ethereal fallback.
+2026-07-18 11:54:01 [info]: 	✅ Ethereal fallback initialized for channel "secure": n2xcqilewjqtiwnj@ethereal.email
+2026-07-18 11:54:40 [info]: 	📩 Email sent to echinecherem729@gmail.com [Channel: secure] [fallback: true]
+2026-07-18 11:54:40 [info]: 	🔗 Fallback preview URL: https://ethereal.email/message/altbRUMohzqaWO70altbbCLBEfRiqxJ5AAAAAX-sN9fyjqJMgnGcls6PUx0
+2026-07-18 11:55:03 [info]: 	📩 Email sent to echinecherem729@gmail.com [Channel: partners] [fallback: true]
+2026-07-18 11:55:03 [info]: 	🔗 Fallback preview URL: https://ethereal.email/message/altbRUMohzqaWO70altbgiLBEfRiqxKOAAAAAt1Br9jge6TDdZpMzTqpqdY
+2026-07-18 16:05:57 [warn]: 	⚠️ support@GoEatOne.com SMTP failed: Hostname/IP does not match certificate's altnames: Host: mail.GoEatOne.com. is not in the cert's altnames: DNS:*.web-hosting.com, DNS:web-hosting.com. Enabling mock Ethereal fallback.
+2026-07-18 16:06:10 [info]: 	✅ Ethereal fallback initialized for channel "default": c3zlehlgv7uvnn73@ethereal.email
+2026-07-18 16:06:36 [warn]: 	⚠️ partners@GoEatOne.com SMTP failed: Hostname/IP does not match certificate's altnames: Host: mail.GoEatOne.com. is not in the cert's altnames: DNS:*.web-hosting.com, DNS:web-hosting.com. Enabling mock Ethereal fallback.
+2026-07-18 16:06:36 [info]: 	✅ Ethereal fallback initialized for channel "partners": c3zlehlgv7uvnn73@ethereal.email
+2026-07-18 16:06:51 [warn]: 	⚠️ secure@GoEatOne.com SMTP failed: Hostname/IP does not match certificate's altnames: Host: mail.GoEatOne.com. is not in the cert's altnames: DNS:*.web-hosting.com, DNS:web-hosting.com. Enabling mock Ethereal fallback.
+2026-07-18 16:06:51 [info]: 	✅ Ethereal fallback initialized for channel "secure": c3zlehlgv7uvnn73@ethereal.email
+2026-07-18 16:07:24 [info]: 	📩 Email sent to echinecherem729@gmail.com [Channel: secure] [fallback: true]
+2026-07-18 16:07:24 [info]: 	🔗 Fallback preview URL: https://ethereal.email/message/aluWW0MohzqaXsiwaluWqCLBEfRirE07AAAAAYcp8.7u8RBCF9nTR.cdknM
+2026-07-18 16:07:57 [info]: 	📩 Email sent to echinecherem729@gmail.com [Channel: partners] [fallback: true]
+2026-07-18 16:07:57 [info]: 	🔗 Fallback preview URL: https://ethereal.email/message/aluWW0MohzqaXsiwaluWyfraIFk9NglDAAAAAmRywc6sFjHpezHu-JfBMWg
+2026-07-18 16:10:04 [warn]: 	⚠️ support@GoEatOne.com SMTP failed: Invalid login: 535 Incorrect authentication data. Enabling mock Ethereal fallback.
+2026-07-18 16:10:06 [info]: 	✅ Ethereal fallback initialized for channel "default": ibnz4jg6tgsfkpfa@ethereal.email
+2026-07-18 16:16:36 [warn]: 	⚠️ support@GoEatOne.com SMTP failed: Invalid login: 535 Incorrect authentication data. Enabling mock Ethereal fallback.
+2026-07-18 16:17:11 [info]: 	✅ Ethereal fallback initialized for channel "default": b4pfy7camp37gqka@ethereal.email
+2026-07-18 16:17:40 [warn]: 	⚠️ partners@GoEatOne.com SMTP failed: Invalid login: 535 Incorrect authentication data. Enabling mock Ethereal fallback.
+2026-07-18 16:17:40 [info]: 	✅ Ethereal fallback initialized for channel "partners": b4pfy7camp37gqka@ethereal.email
+2026-07-18 16:18:03 [warn]: 	⚠️ secure@GoEatOne.com SMTP failed: Invalid login: 535 Incorrect authentication data. Enabling mock Ethereal fallback.
+2026-07-18 16:18:03 [info]: 	✅ Ethereal fallback initialized for channel "secure": b4pfy7camp37gqka@ethereal.email
+2026-07-18 16:18:32 [info]: 	📩 Email sent to echinecherem729@gmail.com [Channel: secure] [fallback: true]
+2026-07-18 16:18:32 [info]: 	🔗 Fallback preview URL: https://ethereal.email/message/aluY8EMohzqaXzuualuZRah0HEC2CZP5AAAAAecOx9kbPSEyRUxj4Nw9GME
+2026-07-18 16:19:02 [info]: 	📩 Email sent to echinecherem729@gmail.com [Channel: partners] [fallback: true]
+2026-07-18 16:19:02 [info]: 	🔗 Fallback preview URL: https://ethereal.email/message/aluY8EMohzqaXzuualuZX6h0HEC2CZRcAAAAAmi0vWy-ddcPKeeod.9pygQ
+2026-07-18 16:25:13 [info]: 	📧 SMTP verified for support@GoEatOne.com
+2026-07-18 16:25:23 [warn]: 	⚠️ partners@GoEatOne.com SMTP failed: Invalid login: 535 Incorrect authentication data. Enabling mock Ethereal fallback.
+2026-07-18 16:25:29 [info]: 	✅ Ethereal fallback initialized for channel "partners": eisk6g4u5bgi5566@ethereal.email
+2026-07-18 16:25:38 [warn]: 	⚠️ secure@GoEatOne.com SMTP failed: Invalid login: 535 Incorrect authentication data. Enabling mock Ethereal fallback.
+2026-07-18 16:25:38 [info]: 	✅ Ethereal fallback initialized for channel "secure": eisk6g4u5bgi5566@ethereal.email
+2026-07-18 16:25:47 [info]: 	📩 Email sent to echinecherem729@gmail.com [Channel: secure] [fallback: true]
+2026-07-18 16:25:47 [info]: 	🔗 Fallback preview URL: https://ethereal.email/message/alua5kMohzqaX1ynalua-Kh0HEC2CZrlAAAAAR1zQeoy9cwrN58mnq931A0
+2026-07-18 16:25:59 [info]: 	📩 Email sent to echinecherem729@gmail.com [Channel: partners] [fallback: true]
+2026-07-18 16:25:59 [info]: 	🔗 Fallback preview URL: https://ethereal.email/message/alua5kMohzqaX1ynalubBMj-4oM05jH7AAAAAnOUKFXxAzj7nc6rm6.QdFs
+2026-07-18 16:28:47 [info]: 	📧 SMTP verified for support@GoEatOne.com
+2026-07-18 16:28:56 [warn]: 	⚠️ partners@GoEatOne.com SMTP failed: Invalid login: 535 Incorrect authentication data. Enabling mock Ethereal fallback.
+2026-07-18 16:29:02 [info]: 	✅ Ethereal fallback initialized for channel "partners": uyxhhmswqnbecieg@ethereal.email
+2026-07-18 16:29:12 [warn]: 	⚠️ secure@GoEatOne.com SMTP failed: Invalid login: 535 Incorrect authentication data. Enabling mock Ethereal fallback.
+2026-07-18 16:29:12 [info]: 	✅ Ethereal fallback initialized for channel "secure": uyxhhmswqnbecieg@ethereal.email
+2026-07-18 16:29:27 [info]: 	📩 Email sent to echinecherem729@gmail.com [Channel: secure] [fallback: true]
+2026-07-18 16:29:27 [info]: 	🔗 Fallback preview URL: https://ethereal.email/message/alubu0MohzqaX3Bfalub1ah0HEC2CZ3LAAAAAcYFqYDDtD87GtHin2La0sc
+2026-07-18 16:29:37 [info]: 	📩 Email sent to echinecherem729@gmail.com [Channel: partners] [fallback: true]
+2026-07-18 16:29:37 [info]: 	🔗 Fallback preview URL: https://ethereal.email/message/alubu0MohzqaX3Bfalub3vraIFk9NikXAAAAAjxV694I7VN18VIRricR1lA
+2026-07-18 16:31:19 [info]: 	📧 SMTP verified for support@GoEatOne.com
+2026-07-18 16:31:23 [info]: 	📧 SMTP verified for support@GoEatOne.com
+2026-07-18 16:31:28 [info]: 	📧 SMTP verified for support@GoEatOne.com
+2026-07-18 16:32:03 [info]: 	📩 Email sent to echinecerem729@gmail.com [Channel: secure] [fallback: false]
+2026-07-18 16:32:50 [info]: 	📩 Email sent to echinecerem729@gmail.com [Channel: partners] [fallback: false]
+2026-07-18 16:34:15 [info]: 	📧 SMTP verified for support@GoEatOne.com
+2026-07-18 16:34:22 [info]: 	📧 SMTP verified for support@GoEatOne.com
+2026-07-18 16:34:27 [info]: 	📧 SMTP verified for support@GoEatOne.com
+2026-07-18 16:34:36 [info]: 	📩 Email sent to echinecherem729@gmail.com [Channel: secure] [fallback: false]
+2026-07-18 16:34:43 [info]: 	📩 Email sent to echinecherem729@gmail.com [Channel: partners] [fallback: false]
+2026-07-18 16:51:22 [info]: 	📧 SMTP verified for support@GoEatOne.com
+2026-07-18 16:51:27 [info]: 	📧 SMTP verified for support@GoEatOne.com
+2026-07-18 16:51:33 [info]: 	📧 SMTP verified for support@GoEatOne.com
+2026-07-18 16:51:45 [info]: 	📩 Email sent to emitexc.e.o1@gmail.com [Channel: secure] [fallback: false]
+2026-07-18 16:51:53 [info]: 	📩 Email sent to emitexc.e.o1@gmail.com [Channel: partners] [fallback: false]
+2026-07-18 17:08:15 [info]: 	📧 SMTP verified for support@GoEatOne.com
+2026-07-18 17:08:20 [info]: 	📧 SMTP verified for support@GoEatOne.com
+2026-07-18 17:08:28 [info]: 	📧 SMTP verified for support@GoEatOne.com
+2026-07-18 17:08:51 [info]: 	📩 Email sent to echinecherem729@gmail.com [Channel: secure] [fallback: false]
+2026-07-18 17:09:14 [info]: 	📩 Email sent to echinecherem729@gmail.com [Channel: partners] [fallback: false]
+2026-07-18 17:22:38 [info]: 	📧 SMTP verified for support@GoEatOne.com
+2026-07-18 17:22:41 [info]: 	📧 SMTP verified for support@GoEatOne.com
+2026-07-18 17:22:45 [info]: 	📧 SMTP verified for support@GoEatOne.com
+2026-07-18 17:22:51 [info]: 	📩 Email sent to echinecherem729@gmail.com [Channel: secure] [fallback: false]
+2026-07-18 17:22:59 [info]: 	📩 Email sent to echinecherem729@gmail.com [Channel: partners] [fallback: false]
+2026-07-18 18:05:03 [info]: 	📧 SMTP verified for support@GoEatOne.com
+2026-07-18 18:05:10 [info]: 	📧 SMTP verified for support@GoEatOne.com
+2026-07-18 18:05:14 [info]: 	📧 SMTP verified for support@GoEatOne.com
+2026-07-18 18:05:23 [info]: 	📩 Email sent to echinecherem729@gmail.com [Channel: secure] [fallback: false]
+2026-07-18 18:05:56 [info]: 	📩 Email sent to echinecherem729@gmail.com [Channel: partners] [fallback: false]
+2026-07-18 18:26:54 [info]: 	📧 SMTP verified for support@GoEatOne.com
+2026-07-18 18:27:06 [info]: 	📧 SMTP verified for partner@GoEatOne.com
+2026-07-18 18:27:21 [info]: 	📧 SMTP verified for verify@GoEatOne.com
+2026-07-18 18:27:53 [info]: 	📩 Email sent to echinecherem729@gmail.com [Channel: secure] [fallback: false]
+2026-07-18 18:28:06 [info]: 	📩 Email sent to echinecherem729@gmail.com [Channel: partners] [fallback: false]
+2026-07-18 18:36:53 [info]: 	📱 WhatsApp message sent successfully to whatsapp:+2349168464955 via Twilio
+2026-07-18 18:40:11 [info]: 	📱 Twilio client initialized for Verify service
+2026-07-18 18:40:11 [info]: 	📱 Twilio client initialized for Verify service
+2026-07-18 18:40:25 [info]: 	📱 WhatsApp verification initiated. Sid: VE32a6dec55464d433c0b283952cf649c2 to +2349121059853
+2026-07-18 18:40:29 [info]: 	📱 WhatsApp verification initiated. Sid: VE32a6dec55464d433c0b283952cf649c2 to +2349121059853
+2026-07-18 18:44:17 [info]: 	📱 Twilio client initialized for Verify service
+2026-07-18 18:44:31 [error]: 	❌ Error starting Twilio WhatsApp verification for +2349168464955:

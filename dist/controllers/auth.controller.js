@@ -90,6 +90,10 @@ const updateMeSchema = zod_1.z.object({
     name: zod_1.z.string().optional(),
     phoneNumber: zod_1.z.string().optional(),
     notificationsEnabled: zod_1.z.boolean().optional(),
+    location: zod_1.z.object({
+        type: zod_1.z.literal('Point'),
+        coordinates: zod_1.z.array(zod_1.z.number()).length(2),
+    }).optional(),
 });
 class AuthController {
     constructor() {
