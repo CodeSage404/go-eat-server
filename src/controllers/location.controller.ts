@@ -80,7 +80,7 @@ class LocationController {
         const response = await fetch(
           `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${apiKey}`
         );
-        const data = await response.json();
+        const data = (await response.json()) as any;
         if (data.results && data.results.length > 0) {
           address = data.results[0].formatted_address;
         }

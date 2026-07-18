@@ -51,6 +51,19 @@ class AuthService {
         return jsonwebtoken_1.default.sign({ id }, process.env.JWT_SECRET, options);
     }
     async register(userData) {
+        // Clean up empty, null or undefined values to avoid unique constraint duplicates in MongoDB
+        if (userData.email === '' || userData.email === null || userData.email === undefined) {
+            delete userData.email;
+        }
+        else {
+            userData.email = userData.email.toLowerCase().trim();
+        }
+        if (userData.phoneNumber === '' || userData.phoneNumber === null || userData.phoneNumber === undefined) {
+            delete userData.phoneNumber;
+        }
+        else {
+            userData.phoneNumber = userData.phoneNumber.trim();
+        }
         if (userData.phoneNumber) {
             const existingUser = await user_model_1.default.findOne({ phoneNumber: userData.phoneNumber });
             if (existingUser) {

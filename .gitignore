@@ -2,7 +2,7 @@
 node_modules
 .env**
 go-eat-service-acc-id.json
-/scripts/*
+# /scripts/*
 src-backup
 src-backup-v2
 src-backup-v3

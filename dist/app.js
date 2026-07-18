@@ -30,6 +30,8 @@ const upload_routes_1 = __importDefault(require("./routes/upload.routes"));
 const upload_1 = require("./utils/upload");
 const wallet_routes_1 = __importDefault(require("./routes/wallet.routes"));
 const admin_routes_1 = __importDefault(require("./routes/admin.routes"));
+const location_routes_1 = __importDefault(require("./routes/location.routes"));
+const cookie_routes_1 = __importDefault(require("./routes/cookie.routes"));
 const swagger_ui_express_1 = __importDefault(require("swagger-ui-express"));
 const swagger_1 = require("./config/swagger");
 dotenv_1.default.config();
@@ -97,6 +99,8 @@ class App {
         this.app.use('/api/v1/upload', upload_routes_1.default);
         this.app.use('/api/v1/wallets', wallet_routes_1.default);
         this.app.use('/api/v1/admin', admin_routes_1.default);
+        this.app.use('/api/v1/location', location_routes_1.default);
+        this.app.use('/api/v1/cookies', cookie_routes_1.default);
         // Documentation Routes
         this.app.use('/api-docs', swagger_ui_express_1.default.serve, swagger_ui_express_1.default.setup(swagger_1.swaggerSpec));
         this.app.get('/redoc', (req, res) => {
