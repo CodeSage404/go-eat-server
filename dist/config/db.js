@@ -12,6 +12,20 @@ const connectDB = async () => {
     try {
         const conn = await mongoose_1.default.connect(mongodbUri);
         logger_1.default.info(`🚀 Connected to MongoDB: ${conn.connection.host}`);
+        // Automatically inspect and rebuild index if email index is not sparse
+        try {
+            const usersCollection = conn.connection.collection('users');
+            const indexes = await usersCollection.indexes();
+            const emailIndex = indexes.find(idx => idx.name === 'email_1');
+            if (emailIndex && !emailIndex.sparse) {
+                logger_1.default.info('⚠️ Found non-sparse email index. Dropping it to rebuild as sparse...');
+                await usersCollection.dropIndex('email_1');
+                logger_1.default.info('✅ Successfully dropped non-sparse email index! Mongoose will rebuild it as sparse.');
+            }
+        }
+        catch (indexErr) {
+            logger_1.default.warn('Could not inspect or drop user email index (collection may not exist yet):', indexErr.message);
+        }
     }
     catch (error) {
         logger_1.default.error('❌ MongoDB Connection Error:', error);

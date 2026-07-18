@@ -4525,3 +4525,8 @@
 2026-07-18 18:40:29 [info]: 	📱 WhatsApp verification initiated. Sid: VE32a6dec55464d433c0b283952cf649c2 to +2349121059853
 2026-07-18 18:44:17 [info]: 	📱 Twilio client initialized for Verify service
 2026-07-18 18:44:31 [error]: 	❌ Error starting Twilio WhatsApp verification for +2349168464955:
+2026-07-18 22:46:38 [info]: 	📧 SMTP verified for support@GoEatOne.com
+2026-07-18 22:46:52 [info]: 	📧 SMTP verified for partner@GoEatOne.com
+2026-07-18 22:47:03 [info]: 	📧 SMTP verified for verify@GoEatOne.com
+2026-07-18 22:47:50 [info]: 	📩 Email sent to echinecherem729@gmail.com [Channel: secure] [fallback: false]
+2026-07-18 22:48:15 [info]: 	📩 Email sent to echinecherem729@gmail.com [Channel: partners] [fallback: false]

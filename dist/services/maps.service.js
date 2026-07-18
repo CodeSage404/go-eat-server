@@ -67,5 +67,26 @@ class GoogleMapsService {
             return null;
         }
     }
+    /**
+     * Get autocomplete suggestions restricted to Nigeria
+     */
+    async getPlaceAutocomplete(input) {
+        try {
+            if (!this.apiKey)
+                return [];
+            const response = await client.placeAutocomplete({
+                params: {
+                    input,
+                    key: this.apiKey,
+                    components: ['country:ng'],
+                },
+            });
+            return response.data.predictions;
+        }
+        catch (error) {
+            logger_1.default.error('❌ Google Maps Autocomplete Error:', error);
+            return [];
+        }
+    }
 }
 exports.default = new GoogleMapsService();
