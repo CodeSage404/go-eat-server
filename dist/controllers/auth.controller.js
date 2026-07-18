@@ -230,6 +230,15 @@ class AuthController {
             if (!user) {
                 throw new appError_1.default('User not found', 404);
             }
+            // Send welcome email if user has a verified email address
+            if (user.email) {
+                try {
+                    await email_util_1.default.sendTemplateEmail(user.email, 'WELCOME_USER', 'Welcome to Go-Eat!', { name: user.name || 'User' });
+                }
+                catch (err) {
+                    logger_1.default.error(`Error sending welcome email to ${user.email}:`, err.message);
+                }
+            }
             res.status(200).json({
                 status: 'success',
                 message: email ? 'Email verified successfully' : 'Phone number verified successfully',

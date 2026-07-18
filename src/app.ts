@@ -27,6 +27,8 @@ import uploadRoutes from './routes/upload.routes';
 import { uploadDir } from './utils/upload';
 import walletRoutes from './routes/wallet.routes';
 import adminRoutes from './routes/admin.routes';
+import locationRoutes from './routes/location.routes';
+import cookieRoutes from './routes/cookie.routes';
 
 import swaggerUi from 'swagger-ui-express';
 import { swaggerSpec } from './config/swagger';
@@ -109,6 +111,8 @@ class App {
     this.app.use('/api/v1/upload', uploadRoutes);
     this.app.use('/api/v1/wallets', walletRoutes);
     this.app.use('/api/v1/admin', adminRoutes);
+    this.app.use('/api/v1/location', locationRoutes);
+    this.app.use('/api/v1/cookies', cookieRoutes);
 
     // Documentation Routes
     this.app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));

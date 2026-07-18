@@ -9,7 +9,8 @@ export type EmailTemplateType =
   | 'OTP_VERIFICATION' 
   | 'CREDENTIALS_ALERT' 
   | 'ORDER_CONFIRMED' 
-  | 'PASSWORD_RESET';
+  | 'PASSWORD_RESET'
+  | 'WELCOME_USER';
 
 class EmailService {
   private defaultTransporter!: nodemailer.Transporter;
