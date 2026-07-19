@@ -18,26 +18,33 @@ class EmailService {
      */
     async initializeTransporters() {
         const host = process.env.EMAIL_HOST || 'mail.GoEatOne.com';
-        const port = Number(process.env.EMAIL_PORT) || 465;
+        const port = Number(process.env.EMAIL_PORT) || 587;
         const password = process.env.EMAIL_PASS;
         const defaultUser = process.env.EMAIL_USER_DEFAULT || 'support@GoEatOne.com';
         const partnersUser = process.env.EMAIL_USER_PARTNERS || 'partners@GoEatOne.com';
-        const secureUser = process.env.EMAIL_USER_SECURE || 'secure@GoEatOne.com';
-        // 1. Initialize default
-        try {
-            this.defaultTransporter = nodemailer_1.default.createTransport({
+        const secureUser = process.env.EMAIL_USER_SECURE || 'verify@GoEatOne.com';
+        const createSmtpTransport = (user) => {
+            return nodemailer_1.default.createTransport({
                 host,
                 port,
-                secure: port === 465,
+                secure: port === 465, // true for 465, false for 587/25
+                requireTLS: port === 587,
                 auth: {
-                    user: defaultUser,
+                    user,
                     pass: password,
                 },
                 tls: {
-                    rejectUnauthorized: false
+                    rejectUnauthorized: false,
+                    ciphers: 'SSLv3',
                 },
-                timeout: 10000,
+                connectionTimeout: 10000,
+                greetingTimeout: 10000,
+                socketTimeout: 15000,
             });
+        };
+        // 1. Initialize default
+        try {
+            this.defaultTransporter = createSmtpTransport(defaultUser);
             if (process.env.NODE_ENV !== 'test') {
                 this.defaultTransporter.verify().then(() => {
                     logger_1.default.info(`📧 SMTP verified for ${defaultUser}`);
@@ -53,19 +60,7 @@ class EmailService {
         }
         // 2. Initialize partners
         try {
-            this.partnersTransporter = nodemailer_1.default.createTransport({
-                host,
-                port,
-                secure: port === 465,
-                auth: {
-                    user: partnersUser,
-                    pass: password,
-                },
-                tls: {
-                    rejectUnauthorized: false
-                },
-                timeout: 10000,
-            });
+            this.partnersTransporter = createSmtpTransport(partnersUser);
             if (process.env.NODE_ENV !== 'test') {
                 this.partnersTransporter.verify().then(() => {
                     logger_1.default.info(`📧 SMTP verified for ${partnersUser}`);
@@ -81,19 +76,7 @@ class EmailService {
         }
         // 3. Initialize secure
         try {
-            this.secureTransporter = nodemailer_1.default.createTransport({
-                host,
-                port,
-                secure: port === 465,
-                auth: {
-                    user: secureUser,
-                    pass: password,
-                },
-                tls: {
-                    rejectUnauthorized: false
-                },
-                timeout: 10000,
-            });
+            this.secureTransporter = createSmtpTransport(secureUser);
             if (process.env.NODE_ENV !== 'test') {
                 this.secureTransporter.verify().then(() => {
                     logger_1.default.info(`📧 SMTP verified for ${secureUser}`);

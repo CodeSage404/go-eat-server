@@ -32,6 +32,7 @@ const wallet_routes_1 = __importDefault(require("./routes/wallet.routes"));
 const admin_routes_1 = __importDefault(require("./routes/admin.routes"));
 const location_routes_1 = __importDefault(require("./routes/location.routes"));
 const cookie_routes_1 = __importDefault(require("./routes/cookie.routes"));
+const keepAlive_1 = require("./utils/keepAlive");
 const swagger_ui_express_1 = __importDefault(require("swagger-ui-express"));
 const swagger_1 = require("./config/swagger");
 dotenv_1.default.config();
@@ -159,6 +160,7 @@ class App {
     listen(port) {
         this.server.listen(port, () => {
             logger_1.default.info(`🚀 Server running in ${process.env.NODE_ENV} mode on port ${port}`);
+            (0, keepAlive_1.startKeepAlivePing)();
         });
     }
 }

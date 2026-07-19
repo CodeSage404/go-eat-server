@@ -29,6 +29,7 @@ import walletRoutes from './routes/wallet.routes';
 import adminRoutes from './routes/admin.routes';
 import locationRoutes from './routes/location.routes';
 import cookieRoutes from './routes/cookie.routes';
+import { startKeepAlivePing } from './utils/keepAlive';
 
 import swaggerUi from 'swagger-ui-express';
 import { swaggerSpec } from './config/swagger';
@@ -179,6 +180,7 @@ class App {
   public listen(port: string | number): void {
     this.server.listen(port, () => {
       logger.info(`🚀 Server running in ${process.env.NODE_ENV} mode on port ${port}`);
+      startKeepAlivePing();
     });
   }
 }

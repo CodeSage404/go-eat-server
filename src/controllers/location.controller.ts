@@ -102,16 +102,20 @@ class LocationController {
     if (address === 'Nigeria' || !address) {
       try {
         const response = await fetch(
-          `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`,
+          `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=jsonv2`,
           {
             headers: {
-              'User-Agent': 'Go-Eat-App/1.0'
+              'User-Agent': 'GoEatApp/1.0 (support@goeatone.com)',
+              'Accept': 'application/json',
             }
           }
         );
-        const data = (await response.json()) as any;
-        if (data && data.display_name) {
-          address = data.display_name;
+        const rawText = await response.text();
+        if (rawText && rawText.startsWith('{')) {
+          const data = JSON.parse(rawText);
+          if (data && data.display_name) {
+            address = data.display_name;
+          }
         }
       } catch (nominatimErr: any) {
         console.warn('Nominatim Geocoding fallback failed:', nominatimErr.message);
