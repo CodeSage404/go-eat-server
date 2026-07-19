@@ -4535,3 +4535,9 @@
 2026-07-19 16:55:04 [info]: 	📧 SMTP verified successfully for verify@GoEatOne.com
 2026-07-19 16:55:21 [info]: 	📩 Email dispatched successfully to echinecherem729@gmail.com via "Go-Eat Partner Support" <partner@GoEatOne.com> (MessageID: <bc5ea35b-1ec8-bbfb-609e-3a4a8fd59c2d@goeatone.com>)
 2026-07-19 16:55:21 [info]: 	📩 Email dispatched successfully to echinecherem729@gmail.com via "Go-Eat Security" <verify@GoEatOne.com> (MessageID: <6264ecff-2b57-3804-c89c-e52cb7ded7fc@goeatone.com>)
+2026-07-19 17:45:37 [warn]: 	⚠️ Brevo HTTPS API dispatch failed (401): {"message":"We have detected you are using an unrecognised IP address 197.211.53.105. If you performed this action make sure to add the new IP address in this link: https://app.brevo.com/security/authorised_ips","code":"unauthorized"}
+
+2026-07-19 17:45:38 [warn]: 	⚠️ Brevo HTTPS API dispatch failed (401): {"message":"We have detected you are using an unrecognised IP address 197.211.53.105. If you performed this action make sure to add the new IP address in this link: https://app.brevo.com/security/authorised_ips","code":"unauthorized"}
+
+2026-07-19 17:45:47 [info]: 	📩 Email dispatched successfully to echinecherem729@gmail.com via "Go-Eat Security" <verify@GoEatOne.com> on Port 465 (MessageID: <458c67b1-78a2-e3a9-3b52-23e2bf8b685f@goeatone.com>)
+2026-07-19 17:45:47 [info]: 	📩 Email dispatched successfully to echinecherem729@gmail.com via "Go-Eat Partner Support" <partner@GoEatOne.com> on Port 465 (MessageID: <14c9ea54-ddb5-27ca-d69e-c107a3157f6d@goeatone.com>)

@@ -31,6 +31,75 @@ class EmailService {
   }
 
   /**
+   * Dispatches email via Brevo HTTPS REST API (Port 443 - Never blocked by Render firewall)
+   */
+  private async sendViaBrevoHttp(to: string, subject: string, html: string, senderEmail: string, senderName: string, apiKey: string): Promise<boolean> {
+    try {
+      const response = await fetch('https://api.brevo.com/v3/smtp/email', {
+        method: 'POST',
+        headers: {
+          'api-key': apiKey,
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: JSON.stringify({
+          sender: { name: senderName, email: senderEmail },
+          to: [{ email: to }],
+          subject,
+          htmlContent: html,
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json() as any;
+        logger.info(`⚡ Email dispatched via Brevo HTTPS API to ${to} (MessageID: ${data.messageId || 'ok'})`);
+        return true;
+      } else {
+        const errorText = await response.text();
+        logger.warn(`⚠️ Brevo HTTPS API dispatch failed (${response.status}): ${errorText}`);
+        return false;
+      }
+    } catch (err: any) {
+      logger.warn(`⚠️ Brevo HTTPS API request error: ${err.message}`);
+      return false;
+    }
+  }
+
+  /**
+   * Dispatches email via Resend HTTPS REST API (Port 443 - Never blocked by Render firewall)
+   */
+  private async sendViaResendHttp(to: string, subject: string, html: string, fromHeader: string, apiKey: string): Promise<boolean> {
+    try {
+      const response = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          from: fromHeader,
+          to: [to],
+          subject,
+          html,
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json() as any;
+        logger.info(`⚡ Email dispatched via Resend HTTPS API to ${to} (MessageID: ${data.id || 'ok'})`);
+        return true;
+      } else {
+        const errorText = await response.text();
+        logger.warn(`⚠️ Resend HTTPS API dispatch failed (${response.status}): ${errorText}`);
+        return false;
+      }
+    } catch (err: any) {
+      logger.warn(`⚠️ Resend HTTPS API request error: ${err.message}`);
+      return false;
+    }
+  }
+
+  /**
    * Creates an SMTP transporter for a specific port
    */
   private createTransporter(user: string, port: number): nodemailer.Transporter {
@@ -40,7 +109,7 @@ class EmailService {
     return nodemailer.createTransport({
       host,
       port,
-      secure: port === 465, // true for 465 SSL, false for 587/2525 STARTTLS
+      secure: port === 465,
       requireTLS: port === 587 || port === 2525,
       auth: {
         user,
@@ -56,8 +125,7 @@ class EmailService {
   }
 
   /**
-   * Sends an email by trying multiple standard SMTP ports (587, 465, 2525)
-   * to bypass cloud host firewall blocks on Render.
+   * Sends an email via HTTPS API (Brevo/Resend) first, or falls back to multi-port SMTP (587, 465, 2525)
    */
   public async sendEmail(
     to: string, 
@@ -65,10 +133,23 @@ class EmailService {
     html: string, 
     senderType: EmailSenderChannel = 'default'
   ): Promise<void> {
-    const { user, from } = this.getSenderInfo(senderType);
+    const { user: senderEmail, from } = this.getSenderInfo(senderType);
+    const senderName = senderType === 'partners' ? 'Go-Eat Partner Support' : senderType === 'secure' ? 'Go-Eat Security' : 'Go-Eat Support';
 
+    // 1. Try Brevo HTTPS API if key is present
+    if (process.env.BREVO_API_KEY) {
+      const ok = await this.sendViaBrevoHttp(to, subject, html, senderEmail, senderName, process.env.BREVO_API_KEY);
+      if (ok) return;
+    }
+
+    // 2. Try Resend HTTPS API if key is present
+    if (process.env.RESEND_API_KEY) {
+      const ok = await this.sendViaResendHttp(to, subject, html, from, process.env.RESEND_API_KEY);
+      if (ok) return;
+    }
+
+    // 3. Fallback to multi-port SMTP (587, 465, 2525)
     const defaultPort = Number(process.env.EMAIL_PORT) || 587;
-    // Ports to attempt sequentially to overcome cloud provider port blocking
     const portsToTry = Array.from(new Set([defaultPort, 587, 465, 2525]));
 
     const mailOptions = {
@@ -84,7 +165,7 @@ class EmailService {
       if (sent) break;
 
       try {
-        const transporter = this.createTransporter(user, port);
+        const transporter = this.createTransporter(senderEmail, port);
         const info = await transporter.sendMail(mailOptions);
         logger.info(`📩 Email dispatched successfully to ${to} via ${from} on Port ${port} (MessageID: ${info.messageId})`);
         sent = true;
@@ -94,7 +175,7 @@ class EmailService {
     }
 
     if (!sent) {
-      logger.error(`❌ All SMTP ports (${portsToTry.join(', ')}) failed for ${to} on host ${process.env.EMAIL_HOST || 'server390.web-hosting.com'}. Render cloud firewall is blocking outbound cPanel SMTP ports. Consider using Brevo/Resend API or setting EMAIL_PORT=587 in Render environment variables.`);
+      logger.error(`❌ All SMTP ports (${portsToTry.join(', ')}) failed for ${to} on host ${process.env.EMAIL_HOST || 'server390.web-hosting.com'}. Render cloud firewall blocks raw SMTP mail ports. To fix instantly: create a free account at Brevo.com or Resend.com and add BREVO_API_KEY or RESEND_API_KEY to Render Environment Variables.`);
     }
   }
 
