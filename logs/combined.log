@@ -4530,3 +4530,8 @@
 2026-07-18 22:47:03 [info]: 	📧 SMTP verified for verify@GoEatOne.com
 2026-07-18 22:47:50 [info]: 	📩 Email sent to echinecherem729@gmail.com [Channel: secure] [fallback: false]
 2026-07-18 22:48:15 [info]: 	📩 Email sent to echinecherem729@gmail.com [Channel: partners] [fallback: false]
+2026-07-19 16:55:04 [info]: 	📧 SMTP verified successfully for partner@GoEatOne.com
+2026-07-19 16:55:04 [info]: 	📧 SMTP verified successfully for support@GoEatOne.com
+2026-07-19 16:55:04 [info]: 	📧 SMTP verified successfully for verify@GoEatOne.com
+2026-07-19 16:55:21 [info]: 	📩 Email dispatched successfully to echinecherem729@gmail.com via "Go-Eat Partner Support" <partner@GoEatOne.com> (MessageID: <bc5ea35b-1ec8-bbfb-609e-3a4a8fd59c2d@goeatone.com>)
+2026-07-19 16:55:21 [info]: 	📩 Email dispatched successfully to echinecherem729@gmail.com via "Go-Eat Security" <verify@GoEatOne.com> (MessageID: <6264ecff-2b57-3804-c89c-e52cb7ded7fc@goeatone.com>)

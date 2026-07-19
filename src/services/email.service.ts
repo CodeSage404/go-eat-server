@@ -16,10 +16,6 @@ class EmailService {
   private defaultTransporter!: nodemailer.Transporter;
   private partnersTransporter!: nodemailer.Transporter;
   private secureTransporter!: nodemailer.Transporter;
-
-  private isDefaultFallback = false;
-  private isPartnersFallback = false;
-  private isSecureFallback = false;
   private initPromise: Promise<void>;
 
   constructor() {
@@ -27,7 +23,7 @@ class EmailService {
   }
 
   /**
-   * Initializes all SMTP transporters with fallback capabilities
+   * Initializes all real SMTP transporters
    */
   private async initializeTransporters() {
     const host = process.env.EMAIL_HOST || 'server390.web-hosting.com';
@@ -42,7 +38,7 @@ class EmailService {
       return nodemailer.createTransport({
         host,
         port,
-        secure: port === 465,
+        secure: port === 465, // true for 465 SSL, false for 587 TLS
         auth: {
           user,
           pass: password,
@@ -50,95 +46,47 @@ class EmailService {
         tls: {
           rejectUnauthorized: false,
         },
-        connectionTimeout: 4000,
-        greetingTimeout: 4000,
-        socketTimeout: 8000,
+        connectionTimeout: 10000,
+        greetingTimeout: 10000,
+        socketTimeout: 15000,
       } as any);
     };
 
     // 1. Initialize default
-    try {
-      this.defaultTransporter = createSmtpTransport(defaultUser);
-      if (process.env.NODE_ENV !== 'test') {
-        this.defaultTransporter.verify().then(() => {
-          logger.info(`📧 SMTP verified for ${defaultUser}`);
-        }).catch(err => {
-          logger.warn(`⚠️ ${defaultUser} SMTP failed: ${err.message}. Enabling mock Ethereal fallback.`);
-          this.isDefaultFallback = true;
-          this.setupEtherealFallback('default');
-        });
-      }
-    } catch (err: any) {
-      logger.warn(`⚠️ ${defaultUser} SMTP initialization failed: ${err.message}`);
+    this.defaultTransporter = createSmtpTransport(defaultUser);
+    if (process.env.NODE_ENV !== 'test') {
+      this.defaultTransporter.verify().then(() => {
+        logger.info(`📧 SMTP verified successfully for ${defaultUser}`);
+      }).catch(err => {
+        logger.error(`❌ SMTP verification failed for ${defaultUser}: ${err.message}`);
+      });
     }
 
     // 2. Initialize partners
-    try {
-      this.partnersTransporter = createSmtpTransport(partnersUser);
-      if (process.env.NODE_ENV !== 'test') {
-        this.partnersTransporter.verify().then(() => {
-          logger.info(`📧 SMTP verified for ${partnersUser}`);
-        }).catch(err => {
-          logger.warn(`⚠️ ${partnersUser} SMTP failed: ${err.message}. Enabling mock Ethereal fallback.`);
-          this.isPartnersFallback = true;
-          this.setupEtherealFallback('partners');
-        });
-      }
-    } catch (err: any) {
-      logger.warn(`⚠️ ${partnersUser} SMTP initialization failed: ${err.message}`);
+    this.partnersTransporter = createSmtpTransport(partnersUser);
+    if (process.env.NODE_ENV !== 'test') {
+      this.partnersTransporter.verify().then(() => {
+        logger.info(`📧 SMTP verified successfully for ${partnersUser}`);
+      }).catch(err => {
+        logger.error(`❌ SMTP verification failed for ${partnersUser}: ${err.message}`);
+      });
     }
 
     // 3. Initialize secure
-    try {
-      this.secureTransporter = createSmtpTransport(secureUser);
-      if (process.env.NODE_ENV !== 'test') {
-        this.secureTransporter.verify().then(() => {
-          logger.info(`📧 SMTP verified for ${secureUser}`);
-        }).catch(err => {
-          logger.warn(`⚠️ ${secureUser} SMTP failed: ${err.message}. Enabling mock Ethereal fallback.`);
-          this.isSecureFallback = true;
-          this.setupEtherealFallback('secure');
-        });
-      }
-    } catch (err: any) {
-      logger.warn(`⚠️ ${secureUser} SMTP initialization failed: ${err.message}`);
-    }
-  }
-
-  /**
-   * Generates a test account on Ethereal to prevent connection crashes in local/parked DNS setups
-   */
-  private async setupEtherealFallback(channel: EmailSenderChannel) {
-    try {
-      const testAccount = await nodemailer.createTestAccount();
-      const mockTransporter = nodemailer.createTransport({
-        host: testAccount.smtp.host,
-        port: testAccount.smtp.port,
-        secure: testAccount.smtp.secure,
-        auth: {
-          user: testAccount.user,
-          pass: testAccount.pass,
-        },
+    this.secureTransporter = createSmtpTransport(secureUser);
+    if (process.env.NODE_ENV !== 'test') {
+      this.secureTransporter.verify().then(() => {
+        logger.info(`📧 SMTP verified successfully for ${secureUser}`);
+      }).catch(err => {
+        logger.error(`❌ SMTP verification failed for ${secureUser}: ${err.message}`);
       });
-
-      if (channel === 'partners') {
-        this.partnersTransporter = mockTransporter;
-      } else if (channel === 'secure') {
-        this.secureTransporter = mockTransporter;
-      } else {
-        this.defaultTransporter = mockTransporter;
-      }
-
-      logger.info(`✅ Ethereal fallback initialized for channel "${channel}": ${testAccount.user}`);
-    } catch (err) {
-      logger.error(`Failed to setup Ethereal fallback for ${channel}:`, err);
     }
   }
 
   /**
    * Helper to fetch the correct transporter based on sender channel type
    */
-  private getTransporter(channel: EmailSenderChannel): { transporter: nodemailer.Transporter; from: string; isFallback: boolean } {
+  private getTransporter(channel: EmailSenderChannel): { transporter: nodemailer.Transporter; from: string } {
     const defaultUser = process.env.EMAIL_USER_DEFAULT || 'support@GoEatOne.com';
     const partnersUser = process.env.EMAIL_USER_PARTNERS || 'partner@GoEatOne.com';
     const secureUser = process.env.EMAIL_USER_SECURE || 'verify@GoEatOne.com';
@@ -146,21 +94,18 @@ class EmailService {
     if (channel === 'partners') {
       return {
         transporter: this.partnersTransporter,
-        from: this.isPartnersFallback ? '"Go-Eat Partner Support" <partners@ethereal.email>' : `"Go-Eat Partner Support" <${partnersUser}>`,
-        isFallback: this.isPartnersFallback
+        from: `"Go-Eat Partner Support" <${partnersUser}>`,
       };
     }
     if (channel === 'secure') {
       return {
         transporter: this.secureTransporter,
-        from: this.isSecureFallback ? '"Go-Eat Security" <secure@ethereal.email>' : `"Go-Eat Security" <${secureUser}>`,
-        isFallback: this.isSecureFallback
+        from: `"Go-Eat Security" <${secureUser}>`,
       };
     }
     return {
       transporter: this.defaultTransporter,
-      from: this.isDefaultFallback ? '"Go-Eat Support" <info@ethereal.email>' : `"Go-Eat Support" <${defaultUser}>`,
-      isFallback: this.isDefaultFallback
+      from: `"Go-Eat Support" <${defaultUser}>`,
     };
   }
 
@@ -174,10 +119,10 @@ class EmailService {
     senderType: EmailSenderChannel = 'default'
   ): Promise<void> {
     await this.initPromise;
-    const { transporter, from, isFallback } = this.getTransporter(senderType);
+    const { transporter, from } = this.getTransporter(senderType);
     
     if (!transporter) {
-      logger.error(`❌ Cannot send email to ${to}: Transporter for ${senderType} not initialized.`);
+      logger.error(`❌ Cannot send email to ${to}: Transporter for ${senderType} is undefined.`);
       return;
     }
 
@@ -190,18 +135,14 @@ class EmailService {
 
     try {
       const info = await transporter.sendMail(mailOptions);
-      logger.info(`📩 Email sent to ${to} [Channel: ${senderType}] [fallback: ${isFallback}]`);
-      if (isFallback) {
-        logger.info(`🔗 Fallback preview URL: ${nodemailer.getTestMessageUrl(info)}`);
-      }
+      logger.info(`📩 Email dispatched successfully to ${to} via ${from} (MessageID: ${info.messageId})`);
     } catch (err: any) {
-      logger.error(`❌ Failed to send email to ${to}: ${err.message}`);
+      logger.error(`❌ Failed to send email to ${to} via ${from}: ${err.message}`);
     }
   }
 
   /**
    * Sends a structured verification OTP code (secure channel)
-   * Dispatches asynchronously to make client API calls instantaneous
    */
   public async sendOTP(email: string, otp: string): Promise<void> {
     const htmlContent = renderTemplate('OTP_VERIFICATION', { otpCode: otp, validTime: '10 minutes' });
