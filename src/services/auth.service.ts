@@ -33,13 +33,23 @@ class AuthService {
     if (userData.phoneNumber) {
       const existingUser = await User.findOne({ phoneNumber: userData.phoneNumber });
       if (existingUser) {
-        throw new AppError('Phone number already in use', 400);
+        if (existingUser.isVerified) {
+          throw new AppError('Phone number already in use', 400);
+        } else {
+          // Remove old unverified record to allow re-signup
+          await User.deleteOne({ _id: existingUser._id });
+        }
       }
     }
     if (userData.email) {
       const existingUser = await User.findOne({ email: userData.email });
       if (existingUser) {
-        throw new AppError('Email already in use', 400);
+        if (existingUser.isVerified) {
+          throw new AppError('Email already in use', 400);
+        } else {
+          // Remove old unverified record to allow re-signup
+          await User.deleteOne({ _id: existingUser._id });
+        }
       }
     }
 

@@ -14,17 +14,14 @@ class OTPUtil {
     }
     /**
      * Stores OTP in Redis with a TTL (Time-To-Live)
-     * @param email
-     * @param otp
-     * @param ttlSeconds
      */
-    async storeOTP(email, otp, ttlSeconds = 600) {
+    async storeOTP(identifier, otp, ttlSeconds = 600) {
         try {
-            const key = `otp:${email}`;
+            const key = `otp:${identifier.toLowerCase()}`;
             await redis_1.default.set(key, otp, {
                 EX: ttlSeconds,
             });
-            logger_1.default.info(`🔑 OTP stored in Redis for ${email}`);
+            logger_1.default.info(`🔑 OTP stored in Redis for ${identifier}`);
         }
         catch (error) {
             logger_1.default.error('❌ Error storing OTP in Redis:', error);
@@ -33,15 +30,12 @@ class OTPUtil {
     }
     /**
      * Verifies an OTP from Redis
-     * @param email
-     * @param otp
      */
-    async verifyOTP(email, otp) {
+    async verifyOTP(identifier, otp) {
         try {
-            const key = `otp:${email}`;
+            const key = `otp:${identifier.toLowerCase()}`;
             const storedOTP = await redis_1.default.get(key);
             if (storedOTP === otp) {
-                // Delete OTP after successful verification
                 await redis_1.default.del(key);
                 return true;
             }
@@ -50,6 +44,50 @@ class OTPUtil {
         catch (error) {
             logger_1.default.error('❌ Error verifying OTP in Redis:', error);
             return false;
+        }
+    }
+    /**
+     * Stores pending user registration payload in Redis before DB creation
+     */
+    async storePendingUser(identifier, userData, ttlSeconds = 600) {
+        try {
+            const key = `pending_user:${identifier.toLowerCase()}`;
+            await redis_1.default.set(key, JSON.stringify(userData), {
+                EX: ttlSeconds,
+            });
+            logger_1.default.info(`💾 Pending user registration cached in Redis for ${identifier}`);
+        }
+        catch (error) {
+            logger_1.default.error('❌ Error storing pending user in Redis:', error);
+        }
+    }
+    /**
+     * Retrieves pending user registration payload from Redis
+     */
+    async getPendingUser(identifier) {
+        try {
+            const key = `pending_user:${identifier.toLowerCase()}`;
+            const data = await redis_1.default.get(key);
+            if (data) {
+                return JSON.parse(data);
+            }
+            return null;
+        }
+        catch (error) {
+            logger_1.default.error('❌ Error fetching pending user from Redis:', error);
+            return null;
+        }
+    }
+    /**
+     * Deletes pending user payload from Redis
+     */
+    async deletePendingUser(identifier) {
+        try {
+            const key = `pending_user:${identifier.toLowerCase()}`;
+            await redis_1.default.del(key);
+        }
+        catch (error) {
+            logger_1.default.error('❌ Error deleting pending user from Redis:', error);
         }
     }
 }

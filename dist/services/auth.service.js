@@ -67,13 +67,25 @@ class AuthService {
         if (userData.phoneNumber) {
             const existingUser = await user_model_1.default.findOne({ phoneNumber: userData.phoneNumber });
             if (existingUser) {
-                throw new appError_1.default('Phone number already in use', 400);
+                if (existingUser.isVerified) {
+                    throw new appError_1.default('Phone number already in use', 400);
+                }
+                else {
+                    // Remove old unverified record to allow re-signup
+                    await user_model_1.default.deleteOne({ _id: existingUser._id });
+                }
             }
         }
         if (userData.email) {
             const existingUser = await user_model_1.default.findOne({ email: userData.email });
             if (existingUser) {
-                throw new appError_1.default('Email already in use', 400);
+                if (existingUser.isVerified) {
+                    throw new appError_1.default('Email already in use', 400);
+                }
+                else {
+                    // Remove old unverified record to allow re-signup
+                    await user_model_1.default.deleteOne({ _id: existingUser._id });
+                }
             }
         }
         const user = await user_model_1.default.create(userData);
