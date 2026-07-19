@@ -84,7 +84,7 @@ class GoogleMapsService {
             return response.data.predictions;
         }
         catch (error) {
-            logger_1.default.error('❌ Google Maps Autocomplete Error:', error);
+            logger_1.default.warn(`⚠️ Google Maps Autocomplete unavailable (${error?.response?.status || error?.message}). Using OpenStreetMap fallback.`);
             return [];
         }
     }

@@ -36,71 +36,20 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-const zod_1 = require("zod");
-const auth_service_1 = __importDefault(require("../services/auth.service"));
-const otp_util_1 = __importDefault(require("../utils/otp.util"));
-const email_util_1 = __importDefault(require("../utils/email.util"));
 const catchAsync_1 = require("../utils/catchAsync");
 const appError_1 = __importDefault(require("../utils/appError"));
+const auth_service_1 = __importDefault(require("../services/auth.service"));
 const user_model_1 = __importStar(require("../models/user.model"));
+const otp_util_1 = __importDefault(require("../utils/otp.util"));
+const email_service_1 = __importDefault(require("../services/email.service"));
 const logger_1 = __importDefault(require("../utils/logger"));
 const twilioVerify_util_1 = require("../utils/twilioVerify.util");
-const notification_service_1 = __importDefault(require("../services/notification.service"));
-// Validation Schemas
-const baseUserSignupSchema = zod_1.z.object({
-    phoneNumber: zod_1.z.string().min(8, 'Phone number must be at least 8 digits').max(11, 'Phone number must be at most 11 digits').optional(),
-    password: zod_1.z.string().min(8, 'Password must be at least 8 characters'),
-    name: zod_1.z.string().optional(),
-    email: zod_1.z.string().email('Invalid email address').optional(),
-    referralCode: zod_1.z.string().optional(),
-});
-const userSignupSchema = baseUserSignupSchema.refine((data) => data.phoneNumber || data.email, {
-    message: 'Either phone number or email is required',
-    path: ['phoneNumber', 'email'],
-});
-const courierSignupSchema = baseUserSignupSchema.extend({
-    vehicleType: zod_1.z.string().min(1, 'Vehicle type is required'),
-    licenseNumber: zod_1.z.string().min(1, 'License number is required'),
-}).refine((data) => data.phoneNumber || data.email, {
-    message: 'Either phone number or email is required',
-    path: ['phoneNumber', 'email'],
-});
-const vendorSignupSchema = baseUserSignupSchema.extend({
-    restaurantName: zod_1.z.string().min(1, 'Restaurant name is required'),
-    address: zod_1.z.string().min(1, 'Address is required'),
-    businessType: zod_1.z.string().min(1, 'Business type is required'),
-}).refine((data) => data.phoneNumber || data.email, {
-    message: 'Either phone number or email is required',
-    path: ['phoneNumber', 'email'],
-});
-const verifyOTPSchema = zod_1.z.object({
-    email: zod_1.z.string().email('Invalid email address').optional(),
-    phoneNumber: zod_1.z.string().optional(),
-    otp: zod_1.z.string().length(6, 'OTP must be 6 digits'),
-});
-const socialLoginSchema = zod_1.z.object({
-    token: zod_1.z.string().min(1, 'Token is required'),
-    role: zod_1.z.nativeEnum(user_model_1.UserRole).optional(),
-});
-const changePasswordSchema = zod_1.z.object({
-    currentPassword: zod_1.z.string().min(1, 'Current password is required'),
-    newPassword: zod_1.z.string().min(8, 'New password must be at least 8 characters'),
-});
-const updateMeSchema = zod_1.z.object({
-    name: zod_1.z.string().optional(),
-    phoneNumber: zod_1.z.string().optional(),
-    notificationsEnabled: zod_1.z.boolean().optional(),
-    location: zod_1.z.object({
-        type: zod_1.z.literal('Point'),
-        coordinates: zod_1.z.array(zod_1.z.number()).length(2),
-    }).optional(),
-});
 class AuthController {
     constructor() {
         this.signupUser = (0, catchAsync_1.catchAsync)(async (req, res) => {
-            const validatedData = userSignupSchema.safeParse(req.body);
-            if (!validatedData.success) {
-                throw new appError_1.default(validatedData.error.issues.map(i => i.message).join(', '), 400);
+            const { email, phoneNumber, password } = req.body;
+            if (!password || (!email && !phoneNumber)) {
+                throw new appError_1.default('Please provide email or phone number along with password', 400);
             }
             let referredBy;
             if (req.body.referralCode) {
@@ -108,34 +57,37 @@ class AuthController {
                 if (referrer)
                     referredBy = referrer._id;
             }
-            const { user, token } = await auth_service_1.default.register({
+            // Validate uniqueness against existing VERIFIED users (does NOT write to DB yet)
+            const cleanData = await auth_service_1.default.validateUniqueness({
                 ...req.body,
                 role: user_model_1.UserRole.CUSTOMER,
                 referredBy,
             });
-            const verifyByPhone = !!user.phoneNumber;
-            if (verifyByPhone) {
-                await this.initiateVerification(user.phoneNumber, 'phone');
-            }
-            else if (user.email) {
-                await this.initiateVerification(user.email, 'email');
-            }
-            else {
+            const identifier = cleanData.email || cleanData.phoneNumber;
+            if (!identifier) {
                 throw new appError_1.default('Verification identifier missing', 400);
             }
-            res.status(201).json({
+            // Cache pending registration in Redis for 10 minutes
+            await otp_util_1.default.storePendingUser(identifier, cleanData, 600);
+            // Send OTP (If email/phone sending fails, error is thrown BEFORE DB creation)
+            const verifyByPhone = !!cleanData.phoneNumber;
+            if (verifyByPhone) {
+                await this.initiateVerification(cleanData.phoneNumber, 'phone');
+            }
+            else if (cleanData.email) {
+                await this.initiateVerification(cleanData.email, 'email');
+            }
+            res.status(200).json({
                 status: 'success',
                 message: verifyByPhone
-                    ? 'Signup successful. Please verify your phone number with the OTP.'
-                    : 'Signup successful. Please verify your email with the OTP.',
-                token,
-                data: { user },
+                    ? 'Signup payload saved. Please verify your phone number with the OTP code.'
+                    : 'Signup payload saved. Please verify your email with the OTP code.',
             });
         });
         this.signupCourier = (0, catchAsync_1.catchAsync)(async (req, res) => {
-            const validatedData = courierSignupSchema.safeParse(req.body);
-            if (!validatedData.success) {
-                throw new appError_1.default(validatedData.error.issues.map(i => i.message).join(', '), 400);
+            const { email, phoneNumber, password } = req.body;
+            if (!password || (!email && !phoneNumber)) {
+                throw new appError_1.default('Please provide email or phone number along with password', 400);
             }
             let referredBy;
             if (req.body.referralCode) {
@@ -143,35 +95,35 @@ class AuthController {
                 if (referrer)
                     referredBy = referrer._id;
             }
-            const { user, token } = await auth_service_1.default.register({
+            const cleanData = await auth_service_1.default.validateUniqueness({
                 ...req.body,
                 role: user_model_1.UserRole.RIDER,
-                status: user_model_1.UserStatus.PENDING, // Couriers need verification
+                status: user_model_1.UserStatus.PENDING,
                 referredBy,
             });
-            const verifyByPhone = !!user.phoneNumber;
-            if (verifyByPhone) {
-                await this.initiateVerification(user.phoneNumber, 'phone');
-            }
-            else if (user.email) {
-                await this.initiateVerification(user.email, 'email');
-            }
-            else {
+            const identifier = cleanData.email || cleanData.phoneNumber;
+            if (!identifier) {
                 throw new appError_1.default('Verification identifier missing', 400);
             }
-            res.status(201).json({
+            await otp_util_1.default.storePendingUser(identifier, cleanData, 600);
+            const verifyByPhone = !!cleanData.phoneNumber;
+            if (verifyByPhone) {
+                await this.initiateVerification(cleanData.phoneNumber, 'phone');
+            }
+            else if (cleanData.email) {
+                await this.initiateVerification(cleanData.email, 'email');
+            }
+            res.status(200).json({
                 status: 'success',
                 message: verifyByPhone
-                    ? 'Courier signup successful. Please verify your phone number.'
-                    : 'Courier signup successful. Please verify your email.',
-                token,
-                data: { user },
+                    ? 'Courier signup payload saved. Please verify your phone number.'
+                    : 'Courier signup payload saved. Please verify your email.',
             });
         });
         this.signupVendor = (0, catchAsync_1.catchAsync)(async (req, res) => {
-            const validatedData = vendorSignupSchema.safeParse(req.body);
-            if (!validatedData.success) {
-                throw new appError_1.default(validatedData.error.issues.map(i => i.message).join(', '), 400);
+            const { email, phoneNumber, password } = req.body;
+            if (!password || (!email && !phoneNumber)) {
+                throw new appError_1.default('Please provide email or phone number along with password', 400);
             }
             let referredBy;
             if (req.body.referralCode) {
@@ -179,40 +131,36 @@ class AuthController {
                 if (referrer)
                     referredBy = referrer._id;
             }
-            const { user, token } = await auth_service_1.default.register({
+            const cleanData = await auth_service_1.default.validateUniqueness({
                 ...req.body,
                 role: user_model_1.UserRole.VENDOR,
-                status: user_model_1.UserStatus.PENDING, // Vendors need verification
+                status: user_model_1.UserStatus.PENDING,
                 referredBy,
             });
-            const verifyByPhone = !!user.phoneNumber;
-            if (verifyByPhone) {
-                await this.initiateVerification(user.phoneNumber, 'phone');
-            }
-            else if (user.email) {
-                await this.initiateVerification(user.email, 'email');
-            }
-            else {
+            const identifier = cleanData.email || cleanData.phoneNumber;
+            if (!identifier) {
                 throw new appError_1.default('Verification identifier missing', 400);
             }
-            res.status(201).json({
+            await otp_util_1.default.storePendingUser(identifier, cleanData, 600);
+            const verifyByPhone = !!cleanData.phoneNumber;
+            if (verifyByPhone) {
+                await this.initiateVerification(cleanData.phoneNumber, 'phone');
+            }
+            else if (cleanData.email) {
+                await this.initiateVerification(cleanData.email, 'email');
+            }
+            res.status(200).json({
                 status: 'success',
                 message: verifyByPhone
-                    ? 'Vendor signup successful. Please verify your phone number.'
-                    : 'Vendor signup successful. Please verify your email.',
-                token,
-                data: { user },
+                    ? 'Vendor signup payload saved. Please verify your phone number.'
+                    : 'Vendor signup payload saved. Please verify your email.',
             });
         });
         this.verifyOTP = (0, catchAsync_1.catchAsync)(async (req, res) => {
-            const validatedData = verifyOTPSchema.safeParse(req.body);
-            if (!validatedData.success) {
-                throw new appError_1.default('Invalid request details', 400);
-            }
             const { email, phoneNumber, otp } = req.body;
             const identifier = email || phoneNumber;
-            if (!identifier) {
-                throw new appError_1.default('Please provide email or phone number', 400);
+            if (!identifier || !otp) {
+                throw new appError_1.default('Please provide email or phone number and OTP code', 400);
             }
             let isValid = false;
             if (phoneNumber) {
@@ -222,18 +170,32 @@ class AuthController {
                 isValid = await otp_util_1.default.verifyOTP(email.toLowerCase(), otp);
             }
             if (!isValid) {
-                throw new appError_1.default('Invalid or expired OTP', 400);
+                throw new appError_1.default('Invalid or expired OTP code', 400);
             }
-            // Update user verification status based on query
-            const query = email ? { email: email.toLowerCase() } : { phoneNumber };
-            const user = await user_model_1.default.findOneAndUpdate(query, { isVerified: true }, { new: true });
-            if (!user) {
-                throw new appError_1.default('User not found', 404);
+            let user;
+            let token;
+            // Check if there is a pending registration payload cached in Redis
+            const pendingUserData = await otp_util_1.default.getPendingUser(identifier);
+            if (pendingUserData) {
+                // NOW save the verified user document into MongoDB
+                const result = await auth_service_1.default.createVerifiedUser(pendingUserData);
+                user = result.user;
+                token = result.token;
+                await otp_util_1.default.deletePendingUser(identifier);
             }
-            // Send welcome email if user has a verified email address
+            else {
+                // Update existing DB user if already present
+                const query = email ? { email: email.toLowerCase() } : { phoneNumber };
+                user = await user_model_1.default.findOneAndUpdate(query, { isVerified: true }, { new: true });
+                if (!user) {
+                    throw new appError_1.default('User registration not found. Please sign up again.', 404);
+                }
+                token = auth_service_1.default.signToken(user._id);
+            }
+            // Send welcome email if user has an email address
             if (user.email) {
                 try {
-                    await email_util_1.default.sendTemplateEmail(user.email, 'WELCOME_USER', 'Welcome to Go-Eat!', { name: user.name || 'User' });
+                    await email_service_1.default.sendTemplateEmail(user.email, 'WELCOME_USER', 'Welcome to Go-Eat!', { name: user.name || 'User' });
                 }
                 catch (err) {
                     logger_1.default.error(`Error sending welcome email to ${user.email}:`, err.message);
@@ -242,6 +204,7 @@ class AuthController {
             res.status(200).json({
                 status: 'success',
                 message: email ? 'Email verified successfully' : 'Phone number verified successfully',
+                token,
                 data: { user },
             });
         });
@@ -265,7 +228,6 @@ class AuthController {
             });
         });
         this.login = (0, catchAsync_1.catchAsync)(async (req, res) => {
-            // Allows either email or phone login
             const { email, phoneNumber, password } = req.body;
             const identifier = email || phoneNumber;
             const { user, token } = await auth_service_1.default.login(identifier, password);
@@ -276,30 +238,27 @@ class AuthController {
             });
         });
         this.googleLogin = (0, catchAsync_1.catchAsync)(async (req, res) => {
-            const validatedData = socialLoginSchema.safeParse(req.body);
-            if (!validatedData.success) {
-                throw new appError_1.default(validatedData.error.issues.map(i => i.message).join(', '), 400);
-            }
-            const { user, token } = await auth_service_1.default.socialLogin('google', req.body.token, req.body.role);
+            const { token, role } = req.body;
+            if (!token)
+                throw new appError_1.default('Google token is required', 400);
+            const result = await auth_service_1.default.socialLogin('google', token, role || user_model_1.UserRole.CUSTOMER);
             res.status(200).json({
                 status: 'success',
-                token,
-                data: { user },
+                token: result.token,
+                data: { user: result.user },
             });
         });
         this.appleLogin = (0, catchAsync_1.catchAsync)(async (req, res) => {
-            const validatedData = socialLoginSchema.safeParse(req.body);
-            if (!validatedData.success) {
-                throw new appError_1.default(validatedData.error.issues.map(i => i.message).join(', '), 400);
-            }
-            const { user, token } = await auth_service_1.default.socialLogin('apple', req.body.token, req.body.role);
+            const { token, role } = req.body;
+            if (!token)
+                throw new appError_1.default('Apple token is required', 400);
+            const result = await auth_service_1.default.socialLogin('apple', token, role || user_model_1.UserRole.CUSTOMER);
             res.status(200).json({
                 status: 'success',
-                token,
-                data: { user },
+                token: result.token,
+                data: { user: result.user },
             });
         });
-        // User Profile Methods
         this.getMe = (0, catchAsync_1.catchAsync)(async (req, res) => {
             res.status(200).json({
                 status: 'success',
@@ -307,57 +266,64 @@ class AuthController {
             });
         });
         this.updateMe = (0, catchAsync_1.catchAsync)(async (req, res) => {
-            const validatedData = updateMeSchema.safeParse(req.body);
-            if (!validatedData.success) {
-                throw new appError_1.default('Invalid update data', 400);
-            }
-            const updatedUser = await user_model_1.default.findByIdAndUpdate(req.user._id, req.body, { new: true, runValidators: true });
+            const allowedFields = ['name', 'phoneNumber', 'notificationsEnabled'];
+            const filteredBody = {};
+            Object.keys(req.body).forEach(key => {
+                if (allowedFields.includes(key)) {
+                    filteredBody[key] = req.body[key];
+                }
+            });
+            const currentUser = req.user;
+            const updatedUser = await user_model_1.default.findByIdAndUpdate(currentUser._id, filteredBody, {
+                new: true,
+                runValidators: true,
+            });
             res.status(200).json({
                 status: 'success',
                 data: { user: updatedUser },
             });
         });
-        /**
-         * Complete user profile: Add name, add email, and trigger verification OTP for the new email
-         */
         this.completeProfile = (0, catchAsync_1.catchAsync)(async (req, res) => {
             const { name, email } = req.body;
-            const user = await user_model_1.default.findById(req.user._id);
-            if (!user)
-                throw new appError_1.default('User not found', 404);
-            if (name)
-                user.name = name;
-            if (email && email.toLowerCase() !== user.email) {
-                // Check if this email is already registered by someone else
-                const existingUser = await user_model_1.default.findOne({ email: email.toLowerCase() });
-                if (existingUser) {
-                    throw new appError_1.default('Email is already registered by another user', 400);
-                }
-                user.email = email.toLowerCase();
-                // Trigger email verification
-                await this.initiateVerification(user.email, 'email');
+            const currentUser = req.user;
+            if (!name || !email) {
+                throw new appError_1.default('Please provide both full name and email', 400);
             }
-            await user.save();
+            const lowerEmail = email.toLowerCase().trim();
+            const existingUser = await user_model_1.default.findOne({ email: lowerEmail, _id: { $ne: currentUser._id } });
+            if (existingUser && existingUser.isVerified) {
+                throw new appError_1.default('Email is already registered by another account', 400);
+            }
+            const updatedUser = await user_model_1.default.findByIdAndUpdate(currentUser._id, { name: name.trim(), email: lowerEmail }, { new: true, runValidators: true });
+            if (!updatedUser) {
+                throw new appError_1.default('User profile update failed', 400);
+            }
+            const otp = otp_util_1.default.generateOTP();
+            await otp_util_1.default.storeOTP(lowerEmail, otp);
+            await email_service_1.default.sendOTP(lowerEmail, otp);
             res.status(200).json({
                 status: 'success',
-                message: email ? 'Profile updated. Please verify the new email with the OTP sent.' : 'Profile completed successfully.',
-                data: { user },
+                message: 'Profile details saved. Verification OTP dispatched to email.',
+                data: { user: updatedUser },
             });
         });
         this.changePassword = (0, catchAsync_1.catchAsync)(async (req, res) => {
-            const validatedData = changePasswordSchema.safeParse(req.body);
-            if (!validatedData.success) {
-                throw new appError_1.default(validatedData.error.issues[0].message, 400);
+            const { currentPassword, newPassword } = req.body;
+            const currentUser = req.user;
+            if (!currentPassword || !newPassword) {
+                throw new appError_1.default('Please provide current password and new password', 400);
             }
-            const user = await user_model_1.default.findById(req.user._id).select('+password');
-            if (!user || !(await user.comparePassword(req.body.currentPassword))) {
+            const user = await user_model_1.default.findById(currentUser._id).select('+password');
+            if (!user || !(await user.comparePassword(currentPassword))) {
                 throw new appError_1.default('Current password is incorrect', 401);
             }
-            user.password = req.body.newPassword;
+            user.password = newPassword;
             await user.save();
+            const token = auth_service_1.default.signToken(user._id);
             res.status(200).json({
                 status: 'success',
                 message: 'Password updated successfully',
+                token,
             });
         });
     }
@@ -365,21 +331,11 @@ class AuthController {
         if (type === 'email') {
             const otp = otp_util_1.default.generateOTP();
             await otp_util_1.default.storeOTP(identifier, otp);
-            await email_util_1.default.sendOTP(identifier, otp);
+            await email_service_1.default.sendOTP(identifier, otp);
         }
         else {
-            // Send real WhatsApp OTP via Twilio Verify API v2
-            await (0, twilioVerify_util_1.startWhatsAppVerification)(identifier);
-            // Also send via Push Notification if FCM is available on device
-            try {
-                const user = await user_model_1.default.findOne({ phoneNumber: identifier });
-                if (user && user.fcmToken) {
-                    await notification_service_1.default.sendNotification(user._id.toString(), 'Phone Verification OTP 🔑', 'Your verification code has been sent to your WhatsApp.');
-                }
-            }
-            catch (err) {
-                logger_1.default.error('Failed to dispatch OTP via push notification:', err);
-            }
+            const formattedPhone = identifier.startsWith('+') ? identifier : `+234${identifier.replace(/^0/, '')}`;
+            await (0, twilioVerify_util_1.startWhatsAppVerification)(formattedPhone);
         }
     }
 }

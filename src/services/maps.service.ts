@@ -84,8 +84,8 @@ class GoogleMapsService {
       });
 
       return response.data.predictions;
-    } catch (error) {
-      logger.error('❌ Google Maps Autocomplete Error:', error);
+    } catch (error: any) {
+      logger.warn(`⚠️ Google Maps Autocomplete unavailable (${error?.response?.status || error?.message}). Using OpenStreetMap fallback.`);
       return [];
     }
   }

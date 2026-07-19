@@ -8,7 +8,7 @@ import appleSignin from 'apple-signin-auth';
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 class AuthService {
-  private signToken(id: string): string {
+  public signToken(id: string): string {
     const options: SignOptions = {
       expiresIn: (process.env.JWT_EXPIRES_IN as any) || '90d',
     };
@@ -16,45 +16,61 @@ class AuthService {
     return jwt.sign({ id }, process.env.JWT_SECRET!, options);
   }
 
-  public async register(userData: Partial<IUser>): Promise<{ user: IUser; token: string }> {
-    // Clean up empty, null or undefined values to avoid unique constraint duplicates in MongoDB
-    if (userData.email === '' || userData.email === null || userData.email === undefined) {
-      delete userData.email;
+  /**
+   * Sanitizes input and validates uniqueness against existing VERIFIED users in MongoDB.
+   * Does NOT save the user to MongoDB yet.
+   */
+  public async validateUniqueness(userData: Partial<IUser>): Promise<Partial<IUser>> {
+    const cleanData = { ...userData };
+
+    if (cleanData.email === '' || cleanData.email === null || cleanData.email === undefined) {
+      delete cleanData.email;
     } else {
-      userData.email = userData.email.toLowerCase().trim();
+      cleanData.email = cleanData.email.toLowerCase().trim();
     }
 
-    if (userData.phoneNumber === '' || userData.phoneNumber === null || userData.phoneNumber === undefined) {
-      delete userData.phoneNumber;
+    if (cleanData.phoneNumber === '' || cleanData.phoneNumber === null || cleanData.phoneNumber === undefined) {
+      delete cleanData.phoneNumber;
     } else {
-      userData.phoneNumber = userData.phoneNumber.trim();
+      cleanData.phoneNumber = cleanData.phoneNumber.trim();
     }
 
-    if (userData.phoneNumber) {
-      const existingUser = await User.findOne({ phoneNumber: userData.phoneNumber });
+    if (cleanData.phoneNumber) {
+      const existingUser = await User.findOne({ phoneNumber: cleanData.phoneNumber });
       if (existingUser) {
         if (existingUser.isVerified) {
           throw new AppError('Phone number already in use', 400);
         } else {
-          // Remove old unverified record to allow re-signup
-          await User.deleteOne({ _id: existingUser._id });
-        }
-      }
-    }
-    if (userData.email) {
-      const existingUser = await User.findOne({ email: userData.email });
-      if (existingUser) {
-        if (existingUser.isVerified) {
-          throw new AppError('Email already in use', 400);
-        } else {
-          // Remove old unverified record to allow re-signup
+          // Remove old unverified record to allow fresh re-signup
           await User.deleteOne({ _id: existingUser._id });
         }
       }
     }
 
-    const user = await User.create(userData);
-    
+    if (cleanData.email) {
+      const existingUser = await User.findOne({ email: cleanData.email });
+      if (existingUser) {
+        if (existingUser.isVerified) {
+          throw new AppError('Email already in use', 400);
+        } else {
+          // Remove old unverified record to allow fresh re-signup
+          await User.deleteOne({ _id: existingUser._id });
+        }
+      }
+    }
+
+    return cleanData;
+  }
+
+  /**
+   * Creates or activates a verified user in MongoDB AFTER OTP verification succeeds.
+   */
+  public async createVerifiedUser(userData: Partial<IUser>): Promise<{ user: IUser; token: string }> {
+    const cleanData = await this.validateUniqueness(userData);
+    cleanData.isVerified = true;
+
+    const user = await User.create(cleanData);
+
     if (user.referredBy) {
       try {
         await User.findByIdAndUpdate(user.referredBy, {
@@ -67,11 +83,14 @@ class AuthService {
     }
 
     const token = this.signToken(user._id as unknown as string);
-
     user.password = undefined;
 
-    logger.info(`👤 New user registered: ${user.phoneNumber || user.email} as ${user.role}`);
+    logger.info(`👤 New verified user created in DB: ${user.phoneNumber || user.email} as ${user.role}`);
     return { user, token };
+  }
+
+  public async register(userData: Partial<IUser>): Promise<{ user: IUser; token: string }> {
+    return this.createVerifiedUser(userData);
   }
 
   public async login(identifier: string, password: string): Promise<{ user: IUser; token: string }> {
@@ -124,19 +143,17 @@ class AuthService {
     let user = await User.findOne({ email });
 
     if (user) {
-      // Update social ID if not present
       if (type === 'google' && !user.googleId) user.googleId = socialId;
       if (type === 'apple' && !user.appleId) user.appleId = socialId;
       await user.save();
     } else {
-      // Create new user
       user = await User.create({
         email,
         name,
         role,
         googleId: type === 'google' ? socialId : undefined,
         appleId: type === 'apple' ? socialId : undefined,
-        isVerified: true, // Social accounts are verified
+        isVerified: true,
       });
     }
 

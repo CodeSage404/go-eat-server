@@ -134,6 +134,31 @@ router.post('/signup/vendor', auth_controller_1.default.signupVendor);
  *         description: Account verified.
  */
 router.post('/verify-otp', auth_controller_1.default.verifyOTP);
+/**
+ * @openapi
+ * /api/v1/auth/resend-otp:
+ *   post:
+ *     tags:
+ *       - Auth
+ *     summary: Resend OTP Verification Code
+ *     description: Resends a 6-digit OTP verification code via WhatsApp or Email.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               email:
+ *                 type: string
+ *               phoneNumber:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Verification OTP code resent.
+ *       400:
+ *         description: Missing identifier parameters.
+ */
 router.post('/resend-otp', auth_controller_1.default.resendOTP);
 // Shared Routes
 /**
@@ -221,7 +246,6 @@ router.post('/google', auth_controller_1.default.googleLogin);
  */
 router.post('/apple', auth_controller_1.default.appleLogin);
 // Protected Profile Routes
-router.use(auth_controller_1.default.protect ? (req, res, next) => next() : (req, res, next) => next()); // Placeholder to ensure logic flows correctly if I missed the import check
 const auth_middleware_1 = require("../middleware/auth.middleware");
 router.use(auth_middleware_1.protect);
 /**

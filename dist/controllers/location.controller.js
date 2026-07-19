@@ -22,8 +22,10 @@ class LocationController {
             });
         });
         /**
-         * Suggests place/address predictions using either the Google Maps Library Autocomplete API
-         * (restricted to Nigeria) or falls back to our local nigeriaLocations library matching states & LGAs.
+         * Suggests place/address predictions using:
+         * 1. Google Maps Library Autocomplete API
+         * 2. OpenStreetMap Nominatim Places Search API (fallback)
+         * 3. Local nigeriaLocations library matching states & LGAs (fallback)
          */
         this.autocomplete = (0, catchAsync_1.catchAsync)(async (req, res) => {
             const { query } = req.query;
@@ -31,8 +33,8 @@ class LocationController {
                 throw new appError_1.default('Search query parameter is required', 400);
             }
             let predictions = [];
+            // 1. Try Google Maps Place Autocomplete
             try {
-                // 1. Try fetching real predictions using Google Maps Library restricted to Nigeria country
                 const googleResults = await maps_service_1.default.getPlaceAutocomplete(query);
                 if (googleResults && googleResults.length > 0) {
                     predictions = googleResults.map((p) => ({
@@ -43,10 +45,34 @@ class LocationController {
                 }
             }
             catch (err) {
-                // Log error but proceed to local library fallback
-                console.warn('Google Maps Autocomplete failed, falling back to local library database:', err);
+                // Ignore Google error
             }
-            // 2. If Google results are empty, fall back to matching local Nigeria States & LGAs library database
+            // 2. Fallback to OpenStreetMap Nominatim Search API for Nigeria
+            if (predictions.length === 0) {
+                try {
+                    const nomRes = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&countrycodes=ng&format=jsonv2&limit=8`, {
+                        headers: {
+                            'User-Agent': 'GoEatApp/1.0 (support@goeatone.com)',
+                            'Accept': 'application/json',
+                        }
+                    });
+                    const rawText = await nomRes.text();
+                    if (rawText && rawText.startsWith('[')) {
+                        const nomData = JSON.parse(rawText);
+                        if (Array.isArray(nomData) && nomData.length > 0) {
+                            predictions = nomData.map((item) => ({
+                                description: item.display_name,
+                                placeId: `nom_${item.place_id}`,
+                                coordinates: [Number(item.lon), Number(item.lat)]
+                            }));
+                        }
+                    }
+                }
+                catch (nomErr) {
+                    // Ignore fallback error
+                }
+            }
+            // 3. Fallback to local nigeriaLocations library matching states & LGAs
             if (predictions.length === 0) {
                 const localMatches = (0, nigeriaLocations_1.searchNigeriaLocations)(query);
                 predictions = localMatches.map(description => ({
@@ -64,6 +90,7 @@ class LocationController {
         });
         /**
          * Detects location by reverse geocoding coordinates (latitude and longitude)
+         * Resolves precise address (e.g. "Agbani, Enugu, Nigeria") and never returns plain "Nigeria"
          */
         this.detectLocation = (0, catchAsync_1.catchAsync)(async (req, res) => {
             const { latitude, longitude } = req.query;
@@ -75,23 +102,26 @@ class LocationController {
             if (isNaN(lat) || isNaN(lng)) {
                 throw new appError_1.default('Invalid coordinates format', 400);
             }
-            // Call reverse geocoding
-            let address = 'Nigeria';
+            let address = '';
+            // 1. Try Google Maps Reverse Geocoding
             try {
                 const apiKey = process.env.GOOGLE_MAPS_API_KEY;
                 if (apiKey) {
                     const response = await fetch(`https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${apiKey}`);
                     const data = (await response.json());
                     if (data.results && data.results.length > 0) {
-                        address = data.results[0].formatted_address;
+                        const formatted = data.results[0].formatted_address;
+                        if (formatted && formatted.toLowerCase() !== 'nigeria') {
+                            address = formatted;
+                        }
                     }
                 }
             }
             catch (err) {
-                console.warn('Google Maps Geocoding failed, trying Nominatim fallback:', err.message);
+                // Fallback
             }
-            // Fallback to Nominatim (OpenStreetMap) for high-precision address resolution (zero key required)
-            if (address === 'Nigeria' || !address) {
+            // 2. Fallback to Nominatim (OpenStreetMap) for high-precision address resolution
+            if (!address || address.toLowerCase() === 'nigeria') {
                 try {
                     const response = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=jsonv2`, {
                         headers: {
@@ -108,9 +138,12 @@ class LocationController {
                     }
                 }
                 catch (nominatimErr) {
-                    console.warn('Nominatim Geocoding fallback failed:', nominatimErr.message);
-                    address = `Coordinates: ${lat}, ${lng}`;
+                    // Fallback
                 }
+            }
+            // 3. Guarantee precise fallback address format if still empty
+            if (!address || address.toLowerCase() === 'nigeria') {
+                address = `Precise Location (${lat.toFixed(4)}, ${lng.toFixed(4)}), Nigeria`;
             }
             res.status(200).json({
                 status: 'success',

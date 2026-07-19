@@ -50,45 +50,57 @@ class AuthService {
         };
         return jsonwebtoken_1.default.sign({ id }, process.env.JWT_SECRET, options);
     }
-    async register(userData) {
-        // Clean up empty, null or undefined values to avoid unique constraint duplicates in MongoDB
-        if (userData.email === '' || userData.email === null || userData.email === undefined) {
-            delete userData.email;
+    /**
+     * Sanitizes input and validates uniqueness against existing VERIFIED users in MongoDB.
+     * Does NOT save the user to MongoDB yet.
+     */
+    async validateUniqueness(userData) {
+        const cleanData = { ...userData };
+        if (cleanData.email === '' || cleanData.email === null || cleanData.email === undefined) {
+            delete cleanData.email;
         }
         else {
-            userData.email = userData.email.toLowerCase().trim();
+            cleanData.email = cleanData.email.toLowerCase().trim();
         }
-        if (userData.phoneNumber === '' || userData.phoneNumber === null || userData.phoneNumber === undefined) {
-            delete userData.phoneNumber;
+        if (cleanData.phoneNumber === '' || cleanData.phoneNumber === null || cleanData.phoneNumber === undefined) {
+            delete cleanData.phoneNumber;
         }
         else {
-            userData.phoneNumber = userData.phoneNumber.trim();
+            cleanData.phoneNumber = cleanData.phoneNumber.trim();
         }
-        if (userData.phoneNumber) {
-            const existingUser = await user_model_1.default.findOne({ phoneNumber: userData.phoneNumber });
+        if (cleanData.phoneNumber) {
+            const existingUser = await user_model_1.default.findOne({ phoneNumber: cleanData.phoneNumber });
             if (existingUser) {
                 if (existingUser.isVerified) {
                     throw new appError_1.default('Phone number already in use', 400);
                 }
                 else {
-                    // Remove old unverified record to allow re-signup
+                    // Remove old unverified record to allow fresh re-signup
                     await user_model_1.default.deleteOne({ _id: existingUser._id });
                 }
             }
         }
-        if (userData.email) {
-            const existingUser = await user_model_1.default.findOne({ email: userData.email });
+        if (cleanData.email) {
+            const existingUser = await user_model_1.default.findOne({ email: cleanData.email });
             if (existingUser) {
                 if (existingUser.isVerified) {
                     throw new appError_1.default('Email already in use', 400);
                 }
                 else {
-                    // Remove old unverified record to allow re-signup
+                    // Remove old unverified record to allow fresh re-signup
                     await user_model_1.default.deleteOne({ _id: existingUser._id });
                 }
             }
         }
-        const user = await user_model_1.default.create(userData);
+        return cleanData;
+    }
+    /**
+     * Creates or activates a verified user in MongoDB AFTER OTP verification succeeds.
+     */
+    async createVerifiedUser(userData) {
+        const cleanData = await this.validateUniqueness(userData);
+        cleanData.isVerified = true;
+        const user = await user_model_1.default.create(cleanData);
         if (user.referredBy) {
             try {
                 await user_model_1.default.findByIdAndUpdate(user.referredBy, {
@@ -102,8 +114,11 @@ class AuthService {
         }
         const token = this.signToken(user._id);
         user.password = undefined;
-        logger_1.default.info(`👤 New user registered: ${user.phoneNumber || user.email} as ${user.role}`);
+        logger_1.default.info(`👤 New verified user created in DB: ${user.phoneNumber || user.email} as ${user.role}`);
         return { user, token };
+    }
+    async register(userData) {
+        return this.createVerifiedUser(userData);
     }
     async login(identifier, password) {
         if (!identifier || !password) {
@@ -149,7 +164,6 @@ class AuthService {
         }
         let user = await user_model_1.default.findOne({ email });
         if (user) {
-            // Update social ID if not present
             if (type === 'google' && !user.googleId)
                 user.googleId = socialId;
             if (type === 'apple' && !user.appleId)
@@ -157,14 +171,13 @@ class AuthService {
             await user.save();
         }
         else {
-            // Create new user
             user = await user_model_1.default.create({
                 email,
                 name,
                 role,
                 googleId: type === 'google' ? socialId : undefined,
                 appleId: type === 'apple' ? socialId : undefined,
-                isVerified: true, // Social accounts are verified
+                isVerified: true,
             });
         }
         const jwtToken = this.signToken(user._id);
