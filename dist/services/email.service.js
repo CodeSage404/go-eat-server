@@ -17,29 +17,27 @@ class EmailService {
      * Initializes all SMTP transporters with fallback capabilities
      */
     async initializeTransporters() {
-        const host = process.env.EMAIL_HOST || 'mail.GoEatOne.com';
-        const port = Number(process.env.EMAIL_PORT) || 587;
+        const host = process.env.EMAIL_HOST || 'server390.web-hosting.com';
+        const port = Number(process.env.EMAIL_PORT) || 465;
         const password = process.env.EMAIL_PASS;
         const defaultUser = process.env.EMAIL_USER_DEFAULT || 'support@GoEatOne.com';
-        const partnersUser = process.env.EMAIL_USER_PARTNERS || 'partners@GoEatOne.com';
+        const partnersUser = process.env.EMAIL_USER_PARTNERS || 'partner@GoEatOne.com';
         const secureUser = process.env.EMAIL_USER_SECURE || 'verify@GoEatOne.com';
         const createSmtpTransport = (user) => {
             return nodemailer_1.default.createTransport({
                 host,
                 port,
-                secure: port === 465, // true for 465, false for 587/25
-                requireTLS: port === 587,
+                secure: port === 465,
                 auth: {
                     user,
                     pass: password,
                 },
                 tls: {
                     rejectUnauthorized: false,
-                    ciphers: 'SSLv3',
                 },
-                connectionTimeout: 10000,
-                greetingTimeout: 10000,
-                socketTimeout: 15000,
+                connectionTimeout: 4000,
+                greetingTimeout: 4000,
+                socketTimeout: 8000,
             });
         };
         // 1. Initialize default
@@ -106,16 +104,19 @@ class EmailService {
                     pass: testAccount.pass,
                 },
             });
-            if (channel === 'default')
-                this.defaultTransporter = mockTransporter;
-            if (channel === 'partners')
+            if (channel === 'partners') {
                 this.partnersTransporter = mockTransporter;
-            if (channel === 'secure')
+            }
+            else if (channel === 'secure') {
                 this.secureTransporter = mockTransporter;
+            }
+            else {
+                this.defaultTransporter = mockTransporter;
+            }
             logger_1.default.info(`✅ Ethereal fallback initialized for channel "${channel}": ${testAccount.user}`);
         }
         catch (err) {
-            logger_1.default.error(`❌ Failed to set up Ethereal fallback: ${err.message}`);
+            logger_1.default.error(`Failed to setup Ethereal fallback for ${channel}:`, err);
         }
     }
     /**
@@ -123,8 +124,8 @@ class EmailService {
      */
     getTransporter(channel) {
         const defaultUser = process.env.EMAIL_USER_DEFAULT || 'support@GoEatOne.com';
-        const partnersUser = process.env.EMAIL_USER_PARTNERS || 'partners@GoEatOne.com';
-        const secureUser = process.env.EMAIL_USER_SECURE || 'secure@GoEatOne.com';
+        const partnersUser = process.env.EMAIL_USER_PARTNERS || 'partner@GoEatOne.com';
+        const secureUser = process.env.EMAIL_USER_SECURE || 'verify@GoEatOne.com';
         if (channel === 'partners') {
             return {
                 transporter: this.partnersTransporter,
@@ -174,10 +175,12 @@ class EmailService {
     }
     /**
      * Sends a structured verification OTP code (secure channel)
+     * Dispatches asynchronously to make client API calls instantaneous
      */
     async sendOTP(email, otp) {
         const htmlContent = (0, templateEngine_1.renderTemplate)('OTP_VERIFICATION', { otpCode: otp, validTime: '10 minutes' });
-        await this.sendEmail(email, 'Your Go-Eat Verification OTP Code', htmlContent, 'secure');
+        this.sendEmail(email, 'Your Go-Eat Verification OTP Code', htmlContent, 'secure')
+            .catch(err => logger_1.default.error(`Background OTP send failed to ${email}:`, err?.message || err));
     }
     /**
      * Sends a templated email with a preset layout
