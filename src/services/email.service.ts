@@ -51,16 +51,19 @@ class EmailService {
         tls: {
           rejectUnauthorized: false
         },
-        timeout: 5000, // 5s connection timeout
+        timeout: 10000,
       } as any);
       if (process.env.NODE_ENV !== 'test') {
-        await this.defaultTransporter.verify();
-        logger.info(`📧 SMTP verified for ${defaultUser}`);
+        this.defaultTransporter.verify().then(() => {
+          logger.info(`📧 SMTP verified for ${defaultUser}`);
+        }).catch(err => {
+          logger.warn(`⚠️ ${defaultUser} SMTP failed: ${err.message}. Enabling mock Ethereal fallback.`);
+          this.isDefaultFallback = true;
+          this.setupEtherealFallback('default');
+        });
       }
     } catch (err: any) {
-      logger.warn(`⚠️ ${defaultUser} SMTP failed: ${err.message}. Enabling mock Ethereal fallback.`);
-      this.isDefaultFallback = true;
-      await this.setupEtherealFallback('default');
+      logger.warn(`⚠️ ${defaultUser} SMTP initialization failed: ${err.message}`);
     }
 
     // 2. Initialize partners
@@ -76,16 +79,19 @@ class EmailService {
         tls: {
           rejectUnauthorized: false
         },
-        timeout: 5000,
+        timeout: 10000,
       } as any);
       if (process.env.NODE_ENV !== 'test') {
-        await this.partnersTransporter.verify();
-        logger.info(`📧 SMTP verified for ${partnersUser}`);
+        this.partnersTransporter.verify().then(() => {
+          logger.info(`📧 SMTP verified for ${partnersUser}`);
+        }).catch(err => {
+          logger.warn(`⚠️ ${partnersUser} SMTP failed: ${err.message}. Enabling mock Ethereal fallback.`);
+          this.isPartnersFallback = true;
+          this.setupEtherealFallback('partners');
+        });
       }
     } catch (err: any) {
-      logger.warn(`⚠️ ${partnersUser} SMTP failed: ${err.message}. Enabling mock Ethereal fallback.`);
-      this.isPartnersFallback = true;
-      await this.setupEtherealFallback('partners');
+      logger.warn(`⚠️ ${partnersUser} SMTP initialization failed: ${err.message}`);
     }
 
     // 3. Initialize secure
@@ -101,16 +107,19 @@ class EmailService {
         tls: {
           rejectUnauthorized: false
         },
-        timeout: 5000,
+        timeout: 10000,
       } as any);
       if (process.env.NODE_ENV !== 'test') {
-        await this.secureTransporter.verify();
-        logger.info(`📧 SMTP verified for ${secureUser}`);
+        this.secureTransporter.verify().then(() => {
+          logger.info(`📧 SMTP verified for ${secureUser}`);
+        }).catch(err => {
+          logger.warn(`⚠️ ${secureUser} SMTP failed: ${err.message}. Enabling mock Ethereal fallback.`);
+          this.isSecureFallback = true;
+          this.setupEtherealFallback('secure');
+        });
       }
     } catch (err: any) {
-      logger.warn(`⚠️ ${secureUser} SMTP failed: ${err.message}. Enabling mock Ethereal fallback.`);
-      this.isSecureFallback = true;
-      await this.setupEtherealFallback('secure');
+      logger.warn(`⚠️ ${secureUser} SMTP initialization failed: ${err.message}`);
     }
   }
 

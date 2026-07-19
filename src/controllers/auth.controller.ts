@@ -275,6 +275,28 @@ class AuthController {
     });
   });
 
+  public resendOTP = catchAsync(async (req: Request, res: Response) => {
+    const { email, phoneNumber } = req.body;
+    const identifier = email || phoneNumber;
+
+    if (!identifier) {
+      throw new AppError('Please provide an email or phone number to resend OTP', 400);
+    }
+
+    if (phoneNumber) {
+      await this.initiateVerification(phoneNumber, 'phone');
+    } else if (email) {
+      await this.initiateVerification(email, 'email');
+    }
+
+    res.status(200).json({
+      status: 'success',
+      message: phoneNumber 
+        ? 'Verification OTP code resent successfully to your WhatsApp.'
+        : 'Verification OTP code resent successfully to your email address.',
+    });
+  });
+
   public login = catchAsync(async (req: Request, res: Response) => {
     // Allows either email or phone login
     const { email, phoneNumber, password } = req.body;

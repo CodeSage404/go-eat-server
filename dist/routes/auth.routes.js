@@ -134,6 +134,7 @@ router.post('/signup/vendor', auth_controller_1.default.signupVendor);
  *         description: Account verified.
  */
 router.post('/verify-otp', auth_controller_1.default.verifyOTP);
+router.post('/resend-otp', auth_controller_1.default.resendOTP);
 // Shared Routes
 /**
  * @openapi
