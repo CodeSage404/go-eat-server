@@ -14,12 +14,13 @@ export type EmailTemplateType =
 
 class EmailService {
   /**
-   * Helper to fetch the correct user & sender header based on channel
+   * Helper to fetch the correct user & sender header based on channel.
+   * Ensures all email addresses are lowercase to strictly match Brevo's verified senders list.
    */
   private getSenderInfo(channel: EmailSenderChannel): { user: string; from: string } {
-    const defaultUser = process.env.EMAIL_USER_DEFAULT || 'support@GoEatOne.com';
-    const partnersUser = process.env.EMAIL_USER_PARTNERS || 'partner@GoEatOne.com';
-    const secureUser = process.env.EMAIL_USER_SECURE || 'verify@GoEatOne.com';
+    const defaultUser = (process.env.EMAIL_USER_DEFAULT || 'support@goeatone.com').toLowerCase().trim();
+    const partnersUser = (process.env.EMAIL_USER_PARTNERS || 'partner@goeatone.com').toLowerCase().trim();
+    const secureUser = (process.env.EMAIL_USER_SECURE || 'verify@goeatone.com').toLowerCase().trim();
 
     if (channel === 'partners') {
       return { user: partnersUser, from: `"Go-Eat Partner Support" <${partnersUser}>` };
@@ -43,8 +44,8 @@ class EmailService {
           'Accept': 'application/json',
         },
         body: JSON.stringify({
-          sender: { name: senderName, email: senderEmail },
-          to: [{ email: to }],
+          sender: { name: senderName, email: senderEmail.toLowerCase().trim() },
+          to: [{ email: to.toLowerCase().trim() }],
           subject,
           htmlContent: html,
         }),
@@ -78,7 +79,7 @@ class EmailService {
         },
         body: JSON.stringify({
           from: fromHeader,
-          to: [to],
+          to: [to.toLowerCase().trim()],
           subject,
           html,
         }),
@@ -112,7 +113,7 @@ class EmailService {
       secure: port === 465,
       requireTLS: port === 587 || port === 2525,
       auth: {
-        user,
+        user: user.toLowerCase().trim(),
         pass: password,
       },
       tls: {
@@ -175,7 +176,7 @@ class EmailService {
     }
 
     if (!sent) {
-      logger.error(`❌ All SMTP ports (${portsToTry.join(', ')}) failed for ${to} on host ${process.env.EMAIL_HOST || 'server390.web-hosting.com'}. Render cloud firewall blocks raw SMTP mail ports. To fix instantly: create a free account at Brevo.com or Resend.com and add BREVO_API_KEY or RESEND_API_KEY to Render Environment Variables.`);
+      logger.error(`❌ All SMTP ports (${portsToTry.join(', ')}) failed for ${to} on host ${process.env.EMAIL_HOST || 'server390.web-hosting.com'}. Render cloud firewall blocks raw SMTP mail ports.`);
     }
   }
 
