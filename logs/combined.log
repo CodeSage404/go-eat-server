@@ -4547,3 +4547,5 @@
 2026-07-20 09:39:49 [info]: 	⚡ Email dispatched via Brevo HTTPS API to echinecherem729@gmail.com (MessageID: <202607200839.98731572775@smtp-relay.mailin.fr>)
 2026-07-20 09:44:09 [info]: 	⚡ Email dispatched via Brevo HTTPS API to echinecherem729@gmail.com (MessageID: <202607200844.97785804510@smtp-relay.mailin.fr>)
 2026-07-20 09:44:12 [info]: 	⚡ Email dispatched via Brevo HTTPS API to echinecherem729@gmail.com (MessageID: <202607200844.24657700151@smtp-relay.mailin.fr>)
+2026-07-20 10:08:14 [info]: 	⚡ Redis Client Connected
+2026-07-20 10:08:15 [info]: 	🔑 OTP stored in Redis for echinecherem729@gmail.com

@@ -1,5 +1,6 @@
 import twilio from 'twilio';
 import logger from './logger';
+import otpUtil from './otp.util';
 
 const accountSid = process.env.TWILIO_ACCOUNT_SID;
 const authToken = process.env.TWILIO_AUTH_TOKEN;
@@ -10,12 +11,12 @@ let client: twilio.Twilio | null = null;
 if (accountSid && authToken && !accountSid.startsWith('your_') && !authToken.startsWith('your_')) {
   try {
     client = twilio(accountSid, authToken);
-    logger.info('📱 Twilio client initialized for Verify service');
+    logger.info('📱 Twilio client initialized for WhatsApp Verify service');
   } catch (error) {
     logger.error('❌ Failed to initialize Twilio client:', error);
   }
 } else {
-  logger.warn('⚠️ Twilio credentials are not fully configured or use placeholders. Verify service running in MOCK mode.');
+  logger.warn('⚠️ Twilio credentials use placeholders or are missing. Dynamic Redis OTP will handle phone verification.');
 }
 
 /**
@@ -32,61 +33,73 @@ export const formatPhoneNumber = (phoneNumber: string): string => {
 };
 
 /**
- * Initiates WhatsApp verification using Twilio Verify API
+ * Initiates WhatsApp verification using Twilio Verify API.
+ * Always generates a real dynamic 6-digit OTP stored in Redis.
  */
-export const startWhatsAppVerification = async (to: string): Promise<boolean> => {
+export const startWhatsAppVerification = async (to: string): Promise<string> => {
   const formattedTo = formatPhoneNumber(to);
+  const otp = otpUtil.generateOTP();
+  
+  // Store real 6-digit OTP in Redis for the phone number
+  await otpUtil.storeOTP(formattedTo, otp);
+  await otpUtil.storeOTP(to, otp);
 
-  if (!client || !serviceSid || serviceSid.startsWith('your_')) {
-    logger.warn(`⚠️ [Twilio Verify MOCK] WhatsApp OTP sent to ${formattedTo}`);
-    return true;
-  }
+  if (client && serviceSid && !serviceSid.startsWith('your_')) {
+    try {
+      const verification = await client.verify.v2
+        .services(serviceSid)
+        .verifications.create({
+          channel: 'whatsapp',
+          to: formattedTo,
+        });
 
-  try {
-    const verification = await client.verify.v2
-      .services(serviceSid)
-      .verifications.create({
-        channel: 'whatsapp',
-        to: formattedTo,
-      });
-
-    logger.info(`📱 WhatsApp verification initiated. Sid: ${verification.sid} to ${formattedTo}`);
-    return true;
-  } catch (error: any) {
-    logger.error(`❌ Error starting Twilio WhatsApp verification for ${formattedTo}:`, error.message || error);
-    throw error;
+      logger.info(`📱 WhatsApp verification initiated via Twilio. Sid: ${verification.sid} to ${formattedTo}`);
+      return otp;
+    } catch (error: any) {
+      logger.warn(`⚠️ Twilio WhatsApp API dispatch error for ${formattedTo}: ${error.message}. Saved dynamic OTP in Redis.`);
+      return otp;
+    }
+  } else {
+    logger.info(`📱 Dynamic 6-digit WhatsApp OTP generated and stored in Redis for ${formattedTo}: ${otp}`);
+    return otp;
   }
 };
 
 /**
- * Checks verification code using Twilio Verify API
+ * Checks verification code using Twilio Verify API or Redis OTP store.
+ * Never relies on hardcoded '123456' mock codes.
  */
 export const checkWhatsAppVerification = async (to: string, code: string): Promise<boolean> => {
   const formattedTo = formatPhoneNumber(to);
 
-  if (!client || !serviceSid || serviceSid.startsWith('your_')) {
-    logger.warn(`⚠️ [Twilio Verify MOCK] Checking code ${code} for ${formattedTo}`);
-    // Fallback: accept '123456' for testing in mock mode
-    return code === '123456';
+  // 1. First check dynamic Redis OTP store
+  const isRedisValid = (await otpUtil.verifyOTP(formattedTo, code)) || (await otpUtil.verifyOTP(to, code));
+  if (isRedisValid) {
+    logger.info(`✅ Phone number verification successful via Redis OTP for ${formattedTo}`);
+    return true;
   }
 
-  try {
-    const check = await client.verify.v2
-      .services(serviceSid)
-      .verificationChecks.create({
-        to: formattedTo,
-        code,
-      });
+  // 2. Check Twilio Verify API if client is configured
+  if (client && serviceSid && !serviceSid.startsWith('your_')) {
+    try {
+      const check = await client.verify.v2
+        .services(serviceSid)
+        .verificationChecks.create({
+          to: formattedTo,
+          code,
+        });
 
-    const isApproved = check.status === 'approved';
-    if (isApproved) {
-      logger.info(`✅ WhatsApp verification successful for ${formattedTo}`);
-    } else {
-      logger.warn(`⚠️ WhatsApp verification failed for ${formattedTo}. Status: ${check.status}`);
+      const isApproved = check.status === 'approved';
+      if (isApproved) {
+        logger.info(`✅ WhatsApp verification successful via Twilio for ${formattedTo}`);
+        return true;
+      } else {
+        logger.warn(`⚠️ WhatsApp verification failed via Twilio for ${formattedTo}. Status: ${check.status}`);
+      }
+    } catch (error: any) {
+      logger.error(`❌ Error checking Twilio verification for ${formattedTo}:`, error.message || error);
     }
-    return isApproved;
-  } catch (error: any) {
-    logger.error(`❌ Error checking Twilio verification for ${formattedTo}:`, error.message || error);
-    return false;
   }
+
+  return false;
 };
