@@ -87,6 +87,48 @@ class UserController {
       data: { favorites: user?.favorites || [] },
     });
   });
+
+  /**
+   * Get authenticated user profile
+   */
+  public getProfile = catchAsync(async (req: Request, res: Response) => {
+    const user = await User.findById(req.user!._id).select('-password');
+    if (!user) {
+      throw new AppError('User not found', 404);
+    }
+    res.status(200).json({
+      status: 'success',
+      data: { user },
+    });
+  });
+
+  /**
+   * Update user profile
+   */
+  public updateProfile = catchAsync(async (req: Request, res: Response) => {
+    // Filter out unwanted fields that shouldn't be manually updated here
+    const { name, email, phoneNumber, profileImage } = req.body;
+    const updateData: any = {};
+    if (name) updateData.name = name;
+    if (email) updateData.email = email.toLowerCase();
+    if (phoneNumber) updateData.phoneNumber = phoneNumber;
+    if (profileImage) updateData.profileImage = profileImage;
+
+    const user = await User.findByIdAndUpdate(
+      req.user!._id,
+      updateData,
+      { new: true, runValidators: true }
+    ).select('-password');
+
+    if (!user) {
+      throw new AppError('User not found', 404);
+    }
+
+    res.status(200).json({
+      status: 'success',
+      data: { user },
+    });
+  });
 }
 
 export default new UserController();

@@ -25,7 +25,12 @@ class RestaurantService {
       query.name = { $regex: filters.search, $options: 'i' };
     }
 
-    return await Restaurant.find(query);
+    // Top Spot filter
+    if (filters.isTopSpot) {
+      query.isTopSpot = true;
+    }
+
+    return await Restaurant.find(query).sort({ popularityScore: -1, rating: -1 });
   }
 
   /**

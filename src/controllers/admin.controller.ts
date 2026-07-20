@@ -1338,6 +1338,26 @@ class AdminController {
       data: { settings }
     });
   });
+  /**
+   * Update Top Spot status for a restaurant
+   */
+  public updateTopSpot = catchAsync(async (req: Request, res: Response) => {
+    const { id } = req.params;
+    const { isTopSpot } = req.body;
+
+    const restaurant = await Restaurant.findById(id);
+    if (!restaurant) {
+      throw new AppError('No restaurant found with that ID', 404);
+    }
+
+    restaurant.isTopSpot = isTopSpot;
+    await restaurant.save();
+
+    res.status(200).json({
+      status: 'success',
+      data: { restaurant },
+    });
+  });
 }
 
 export default new AdminController();

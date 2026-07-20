@@ -36,6 +36,8 @@ export interface IRestaurant extends Document {
   minOrderAmount: number;
   estimatedDeliveryTime: number; // in minutes
   isSelfPickup: boolean;
+  isTopSpot: boolean;
+  popularityScore: number;
   status: RestaurantStatus;
   createdAt: Date;
   updatedAt: Date;
@@ -111,6 +113,14 @@ const restaurantSchema = new Schema<IRestaurant>(
     isSelfPickup: {
       type: Boolean,
       default: true,
+    },
+    isTopSpot: {
+      type: Boolean,
+      default: false,
+    },
+    popularityScore: {
+      type: Number,
+      default: 0,
     },
     status: {
       type: String,

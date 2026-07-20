@@ -50,7 +50,7 @@ class RestaurantController {
    * Get all active restaurants with optional filters
    */
   public getAllRestaurants = catchAsync(async (req: Request, res: Response) => {
-    const { cuisine, search, lat, lng, dist } = req.query;
+    const { cuisine, search, lat, lng, dist, isTopSpot } = req.query;
 
     let restaurants;
 
@@ -62,7 +62,11 @@ class RestaurantController {
         dist ? parseInt(dist as string) : 5000
       );
     } else {
-      restaurants = await restaurantService.getAllRestaurants({ cuisine, search });
+      restaurants = await restaurantService.getAllRestaurants({ 
+        cuisine, 
+        search, 
+        isTopSpot: isTopSpot === 'true' 
+      });
     }
 
     res.status(200).json({

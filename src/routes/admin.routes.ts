@@ -254,6 +254,37 @@ router.get('/orders', checkPermission('orders.read', 'orders.dispatch', 'orders.
  */
 router.post('/restaurants/:id/status', checkPermission('restaurants.approve', 'restaurants.suspend'), adminController.updateRestaurantStatus);
 
+/**
+ * @openapi
+ * /api/v1/admin/restaurants/{id}/top-spot:
+ *   put:
+ *     tags:
+ *       - Admin Dashboard
+ *     summary: Update Top Spot status for a restaurant
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [isTopSpot]
+ *             properties:
+ *               isTopSpot:
+ *                 type: boolean
+ *     responses:
+ *       200:
+ *         description: Top Spot status updated successfully
+ */
+router.put('/restaurants/:id/top-spot', checkPermission('restaurants.crud', 'restaurants.approve'), adminController.updateTopSpot);
+
 // Add these to your admin routes list
 // router.get('/restaurants/:id', adminController.getRestaurantById);
 // router.get('/restaurants/:id/orders', adminController.getRestaurantOrders);

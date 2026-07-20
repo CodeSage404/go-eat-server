@@ -145,4 +145,45 @@ router.route('/favorites')
   .get(userController.getFavorites)
   .post(userController.toggleFavorite);
 
+/**
+ * @openapi
+ * /api/v1/users/profile:
+ *   get:
+ *     tags:
+ *       - Users
+ *     summary: Get authenticated user profile
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: User profile retrieved successfully.
+ *   put:
+ *     tags:
+ *       - Users
+ *     summary: Update user profile
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *               email:
+ *                 type: string
+ *               phoneNumber:
+ *                 type: string
+ *               profileImage:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Profile updated successfully.
+ */
+router.route('/profile')
+  .get(userController.getProfile)
+  .put(userController.updateProfile);
+
 export default router;
