@@ -40,10 +40,23 @@ const categorySchema = new mongoose_1.Schema({
         required: [true, 'Category name is required'],
         trim: true,
     },
+    slug: {
+        type: String,
+        trim: true,
+        lowercase: true,
+    },
+    image: {
+        type: String,
+        trim: true,
+    },
+    icon: {
+        type: String,
+        trim: true,
+    },
     restaurant: {
         type: mongoose_1.Schema.Types.ObjectId,
         ref: 'Restaurant',
-        required: [true, 'Category must belong to a restaurant'],
+        required: false,
     },
     description: {
         type: String,
@@ -53,10 +66,14 @@ const categorySchema = new mongoose_1.Schema({
         type: Number,
         default: 0,
     },
+    isGlobal: {
+        type: Boolean,
+        default: true,
+    },
 }, {
     timestamps: true,
 });
-// Ensure category names are unique per restaurant
-categorySchema.index({ name: 1, restaurant: 1 }, { unique: true });
+// Index for fast search
+categorySchema.index({ name: 1, isGlobal: 1 });
 const Category = mongoose_1.default.model('Category', categorySchema);
 exports.default = Category;

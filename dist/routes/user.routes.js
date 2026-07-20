@@ -5,9 +5,43 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
 const user_controller_1 = __importDefault(require("../controllers/user.controller"));
+const auth_controller_1 = __importDefault(require("../controllers/auth.controller"));
 const auth_middleware_1 = require("../middleware/auth.middleware");
 const router = (0, express_1.Router)();
 router.use(auth_middleware_1.protect);
+/**
+ * @openapi
+ * /api/v1/users/location:
+ *   put:
+ *     tags:
+ *       - Users
+ *     summary: Persist User Location to Database
+ *     description: Saves the user's detected or manually selected address string and coordinates [lng, lat] to their MongoDB user profile.
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [address, coordinates]
+ *             properties:
+ *               address:
+ *                 type: string
+ *                 example: Agbani, Enugu, Nigeria
+ *               coordinates:
+ *                 type: array
+ *                 items:
+ *                   type: number
+ *                 example: [7.5191, 6.3084]
+ *     responses:
+ *       200:
+ *         description: User location saved to database successfully.
+ *       400:
+ *         description: Missing address or coordinates.
+ */
+router.put('/location', auth_controller_1.default.updateUserLocation);
 /**
  * @openapi
  * /api/v1/users/addresses:

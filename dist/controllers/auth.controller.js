@@ -324,6 +324,27 @@ class AuthController {
                 token,
             });
         });
+        this.updateUserLocation = (0, catchAsync_1.catchAsync)(async (req, res) => {
+            const { address, coordinates } = req.body;
+            const currentUser = req.user;
+            if (!address || !coordinates || !Array.isArray(coordinates) || coordinates.length < 2) {
+                throw new appError_1.default('Address string and coordinates array [lng, lat] are required', 400);
+            }
+            const lng = Number(coordinates[0]);
+            const lat = Number(coordinates[1]);
+            const updatedUser = await user_model_1.default.findByIdAndUpdate(currentUser._id, {
+                location: {
+                    type: 'Point',
+                    coordinates: [lng, lat],
+                },
+            }, { new: true });
+            logger_1.default.info(`📍 Location persisted to DB for user ${currentUser._id}: ${address} (${lng}, ${lat})`);
+            res.status(200).json({
+                status: 'success',
+                message: 'User location saved to database successfully',
+                data: { user: updatedUser },
+            });
+        });
     }
     async initiateVerification(identifier, type) {
         if (type === 'email') {

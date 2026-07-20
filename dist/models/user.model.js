@@ -179,13 +179,15 @@ userSchema.pre('save', async function () {
     }
     if (!this.isModified('password'))
         return;
-    this.password = await bcryptjs_1.default.hash(this.password, 12);
+    this.password = await bcryptjs_1.default.hash(this.password, 10);
 });
 // Instance method to compare password
 userSchema.methods.comparePassword = async function (candidatePassword) {
     return await bcryptjs_1.default.compare(candidatePassword, this.password);
 };
-// Index for geospatial queries (rider tracking)
+// Indexes for fast lookup & geospatial queries
+userSchema.index({ email: 1 });
+userSchema.index({ phoneNumber: 1 });
 userSchema.index({ location: '2dsphere' });
 const User = mongoose_1.default.model('User', userSchema);
 exports.default = User;

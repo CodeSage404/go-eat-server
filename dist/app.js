@@ -31,6 +31,7 @@ const upload_1 = require("./utils/upload");
 const wallet_routes_1 = __importDefault(require("./routes/wallet.routes"));
 const admin_routes_1 = __importDefault(require("./routes/admin.routes"));
 const location_routes_1 = __importDefault(require("./routes/location.routes"));
+const category_routes_1 = __importDefault(require("./routes/category.routes"));
 const cookie_routes_1 = __importDefault(require("./routes/cookie.routes"));
 const keepAlive_1 = require("./utils/keepAlive");
 const swagger_ui_express_1 = __importDefault(require("swagger-ui-express"));
@@ -101,6 +102,7 @@ class App {
         this.app.use('/api/v1/wallets', wallet_routes_1.default);
         this.app.use('/api/v1/admin', admin_routes_1.default);
         this.app.use('/api/v1/location', location_routes_1.default);
+        this.app.use('/api/v1/categories', category_routes_1.default);
         this.app.use('/api/v1/cookies', cookie_routes_1.default);
         // Documentation Routes
         this.app.use('/api-docs', swagger_ui_express_1.default.serve, swagger_ui_express_1.default.setup(swagger_1.swaggerSpec));

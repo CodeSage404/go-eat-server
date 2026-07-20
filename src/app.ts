@@ -28,6 +28,7 @@ import { uploadDir } from './utils/upload';
 import walletRoutes from './routes/wallet.routes';
 import adminRoutes from './routes/admin.routes';
 import locationRoutes from './routes/location.routes';
+import categoryRoutes from './routes/category.routes';
 import cookieRoutes from './routes/cookie.routes';
 import { startKeepAlivePing } from './utils/keepAlive';
 
@@ -113,6 +114,7 @@ class App {
     this.app.use('/api/v1/wallets', walletRoutes);
     this.app.use('/api/v1/admin', adminRoutes);
     this.app.use('/api/v1/location', locationRoutes);
+    this.app.use('/api/v1/categories', categoryRoutes);
     this.app.use('/api/v1/cookies', cookieRoutes);
 
     // Documentation Routes
