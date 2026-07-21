@@ -81,6 +81,22 @@ class CategoryController {
       },
     });
   });
+
+  /**
+   * Delete a category
+   */
+  public deleteCategory = catchAsync(async (req: Request, res: Response) => {
+    const category = await Category.findByIdAndDelete(req.params.id);
+
+    if (!category) {
+      throw new AppError('Category not found with that ID', 404);
+    }
+
+    res.status(204).json({
+      status: 'success',
+      data: null,
+    });
+  });
 }
 
 export default new CategoryController();

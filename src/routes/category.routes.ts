@@ -111,5 +111,27 @@ router.post('/', upload.single('image'), categoryController.createCategory);
  *         description: Category updated successfully.
  */
 router.patch('/:id', upload.single('image'), categoryController.updateCategory);
+router.put('/:id', upload.single('image'), categoryController.updateCategory);
+
+/**
+ * @openapi
+ * /api/v1/categories/{id}:
+ *   delete:
+ *     tags:
+ *       - Categories
+ *     summary: Delete a category (Admin only)
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       204:
+ *         description: Category deleted successfully.
+ */
+router.delete('/:id', categoryController.deleteCategory);
 
 export default router;
