@@ -55,6 +55,32 @@ class CategoryController {
       },
     });
   });
+
+  /**
+   * Update a category
+   */
+  public updateCategory = catchAsync(async (req: Request, res: Response) => {
+    // Check if an image was uploaded via multer
+    if (req.file) {
+      req.body.image = `/uploads/${req.file.filename}`;
+    }
+
+    const category = await Category.findByIdAndUpdate(req.params.id, req.body, {
+      new: true,
+      runValidators: true,
+    });
+
+    if (!category) {
+      throw new AppError('Category not found with that ID', 404);
+    }
+
+    res.status(200).json({
+      status: 'success',
+      data: {
+        category,
+      },
+    });
+  });
 }
 
 export default new CategoryController();
