@@ -2,6 +2,7 @@ import { Router } from 'express';
 import categoryController from '../controllers/category.controller';
 import { protect, restrictTo } from '../middleware/auth.middleware';
 import { UserRole } from '../models/user.model';
+import { upload } from '../utils/upload';
 
 const router = Router();
 
@@ -56,7 +57,7 @@ router.use(restrictTo(UserRole.ADMIN));
  *     requestBody:
  *       required: true
  *       content:
- *         application/json:
+ *         multipart/form-data:
  *           schema:
  *             type: object
  *             required: [name, image]
@@ -65,12 +66,13 @@ router.use(restrictTo(UserRole.ADMIN));
  *                 type: string
  *               image:
  *                 type: string
+ *                 format: binary
  *               description:
  *                 type: string
  *     responses:
  *       201:
  *         description: Category created successfully.
  */
-router.post('/', categoryController.createCategory);
+router.post('/', upload.single('image'), categoryController.createCategory);
 
 export default router;

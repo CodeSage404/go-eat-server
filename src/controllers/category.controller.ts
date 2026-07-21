@@ -41,6 +41,11 @@ class CategoryController {
    * Create a category
    */
   public createCategory = catchAsync(async (req: Request, res: Response) => {
+    // Check if an image was uploaded via multer
+    if (req.file) {
+      req.body.image = `/uploads/${req.file.filename}`;
+    }
+
     const category = await Category.create(req.body);
 
     res.status(201).json({

@@ -779,10 +779,11 @@ class AdminController {
       price: Number(price),
       category: categoryId,
       restaurant: restaurantId,
-      isAvailable: isAvailable ?? true,
-      isVegetarian: isVegetarian ?? false,
-      isSpicy: isSpicy ?? false,
-      calories: calories ? Number(calories) : undefined
+      isAvailable: isAvailable === 'true' || isAvailable === true,
+      isVegetarian: isVegetarian === 'true' || isVegetarian === true,
+      isSpicy: isSpicy === 'true' || isSpicy === true,
+      calories: calories ? Number(calories) : undefined,
+      image: req.file?.path
     });
 
     res.status(201).json({

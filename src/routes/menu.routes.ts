@@ -2,6 +2,7 @@ import { Router } from 'express';
 import menuController from '../controllers/menu.controller';
 import { protect, restrictTo } from '../middleware/auth.middleware';
 import { UserRole } from '../models/user.model';
+import { upload } from '../utils/upload';
 
 const router = Router({ mergeParams: true }); // Enable merging params from parent router
 
@@ -97,7 +98,7 @@ router.post('/categories', menuController.createCategory);
  *       201:
  *         description: Food item added
  */
-router.post('/items', menuController.addFoodItem);
+router.post('/items', upload.single('image'), menuController.addFoodItem);
 
 /**
  * @openapi

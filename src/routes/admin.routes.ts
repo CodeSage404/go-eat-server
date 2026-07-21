@@ -576,9 +576,11 @@ router.get('/menu-items', checkPermission('restaurants.crud'), adminController.g
  *       200:
  *         description: Menu item deleted successfully
  */
+import { upload } from '../utils/upload';
+
 router.get('/menu-items/:id', checkPermission('restaurants.crud'), adminController.getMenuItemById);
-router.post('/menu-items', checkPermission('restaurants.crud'), adminController.createMenuItem);
-router.patch('/menu-items/:id', checkPermission('restaurants.crud'), adminController.updateMenuItem);
+router.post('/menu-items', checkPermission('restaurants.crud'), upload.single('image'), adminController.createMenuItem);
+router.patch('/menu-items/:id', checkPermission('restaurants.crud'), upload.single('image'), adminController.updateMenuItem);
 router.delete('/menu-items/:id', checkPermission('restaurants.crud'), adminController.deleteMenuItem);
 
 /**

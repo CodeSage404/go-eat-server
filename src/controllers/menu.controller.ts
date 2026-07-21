@@ -14,10 +14,11 @@ const categorySchema = z.object({
 const foodItemSchema = z.object({
   name: z.string().min(1, 'Food item name is required'),
   description: z.string().min(5, 'Description is too short'),
-  price: z.number().positive('Price must be positive'),
+  price: z.coerce.number().positive('Price must be positive'),
   category: z.string().min(1, 'Category ID is required'),
-  isVegetarian: z.boolean().optional(),
-  isSpicy: z.boolean().optional(),
+  isVegetarian: z.enum(['true', 'false', '']).transform(val => val === 'true').optional(),
+  isSpicy: z.enum(['true', 'false', '']).transform(val => val === 'true').optional(),
+  calories: z.coerce.number().optional(),
 });
 
 class MenuController {
@@ -73,8 +74,9 @@ class MenuController {
     }
 
     const foodItem = await menuService.addFoodItem({
-      ...req.body,
+      ...validatedData.data,
       restaurant: restaurantId as string,
+      image: req.file?.path
     });
 
     res.status(201).json({
