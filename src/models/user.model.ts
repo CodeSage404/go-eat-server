@@ -191,8 +191,6 @@ userSchema.methods.comparePassword = async function (candidatePassword: string):
 };
 
 // Indexes for fast lookup & geospatial queries
-userSchema.index({ email: 1 });
-userSchema.index({ phoneNumber: 1 });
 userSchema.index({ location: '2dsphere' });
 
 const User = mongoose.model<IUser>('User', userSchema);
