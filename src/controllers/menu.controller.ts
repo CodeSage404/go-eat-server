@@ -75,6 +75,7 @@ class MenuController {
 
     const foodItem = await menuService.addFoodItem({
       ...validatedData.data,
+      category: validatedData.data.category as any,
       restaurant: restaurantId as any,
       image: req.file?.path
     });
