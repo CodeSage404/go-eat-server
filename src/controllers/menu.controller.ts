@@ -44,7 +44,7 @@ class MenuController {
 
     const category = await menuService.createCategory({
       ...req.body,
-      restaurant: restaurantId as string,
+      restaurant: restaurantId as any,
     });
 
     res.status(201).json({
@@ -75,7 +75,7 @@ class MenuController {
 
     const foodItem = await menuService.addFoodItem({
       ...validatedData.data,
-      restaurant: restaurantId as string,
+      restaurant: restaurantId as any,
       image: req.file?.path
     });
 
