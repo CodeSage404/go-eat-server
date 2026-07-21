@@ -41,9 +41,9 @@ class CategoryController {
    * Create a category
    */
   public createCategory = catchAsync(async (req: Request, res: Response) => {
-    // Check if an image was uploaded via multer
+    // Check if an image was uploaded via multer (now Cloudinary URL is in req.file.path)
     if (req.file) {
-      req.body.image = `/uploads/${req.file.filename}`;
+      req.body.image = req.file.path;
     }
 
     const category = await Category.create(req.body);
@@ -60,9 +60,9 @@ class CategoryController {
    * Update a category
    */
   public updateCategory = catchAsync(async (req: Request, res: Response) => {
-    // Check if an image was uploaded via multer
+    // Check if an image was uploaded via multer (now Cloudinary URL is in req.file.path)
     if (req.file) {
-      req.body.image = `/uploads/${req.file.filename}`;
+      req.body.image = req.file.path;
     }
 
     const category = await Category.findByIdAndUpdate(req.params.id, req.body, {

@@ -2,43 +2,20 @@ import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
 import logger from './logger';
+import { v2 as cloudinary } from 'cloudinary';
+import { Request, Response, NextFunction } from 'express';
+import AppError from './appError';
 
-// Resolve upload directory — use /tmp/uploads inside Docker (always writable),
-// or fall back to the local uploads folder in development
+// Ensure Cloudinary is configured
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
+
 const uploadDir = process.env.NODE_ENV === 'production'
   ? '/tmp/uploads'
   : path.join(__dirname, '../../uploads');
-
-// Ensure uploads directory exists with error handling
-try {
-  if (!fs.existsSync(uploadDir)) {
-    fs.mkdirSync(uploadDir, { recursive: true });
-    logger.info(`📁 Uploads directory created at: ${uploadDir}`);
-  }
-} catch (err: any) {
-  logger.error(`⚠️ Could not create uploads directory at ${uploadDir}: ${err.message}`);
-  logger.warn('Uploads will use system temp directory as fallback.');
-}
-
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    // Ensure the dir exists on every request in case it was cleaned up
-    try {
-      if (!fs.existsSync(uploadDir)) {
-        fs.mkdirSync(uploadDir, { recursive: true });
-      }
-      cb(null, uploadDir);
-    } catch (err: any) {
-      cb(new Error(`Upload directory unavailable: ${err.message}`), '');
-    }
-  },
-  filename: (req, file, cb) => {
-    // Generate unique name: timestamp + random characters + original extension
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
-    const ext = path.extname(file.originalname);
-    cb(null, `${file.fieldname}-${uniqueSuffix}${ext}`);
-  },
-});
 
 const fileFilter = (req: any, file: any, cb: any) => {
   const allowedTypes = /jpeg|jpg|png|webp|pdf/;
@@ -51,10 +28,40 @@ const fileFilter = (req: any, file: any, cb: any) => {
   cb(new Error('Only images (jpg, jpeg, png, webp) and PDFs are allowed!'));
 };
 
-export const upload = multer({
-  storage,
+const memUpload = multer({
+  storage: multer.memoryStorage(),
   limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
   fileFilter,
 });
+
+export const upload = {
+  single: (fieldName: string) => {
+    return [
+      memUpload.single(fieldName),
+      async (req: Request, res: Response, next: NextFunction) => {
+        if (!req.file) return next();
+        
+        try {
+          const result = await new Promise<any>((resolve, reject) => {
+            const stream = cloudinary.uploader.upload_stream(
+              { resource_type: 'auto' },
+              (err, result) => {
+                if (err || !result) return reject(err || new Error('Cloudinary upload failed'));
+                resolve(result);
+              }
+            );
+            stream.end(req.file!.buffer);
+          });
+          
+          // Attach the Cloudinary URL to req.file.path so existing controllers continue to work
+          req.file.path = result.secure_url;
+          next();
+        } catch (error) {
+          next(new AppError('Failed to upload image to Cloudinary', 500));
+        }
+      }
+    ];
+  }
+};
 
 export { uploadDir };

@@ -76,7 +76,7 @@ router.post(
     res.status(200).json({
       status: 'success',
       data: {
-        imageUrl: `${req.protocol}://${req.get('host')}/uploads/${req.file.filename}`,
+        imageUrl: req.file.path,
       },
     });
   })
