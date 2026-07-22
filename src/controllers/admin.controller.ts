@@ -426,6 +426,8 @@ class AdminController {
         location: finalLocation,
         cuisine: cuisineArray,
         openingHours: finalOpeningHours,
+        outletType: req.body.outletType || 'Restaurant',
+        baseCurrency: req.body.baseCurrency || 'NGN',
         status: RestaurantStatus.ACTIVE, // Auto-approved
       });
 

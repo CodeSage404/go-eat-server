@@ -39,6 +39,8 @@ export interface IRestaurant extends Document {
   isTopSpot: boolean;
   popularityScore: number;
   status: RestaurantStatus;
+  outletType: 'Restaurant' | 'Pharmacy' | 'Convenience' | 'Grocery';
+  baseCurrency: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -126,6 +128,15 @@ const restaurantSchema = new Schema<IRestaurant>(
       type: String,
       enum: Object.values(RestaurantStatus),
       default: RestaurantStatus.PENDING,
+    },
+    outletType: {
+      type: String,
+      enum: ['Restaurant', 'Pharmacy', 'Convenience', 'Grocery'],
+      default: 'Restaurant',
+    },
+    baseCurrency: {
+      type: String,
+      default: 'NGN',
     },
   },
   {

@@ -9,6 +9,7 @@ export interface ICategory extends Document {
   description?: string;
   order: number;
   isGlobal?: boolean;
+  isActive?: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -47,6 +48,10 @@ const categorySchema = new Schema<ICategory>(
       default: 0,
     },
     isGlobal: {
+      type: Boolean,
+      default: true,
+    },
+    isActive: {
       type: Boolean,
       default: true,
     },
