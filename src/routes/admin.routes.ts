@@ -411,7 +411,8 @@ router.get('/restaurants/:id/orders', checkPermission('orders.read'), adminContr
  *       201:
  *         description: Vendor and restaurant successfully created
  */
-router.post('/restaurants/manual-signup', checkPermission('restaurants.crud', 'restaurants.onboard'), adminController.manuallyCreateRestaurant);
+import { upload } from '../utils/upload';
+router.post('/restaurants/manual-signup', checkPermission('restaurants.crud', 'restaurants.onboard'), upload.fields([{ name: 'logo', maxCount: 1 }, { name: 'cover', maxCount: 1 }]), adminController.manuallyCreateRestaurant);
 
 /**
  * @openapi

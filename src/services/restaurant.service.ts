@@ -50,18 +50,35 @@ class RestaurantService {
   /**
    * Find nearby restaurants using GeoJSON
    */
-  async findNearbyRestaurants(lng: number, lat: number, maxDistanceInMeters: number = 5000): Promise<IRestaurant[]> {
-    return await Restaurant.find({
-      status: RestaurantStatus.ACTIVE,
-      location: {
-        $near: {
-          $geometry: {
-            type: 'Point',
-            coordinates: [lng, lat],
-          },
-          $maxDistance: maxDistanceInMeters,
-        },
-      },
+  async findNearbyRestaurants(lng: number, lat: number, maxDistanceInMeters: number = 5000): Promise<any[]> {
+    const results = await Restaurant.aggregate([
+      {
+        $geoNear: {
+          near: { type: 'Point', coordinates: [lng, lat] },
+          distanceField: 'calculatedDistance', // Distance in meters
+          maxDistance: maxDistanceInMeters,
+          query: { status: RestaurantStatus.ACTIVE },
+          spherical: true
+        }
+      }
+    ]);
+
+    // Dynamic Delivery Time Algorithm
+    // Assume average speed of 40 km/h (which is ~11.1 m/s or 666 m/min).
+    // Let's say it takes 1 minute for every 666 meters.
+    // Base preparation time: 15 minutes.
+    // Total delivery time = (distance_in_meters / 666) + 15
+    return results.map(restaurant => {
+      const distanceInMeters = restaurant.calculatedDistance || 0;
+      const travelTimeMinutes = Math.ceil(distanceInMeters / 666);
+      const prepTimeMinutes = 15;
+      
+      return {
+        ...restaurant,
+        estimatedDeliveryTime: travelTimeMinutes + prepTimeMinutes,
+        // Also ensure id mapping for frontend compatibility
+        id: restaurant._id,
+      };
     });
   }
 

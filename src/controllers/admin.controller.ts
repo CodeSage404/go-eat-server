@@ -395,26 +395,68 @@ class AdminController {
     if (Array.isArray(rawCuisine)) {
       cuisineArray = rawCuisine;
     } else if (typeof rawCuisine === 'string') {
-      cuisineArray = rawCuisine.split(',').map((c: string) => c.trim()).filter(Boolean);
+      try {
+        const parsed = JSON.parse(rawCuisine);
+        if (Array.isArray(parsed)) {
+          cuisineArray = parsed;
+        } else {
+          cuisineArray = rawCuisine.split(',').map((c: string) => c.trim()).filter(Boolean);
+        }
+      } catch {
+        cuisineArray = rawCuisine.split(',').map((c: string) => c.trim()).filter(Boolean);
+      }
     }
 
     // Fallbacks for DB schema required fields not present in Step 1/Step 5 of frontend manual onboarding
-    const finalAddress = req.body.address || {
+    let finalAddress = {
       street: 'Manual Onboarding',
       city: 'Unknown',
       state: 'Unknown',
       zipCode: '000000'
     };
 
-    const finalLocation = req.body.location || {
+    if (req.body.address) {
+      try {
+        finalAddress = typeof req.body.address === 'string' ? JSON.parse(req.body.address) : req.body.address;
+      } catch (e) {}
+    }
+
+    let finalLocation = {
       type: 'Point',
       coordinates: [0, 0]
     };
 
-    const finalOpeningHours = req.body.openingHours || {
+    if (req.body.location) {
+      try {
+        finalLocation = typeof req.body.location === 'string' ? JSON.parse(req.body.location) : req.body.location;
+      } catch (e) {}
+    }
+
+    let finalOpeningHours = {
       open: '08:00',
       close: '22:00'
     };
+
+    if (req.body.openingHours) {
+      try {
+        finalOpeningHours = typeof req.body.openingHours === 'string' ? JSON.parse(req.body.openingHours) : req.body.openingHours;
+      } catch (e) {}
+    }
+
+    let images = {
+      logo: 'default-logo.png',
+      cover: 'default-cover.png'
+    };
+
+    if (req.files) {
+      const files = req.files as { [fieldname: string]: Express.Multer.File[] };
+      if (files['logo'] && files['logo'][0]) {
+        images.logo = `/uploads/${files['logo'][0].filename}`;
+      }
+      if (files['cover'] && files['cover'][0]) {
+        images.cover = `/uploads/${files['cover'][0].filename}`;
+      }
+    }
 
     try {
       // Create the restaurant
@@ -429,6 +471,7 @@ class AdminController {
         outletType: req.body.outletType || 'Restaurant',
         baseCurrency: req.body.baseCurrency || 'NGN',
         status: RestaurantStatus.ACTIVE, // Auto-approved
+        images: images,
       });
 
       // Send Welcome / Partner email to the vendor owner!
