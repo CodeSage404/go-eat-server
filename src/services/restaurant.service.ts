@@ -30,7 +30,21 @@ class RestaurantService {
       query.isTopSpot = true;
     }
 
-    return await Restaurant.find(query).sort({ popularityScore: -1, rating: -1 });
+    // Custom tag filters
+    if (filters.tags && Array.isArray(filters.tags)) {
+      if (filters.tags.includes('Free delivery')) query.deliveryFee = 0;
+      if (filters.tags.includes('Discounts')) query.discount = { $gt: 0 };
+    }
+
+    // Custom sorting
+    let sortQuery: any = { popularityScore: -1, ratingsAverage: -1 };
+    if (filters.sort) {
+      if (filters.sort === 'Rating') sortQuery = { ratingsAverage: -1 };
+      else if (filters.sort === 'Delivery time') sortQuery = { estimatedDeliveryTime: 1 };
+      else if (filters.sort === 'Delivery fee') sortQuery = { deliveryFee: 1 };
+    }
+
+    return await Restaurant.find(query).sort(sortQuery);
   }
 
   /**

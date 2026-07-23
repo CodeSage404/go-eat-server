@@ -110,13 +110,23 @@ class UserController {
     const { name, email, phoneNumber, profileImage } = req.body;
     const updateData: any = {};
     if (name) updateData.name = name;
-    if (email) updateData.email = email.toLowerCase();
-    if (phoneNumber) updateData.phoneNumber = phoneNumber;
+    if (email && email.trim() !== '') updateData.email = email.toLowerCase();
+    if (phoneNumber && phoneNumber.trim() !== '') updateData.phoneNumber = phoneNumber;
     if (profileImage) updateData.profileImage = profileImage;
+
+    // If an explicitly empty string is sent for a unique field, unset it using $unset so it doesn't trigger E11000
+    const unsetData: any = {};
+    if (email !== undefined && email.trim() === '') unsetData.email = 1;
+    if (phoneNumber !== undefined && phoneNumber.trim() === '') unsetData.phoneNumber = 1;
+
+    const updatePayload: any = { $set: updateData };
+    if (Object.keys(unsetData).length > 0) {
+      updatePayload.$unset = unsetData;
+    }
 
     const user = await User.findByIdAndUpdate(
       req.user!._id,
-      updateData,
+      updatePayload,
       { new: true, runValidators: true }
     ).select('-password');
 

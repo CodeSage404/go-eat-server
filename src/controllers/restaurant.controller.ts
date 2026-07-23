@@ -50,7 +50,7 @@ class RestaurantController {
    * Get all active restaurants with optional filters
    */
   public getAllRestaurants = catchAsync(async (req: Request, res: Response) => {
-    const { cuisine, search, lat, lng, dist, isTopSpot } = req.query;
+    const { cuisine, search, lat, lng, dist, isTopSpot, tags, sort } = req.query;
 
     let restaurants;
 
@@ -65,7 +65,9 @@ class RestaurantController {
       restaurants = await restaurantService.getAllRestaurants({ 
         cuisine, 
         search, 
-        isTopSpot: isTopSpot === 'true' 
+        isTopSpot: isTopSpot === 'true',
+        tags: tags ? (Array.isArray(tags) ? tags : [tags]) : undefined,
+        sort: sort as string
       });
     }
 

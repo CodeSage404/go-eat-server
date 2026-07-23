@@ -51,4 +51,17 @@ router.get('/', searchController.globalSearch);
  */
 router.get('/cuisines', searchController.getPopularCuisines);
 
+/**
+ * @openapi
+ * /api/v1/search/top:
+ *   get:
+ *     tags:
+ *       - Search
+ *     summary: List top trending searches
+ *     responses:
+ *       200:
+ *         description: List of top searches
+ */
+router.get('/top', searchController.getTopSearches);
+
 export default router;
