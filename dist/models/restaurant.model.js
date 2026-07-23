@@ -112,10 +112,27 @@ const restaurantSchema = new mongoose_1.Schema({
         type: Boolean,
         default: true,
     },
+    isTopSpot: {
+        type: Boolean,
+        default: false,
+    },
+    popularityScore: {
+        type: Number,
+        default: 0,
+    },
     status: {
         type: String,
         enum: Object.values(RestaurantStatus),
         default: RestaurantStatus.PENDING,
+    },
+    outletType: {
+        type: String,
+        enum: ['Restaurant', 'Pharmacy', 'Convenience', 'Grocery'],
+        default: 'Restaurant',
+    },
+    baseCurrency: {
+        type: String,
+        default: 'NGN',
     },
 }, {
     timestamps: true,

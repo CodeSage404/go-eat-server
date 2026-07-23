@@ -381,23 +381,65 @@ class AdminController {
                 cuisineArray = rawCuisine;
             }
             else if (typeof rawCuisine === 'string') {
-                cuisineArray = rawCuisine.split(',').map((c) => c.trim()).filter(Boolean);
+                try {
+                    const parsed = JSON.parse(rawCuisine);
+                    if (Array.isArray(parsed)) {
+                        cuisineArray = parsed;
+                    }
+                    else {
+                        cuisineArray = rawCuisine.split(',').map((c) => c.trim()).filter(Boolean);
+                    }
+                }
+                catch {
+                    cuisineArray = rawCuisine.split(',').map((c) => c.trim()).filter(Boolean);
+                }
             }
             // Fallbacks for DB schema required fields not present in Step 1/Step 5 of frontend manual onboarding
-            const finalAddress = req.body.address || {
+            let finalAddress = {
                 street: 'Manual Onboarding',
                 city: 'Unknown',
                 state: 'Unknown',
                 zipCode: '000000'
             };
-            const finalLocation = req.body.location || {
+            if (req.body.address) {
+                try {
+                    finalAddress = typeof req.body.address === 'string' ? JSON.parse(req.body.address) : req.body.address;
+                }
+                catch (e) { }
+            }
+            let finalLocation = {
                 type: 'Point',
                 coordinates: [0, 0]
             };
-            const finalOpeningHours = req.body.openingHours || {
+            if (req.body.location) {
+                try {
+                    finalLocation = typeof req.body.location === 'string' ? JSON.parse(req.body.location) : req.body.location;
+                }
+                catch (e) { }
+            }
+            let finalOpeningHours = {
                 open: '08:00',
                 close: '22:00'
             };
+            if (req.body.openingHours) {
+                try {
+                    finalOpeningHours = typeof req.body.openingHours === 'string' ? JSON.parse(req.body.openingHours) : req.body.openingHours;
+                }
+                catch (e) { }
+            }
+            let images = {
+                logo: 'default-logo.png',
+                cover: 'default-cover.png'
+            };
+            if (req.files) {
+                const files = req.files;
+                if (files['logo'] && files['logo'][0]) {
+                    images.logo = files['logo'][0].path.startsWith('http') ? files['logo'][0].path : `/uploads/${files['logo'][0].filename}`;
+                }
+                if (files['cover'] && files['cover'][0]) {
+                    images.cover = files['cover'][0].path.startsWith('http') ? files['cover'][0].path : `/uploads/${files['cover'][0].filename}`;
+                }
+            }
             try {
                 // Create the restaurant
                 const restaurant = await restaurant_model_1.default.create({
@@ -408,7 +450,10 @@ class AdminController {
                     location: finalLocation,
                     cuisine: cuisineArray,
                     openingHours: finalOpeningHours,
+                    outletType: req.body.outletType || 'Restaurant',
+                    baseCurrency: req.body.baseCurrency || 'NGN',
                     status: restaurant_model_1.RestaurantStatus.ACTIVE, // Auto-approved
+                    images: images,
                 });
                 // Send Welcome / Partner email to the vendor owner!
                 try {
@@ -701,10 +746,11 @@ class AdminController {
                 price: Number(price),
                 category: categoryId,
                 restaurant: restaurantId,
-                isAvailable: isAvailable ?? true,
-                isVegetarian: isVegetarian ?? false,
-                isSpicy: isSpicy ?? false,
-                calories: calories ? Number(calories) : undefined
+                isAvailable: isAvailable === 'true' || isAvailable === true,
+                isVegetarian: isVegetarian === 'true' || isVegetarian === true,
+                isSpicy: isSpicy === 'true' || isSpicy === true,
+                calories: calories ? Number(calories) : undefined,
+                image: req.file?.path
             });
             res.status(201).json({
                 status: 'success',
@@ -1157,6 +1203,23 @@ class AdminController {
                 status: 'success',
                 message: 'Platform settings updated successfully',
                 data: { settings }
+            });
+        });
+        /**
+         * Update Top Spot status for a restaurant
+         */
+        this.updateTopSpot = (0, catchAsync_1.catchAsync)(async (req, res) => {
+            const { id } = req.params;
+            const { isTopSpot } = req.body;
+            const restaurant = await restaurant_model_1.default.findById(id);
+            if (!restaurant) {
+                throw new appError_1.default('No restaurant found with that ID', 404);
+            }
+            restaurant.isTopSpot = isTopSpot;
+            await restaurant.save();
+            res.status(200).json({
+                status: 'success',
+                data: { restaurant },
             });
         });
     }

@@ -422,7 +422,7 @@ class AdminController {
     }
 
     let finalLocation = {
-      type: 'Point',
+      type: 'Point' as const,
       coordinates: [0, 0]
     };
 
@@ -451,10 +451,10 @@ class AdminController {
     if (req.files) {
       const files = req.files as { [fieldname: string]: Express.Multer.File[] };
       if (files['logo'] && files['logo'][0]) {
-        images.logo = `/uploads/${files['logo'][0].filename}`;
+        images.logo = files['logo'][0].path.startsWith('http') ? files['logo'][0].path : `/uploads/${files['logo'][0].filename}`;
       }
       if (files['cover'] && files['cover'][0]) {
-        images.cover = `/uploads/${files['cover'][0].filename}`;
+        images.cover = files['cover'][0].path.startsWith('http') ? files['cover'][0].path : `/uploads/${files['cover'][0].filename}`;
       }
     }
 

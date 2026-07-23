@@ -70,6 +70,10 @@ const categorySchema = new mongoose_1.Schema({
         type: Boolean,
         default: true,
     },
+    isActive: {
+        type: Boolean,
+        default: true,
+    },
 }, {
     timestamps: true,
 });

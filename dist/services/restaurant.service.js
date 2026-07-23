@@ -54,23 +54,59 @@ class RestaurantService {
         if (filters.search) {
             query.name = { $regex: filters.search, $options: 'i' };
         }
-        return await restaurant_model_1.default.find(query);
+        // Top Spot filter
+        if (filters.isTopSpot) {
+            query.isTopSpot = true;
+        }
+        // Custom tag filters
+        if (filters.tags && Array.isArray(filters.tags)) {
+            if (filters.tags.includes('Free delivery'))
+                query.deliveryFee = 0;
+            if (filters.tags.includes('Discounts'))
+                query.discount = { $gt: 0 };
+        }
+        // Custom sorting
+        let sortQuery = { popularityScore: -1, ratingsAverage: -1 };
+        if (filters.sort) {
+            if (filters.sort === 'Rating')
+                sortQuery = { ratingsAverage: -1 };
+            else if (filters.sort === 'Delivery time')
+                sortQuery = { estimatedDeliveryTime: 1 };
+            else if (filters.sort === 'Delivery fee')
+                sortQuery = { deliveryFee: 1 };
+        }
+        return await restaurant_model_1.default.find(query).sort(sortQuery);
     }
     /**
      * Find nearby restaurants using GeoJSON
      */
     async findNearbyRestaurants(lng, lat, maxDistanceInMeters = 5000) {
-        return await restaurant_model_1.default.find({
-            status: restaurant_model_1.RestaurantStatus.ACTIVE,
-            location: {
-                $near: {
-                    $geometry: {
-                        type: 'Point',
-                        coordinates: [lng, lat],
-                    },
-                    $maxDistance: maxDistanceInMeters,
-                },
-            },
+        const results = await restaurant_model_1.default.aggregate([
+            {
+                $geoNear: {
+                    near: { type: 'Point', coordinates: [lng, lat] },
+                    distanceField: 'calculatedDistance', // Distance in meters
+                    maxDistance: maxDistanceInMeters,
+                    query: { status: restaurant_model_1.RestaurantStatus.ACTIVE },
+                    spherical: true
+                }
+            }
+        ]);
+        // Dynamic Delivery Time Algorithm
+        // Assume average speed of 40 km/h (which is ~11.1 m/s or 666 m/min).
+        // Let's say it takes 1 minute for every 666 meters.
+        // Base preparation time: 15 minutes.
+        // Total delivery time = (distance_in_meters / 666) + 15
+        return results.map(restaurant => {
+            const distanceInMeters = restaurant.calculatedDistance || 0;
+            const travelTimeMinutes = Math.ceil(distanceInMeters / 666);
+            const prepTimeMinutes = 15;
+            return {
+                ...restaurant,
+                estimatedDeliveryTime: travelTimeMinutes + prepTimeMinutes,
+                // Also ensure id mapping for frontend compatibility
+                id: restaurant._id,
+            };
         });
     }
     /**

@@ -49,14 +49,20 @@ class RestaurantController {
          * Get all active restaurants with optional filters
          */
         this.getAllRestaurants = (0, catchAsync_1.catchAsync)(async (req, res) => {
-            const { cuisine, search, lat, lng, dist } = req.query;
+            const { cuisine, search, lat, lng, dist, isTopSpot, tags, sort } = req.query;
             let restaurants;
             if (lat && lng) {
                 // Find nearby if lat/lng are provided
                 restaurants = await restaurant_service_1.default.findNearbyRestaurants(parseFloat(lng), parseFloat(lat), dist ? parseInt(dist) : 5000);
             }
             else {
-                restaurants = await restaurant_service_1.default.getAllRestaurants({ cuisine, search });
+                restaurants = await restaurant_service_1.default.getAllRestaurants({
+                    cuisine,
+                    search,
+                    isTopSpot: isTopSpot === 'true',
+                    tags: tags ? (Array.isArray(tags) ? tags : [tags]) : undefined,
+                    sort: sort
+                });
             }
             res.status(200).json({
                 status: 'success',

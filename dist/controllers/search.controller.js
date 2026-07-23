@@ -76,6 +76,24 @@ class SearchController {
                 data: { cuisines },
             });
         });
+        /**
+         * List trending/top searches
+         */
+        this.getTopSearches = (0, catchAsync_1.catchAsync)(async (req, res) => {
+            const topSearches = [
+                'Jollof Rice',
+                'Shawarma',
+                'Suya',
+                'Amala',
+                'Fried Rice',
+                'Burger',
+                'Pizza'
+            ];
+            res.status(200).json({
+                status: 'success',
+                data: { topSearches },
+            });
+        });
     }
 }
 exports.default = new SearchController();

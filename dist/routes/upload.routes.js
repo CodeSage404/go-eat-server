@@ -73,7 +73,7 @@ router.post('/image', upload_1.upload.single('image'), (0, catchAsync_1.catchAsy
     res.status(200).json({
         status: 'success',
         data: {
-            imageUrl: `${req.protocol}://${req.get('host')}/uploads/${req.file.filename}`,
+            imageUrl: req.file.path,
         },
     });
 }));

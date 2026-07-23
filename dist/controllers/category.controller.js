@@ -40,12 +40,51 @@ class CategoryController {
          * Create a category
          */
         this.createCategory = (0, catchAsync_1.catchAsync)(async (req, res) => {
+            // Check if an image was uploaded via multer (now Cloudinary URL is in req.file.path)
+            if (req.file) {
+                req.body.image = req.file.path;
+            }
             const category = await category_model_1.default.create(req.body);
             res.status(201).json({
                 status: 'success',
                 data: {
                     category,
                 },
+            });
+        });
+        /**
+         * Update a category
+         */
+        this.updateCategory = (0, catchAsync_1.catchAsync)(async (req, res) => {
+            // Check if an image was uploaded via multer (now Cloudinary URL is in req.file.path)
+            if (req.file) {
+                req.body.image = req.file.path;
+            }
+            const category = await category_model_1.default.findByIdAndUpdate(req.params.id, req.body, {
+                new: true,
+                runValidators: true,
+            });
+            if (!category) {
+                throw new appError_1.default('Category not found with that ID', 404);
+            }
+            res.status(200).json({
+                status: 'success',
+                data: {
+                    category,
+                },
+            });
+        });
+        /**
+         * Delete a category
+         */
+        this.deleteCategory = (0, catchAsync_1.catchAsync)(async (req, res) => {
+            const category = await category_model_1.default.findByIdAndDelete(req.params.id);
+            if (!category) {
+                throw new appError_1.default('Category not found with that ID', 404);
+            }
+            res.status(204).json({
+                status: 'success',
+                data: null,
             });
         });
     }

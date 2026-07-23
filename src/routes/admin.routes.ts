@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import adminController from '../controllers/admin.controller';
+import { upload } from '../utils/upload';
 import { protect, restrictTo, checkPermission } from '../middleware/auth.middleware';
 import { UserRole } from '../models/user.model';
 
@@ -411,7 +412,7 @@ router.get('/restaurants/:id/orders', checkPermission('orders.read'), adminContr
  *       201:
  *         description: Vendor and restaurant successfully created
  */
-import { upload } from '../utils/upload';
+
 router.post('/restaurants/manual-signup', checkPermission('restaurants.crud', 'restaurants.onboard'), upload.fields([{ name: 'logo', maxCount: 1 }, { name: 'cover', maxCount: 1 }]), adminController.manuallyCreateRestaurant);
 
 /**
@@ -577,7 +578,7 @@ router.get('/menu-items', checkPermission('restaurants.crud'), adminController.g
  *       200:
  *         description: Menu item deleted successfully
  */
-import { upload } from '../utils/upload';
+
 
 router.get('/menu-items/:id', checkPermission('restaurants.crud'), adminController.getMenuItemById);
 router.post('/menu-items', checkPermission('restaurants.crud'), upload.single('image'), adminController.createMenuItem);

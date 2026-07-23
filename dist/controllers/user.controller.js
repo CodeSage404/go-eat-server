@@ -80,6 +80,53 @@ class UserController {
                 data: { favorites: user?.favorites || [] },
             });
         });
+        /**
+         * Get authenticated user profile
+         */
+        this.getProfile = (0, catchAsync_1.catchAsync)(async (req, res) => {
+            const user = await user_model_1.default.findById(req.user._id).select('-password');
+            if (!user) {
+                throw new appError_1.default('User not found', 404);
+            }
+            res.status(200).json({
+                status: 'success',
+                data: { user },
+            });
+        });
+        /**
+         * Update user profile
+         */
+        this.updateProfile = (0, catchAsync_1.catchAsync)(async (req, res) => {
+            // Filter out unwanted fields that shouldn't be manually updated here
+            const { name, email, phoneNumber, profileImage } = req.body;
+            const updateData = {};
+            if (name)
+                updateData.name = name;
+            if (email && email.trim() !== '')
+                updateData.email = email.toLowerCase();
+            if (phoneNumber && phoneNumber.trim() !== '')
+                updateData.phoneNumber = phoneNumber;
+            if (profileImage)
+                updateData.profileImage = profileImage;
+            // If an explicitly empty string is sent for a unique field, unset it using $unset so it doesn't trigger E11000
+            const unsetData = {};
+            if (email !== undefined && email.trim() === '')
+                unsetData.email = 1;
+            if (phoneNumber !== undefined && phoneNumber.trim() === '')
+                unsetData.phoneNumber = 1;
+            const updatePayload = { $set: updateData };
+            if (Object.keys(unsetData).length > 0) {
+                updatePayload.$unset = unsetData;
+            }
+            const user = await user_model_1.default.findByIdAndUpdate(req.user._id, updatePayload, { new: true, runValidators: true }).select('-password');
+            if (!user) {
+                throw new appError_1.default('User not found', 404);
+            }
+            res.status(200).json({
+                status: 'success',
+                data: { user },
+            });
+        });
     }
 }
 exports.default = new UserController();

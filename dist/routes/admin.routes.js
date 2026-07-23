@@ -245,84 +245,114 @@ router.get('/orders', (0, auth_middleware_1.checkPermission)('orders.read', 'ord
  *         description: Restaurant status updated successfully
  */
 router.post('/restaurants/:id/status', (0, auth_middleware_1.checkPermission)('restaurants.approve', 'restaurants.suspend'), admin_controller_1.default.updateRestaurantStatus);
+/**
+ * @openapi
+ * /api/v1/admin/restaurants/{id}/top-spot:
+ *   put:
+ *     tags:
+ *       - Admin Dashboard
+ *     summary: Update Top Spot status for a restaurant
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [isTopSpot]
+ *             properties:
+ *               isTopSpot:
+ *                 type: boolean
+ *     responses:
+ *       200:
+ *         description: Top Spot status updated successfully
+ */
+router.put('/restaurants/:id/top-spot', (0, auth_middleware_1.checkPermission)('restaurants.crud', 'restaurants.approve'), admin_controller_1.default.updateTopSpot);
 // Add these to your admin routes list
 // router.get('/restaurants/:id', adminController.getRestaurantById);
 // router.get('/restaurants/:id/orders', adminController.getRestaurantOrders);
 /**
  * @openapi
  * /api/v1/admin/restaurants/{id}:
- * get:
- * tags:
- * - Admin Dashboard
- * summary: Get profile details of a single restaurant by ID
- * security:
- * - bearerAuth: []
- * parameters:
- * - in: path
- * name: id
- * required: true
- * schema:
- * type: string
- * description: The unique MongoDB ID of the restaurant
- * responses:
- * 200:
- * description: Restaurant details retrieved successfully
- * content:
- * application/json:
- * schema:
- * type: object
- * properties:
- * status:
- * type: string
- * example: success
- * data:
- * type: object
- * properties:
- * restaurant:
- * type: object
- * 404:
- * description: Restaurant not found
+ *   get:
+ *     tags:
+ *       - Admin Dashboard
+ *     summary: Get profile details of a single restaurant by ID
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The unique MongoDB ID of the restaurant
+ *     responses:
+ *       200:
+ *         description: Restaurant details retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: success
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     restaurant:
+ *                       type: object
+ *       404:
+ *         description: Restaurant not found
  */
 router.get('/restaurants/:id', (0, auth_middleware_1.checkPermission)('restaurants.crud'), admin_controller_1.default.getRestaurantById);
 /**
  * @openapi
  * /api/v1/admin/restaurants/{id}/orders:
- * get:
- * tags:
- * - Admin Dashboard
- * summary: Get all historical and pending orders for a specific restaurant
- * security:
- * - bearerAuth: []
- * parameters:
- * - in: path
- * name: id
- * required: true
- * schema:
- * type: string
- * description: The unique MongoDB ID of the restaurant
- * responses:
- * 200:
- * description: Restaurant order history retrieved successfully
- * content:
- * application/json:
- * schema:
- * type: object
- * properties:
- * status:
- * type: string
- * example: success
- * results:
- * type: integer
- * example: 12
- * data:
- * type: object
- * properties:
- * orders:
- * type: array
- * items:
- * type: object
- * 404:
- * description: Restaurant not found
+ *   get:
+ *     tags:
+ *       - Admin Dashboard
+ *     summary: Get all historical and pending orders for a specific restaurant
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The unique MongoDB ID of the restaurant
+ *     responses:
+ *       200:
+ *         description: Restaurant order history retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: success
+ *                 results:
+ *                   type: integer
+ *                   example: 12
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     orders:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *       404:
+ *         description: Restaurant not found
  */
 router.get('/restaurants/:id/orders', (0, auth_middleware_1.checkPermission)('orders.read'), admin_controller_1.default.getRestaurantOrders);
 /**
@@ -368,7 +398,7 @@ router.get('/restaurants/:id/orders', (0, auth_middleware_1.checkPermission)('or
  *       201:
  *         description: Vendor and restaurant successfully created
  */
-router.post('/restaurants/manual-signup', (0, auth_middleware_1.checkPermission)('restaurants.crud', 'restaurants.onboard'), admin_controller_1.default.manuallyCreateRestaurant);
+router.post('/restaurants/manual-signup', (0, auth_middleware_1.checkPermission)('restaurants.crud', 'restaurants.onboard'), upload.fields([{ name: 'logo', maxCount: 1 }, { name: 'cover', maxCount: 1 }]), admin_controller_1.default.manuallyCreateRestaurant);
 /**
  * @openapi
  * /api/v1/admin/orders/{id}:
@@ -530,8 +560,8 @@ router.get('/menu-items', (0, auth_middleware_1.checkPermission)('restaurants.cr
  *         description: Menu item deleted successfully
  */
 router.get('/menu-items/:id', (0, auth_middleware_1.checkPermission)('restaurants.crud'), admin_controller_1.default.getMenuItemById);
-router.post('/menu-items', (0, auth_middleware_1.checkPermission)('restaurants.crud'), admin_controller_1.default.createMenuItem);
-router.patch('/menu-items/:id', (0, auth_middleware_1.checkPermission)('restaurants.crud'), admin_controller_1.default.updateMenuItem);
+router.post('/menu-items', (0, auth_middleware_1.checkPermission)('restaurants.crud'), upload.single('image'), admin_controller_1.default.createMenuItem);
+router.patch('/menu-items/:id', (0, auth_middleware_1.checkPermission)('restaurants.crud'), upload.single('image'), admin_controller_1.default.updateMenuItem);
 router.delete('/menu-items/:id', (0, auth_middleware_1.checkPermission)('restaurants.crud'), admin_controller_1.default.deleteMenuItem);
 /**
  * @openapi

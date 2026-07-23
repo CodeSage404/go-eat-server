@@ -143,4 +143,44 @@ router.delete('/addresses/:id', user_controller_1.default.deleteAddress);
 router.route('/favorites')
     .get(user_controller_1.default.getFavorites)
     .post(user_controller_1.default.toggleFavorite);
+/**
+ * @openapi
+ * /api/v1/users/profile:
+ *   get:
+ *     tags:
+ *       - Users
+ *     summary: Get authenticated user profile
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: User profile retrieved successfully.
+ *   put:
+ *     tags:
+ *       - Users
+ *     summary: Update user profile
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *               email:
+ *                 type: string
+ *               phoneNumber:
+ *                 type: string
+ *               profileImage:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Profile updated successfully.
+ */
+router.route('/profile')
+    .get(user_controller_1.default.getProfile)
+    .put(user_controller_1.default.updateProfile);
 exports.default = router;

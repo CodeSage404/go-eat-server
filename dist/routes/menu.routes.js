@@ -7,6 +7,7 @@ const express_1 = require("express");
 const menu_controller_1 = __importDefault(require("../controllers/menu.controller"));
 const auth_middleware_1 = require("../middleware/auth.middleware");
 const user_model_1 = require("../models/user.model");
+const upload_1 = require("../utils/upload");
 const router = (0, express_1.Router)({ mergeParams: true }); // Enable merging params from parent router
 // Public routes
 /**
@@ -97,7 +98,7 @@ router.post('/categories', menu_controller_1.default.createCategory);
  *       201:
  *         description: Food item added
  */
-router.post('/items', menu_controller_1.default.addFoodItem);
+router.post('/items', upload_1.upload.single('image'), menu_controller_1.default.addFoodItem);
 /**
  * @openapi
  * /api/v1/restaurants/{restaurantId}/menu/items/{id}:

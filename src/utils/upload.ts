@@ -55,9 +55,47 @@ export const upload = {
           
           // Attach the Cloudinary URL to req.file.path so existing controllers continue to work
           req.file.path = result.secure_url;
+          // Set filename as URL so `filename` usage still gets a valid path if appended blindly
+          req.file.filename = result.secure_url.split('/').pop() || result.secure_url;
           next();
         } catch (error) {
           next(new AppError('Failed to upload image to Cloudinary', 500));
+        }
+      }
+    ];
+  },
+  fields: (fields: multer.Field[]) => {
+    return [
+      memUpload.fields(fields),
+      async (req: Request, res: Response, next: NextFunction) => {
+        if (!req.files) return next();
+        
+        try {
+          const files = req.files as { [fieldname: string]: Express.Multer.File[] };
+          const uploadPromises: Promise<void>[] = [];
+          
+          for (const fieldname in files) {
+            for (const file of files[fieldname]) {
+              uploadPromises.push(
+                new Promise<void>((resolve, reject) => {
+                  const stream = cloudinary.uploader.upload_stream(
+                    { resource_type: 'auto' },
+                    (err, result) => {
+                      if (err || !result) return reject(err || new Error('Cloudinary upload failed'));
+                      file.path = result.secure_url;
+                      file.filename = result.secure_url.split('/').pop() || file.originalname;
+                      resolve();
+                    }
+                  );
+                  stream.end(file.buffer);
+                })
+              );
+            }
+          }
+          await Promise.all(uploadPromises);
+          next();
+        } catch (error) {
+          next(new AppError('Failed to upload images to Cloudinary', 500));
         }
       }
     ];

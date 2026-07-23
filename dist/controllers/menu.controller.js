@@ -15,11 +15,12 @@ const categorySchema = zod_1.z.object({
 });
 const foodItemSchema = zod_1.z.object({
     name: zod_1.z.string().min(1, 'Food item name is required'),
-    description: zod_1.z.string().min(5, 'Description is too short'),
-    price: zod_1.z.number().positive('Price must be positive'),
+    description: zod_1.z.string().optional(),
+    price: zod_1.z.coerce.number().positive('Price must be positive'),
     category: zod_1.z.string().min(1, 'Category ID is required'),
-    isVegetarian: zod_1.z.boolean().optional(),
-    isSpicy: zod_1.z.boolean().optional(),
+    isVegetarian: zod_1.z.enum(['true', 'false', '']).transform(val => val === 'true').optional(),
+    isSpicy: zod_1.z.enum(['true', 'false', '']).transform(val => val === 'true').optional(),
+    calories: zod_1.z.coerce.number().optional(),
 });
 class MenuController {
     constructor() {
@@ -57,8 +58,10 @@ class MenuController {
                 throw new appError_1.default(validatedData.error.issues.map(i => i.message).join(', '), 400);
             }
             const foodItem = await menu_service_1.default.addFoodItem({
-                ...req.body,
+                ...validatedData.data,
+                category: validatedData.data.category,
                 restaurant: restaurantId,
+                image: req.file?.path
             });
             res.status(201).json({
                 status: 'success',

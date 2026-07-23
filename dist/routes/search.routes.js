@@ -52,4 +52,16 @@ router.get('/', search_controller_1.default.globalSearch);
  *         description: List of common cuisine types for filtering.
  */
 router.get('/cuisines', search_controller_1.default.getPopularCuisines);
+/**
+ * @openapi
+ * /api/v1/search/top:
+ *   get:
+ *     tags:
+ *       - Search
+ *     summary: List top trending searches
+ *     responses:
+ *       200:
+ *         description: List of top searches
+ */
+router.get('/top', search_controller_1.default.getTopSearches);
 exports.default = router;
