@@ -38,6 +38,8 @@ export interface IRestaurant extends Document {
   isSelfPickup: boolean;
   allowsGroupOrder: boolean;
   hasFreeDelivery: boolean;
+  allowStampCards: boolean;
+  allowFreeGift: boolean;
   isTopSpot: boolean;
   popularityScore: number;
   status: RestaurantStatus;
@@ -123,6 +125,14 @@ const restaurantSchema = new Schema<IRestaurant>(
       default: false,
     },
     hasFreeDelivery: {
+      type: Boolean,
+      default: false,
+    },
+    allowStampCards: {
+      type: Boolean,
+      default: false,
+    },
+    allowFreeGift: {
       type: Boolean,
       default: false,
     },
