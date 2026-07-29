@@ -175,7 +175,7 @@ export const riderRegisterOnboarding = catchAsync(async (req: Request, res: Resp
     user: userId,
   };
 
-  const existingProfile = await RiderOnboarding.findOne({ user: userId });
+  const existingProfile = await RiderOnboarding.findOne({ user: userId as any });
 
   let riderProfile;
   if (existingProfile) {
@@ -199,7 +199,7 @@ export const riderRegisterOnboarding = catchAsync(async (req: Request, res: Resp
 export const getRiderOnboardingStatus = catchAsync(async (req: Request, res: Response) => {
   const userId = req.user?._id;
 
-  const riderProfile = await RiderOnboarding.findOne({ user: userId });
+  const riderProfile = await RiderOnboarding.findOne({ user: userId as any });
 
   if (!riderProfile) {
     throw new AppError('Rider onboarding profile not found', 404);

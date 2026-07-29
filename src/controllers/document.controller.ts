@@ -42,8 +42,8 @@ export const getOwnerDocuments = catchAsync(async (req: Request, res: Response) 
   const { ownerType, ownerId } = req.params;
 
   const documents = await DocumentModel.find({
-    ownerType,
-    ownerId,
+    ownerType: ownerType as any,
+    ownerId: ownerId as any,
   }).sort({ createdAt: -1 });
 
   res.status(200).json({
@@ -98,7 +98,7 @@ export const checkExpiryDates = catchAsync(async (req: Request, res: Response) =
     {
       expiryDate: { $lt: now },
       verificationStatus: { $ne: 'expired' },
-    },
+    } as any,
     {
       $set: {
         verificationStatus: 'expired',
@@ -111,17 +111,17 @@ export const checkExpiryDates = catchAsync(async (req: Request, res: Response) =
   const thirtyDayDocs = await DocumentModel.find({
     expiryDate: { $gte: now, $lte: thirtyDaysFromNow },
     expiryAlertSent: { $in: ['none'] },
-  });
+  } as any);
 
   const fourteenDayDocs = await DocumentModel.find({
     expiryDate: { $gte: now, $lte: fourteenDaysFromNow },
     expiryAlertSent: { $in: ['none', '30_days'] },
-  });
+  } as any);
 
   const sevenDayDocs = await DocumentModel.find({
     expiryDate: { $gte: now, $lte: sevenDaysFromNow },
     expiryAlertSent: { $in: ['none', '30_days', '14_days'] },
-  });
+  } as any);
 
   // Update alert statuses
   await DocumentModel.updateMany(
