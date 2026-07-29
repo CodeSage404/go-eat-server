@@ -10,7 +10,6 @@ export interface AuthRequest extends Request {
 }
 
 export const protect = catchAsync(async (req: AuthRequest, res: Response, next: NextFunction) => {
-  // 1) Getting token and check if it's there
   let token;
   if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
     token = req.headers.authorization.split(' ')[1];
@@ -20,21 +19,17 @@ export const protect = catchAsync(async (req: AuthRequest, res: Response, next: 
     return next(new AppError('You are not logged in! Please log in to get access.', 401));
   }
 
-  // Verification token
   const decoded: any = jwt.verify(token, process.env.JWT_SECRET!);
 
-  // Check if user still exists
   const currentUser = await User.findById(decoded.id);
   if (!currentUser) {
     return next(new AppError('The user belonging to this token no longer exists.', 401));
   }
 
-  // Check if user is suspended
   if (currentUser.status === 'suspended') {
     return next(new AppError('Your account has been suspended. Please contact support.', 403));
   }
 
-  // GRANT ACCESS TO PROTECTED ROUTE
   req.user = currentUser;
   next();
 });
@@ -54,12 +49,10 @@ export const checkPermission = (...permissions: string[]) => {
       return next(new AppError('You are not logged in!', 401));
     }
 
-    // 1. Super Admin bypass
     if (req.user.role === UserRole.ADMIN && (!req.user.customRole || req.user.customRole === 'super-admin')) {
       return next();
     }
 
-    // 2. Custom Admin checks
     if (req.user.role === UserRole.ADMIN && req.user.customRole) {
       const rolePerm = await RolePermission.findOne({ roleName: req.user.customRole });
       if (rolePerm) {

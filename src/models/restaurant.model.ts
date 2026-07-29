@@ -43,7 +43,34 @@ export interface IRestaurant extends Document {
   isTopSpot: boolean;
   popularityScore: number;
   status: RestaurantStatus;
-  outletType: 'Restaurant' | 'Pharmacy' | 'Convenience' | 'Grocery';
+  outletType: 'Restaurant' | 'Smokey Wheel' | 'Grocery' | 'Health & Wellness' | 'Convenience' | 'Lifestyle';
+  tradingName?: string;
+  businessCategory?: string;
+  lga?: string;
+  deliveryRadius?: number; // in kilometers
+  businessPhone?: string;
+  businessEmail?: string;
+  businessWebsite?: string;
+  bankDetails?: {
+    bankName: string;
+    accountNumber: string;
+    accountName: string;
+    bvn?: string;
+    isVerified: boolean;
+  };
+  ninVerification?: {
+    nin: string;
+    verifiedName?: string;
+    dob?: string;
+    identityStatus?: 'pending' | 'verified' | 'failed';
+    selfieUrl?: string;
+  };
+  cacRegistration?: {
+    isRegisteredBusiness: boolean;
+    cacNumber?: string;
+    cacCertificateUrl?: string;
+  };
+  complianceStatus?: 'pending' | 'approved' | 'rejected' | 'expired';
   baseCurrency: string;
   createdAt: Date;
   updatedAt: Date;
@@ -151,8 +178,65 @@ const restaurantSchema = new Schema<IRestaurant>(
     },
     outletType: {
       type: String,
-      enum: ['Restaurant', 'Pharmacy', 'Convenience', 'Grocery'],
+      enum: ['Restaurant', 'Smokey Wheel', 'Grocery', 'Health & Wellness', 'Convenience', 'Lifestyle'],
       default: 'Restaurant',
+    },
+    tradingName: {
+      type: String,
+      trim: true,
+    },
+    businessCategory: {
+      type: String,
+      trim: true,
+    },
+    lga: {
+      type: String,
+      trim: true,
+    },
+    deliveryRadius: {
+      type: Number,
+      default: 5,
+    },
+    businessPhone: {
+      type: String,
+      trim: true,
+    },
+    businessEmail: {
+      type: String,
+      trim: true,
+      lowercase: true,
+    },
+    businessWebsite: {
+      type: String,
+      trim: true,
+    },
+    bankDetails: {
+      bankName: { type: String },
+      accountNumber: { type: String },
+      accountName: { type: String },
+      bvn: { type: String },
+      isVerified: { type: Boolean, default: false },
+    },
+    ninVerification: {
+      nin: { type: String },
+      verifiedName: { type: String },
+      dob: { type: String },
+      identityStatus: {
+        type: String,
+        enum: ['pending', 'verified', 'failed'],
+        default: 'pending',
+      },
+      selfieUrl: { type: String },
+    },
+    cacRegistration: {
+      isRegisteredBusiness: { type: Boolean, default: false },
+      cacNumber: { type: String },
+      cacCertificateUrl: { type: String },
+    },
+    complianceStatus: {
+      type: String,
+      enum: ['pending', 'approved', 'rejected', 'expired'],
+      default: 'pending',
     },
     baseCurrency: {
       type: String,
