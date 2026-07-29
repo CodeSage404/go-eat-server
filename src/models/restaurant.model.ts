@@ -43,7 +43,7 @@ export interface IRestaurant extends Document {
   isTopSpot: boolean;
   popularityScore: number;
   status: RestaurantStatus;
-  outletType: 'Restaurant' | 'Smokey Wheel' | 'Grocery' | 'Health & Wellness' | 'Convenience' | 'Lifestyle';
+  outletType: 'Restaurant' | 'Smokey Wheel' | 'Grocery' | 'Specialty Store' | 'Health & Wellness' | 'Convenience' | 'Lifestyle';
   tradingName?: string;
   businessCategory?: string;
   lga?: string;
@@ -178,7 +178,7 @@ const restaurantSchema = new Schema<IRestaurant>(
     },
     outletType: {
       type: String,
-      enum: ['Restaurant', 'Smokey Wheel', 'Grocery', 'Health & Wellness', 'Convenience', 'Lifestyle'],
+      enum: ['Restaurant', 'Smokey Wheel', 'Grocery', 'Specialty Store', 'Health & Wellness', 'Convenience', 'Lifestyle'],
       default: 'Restaurant',
     },
     tradingName: {

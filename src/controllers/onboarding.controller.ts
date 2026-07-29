@@ -25,8 +25,9 @@ export const vendorStep1SelectOutlet = catchAsync(async (req: Request, res: Resp
     'Restaurant',
     'Smokey Wheel',
     'Grocery',
-    'Health & Wellness',
+    'Specialty Store',
     'Convenience',
+    'Health & Wellness',
     'Lifestyle',
   ];
 
