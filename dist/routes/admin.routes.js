@@ -5,6 +5,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
 const admin_controller_1 = __importDefault(require("../controllers/admin.controller"));
+const upload_1 = require("../utils/upload");
 const auth_middleware_1 = require("../middleware/auth.middleware");
 const user_model_1 = require("../models/user.model");
 const router = (0, express_1.Router)();
@@ -125,6 +126,7 @@ router.get('/platform-stats', admin_controller_1.default.getPlatformStats);
  *         description: List of users returned
  */
 router.get('/users', (0, auth_middleware_1.checkPermission)('users.read'), admin_controller_1.default.getAllUsers);
+router.post('/users', (0, auth_middleware_1.checkPermission)('users.create'), admin_controller_1.default.createUser);
 /**
  * @openapi
  * /api/v1/admin/users/{id}:
@@ -145,6 +147,8 @@ router.get('/users', (0, auth_middleware_1.checkPermission)('users.read'), admin
  *         description: User profile details returned
  */
 router.get('/users/:id', (0, auth_middleware_1.checkPermission)('users.read'), admin_controller_1.default.getUserById);
+router.patch('/users/:id', (0, auth_middleware_1.checkPermission)('users.update'), admin_controller_1.default.updateUser);
+router.delete('/users/:id', (0, auth_middleware_1.checkPermission)('users.delete'), admin_controller_1.default.deleteUser);
 /**
  * @openapi
  * /api/v1/admin/users/{id}/status:
@@ -398,7 +402,7 @@ router.get('/restaurants/:id/orders', (0, auth_middleware_1.checkPermission)('or
  *       201:
  *         description: Vendor and restaurant successfully created
  */
-router.post('/restaurants/manual-signup', (0, auth_middleware_1.checkPermission)('restaurants.crud', 'restaurants.onboard'), upload.fields([{ name: 'logo', maxCount: 1 }, { name: 'cover', maxCount: 1 }]), admin_controller_1.default.manuallyCreateRestaurant);
+router.post('/restaurants/manual-signup', (0, auth_middleware_1.checkPermission)('restaurants.crud', 'restaurants.onboard'), upload_1.upload.fields([{ name: 'logo', maxCount: 1 }, { name: 'cover', maxCount: 1 }]), admin_controller_1.default.manuallyCreateRestaurant);
 /**
  * @openapi
  * /api/v1/admin/orders/{id}:
@@ -560,8 +564,8 @@ router.get('/menu-items', (0, auth_middleware_1.checkPermission)('restaurants.cr
  *         description: Menu item deleted successfully
  */
 router.get('/menu-items/:id', (0, auth_middleware_1.checkPermission)('restaurants.crud'), admin_controller_1.default.getMenuItemById);
-router.post('/menu-items', (0, auth_middleware_1.checkPermission)('restaurants.crud'), upload.single('image'), admin_controller_1.default.createMenuItem);
-router.patch('/menu-items/:id', (0, auth_middleware_1.checkPermission)('restaurants.crud'), upload.single('image'), admin_controller_1.default.updateMenuItem);
+router.post('/menu-items', (0, auth_middleware_1.checkPermission)('restaurants.crud'), upload_1.upload.single('image'), admin_controller_1.default.createMenuItem);
+router.patch('/menu-items/:id', (0, auth_middleware_1.checkPermission)('restaurants.crud'), upload_1.upload.single('image'), admin_controller_1.default.updateMenuItem);
 router.delete('/menu-items/:id', (0, auth_middleware_1.checkPermission)('restaurants.crud'), admin_controller_1.default.deleteMenuItem);
 /**
  * @openapi

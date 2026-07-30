@@ -39,6 +39,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const fs_1 = __importDefault(require("fs"));
 const path_1 = __importDefault(require("path"));
+const crypto_1 = __importDefault(require("crypto"));
 const mongoose_1 = __importDefault(require("mongoose"));
 const user_model_1 = __importStar(require("../models/user.model"));
 const restaurant_model_1 = __importStar(require("../models/restaurant.model"));
@@ -113,11 +114,11 @@ class AdminController {
         this.getAllUsers = (0, catchAsync_1.catchAsync)(async (req, res) => {
             const { role, status } = req.query;
             const filter = {};
-            if (role)
+            if (role && role !== 'all')
                 filter.role = role;
-            if (status)
+            if (status && status !== 'all')
                 filter.status = status;
-            const users = await user_model_1.default.find(filter).select('-password');
+            const users = await user_model_1.default.find(filter).select('-password').sort({ createdAt: -1 });
             res.status(200).json({
                 status: 'success',
                 results: users.length,
@@ -335,12 +336,14 @@ class AdminController {
         this.manuallyCreateRestaurant = (0, catchAsync_1.catchAsync)(async (req, res) => {
             const name = req.body.restaurantName || req.body.businessName || req.body['Business Name'] || req.body['businessName'];
             const email = req.body.ownerEmail || req.body.emailAddress || req.body.platformUsername || req.body['Email Address'] || req.body['Platform Username'] || req.body['emailAddress'] || req.body['platformUsername'];
-            const password = req.body.ownerPassword || req.body.loginPassword || req.body['Login Password'] || req.body['loginPassword'];
+            // Automatically generate a secure cryptographic random password for manually onboarded vendors
+            const randomHex = crypto_1.default.randomBytes(6).toString('hex').toUpperCase();
+            const password = `GoEat#${randomHex}9!`;
             const oName = req.body.ownerName || req.body['Owner Name'] || req.body['ownerName'] || 'Manual Owner';
             const phone = req.body.ownerPhone || req.body.phoneContact || req.body['Phone Contact'] || req.body['phoneContact'];
             const description = req.body.description || `Welcome to ${name}`;
-            if (!email || !password || !name) {
-                throw new appError_1.default('Please provide all required fields (email/username, password, and restaurant/business name)', 400);
+            if (!email || !name) {
+                throw new appError_1.default('Please provide all required fields (email/username and restaurant/business name)', 400);
             }
             // Check if user already exists
             const existingUser = await user_model_1.default.findOne({
@@ -1027,10 +1030,13 @@ class AdminController {
          * Create a new user (Admin)
          */
         this.createUser = (0, catchAsync_1.catchAsync)(async (req, res) => {
-            const { name, email, password, phoneNumber, role, status, customRole } = req.body;
-            if (!name || !email || !password || !role) {
-                throw new appError_1.default('Please specify name, email, password, and role', 400);
+            const { name, email, phoneNumber, role, status, customRole } = req.body;
+            if (!name || !email || !role) {
+                throw new appError_1.default('Please specify name, email, and role', 400);
             }
+            // Always generate a secure cryptographic random password for manually created users
+            const randomHex = crypto_1.default.randomBytes(6).toString('hex').toUpperCase();
+            const password = `GoEat#${randomHex}9!`;
             const user = await user_model_1.default.create({
                 name,
                 email: email.toLowerCase(),

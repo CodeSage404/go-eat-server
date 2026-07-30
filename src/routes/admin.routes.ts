@@ -129,6 +129,7 @@ router.get('/platform-stats', adminController.getPlatformStats);
  *         description: List of users returned
  */
 router.get('/users', checkPermission('users.read'), adminController.getAllUsers);
+router.post('/users', checkPermission('users.create'), adminController.createUser);
 
 /**
  * @openapi
@@ -150,6 +151,8 @@ router.get('/users', checkPermission('users.read'), adminController.getAllUsers)
  *         description: User profile details returned
  */
 router.get('/users/:id', checkPermission('users.read'), adminController.getUserById);
+router.patch('/users/:id', checkPermission('users.update'), adminController.updateUser);
+router.delete('/users/:id', checkPermission('users.delete'), adminController.deleteUser);
 
 /**
  * @openapi

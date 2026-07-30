@@ -112,6 +112,22 @@ const restaurantSchema = new mongoose_1.Schema({
         type: Boolean,
         default: true,
     },
+    allowsGroupOrder: {
+        type: Boolean,
+        default: false,
+    },
+    hasFreeDelivery: {
+        type: Boolean,
+        default: false,
+    },
+    allowStampCards: {
+        type: Boolean,
+        default: false,
+    },
+    allowFreeGift: {
+        type: Boolean,
+        default: false,
+    },
     isTopSpot: {
         type: Boolean,
         default: false,
@@ -127,8 +143,65 @@ const restaurantSchema = new mongoose_1.Schema({
     },
     outletType: {
         type: String,
-        enum: ['Restaurant', 'Pharmacy', 'Convenience', 'Grocery'],
+        enum: ['Restaurant', 'Smokey Wheel', 'Grocery', 'Specialty Store', 'Health & Wellness', 'Convenience', 'Lifestyle'],
         default: 'Restaurant',
+    },
+    tradingName: {
+        type: String,
+        trim: true,
+    },
+    businessCategory: {
+        type: String,
+        trim: true,
+    },
+    lga: {
+        type: String,
+        trim: true,
+    },
+    deliveryRadius: {
+        type: Number,
+        default: 5,
+    },
+    businessPhone: {
+        type: String,
+        trim: true,
+    },
+    businessEmail: {
+        type: String,
+        trim: true,
+        lowercase: true,
+    },
+    businessWebsite: {
+        type: String,
+        trim: true,
+    },
+    bankDetails: {
+        bankName: { type: String },
+        accountNumber: { type: String },
+        accountName: { type: String },
+        bvn: { type: String },
+        isVerified: { type: Boolean, default: false },
+    },
+    ninVerification: {
+        nin: { type: String },
+        verifiedName: { type: String },
+        dob: { type: String },
+        identityStatus: {
+            type: String,
+            enum: ['pending', 'verified', 'failed'],
+            default: 'pending',
+        },
+        selfieUrl: { type: String },
+    },
+    cacRegistration: {
+        isRegisteredBusiness: { type: Boolean, default: false },
+        cacNumber: { type: String },
+        cacCertificateUrl: { type: String },
+    },
+    complianceStatus: {
+        type: String,
+        enum: ['pending', 'approved', 'rejected', 'expired'],
+        default: 'pending',
     },
     baseCurrency: {
         type: String,

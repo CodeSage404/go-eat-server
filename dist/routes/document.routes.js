@@ -1,0 +1,13 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const document_controller_1 = require("../controllers/document.controller");
+const auth_middleware_1 = require("../middleware/auth.middleware");
+const user_model_1 = require("../models/user.model");
+const router = (0, express_1.Router)();
+router.use(auth_middleware_1.protect);
+router.post('/upload', document_controller_1.uploadDocument);
+router.get('/owner/:ownerType/:ownerId', document_controller_1.getOwnerDocuments);
+router.patch('/:id/status', (0, auth_middleware_1.restrictTo)(user_model_1.UserRole.ADMIN), document_controller_1.updateDocumentStatus);
+router.post('/check-expiry', (0, auth_middleware_1.restrictTo)(user_model_1.UserRole.ADMIN), document_controller_1.checkExpiryDates);
+exports.default = router;
