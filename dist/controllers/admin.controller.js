@@ -412,13 +412,22 @@ class AdminController {
             }
             let finalLocation = {
                 type: 'Point',
-                coordinates: [0, 0]
+                coordinates: [3.3792, 6.5244]
             };
             if (req.body.location) {
                 try {
-                    finalLocation = typeof req.body.location === 'string' ? JSON.parse(req.body.location) : req.body.location;
+                    const parsed = typeof req.body.location === 'string' ? JSON.parse(req.body.location) : req.body.location;
+                    if (parsed?.coordinates && Array.isArray(parsed.coordinates)) {
+                        finalLocation = parsed;
+                    }
                 }
                 catch (e) { }
+            }
+            else if (req.body.lng && req.body.lat) {
+                finalLocation = {
+                    type: 'Point',
+                    coordinates: [Number(req.body.lng) || 3.3792, Number(req.body.lat) || 6.5244]
+                };
             }
             let finalOpeningHours = {
                 open: '08:00',
