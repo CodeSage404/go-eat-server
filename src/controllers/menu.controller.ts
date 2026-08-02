@@ -4,6 +4,8 @@ import menuService from '../services/menu.service';
 import restaurantService from '../services/restaurant.service';
 import { catchAsync } from '../utils/catchAsync';
 import AppError from '../utils/appError';
+import FoodItem from '../models/foodItem.model';
+import Category from '../models/category.model';
 
 const categorySchema = z.object({
   name: z.string().min(1, 'Category name is required'),
@@ -60,6 +62,68 @@ class MenuController {
     res.status(200).json({
       status: 'success',
       data: { menu },
+    });
+  });
+
+  public getAllFoodItems = catchAsync(async (req: Request, res: Response) => {
+    const { category, restaurant, search, isAvailable } = req.query;
+    const query: any = { isAvailable: isAvailable !== 'false' };
+
+    if (restaurant) {
+      query.restaurant = restaurant;
+    }
+
+    if (category) {
+      const catVal = String(category).trim();
+      let matchedIds: any[] = [];
+      if (catVal.match(/^[0-9a-fA-F]{24}$/)) {
+        matchedIds.push(catVal);
+        const catObj = await Category.findById(catVal);
+        if (catObj && catObj.name) {
+          const sames = await Category.find({
+            name: {
+              $regex: new RegExp(
+                `^${catObj.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`,
+                'i'
+              ),
+            },
+          });
+          matchedIds.push(...sames.map((s) => s._id));
+        }
+      } else {
+        const sames = await Category.find({
+          name: {
+            $regex: new RegExp(
+              `^${catVal.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`,
+              'i'
+            ),
+          },
+        });
+        matchedIds.push(...sames.map((s) => s._id));
+      }
+      if (matchedIds.length > 0) {
+        query.category = { $in: matchedIds };
+      }
+    }
+
+    if (search) {
+      query.name = { $regex: new RegExp(String(search), 'i') };
+    }
+
+    const foodItems = await FoodItem.find(query)
+      .populate(
+        'restaurant',
+        'name description images rating estimatedDeliveryTime deliveryFee address'
+      )
+      .populate('category', 'name image');
+
+    res.status(200).json({
+      status: 'success',
+      results: foodItems.length,
+      data: {
+        foodItems,
+        items: foodItems,
+      },
     });
   });
 

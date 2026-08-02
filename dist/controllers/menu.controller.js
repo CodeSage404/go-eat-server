@@ -8,6 +8,8 @@ const menu_service_1 = __importDefault(require("../services/menu.service"));
 const restaurant_service_1 = __importDefault(require("../services/restaurant.service"));
 const catchAsync_1 = require("../utils/catchAsync");
 const appError_1 = __importDefault(require("../utils/appError"));
+const foodItem_model_1 = __importDefault(require("../models/foodItem.model"));
+const category_model_1 = __importDefault(require("../models/category.model"));
 const categorySchema = zod_1.z.object({
     name: zod_1.z.string().min(1, 'Category name is required'),
     description: zod_1.z.string().optional(),
@@ -47,6 +49,54 @@ class MenuController {
             res.status(200).json({
                 status: 'success',
                 data: { menu },
+            });
+        });
+        this.getAllFoodItems = (0, catchAsync_1.catchAsync)(async (req, res) => {
+            const { category, restaurant, search, isAvailable } = req.query;
+            const query = { isAvailable: isAvailable !== 'false' };
+            if (restaurant) {
+                query.restaurant = restaurant;
+            }
+            if (category) {
+                const catVal = String(category).trim();
+                let matchedIds = [];
+                if (catVal.match(/^[0-9a-fA-F]{24}$/)) {
+                    matchedIds.push(catVal);
+                    const catObj = await category_model_1.default.findById(catVal);
+                    if (catObj && catObj.name) {
+                        const sames = await category_model_1.default.find({
+                            name: {
+                                $regex: new RegExp(`^${catObj.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i'),
+                            },
+                        });
+                        matchedIds.push(...sames.map((s) => s._id));
+                    }
+                }
+                else {
+                    const sames = await category_model_1.default.find({
+                        name: {
+                            $regex: new RegExp(`^${catVal.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i'),
+                        },
+                    });
+                    matchedIds.push(...sames.map((s) => s._id));
+                }
+                if (matchedIds.length > 0) {
+                    query.category = { $in: matchedIds };
+                }
+            }
+            if (search) {
+                query.name = { $regex: new RegExp(String(search), 'i') };
+            }
+            const foodItems = await foodItem_model_1.default.find(query)
+                .populate('restaurant', 'name description images rating estimatedDeliveryTime deliveryFee address')
+                .populate('category', 'name image');
+            res.status(200).json({
+                status: 'success',
+                results: foodItems.length,
+                data: {
+                    foodItems,
+                    items: foodItems,
+                },
             });
         });
         // Food Item Controllers

@@ -3,6 +3,8 @@ import mongoose from 'mongoose';
 import { catchAsync } from '../utils/catchAsync';
 import AppError from '../utils/appError';
 import Category from '../models/category.model';
+import FoodItem from '../models/foodItem.model';
+import Restaurant, { RestaurantStatus } from '../models/restaurant.model';
 
 class CategoryController {
   /**
@@ -61,19 +63,92 @@ class CategoryController {
   });
 
   /**
-   * Get category by ID
+   * Get category by ID with its food items and restaurants
    */
   public getCategoryById = catchAsync(async (req: Request, res: Response) => {
-    const category = await Category.findById(req.params.id);
+    let category = null;
+    let categoryName = '';
+    const rawId = req.params.id;
+    const idStr = Array.isArray(rawId) ? String(rawId[0]) : String(rawId);
 
-    if (!category) {
-      throw new AppError('Category not found with that ID', 404);
+    if (mongoose.Types.ObjectId.isValid(idStr)) {
+      category = await Category.findById(idStr);
+    }
+
+    if (category) {
+      categoryName = (category.name || '').trim();
+    } else {
+      categoryName = decodeURIComponent(idStr).trim();
+      category = await Category.findOne({
+        name: {
+          $regex: new RegExp(
+            `^${categoryName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`,
+            'i'
+          ),
+        },
+      });
+    }
+
+    if (!category && !categoryName) {
+      throw new AppError('Category not found with that ID or name', 404);
+    }
+
+    const matchingCategories = await Category.find({
+      name: {
+        $regex: new RegExp(
+          `^${categoryName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`,
+          'i'
+        ),
+      },
+    });
+    const categoryIds = matchingCategories.map((c) => c._id);
+
+    const foodItems = await FoodItem.find({
+      category: { $in: categoryIds },
+      isAvailable: true,
+    })
+      .populate(
+        'restaurant',
+        'name description images rating estimatedDeliveryTime deliveryFee address'
+      )
+      .populate('category', 'name image');
+
+    const restaurantIds = new Set<string>();
+    const restaurantsList: any[] = [];
+    for (const item of foodItems) {
+      if (
+        item.restaurant &&
+        typeof item.restaurant === 'object' &&
+        'name' in item.restaurant
+      ) {
+        const restId = (item.restaurant as any)._id?.toString();
+        if (restId && !restaurantIds.has(restId)) {
+          restaurantIds.add(restId);
+          restaurantsList.push(item.restaurant);
+        }
+      }
+    }
+
+    const cuisineRestaurants = await Restaurant.find({
+      status: RestaurantStatus.ACTIVE,
+      cuisine: { $regex: new RegExp(categoryName, 'i') },
+    });
+
+    for (const rest of cuisineRestaurants) {
+      const restId = rest._id.toString();
+      if (!restaurantIds.has(restId)) {
+        restaurantIds.add(restId);
+        restaurantsList.push(rest);
+      }
     }
 
     res.status(200).json({
       status: 'success',
       data: {
-        category,
+        category: category || { _id: idStr, name: categoryName },
+        foodItems,
+        items: foodItems,
+        restaurants: restaurantsList,
       },
     });
   });

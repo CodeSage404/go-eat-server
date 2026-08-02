@@ -32,6 +32,7 @@ const wallet_routes_1 = __importDefault(require("./routes/wallet.routes"));
 const admin_routes_1 = __importDefault(require("./routes/admin.routes"));
 const location_routes_1 = __importDefault(require("./routes/location.routes"));
 const category_routes_1 = __importDefault(require("./routes/category.routes"));
+const food_item_routes_1 = __importDefault(require("./routes/food-item.routes"));
 const cookie_routes_1 = __importDefault(require("./routes/cookie.routes"));
 const cart_routes_1 = __importDefault(require("./routes/cart.routes"));
 const onboarding_routes_1 = __importDefault(require("./routes/onboarding.routes"));
@@ -106,6 +107,7 @@ class App {
         this.app.use('/api/v1/admin', admin_routes_1.default);
         this.app.use('/api/v1/location', location_routes_1.default);
         this.app.use('/api/v1/categories', category_routes_1.default);
+        this.app.use('/api/v1/food-items', food_item_routes_1.default);
         this.app.use('/api/v1/cookies', cookie_routes_1.default);
         this.app.use('/api/v1/cart', cart_routes_1.default);
         this.app.use('/api/v1/onboarding', onboarding_routes_1.default);

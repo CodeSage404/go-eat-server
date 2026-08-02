@@ -29,6 +29,7 @@ import walletRoutes from './routes/wallet.routes';
 import adminRoutes from './routes/admin.routes';
 import locationRoutes from './routes/location.routes';
 import categoryRoutes from './routes/category.routes';
+import foodItemRoutes from './routes/food-item.routes';
 import cookieRoutes from './routes/cookie.routes';
 import cartRoutes from './routes/cart.routes';
 import onboardingRoutes from './routes/onboarding.routes';
@@ -118,6 +119,7 @@ class App {
     this.app.use('/api/v1/admin', adminRoutes);
     this.app.use('/api/v1/location', locationRoutes);
     this.app.use('/api/v1/categories', categoryRoutes);
+    this.app.use('/api/v1/food-items', foodItemRoutes);
     this.app.use('/api/v1/cookies', cookieRoutes);
     this.app.use('/api/v1/cart', cartRoutes);
     this.app.use('/api/v1/onboarding', onboardingRoutes);
