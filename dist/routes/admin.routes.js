@@ -105,6 +105,42 @@ router.post('/auth/refresh-token', admin_controller_1.default.refreshAdminToken)
 router.get('/platform-stats', admin_controller_1.default.getPlatformStats);
 /**
  * @openapi
+ * /api/v1/admin/export/{entity}:
+ *   get:
+ *     tags:
+ *       - Admin Export
+ *     summary: Export platform entity data as downloadable CSV or JSON
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: entity
+ *         required: true
+ *         schema:
+ *           type: string
+ *           enum: [orders, users, restaurants, transactions, menu-items, audit-logs, reviews]
+ *       - in: query
+ *         name: format
+ *         schema:
+ *           type: string
+ *           enum: [csv, json]
+ *           default: csv
+ *     responses:
+ *       200:
+ *         description: CSV file download or JSON export returned successfully
+ */
+router.get('/export/:entity', (0, auth_middleware_1.checkPermission)(), admin_controller_1.default.exportData);
+router.get('/orders/export', (0, auth_middleware_1.checkPermission)('orders.read'), admin_controller_1.default.exportData);
+router.get('/users/export', (0, auth_middleware_1.checkPermission)('users.read'), admin_controller_1.default.exportData);
+router.get('/restaurants/export', (0, auth_middleware_1.checkPermission)('restaurants.read'), admin_controller_1.default.exportData);
+router.get('/outlets/export', (0, auth_middleware_1.checkPermission)('restaurants.read'), admin_controller_1.default.exportData);
+router.get('/transactions/export', (0, auth_middleware_1.checkPermission)('transactions.read'), admin_controller_1.default.exportData);
+router.get('/payments/export', (0, auth_middleware_1.checkPermission)('transactions.read'), admin_controller_1.default.exportData);
+router.get('/menu-items/export', (0, auth_middleware_1.checkPermission)('restaurants.read'), admin_controller_1.default.exportData);
+router.get('/audit-logs/export', (0, auth_middleware_1.checkPermission)(), admin_controller_1.default.exportData);
+router.get('/reviews/export', (0, auth_middleware_1.checkPermission)('users.read'), admin_controller_1.default.exportData);
+/**
+ * @openapi
  * /api/v1/admin/users:
  *   get:
  *     tags:

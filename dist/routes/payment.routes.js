@@ -6,21 +6,34 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
 const payment_controller_1 = __importDefault(require("../controllers/payment.controller"));
 const auth_middleware_1 = require("../middleware/auth.middleware");
+const user_model_1 = require("../models/user.model");
 const router = (0, express_1.Router)();
+// ============================================
+// PUBLIC WEBHOOK & VERIFICATION ROUTES
+// ============================================
 /**
  * @openapi
  * /api/v1/payments/webhook:
  *   post:
  *     tags:
  *       - Payments
- *     summary: Paystack Webhook Handler
- *     description: Endpoint for Paystack to send transaction events. Should not be called manually.
- *     responses:
- *       200:
- *         description: Webhook received successfully
+ *     summary: Default / Legacy Paystack Webhook Handler
  */
-router.post('/webhook', payment_controller_1.default.handleWebhook);
-// Protected routes
+router.post('/webhook', payment_controller_1.default.handlePaystackWebhook);
+router.post('/webhook/paystack', payment_controller_1.default.handlePaystackWebhook);
+router.post('/webhook/flutterwave', payment_controller_1.default.handleFlutterwaveWebhook);
+/**
+ * @openapi
+ * /api/v1/payments/verify/{reference}:
+ *   get:
+ *     tags:
+ *       - Payments
+ *     summary: Verify transaction status by reference
+ */
+router.get('/verify/:reference', payment_controller_1.default.verifyPayment);
+// ============================================
+// PROTECTED USER / CLIENT ROUTES
+// ============================================
 router.use(auth_middleware_1.protect);
 /**
  * @openapi
@@ -28,22 +41,28 @@ router.use(auth_middleware_1.protect);
  *   post:
  *     tags:
  *       - Payments
- *     summary: Initialize a new payment
- *     security:
- *       - bearerAuth: []
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required: [orderId]
- *             properties:
- *               orderId:
- *                 type: string
- *     responses:
- *       200:
- *         description: Payment initialized, returns authorization URL
+ *     summary: Initialize a new payment (Paystack or Flutterwave)
  */
 router.post('/initialize', payment_controller_1.default.initializePayment);
+// ============================================
+// PROTECTED ADMIN / SYSTEM PAYOUT ROUTES
+// ============================================
+/**
+ * @openapi
+ * /api/v1/payments/payout/rider:
+ *   post:
+ *     tags:
+ *       - Payments
+ *     summary: Payout / transfer money to a delivery rider
+ */
+router.post('/payout/rider', (0, auth_middleware_1.restrictTo)(user_model_1.UserRole.ADMIN), payment_controller_1.default.payoutRider);
+/**
+ * @openapi
+ * /api/v1/payments/payout/restaurant:
+ *   post:
+ *     tags:
+ *       - Payments
+ *     summary: Payout / transfer money to a restaurant vendor
+ */
+router.post('/payout/restaurant', (0, auth_middleware_1.restrictTo)(user_model_1.UserRole.ADMIN), payment_controller_1.default.payoutRestaurant);
 exports.default = router;

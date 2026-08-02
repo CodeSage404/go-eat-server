@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { v2 as cloudinary } from 'cloudinary';
 import multer from 'multer';
-import { upload } from '../utils/upload';
+import { upload, saveFileLocally } from '../utils/upload';
 import { protect } from '../middleware/auth.middleware';
 import { catchAsync } from '../utils/catchAsync';
 import AppError from '../utils/appError';
@@ -154,5 +154,50 @@ router.post(
     });
   })
 );
+
+/**
+ * @openapi
+ * /api/v1/upload/cpanel:
+ *   post:
+ *     tags:
+ *       - Uploads
+ *     summary: Explicitly upload an image file to cPanel local disk storage (/uploads directory)
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - image
+ *             properties:
+ *               image:
+ *                 type: string
+ *                 format: binary
+ *     responses:
+ *       200:
+ *         description: Image uploaded to cPanel local storage successfully
+ */
+const handleCPanelUpload = catchAsync(async (req: Request, res: Response) => {
+  if (!req.file) {
+    throw new AppError('No image file provided', 400);
+  }
+
+  const result = await saveFileLocally(req.file, req);
+
+  res.status(200).json({
+    status: 'success',
+    data: {
+      imageUrl: result.secure_url,
+      filename: result.filename,
+      provider: 'cpanel',
+    },
+  });
+});
+
+router.post('/cpanel', memUpload.single('image'), handleCPanelUpload);
+router.post('/local', memUpload.single('image'), handleCPanelUpload);
 
 export default router;

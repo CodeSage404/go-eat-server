@@ -13,8 +13,8 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
-const uploadDir = process.env.NODE_ENV === 'production'
-  ? '/tmp/uploads'
+const uploadDir = process.env.UPLOAD_DIR
+  ? path.resolve(process.env.UPLOAD_DIR)
   : path.join(__dirname, '../../uploads');
 
 const fileFilter = (req: any, file: any, cb: any) => {
@@ -34,6 +34,54 @@ const memUpload = multer({
   fileFilter,
 });
 
+/**
+ * Determines whether to upload to Cloudinary vs local cPanel storage based on config
+ */
+export const shouldUseCloudinary = (): boolean => {
+  const provider = (process.env.STORAGE_PROVIDER || '').toLowerCase();
+  if (provider === 'cpanel' || provider === 'local' || provider === 'disk') {
+    return false;
+  }
+  if (provider === 'cloudinary') {
+    return true;
+  }
+  return Boolean(
+    process.env.CLOUDINARY_CLOUD_NAME &&
+    process.env.CLOUDINARY_API_KEY &&
+    process.env.CLOUDINARY_API_SECRET
+  );
+};
+
+/**
+ * Save an uploaded file to local disk (cPanel / uploads directory)
+ */
+export const saveFileLocally = async (
+  file: Express.Multer.File,
+  req?: Request
+): Promise<{ secure_url: string; filename: string }> => {
+  if (!fs.existsSync(uploadDir)) {
+    fs.mkdirSync(uploadDir, { recursive: true });
+  }
+
+  const ext = path.extname(file.originalname) || '.jpg';
+  const cleanName = path.basename(file.originalname, ext).replace(/[^a-zA-Z0-9_-]/g, '_');
+  const filename = `${Date.now()}-${Math.round(Math.random() * 1e9)}-${cleanName}${ext}`;
+  const filePath = path.join(uploadDir, filename);
+
+  await fs.promises.writeFile(filePath, file.buffer);
+
+  const baseUrl =
+    process.env.APP_URL ||
+    process.env.RENDER_EXTERNAL_URL ||
+    (req ? `${req.protocol}://${req.get('host')}` : '');
+  const secureUrl = baseUrl ? `${baseUrl.replace(/\/$/, '')}/uploads/${filename}` : `/uploads/${filename}`;
+
+  return {
+    secure_url: secureUrl,
+    filename,
+  };
+};
+
 export const upload = {
   single: (fieldName: string) => {
     return [
@@ -42,24 +90,35 @@ export const upload = {
         if (!req.file) return next();
         
         try {
-          const result = await new Promise<any>((resolve, reject) => {
-            const stream = cloudinary.uploader.upload_stream(
-              { resource_type: 'auto' },
-              (err, result) => {
-                if (err || !result) return reject(err || new Error('Cloudinary upload failed'));
-                resolve(result);
-              }
-            );
-            stream.end(req.file!.buffer);
-          });
-          
-          // Attach the Cloudinary URL to req.file.path so existing controllers continue to work
+          if (shouldUseCloudinary()) {
+            try {
+              const result = await new Promise<any>((resolve, reject) => {
+                const stream = cloudinary.uploader.upload_stream(
+                  { resource_type: 'auto' },
+                  (err, result) => {
+                    if (err || !result) return reject(err || new Error('Cloudinary upload failed'));
+                    resolve(result);
+                  }
+                );
+                stream.end(req.file!.buffer);
+              });
+              
+              req.file.path = result.secure_url;
+              req.file.filename = result.secure_url.split('/').pop() || result.secure_url;
+              return next();
+            } catch (cloudErr: any) {
+              logger.warn(`Cloudinary upload failed, falling back to cPanel local storage: ${cloudErr.message}`);
+              // Automatically fall through to cPanel local disk storage if Cloudinary fails
+            }
+          }
+
+          // cPanel / Local Disk Upload
+          const result = await saveFileLocally(req.file, req);
           req.file.path = result.secure_url;
-          // Set filename as URL so `filename` usage still gets a valid path if appended blindly
-          req.file.filename = result.secure_url.split('/').pop() || result.secure_url;
+          req.file.filename = result.filename;
           next();
         } catch (error) {
-          next(new AppError('Failed to upload image to Cloudinary', 500));
+          next(new AppError('Failed to save uploaded file', 500));
         }
       }
     ];
@@ -77,29 +136,44 @@ export const upload = {
           for (const fieldname in files) {
             for (const file of files[fieldname]) {
               uploadPromises.push(
-                new Promise<void>((resolve, reject) => {
-                  const stream = cloudinary.uploader.upload_stream(
-                    { resource_type: 'auto' },
-                    (err, result) => {
-                      if (err || !result) return reject(err || new Error('Cloudinary upload failed'));
+                (async () => {
+                  if (shouldUseCloudinary()) {
+                    try {
+                      const result = await new Promise<any>((resolve, reject) => {
+                        const stream = cloudinary.uploader.upload_stream(
+                          { resource_type: 'auto' },
+                          (err, result) => {
+                            if (err || !result) return reject(err || new Error('Cloudinary upload failed'));
+                            resolve(result);
+                          }
+                        );
+                        stream.end(file.buffer);
+                      });
                       file.path = result.secure_url;
                       file.filename = result.secure_url.split('/').pop() || file.originalname;
-                      resolve();
+                      return;
+                    } catch (cloudErr: any) {
+                      logger.warn(`Cloudinary upload failed for ${fieldname}, falling back to cPanel storage: ${cloudErr.message}`);
                     }
-                  );
-                  stream.end(file.buffer);
-                })
+                  }
+
+                  // cPanel / Local Disk Upload
+                  const result = await saveFileLocally(file, req);
+                  file.path = result.secure_url;
+                  file.filename = result.filename;
+                })()
               );
             }
           }
           await Promise.all(uploadPromises);
           next();
         } catch (error) {
-          next(new AppError('Failed to upload images to Cloudinary', 500));
+          next(new AppError('Failed to upload files', 500));
         }
       }
     ];
   }
 };
 
-export { uploadDir };
+export { uploadDir, memUpload };
+

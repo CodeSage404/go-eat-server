@@ -1419,6 +1419,267 @@ class AdminController {
       data: { restaurant },
     });
   });
+
+  /**
+   * Export platform data (orders, users, restaurants, transactions, menu-items, audit-logs, reviews, bookings, promos)
+   * as CSV or JSON format.
+   */
+  public exportData = catchAsync(async (req: Request, res: Response) => {
+    const rawEntity =
+      (Array.isArray(req.params.entity) ? req.params.entity[0] : req.params.entity) ||
+      (req.path.includes('/orders')
+        ? 'orders'
+        : req.path.includes('/users')
+        ? 'users'
+        : req.path.includes('/restaurants') || req.path.includes('/outlets')
+        ? 'restaurants'
+        : req.path.includes('/transactions') || req.path.includes('/payments')
+        ? 'transactions'
+        : req.path.includes('/menu-items')
+        ? 'menu-items'
+        : req.path.includes('/audit-logs')
+        ? 'audit-logs'
+        : req.path.includes('/reviews')
+        ? 'reviews'
+        : '');
+
+    const entityStr = String(rawEntity || '').toLowerCase();
+    const rawFormat = Array.isArray(req.query.format) ? req.query.format[0] : req.query.format;
+    const formatStr = String(rawFormat || 'csv').toLowerCase();
+
+    let records: any[] = [];
+    let headers: string[] = [];
+    let rows: (string | number)[][] = [];
+
+    switch (entityStr) {
+      case 'orders': {
+        const orders = await Order.find()
+          .populate('customer', 'name email phoneNumber')
+          .populate('restaurant', 'name address')
+          .populate('rider', 'name phoneNumber')
+          .sort({ createdAt: -1 })
+          .lean();
+
+        headers = [
+          'Order ID',
+          'Customer Name',
+          'Customer Email',
+          'Restaurant Name',
+          'Total Amount',
+          'Status',
+          'Payment Status',
+          'Created At',
+        ];
+        rows = orders.map((o: any) => [
+          o._id?.toString() || '',
+          o.customer?.name || 'N/A',
+          o.customer?.email || 'N/A',
+          o.restaurant?.name || 'N/A',
+          o.totalAmount || 0,
+          o.status || '',
+          o.paymentStatus || '',
+          o.createdAt ? new Date(o.createdAt).toISOString() : '',
+        ]);
+        records = orders;
+        break;
+      }
+
+      case 'users': {
+        const users = await User.find().sort({ createdAt: -1 }).lean();
+        headers = [
+          'User ID',
+          'Name',
+          'Email',
+          'Phone Number',
+          'Role',
+          'Status',
+          'Verification Status',
+          'Created At',
+        ];
+        rows = users.map((u: any) => [
+          u._id?.toString() || '',
+          u.name || '',
+          u.email || '',
+          u.phoneNumber || '',
+          u.role || '',
+          u.status || '',
+          u.verificationStatus || '',
+          u.createdAt ? new Date(u.createdAt).toISOString() : '',
+        ]);
+        records = users;
+        break;
+      }
+
+      case 'restaurants':
+      case 'outlets': {
+        const restaurants = await Restaurant.find()
+          .populate('owner', 'name email phoneNumber')
+          .sort({ createdAt: -1 })
+          .lean();
+        headers = [
+          'Restaurant ID',
+          'Name',
+          'Owner Name',
+          'Owner Email',
+          'Outlet Type',
+          'City',
+          'Phone',
+          'Status',
+          'Verification Status',
+          'Commission Rate',
+          'Rating',
+          'Created At',
+        ];
+        rows = restaurants.map((r: any) => [
+          r._id?.toString() || '',
+          r.name || '',
+          r.owner?.name || 'N/A',
+          r.owner?.email || 'N/A',
+          r.outletType || 'Restaurant',
+          r.location?.city || r.address || '',
+          r.phoneContact || '',
+          r.status || '',
+          r.verificationStatus || '',
+          r.commissionRate || 10,
+          r.rating || 0,
+          r.createdAt ? new Date(r.createdAt).toISOString() : '',
+        ]);
+        records = restaurants;
+        break;
+      }
+
+      case 'transactions':
+      case 'payments': {
+        const transactions = await Transaction.find()
+          .populate('user', 'name email')
+          .sort({ createdAt: -1 })
+          .lean();
+        headers = [
+          'Transaction ID',
+          'Reference',
+          'User Name',
+          'User Email',
+          'Amount',
+          'Type',
+          'Status',
+          'Payment Method',
+          'Created At',
+        ];
+        rows = transactions.map((t: any) => [
+          t._id?.toString() || '',
+          t.reference || '',
+          t.user?.name || 'N/A',
+          t.user?.email || 'N/A',
+          t.amount || 0,
+          t.type || '',
+          t.status || '',
+          t.paymentMethod || '',
+          t.createdAt ? new Date(t.createdAt).toISOString() : '',
+        ]);
+        records = transactions;
+        break;
+      }
+
+      case 'menu-items':
+      case 'food-items': {
+        const items = await FoodItem.find()
+          .populate('restaurant', 'name')
+          .populate('category', 'name')
+          .sort({ createdAt: -1 })
+          .lean();
+        headers = ['Item ID', 'Name', 'Restaurant', 'Category', 'Price', 'Is Available', 'Created At'];
+        rows = items.map((i: any) => [
+          i._id?.toString() || '',
+          i.name || '',
+          i.restaurant?.name || 'N/A',
+          i.category?.name || 'N/A',
+          i.price || 0,
+          i.isAvailable ? 'Yes' : 'No',
+          i.createdAt ? new Date(i.createdAt).toISOString() : '',
+        ]);
+        records = items;
+        break;
+      }
+
+      case 'audit-logs': {
+        const logs = await AuditLog.find().sort({ createdAt: -1 }).lean();
+        headers = ['Log ID', 'Admin Email', 'Action', 'Resource', 'Resource ID', 'IP Address', 'Created At'];
+        rows = logs.map((l: any) => [
+          l._id?.toString() || '',
+          l.adminEmail || '',
+          l.action || '',
+          l.resource || '',
+          l.resourceId || '',
+          l.ipAddress || '',
+          l.createdAt ? new Date(l.createdAt).toISOString() : '',
+        ]);
+        records = logs;
+        break;
+      }
+
+      case 'reviews': {
+        const reviews = await Review.find()
+          .populate('customer', 'name email')
+          .populate('restaurant', 'name')
+          .sort({ createdAt: -1 })
+          .lean();
+        headers = ['Review ID', 'Customer Name', 'Restaurant', 'Rating', 'Comment', 'Created At'];
+        rows = reviews.map((r: any) => [
+          r._id?.toString() || '',
+          r.customer?.name || 'N/A',
+          r.restaurant?.name || 'N/A',
+          r.rating || 0,
+          r.comment || '',
+          r.createdAt ? new Date(r.createdAt).toISOString() : '',
+        ]);
+        records = reviews;
+        break;
+      }
+
+      default:
+        throw new AppError(
+          `Unsupported export entity: ${entityStr}. Supported entities are: orders, users, restaurants, transactions, menu-items, audit-logs, reviews.`,
+          400
+        );
+    }
+
+    if (formatStr === 'json') {
+      return res.status(200).json({
+        status: 'success',
+        entity: entityStr,
+        count: records.length,
+        data: records,
+      });
+    }
+
+    // CSV Format helper
+    const escapeCsvCell = (cell: any): string => {
+      if (cell === null || cell === undefined) return '';
+      const str = String(cell);
+      if (
+        str.includes(',') ||
+        str.includes('"') ||
+        str.includes('\n') ||
+        str.includes('\r')
+      ) {
+        return `"${str.replace(/"/g, '""')}"`;
+      }
+      return str;
+    };
+
+    const csvContent = [
+      headers.map(escapeCsvCell).join(','),
+      ...rows.map((row) => row.map(escapeCsvCell).join(',')),
+    ].join('\n');
+
+    const filename = `goeat_${entityStr}_export_${new Date()
+      .toISOString()
+      .slice(0, 10)}.csv`;
+
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.status(200).send(csvContent);
+  });
 }
 
 export default new AdminController();

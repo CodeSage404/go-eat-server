@@ -4,6 +4,12 @@ export interface IWallet extends Document {
   user: mongoose.Types.ObjectId; // Rider or Vendor
   balance: number;
   currency: string;
+  bankAccount?: {
+    accountNumber: string;
+    bankCode: string;
+    accountName: string;
+    recipientCode?: string;
+  };
   lastPayoutDate?: Date;
   isActive: boolean;
   createdAt: Date;
@@ -26,6 +32,12 @@ const walletSchema = new Schema<IWallet>(
     currency: {
       type: String,
       default: 'NGN', // Nigerian Naira
+    },
+    bankAccount: {
+      accountNumber: { type: String, trim: true },
+      bankCode: { type: String, trim: true },
+      accountName: { type: String, trim: true },
+      recipientCode: { type: String, trim: true },
     },
     lastPayoutDate: {
       type: Date,

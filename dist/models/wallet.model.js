@@ -50,6 +50,12 @@ const walletSchema = new mongoose_1.Schema({
         type: String,
         default: 'NGN', // Nigerian Naira
     },
+    bankAccount: {
+        accountNumber: { type: String, trim: true },
+        bankCode: { type: String, trim: true },
+        accountName: { type: String, trim: true },
+        recipientCode: { type: String, trim: true },
+    },
     lastPayoutDate: {
         type: Date,
     },

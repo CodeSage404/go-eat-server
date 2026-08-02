@@ -141,4 +141,45 @@ router.post('/cloudinary', memUpload.single('image'), (0, catchAsync_1.catchAsyn
         },
     });
 }));
+/**
+ * @openapi
+ * /api/v1/upload/cpanel:
+ *   post:
+ *     tags:
+ *       - Uploads
+ *     summary: Explicitly upload an image file to cPanel local disk storage (/uploads directory)
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - image
+ *             properties:
+ *               image:
+ *                 type: string
+ *                 format: binary
+ *     responses:
+ *       200:
+ *         description: Image uploaded to cPanel local storage successfully
+ */
+const handleCPanelUpload = (0, catchAsync_1.catchAsync)(async (req, res) => {
+    if (!req.file) {
+        throw new appError_1.default('No image file provided', 400);
+    }
+    const result = await (0, upload_1.saveFileLocally)(req.file, req);
+    res.status(200).json({
+        status: 'success',
+        data: {
+            imageUrl: result.secure_url,
+            filename: result.filename,
+            provider: 'cpanel',
+        },
+    });
+});
+router.post('/cpanel', memUpload.single('image'), handleCPanelUpload);
+router.post('/local', memUpload.single('image'), handleCPanelUpload);
 exports.default = router;

@@ -36,26 +36,25 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-const axios_1 = __importDefault(require("axios"));
-const crypto_1 = __importDefault(require("crypto"));
-const appError_1 = __importDefault(require("../utils/appError"));
+exports.PaymentService = void 0;
 const order_model_1 = __importStar(require("../models/order.model"));
-const user_model_1 = __importDefault(require("../models/user.model"));
+const user_model_1 = __importStar(require("../models/user.model"));
+const wallet_model_1 = __importDefault(require("../models/wallet.model"));
+const appError_1 = __importDefault(require("../utils/appError"));
+const logger_1 = __importDefault(require("../utils/logger"));
 const notification_service_1 = __importDefault(require("./notification.service"));
+const paystack_module_1 = __importDefault(require("./payments/paystack.module"));
+const flutterwave_module_1 = __importDefault(require("./payments/flutterwave.module"));
 class PaymentService {
-    constructor() {
-        this.secretKey = process.env.PAYSTACK_SECRET_KEY || 'sk_test_placeholder';
-        this.baseUrl = 'https://api.paystack.co';
-    }
     /**
-     * Initialize a Paystack transaction for an order
+     * Initialize Payment for an Order using preferred provider (Paystack or Flutterwave)
      */
-    async initializePayment(orderId, userId) {
+    async initializePayment(orderId, userId, provider = process.env.DEFAULT_PAYMENT_PROVIDER || 'paystack', callbackUrl) {
         const order = await order_model_1.default.findById(orderId);
         if (!order)
             throw new appError_1.default('Order not found', 404);
         if (order.customer.toString() !== userId) {
-            throw new appError_1.default('Unauthorized', 403);
+            throw new appError_1.default('Unauthorized access to this order', 403);
         }
         if (order.status !== order_model_1.OrderStatus.PENDING) {
             throw new appError_1.default('This order cannot be paid for in its current state', 400);
@@ -63,63 +62,262 @@ class PaymentService {
         const user = await user_model_1.default.findById(userId);
         if (!user)
             throw new appError_1.default('User not found', 404);
-        // Paystack amounts are in kobo (multiply by 100)
-        const amountInKobo = Math.round(order.totalAmount * 100);
-        try {
-            const response = await axios_1.default.post(`${this.baseUrl}/transaction/initialize`, {
+        const reference = `ORD_${order._id}_${Date.now()}`;
+        const amount = order.totalAmount;
+        if (provider.toLowerCase() === 'flutterwave') {
+            const result = await flutterwave_module_1.default.initializePayment({
                 email: user.email,
-                amount: amountInKobo,
-                reference: `ORD_${order._id}_${Date.now()}`,
+                amount,
+                reference,
+                customerName: user.name,
+                customerPhone: user.phoneNumber,
+                redirectUrl: callbackUrl || `${process.env.APP_URL || 'https://api.goeatalone.com'}/payment/callback?reference=${reference}&provider=flutterwave`,
                 metadata: {
-                    orderId: order._id,
-                    customerId: user._id,
-                },
-                // callback_url: 'https://yourfrontend.com/payment/verify' // Will be added later
-            }, {
-                headers: {
-                    Authorization: `Bearer ${this.secretKey}`,
-                    'Content-Type': 'application/json',
+                    orderId: order._id.toString(),
+                    customerId: user._id.toString(),
                 },
             });
-            return response.data.data;
+            return {
+                authorizationUrl: result.authorizationUrl,
+                reference: result.reference,
+                provider: 'flutterwave',
+            };
         }
-        catch (error) {
-            console.error('Paystack initialization error:', error.response?.data || error.message);
-            throw new appError_1.default('Payment initialization failed', 500);
+        else {
+            // Default: Paystack
+            const result = await paystack_module_1.default.initializePayment({
+                email: user.email,
+                amount,
+                reference,
+                callbackUrl: callbackUrl || `${process.env.APP_URL || 'https://api.goeatalone.com'}/payment/callback?reference=${reference}&provider=paystack`,
+                metadata: {
+                    orderId: order._id.toString(),
+                    customerId: user._id.toString(),
+                },
+            });
+            return {
+                authorizationUrl: result.authorizationUrl,
+                accessCode: result.accessCode,
+                reference: result.reference,
+                provider: 'paystack',
+            };
         }
     }
     /**
-     * Process incoming Paystack Webhook
+     * Verify Payment Status from either Paystack or Flutterwave
      */
-    async processWebhook(event, signature) {
-        // Verify Signature
-        const hash = crypto_1.default
-            .createHmac('sha512', this.secretKey)
-            .update(JSON.stringify(event))
-            .digest('hex');
-        if (hash !== signature) {
-            throw new appError_1.default('Invalid webhook signature', 400);
+    async verifyPayment(reference, provider = 'paystack') {
+        let orderId;
+        let paymentResult;
+        if (provider.toLowerCase() === 'flutterwave') {
+            const data = await flutterwave_module_1.default.verifyPayment(reference);
+            if (data.status !== 'successful') {
+                throw new appError_1.default('Flutterwave payment was not successful', 400);
+            }
+            orderId = data.meta?.orderId || reference.split('_')[1];
+            paymentResult = {
+                id: data.id ? String(data.id) : reference,
+                status: 'success',
+                update_time: new Date().toISOString(),
+                email_address: data.customer?.email,
+                provider: 'flutterwave',
+            };
         }
-        // Handle successful payment event
-        if (event.event === 'charge.success') {
-            const { reference, metadata } = event.data;
-            const orderId = metadata.orderId;
-            const order = await order_model_1.default.findById(orderId);
-            if (order && order.status === order_model_1.OrderStatus.PENDING) {
-                // Mark order as accepted (payment verified)
-                order.status = order_model_1.OrderStatus.ACCEPTED;
-                order.paymentResult = {
-                    id: event.data.id.toString(),
-                    status: 'success',
-                    update_time: new Date().toISOString(),
-                    email_address: event.data.customer.email,
-                };
-                await order.save();
-                // Notify Restaurant and Customer
+        else {
+            const data = await paystack_module_1.default.verifyPayment(reference);
+            if (data.status !== 'success') {
+                throw new appError_1.default('Paystack payment was not successful', 400);
+            }
+            orderId = data.metadata?.orderId || reference.split('_')[1];
+            paymentResult = {
+                id: data.id ? String(data.id) : reference,
+                status: 'success',
+                update_time: new Date().toISOString(),
+                email_address: data.customer?.email,
+                provider: 'paystack',
+            };
+        }
+        if (!orderId) {
+            throw new appError_1.default('Could not identify associated order from payment reference', 400);
+        }
+        const order = await order_model_1.default.findById(orderId);
+        if (!order) {
+            throw new appError_1.default('Order associated with payment not found', 404);
+        }
+        if (order.status === order_model_1.OrderStatus.PENDING) {
+            order.status = order_model_1.OrderStatus.ACCEPTED;
+            order.paymentResult = paymentResult;
+            await order.save();
+            // Send notifications
+            try {
                 await notification_service_1.default.notifyNewOrder(order.restaurant.toString(), order._id.toString());
                 await notification_service_1.default.notifyOrderStatusUpdate(order.customer.toString(), order._id.toString(), order.status);
             }
+            catch (notifyErr) {
+                logger_1.default.warn('Failed to send order notifications:', notifyErr.message);
+            }
+        }
+        return {
+            orderId: order._id,
+            status: order.status,
+            paymentResult: order.paymentResult,
+        };
+    }
+    /**
+     * Secure Webhook Handler for Paystack
+     */
+    async processPaystackWebhook(event, signature) {
+        const isValid = paystack_module_1.default.verifyWebhookSignature(event, signature);
+        if (!isValid) {
+            throw new appError_1.default('Invalid Paystack webhook signature', 400);
+        }
+        if (event.event === 'charge.success') {
+            const reference = event.data?.reference;
+            if (reference) {
+                await this.verifyPayment(reference, 'paystack');
+            }
         }
     }
+    /**
+     * Secure Webhook Handler for Flutterwave
+     */
+    async processFlutterwaveWebhook(payload, signatureHeader) {
+        const isValid = flutterwave_module_1.default.verifyWebhookSignature(signatureHeader);
+        if (!isValid) {
+            throw new appError_1.default('Invalid Flutterwave webhook signature', 400);
+        }
+        if (payload.event === 'charge.completed' && payload.data?.status === 'successful') {
+            const reference = payload.data?.tx_ref;
+            if (reference) {
+                await this.verifyPayment(reference, 'flutterwave');
+            }
+        }
+    }
+    /**
+     * Payout / Transfer money to a Delivery Rider's Bank Account
+     */
+    async payoutRider(riderId, amount, provider = process.env.DEFAULT_PAYMENT_PROVIDER || 'paystack') {
+        if (amount <= 0)
+            throw new appError_1.default('Payout amount must be greater than zero', 400);
+        const rider = await user_model_1.default.findById(riderId);
+        if (!rider || rider.role !== user_model_1.UserRole.RIDER) {
+            throw new appError_1.default('Delivery rider not found', 404);
+        }
+        const wallet = await wallet_model_1.default.findOne({ user: riderId });
+        if (!wallet) {
+            throw new appError_1.default('Rider wallet not found', 404);
+        }
+        if (wallet.balance < amount) {
+            throw new appError_1.default(`Insufficient wallet balance. Current balance: NGN ${wallet.balance}`, 400);
+        }
+        const bankAccount = wallet.bankAccount;
+        if (!bankAccount || !bankAccount.accountNumber || !bankAccount.bankCode) {
+            throw new appError_1.default('Rider has not configured valid bank account details for payout', 400);
+        }
+        const reference = `PAYOUT_RIDER_${riderId}_${Date.now()}`;
+        let transferResult;
+        if (provider.toLowerCase() === 'flutterwave') {
+            transferResult = await flutterwave_module_1.default.initiatePayout({
+                amount,
+                accountNumber: bankAccount.accountNumber,
+                bankCode: bankAccount.bankCode,
+                reference,
+                narration: `Go-Eat Rider Payout (${rider.name})`,
+                beneficiaryName: bankAccount.accountName || rider.name,
+            });
+        }
+        else {
+            let recipientCode = bankAccount.recipientCode;
+            if (!recipientCode) {
+                const recipient = await paystack_module_1.default.createTransferRecipient({
+                    name: bankAccount.accountName || rider.name,
+                    accountNumber: bankAccount.accountNumber,
+                    bankCode: bankAccount.bankCode,
+                });
+                recipientCode = recipient.recipientCode;
+                wallet.bankAccount.recipientCode = recipientCode;
+                await wallet.save();
+            }
+            transferResult = await paystack_module_1.default.initiatePayout({
+                amount,
+                recipientCode,
+                reference,
+                reason: `Go-Eat Rider Payout (${rider.name})`,
+            });
+        }
+        // Deduct amount from wallet balance after transfer initiation
+        wallet.balance -= amount;
+        wallet.lastPayoutDate = new Date();
+        await wallet.save();
+        logger_1.default.info(`✅ Successful payout of NGN ${amount} to rider ${rider.name} (${riderId}) via ${provider}`);
+        return {
+            reference,
+            provider,
+            amount,
+            newBalance: wallet.balance,
+            transferDetails: transferResult,
+        };
+    }
+    /**
+     * Payout / Transfer money to a Restaurant Vendor's Bank Account
+     */
+    async payoutRestaurant(restaurantId, amount, provider = process.env.DEFAULT_PAYMENT_PROVIDER || 'paystack') {
+        if (amount <= 0)
+            throw new appError_1.default('Payout amount must be greater than zero', 400);
+        const wallet = await wallet_model_1.default.findOne({ user: restaurantId });
+        if (!wallet) {
+            throw new appError_1.default('Restaurant wallet not found', 404);
+        }
+        if (wallet.balance < amount) {
+            throw new appError_1.default(`Insufficient wallet balance. Current balance: NGN ${wallet.balance}`, 400);
+        }
+        const bankAccount = wallet.bankAccount;
+        if (!bankAccount || !bankAccount.accountNumber || !bankAccount.bankCode) {
+            throw new appError_1.default('Restaurant has not configured valid bank account details for payout', 400);
+        }
+        const reference = `PAYOUT_REST_${restaurantId}_${Date.now()}`;
+        let transferResult;
+        if (provider.toLowerCase() === 'flutterwave') {
+            transferResult = await flutterwave_module_1.default.initiatePayout({
+                amount,
+                accountNumber: bankAccount.accountNumber,
+                bankCode: bankAccount.bankCode,
+                reference,
+                narration: 'Go-Eat Restaurant Payout',
+                beneficiaryName: bankAccount.accountName || 'Go-Eat Vendor',
+            });
+        }
+        else {
+            let recipientCode = bankAccount.recipientCode;
+            if (!recipientCode) {
+                const recipient = await paystack_module_1.default.createTransferRecipient({
+                    name: bankAccount.accountName || 'Go-Eat Vendor',
+                    accountNumber: bankAccount.accountNumber,
+                    bankCode: bankAccount.bankCode,
+                });
+                recipientCode = recipient.recipientCode;
+                wallet.bankAccount.recipientCode = recipientCode;
+                await wallet.save();
+            }
+            transferResult = await paystack_module_1.default.initiatePayout({
+                amount,
+                recipientCode,
+                reference,
+                reason: 'Go-Eat Restaurant Payout',
+            });
+        }
+        wallet.balance -= amount;
+        wallet.lastPayoutDate = new Date();
+        await wallet.save();
+        logger_1.default.info(`✅ Successful payout of NGN ${amount} to restaurant vendor (${restaurantId}) via ${provider}`);
+        return {
+            reference,
+            provider,
+            amount,
+            newBalance: wallet.balance,
+            transferDetails: transferResult,
+        };
+    }
 }
+exports.PaymentService = PaymentService;
 exports.default = new PaymentService();
