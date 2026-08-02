@@ -40,6 +40,9 @@ export interface IRestaurant extends Document {
   hasFreeDelivery: boolean;
   allowStampCards: boolean;
   allowFreeGift: boolean;
+  hasPromo: boolean;
+  acceptsPromos: boolean;
+  promoText?: string;
   isTopSpot: boolean;
   popularityScore: number;
   status: RestaurantStatus;
@@ -162,6 +165,18 @@ const restaurantSchema = new Schema<IRestaurant>(
     allowFreeGift: {
       type: Boolean,
       default: false,
+    },
+    hasPromo: {
+      type: Boolean,
+      default: false,
+    },
+    acceptsPromos: {
+      type: Boolean,
+      default: false,
+    },
+    promoText: {
+      type: String,
+      default: '',
     },
     isTopSpot: {
       type: Boolean,

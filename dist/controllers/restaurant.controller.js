@@ -7,6 +7,7 @@ const zod_1 = require("zod");
 const restaurant_service_1 = __importDefault(require("../services/restaurant.service"));
 const catchAsync_1 = require("../utils/catchAsync");
 const appError_1 = __importDefault(require("../utils/appError"));
+const restaurant_model_1 = __importDefault(require("../models/restaurant.model"));
 const restaurantSchema = zod_1.z.object({
     name: zod_1.z.string().min(2, 'Name is too short'),
     description: zod_1.z.string().min(10, 'Description is too short'),
@@ -116,6 +117,20 @@ class RestaurantController {
             res.status(204).json({
                 status: 'success',
                 data: null,
+            });
+        });
+        /**
+         * Migrate and ensure promo fields on all existing restaurants
+         */
+        this.migratePromoFields = (0, catchAsync_1.catchAsync)(async (req, res) => {
+            const result = await restaurant_model_1.default.updateMany({ $or: [{ hasPromo: { $exists: false } }, { acceptsPromos: { $exists: false } }] }, { $set: { hasPromo: false, acceptsPromos: false, allowStampCards: false, promoText: '' } });
+            res.status(200).json({
+                status: 'success',
+                message: 'Successfully migrated promo fields across all restaurants',
+                data: {
+                    modifiedCount: result.modifiedCount,
+                    matchedCount: result.matchedCount,
+                },
             });
         });
     }

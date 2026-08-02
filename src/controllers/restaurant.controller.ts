@@ -3,7 +3,7 @@ import { z } from 'zod';
 import restaurantService from '../services/restaurant.service';
 import { catchAsync } from '../utils/catchAsync';
 import AppError from '../utils/appError';
-import { RestaurantStatus } from '../models/restaurant.model';
+import Restaurant, { RestaurantStatus } from '../models/restaurant.model';
 
 const restaurantSchema = z.object({
   name: z.string().min(2, 'Name is too short'),
@@ -136,6 +136,25 @@ class RestaurantController {
     res.status(204).json({
       status: 'success',
       data: null,
+    });
+  });
+
+  /**
+   * Migrate and ensure promo fields on all existing restaurants
+   */
+  public migratePromoFields = catchAsync(async (req: Request, res: Response) => {
+    const result = await Restaurant.updateMany(
+      { $or: [{ hasPromo: { $exists: false } }, { acceptsPromos: { $exists: false } }] },
+      { $set: { hasPromo: false, acceptsPromos: false, allowStampCards: false, promoText: '' } }
+    );
+
+    res.status(200).json({
+      status: 'success',
+      message: 'Successfully migrated promo fields across all restaurants',
+      data: {
+        modifiedCount: result.modifiedCount,
+        matchedCount: result.matchedCount,
+      },
     });
   });
 }

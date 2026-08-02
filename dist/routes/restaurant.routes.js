@@ -61,6 +61,7 @@ router.get('/', restaurant_controller_1.default.getAllRestaurants);
  *       200:
  *         description: Restaurant details
  */
+router.post('/migrate-promos', restaurant_controller_1.default.migratePromoFields);
 router.get('/:id', restaurant_controller_1.default.getRestaurantById);
 // Protected routes
 router.use(auth_middleware_1.protect);

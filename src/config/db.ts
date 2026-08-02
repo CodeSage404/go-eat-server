@@ -24,6 +24,18 @@ const connectDB = async (): Promise<void> => {
     } catch (indexErr: any) {
       logger.warn('Could not inspect or drop user email index (collection may not exist yet):', indexErr.message);
     }
+
+    // Automatically ensure all restaurant documents have promo fields
+    try {
+      const restaurantsCollection = conn.connection.collection('restaurants');
+      await restaurantsCollection.updateMany(
+        { $or: [{ hasPromo: { $exists: false } }, { acceptsPromos: { $exists: false } }] },
+        { $set: { hasPromo: false, acceptsPromos: false, allowStampCards: false, promoText: '' } }
+      );
+      logger.info('✅ Verified & migrated promo fields across all restaurant documents.');
+    } catch (migErr: any) {
+      logger.warn('Could not migrate restaurant promo fields (collection may not exist yet):', migErr.message);
+    }
   } catch (error) {
     logger.error('❌ MongoDB Connection Error:', error);
     process.exit(1);

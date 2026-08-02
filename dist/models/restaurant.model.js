@@ -128,6 +128,18 @@ const restaurantSchema = new mongoose_1.Schema({
         type: Boolean,
         default: false,
     },
+    hasPromo: {
+        type: Boolean,
+        default: false,
+    },
+    acceptsPromos: {
+        type: Boolean,
+        default: false,
+    },
+    promoText: {
+        type: String,
+        default: '',
+    },
     isTopSpot: {
         type: Boolean,
         default: false,
