@@ -47,6 +47,12 @@ export interface IUser extends Document {
   referredBy?: mongoose.Types.ObjectId;
   referralCount: number;
   referralEarnings: number;
+  country: string;
+  countryCode?: string;
+  isNigeria: boolean;
+  isItaly: boolean;
+  isUk: boolean;
+  adminRegion?: string;
   createdAt: Date;
   updatedAt: Date;
   comparePassword(password: string): Promise<boolean>;
@@ -170,14 +176,46 @@ const userSchema = new Schema<IUser>(
       type: Number,
       default: 0,
     },
+    country: {
+      type: String,
+      enum: ['Nigeria', 'Italy', 'UK', 'Other'],
+      default: 'Nigeria',
+    },
+    countryCode: {
+      type: String,
+      trim: true,
+      uppercase: true,
+    },
+    isNigeria: {
+      type: Boolean,
+      default: true,
+    },
+    isItaly: {
+      type: Boolean,
+      default: false,
+    },
+    isUk: {
+      type: Boolean,
+      default: false,
+    },
+    adminRegion: {
+      type: String,
+      enum: ['ALL', 'Nigeria', 'Italy', 'UK'],
+      default: 'ALL',
+    },
   },
   {
     timestamps: true,
   }
 );
 
-// Hash password before saving + generate referralCode
+// Hash password before saving + generate referralCode + sync regional booleans
 userSchema.pre('save', async function () {
+  if (this.country) {
+    this.isNigeria = (this.country === 'Nigeria');
+    this.isItaly = (this.country === 'Italy');
+    this.isUk = (this.country === 'UK');
+  }
   if (!this.referralCode) {
     this.referralCode = `GE-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
   }
@@ -190,8 +228,12 @@ userSchema.methods.comparePassword = async function (candidatePassword: string):
   return await bcrypt.compare(candidatePassword, this.password!);
 };
 
-// Indexes for fast lookup & geospatial queries
+// Indexes for fast lookup, regional filtering, & geospatial queries
 userSchema.index({ location: '2dsphere' });
+userSchema.index({ country: 1 });
+userSchema.index({ isNigeria: 1 });
+userSchema.index({ isItaly: 1 });
+userSchema.index({ isUk: 1 });
 
 const User = mongoose.model<IUser>('User', userSchema);
 

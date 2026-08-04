@@ -97,9 +97,15 @@ router.post('/auth/refresh-token', adminController.refreshAdminToken);
  *   get:
  *     tags:
  *       - Admin Dashboard
- *     summary: Retrieve platform wide operations & financial performance metrics
+ *     summary: Retrieve platform wide operations & financial performance metrics (supports regional filtering by country)
  *     security:
  *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: country
+ *         schema:
+ *           type: string
+ *         description: Filter platform statistics by regional country (e.g. Nigeria, Italy, UK, ALL)
  *     responses:
  *       200:
  *         description: Operation statistics returned
@@ -149,7 +155,7 @@ router.get('/reviews/export', checkPermission('users.read'), adminController.exp
  *   get:
  *     tags:
  *       - Admin Dashboard
- *     summary: List all registered users
+ *     summary: List all registered users (supports regional filtering by country)
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -161,6 +167,11 @@ router.get('/reviews/export', checkPermission('users.read'), adminController.exp
  *         name: status
  *         schema:
  *           type: string
+ *       - in: query
+ *         name: country
+ *         schema:
+ *           type: string
+ *         description: Filter users by regional country (e.g. Nigeria, Italy, UK, ALL)
  *     responses:
  *       200:
  *         description: List of users returned

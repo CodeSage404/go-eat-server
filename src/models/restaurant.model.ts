@@ -44,6 +44,7 @@ export interface IRestaurant extends Document {
   acceptsPromos: boolean;
   promoText?: string;
   isTopSpot: boolean;
+  isSponsored: boolean;
   popularityScore: number;
   status: RestaurantStatus;
   outletType: 'Restaurant' | 'Smokey Wheel' | 'Grocery' | 'Specialty Store' | 'Health & Wellness' | 'Convenience' | 'Lifestyle';
@@ -179,6 +180,10 @@ const restaurantSchema = new Schema<IRestaurant>(
       default: '',
     },
     isTopSpot: {
+      type: Boolean,
+      default: false,
+    },
+    isSponsored: {
       type: Boolean,
       default: false,
     },

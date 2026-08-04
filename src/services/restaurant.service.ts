@@ -30,6 +30,11 @@ class RestaurantService {
       query.isTopSpot = true;
     }
 
+    // Sponsored filter
+    if (filters.isSponsored) {
+      query.isSponsored = true;
+    }
+
     // Custom tag filters
     if (filters.tags && Array.isArray(filters.tags)) {
       if (filters.tags.includes('Free delivery')) query.deliveryFee = 0;

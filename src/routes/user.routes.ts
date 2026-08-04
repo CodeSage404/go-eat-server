@@ -33,6 +33,21 @@ router.use(protect);
  *                 items:
  *                   type: number
  *                 example: [7.5191, 6.3084]
+ *               country:
+ *                 type: string
+ *                 example: Nigeria
+ *               countryCode:
+ *                 type: string
+ *                 example: NG
+ *               isNigeria:
+ *                 type: boolean
+ *                 example: true
+ *               isItaly:
+ *                 type: boolean
+ *                 example: false
+ *               isUk:
+ *                 type: boolean
+ *                 example: false
  *     responses:
  *       200:
  *         description: User location saved to database successfully.

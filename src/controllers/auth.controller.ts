@@ -363,7 +363,7 @@ class AuthController {
   });
 
   public updateUserLocation = catchAsync(async (req: Request, res: Response) => {
-    const { address, coordinates } = req.body;
+    const { address, coordinates, country, countryCode, isNigeria, isItaly, isUk } = req.body;
     const currentUser = (req as any).user;
 
     if (!address || !coordinates || !Array.isArray(coordinates) || coordinates.length < 2) {
@@ -373,18 +373,51 @@ class AuthController {
     const lng = Number(coordinates[0]);
     const lat = Number(coordinates[1]);
 
+    let resolvedCountry = country;
+    let resolvedCode = countryCode;
+    if (!resolvedCountry) {
+      const lowerAddr = address.toLowerCase();
+      if (
+        lowerAddr.includes('italy') ||
+        lowerAddr.includes('italia') ||
+        (lat >= 36.0 && lat <= 47.5 && lng >= 6.5 && lng <= 18.5)
+      ) {
+        resolvedCountry = 'Italy';
+        resolvedCode = 'IT';
+      } else if (
+        lowerAddr.includes('united kingdom') ||
+        lowerAddr.includes('uk') ||
+        lowerAddr.includes('england') ||
+        lowerAddr.includes('london') ||
+        (lat >= 49.5 && lat <= 61.0 && lng >= -8.5 && lng <= 2.0)
+      ) {
+        resolvedCountry = 'UK';
+        resolvedCode = 'UK';
+      } else {
+        resolvedCountry = 'Nigeria';
+        resolvedCode = 'NG';
+      }
+    }
+
+    const updatePayload: any = {
+      location: {
+        type: 'Point',
+        coordinates: [lng, lat],
+      },
+      country: resolvedCountry,
+      countryCode: resolvedCode || 'NG',
+      isNigeria: isNigeria !== undefined ? isNigeria : resolvedCountry === 'Nigeria',
+      isItaly: isItaly !== undefined ? isItaly : resolvedCountry === 'Italy',
+      isUk: isUk !== undefined ? isUk : resolvedCountry === 'UK',
+    };
+
     const updatedUser = await User.findByIdAndUpdate(
       currentUser._id,
-      {
-        location: {
-          type: 'Point',
-          coordinates: [lng, lat],
-        },
-      },
+      updatePayload,
       { new: true }
     );
 
-    logger.info(`📍 Location persisted to DB for user ${currentUser._id}: ${address} (${lng}, ${lat})`);
+    logger.info(`📍 Location persisted to DB for user ${currentUser._id}: ${address} (${lng}, ${lat}) [Country: ${resolvedCountry}]`);
 
     res.status(200).json({
       status: 'success',
