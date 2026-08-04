@@ -1413,7 +1413,7 @@ class AdminController {
     const allowed = [
       'appName', 'supportEmail', 'commissionRate', 'maxDeliveryDistance',
       'maintenanceMode', 'enableNotifications', 'minOrderAmount',
-      'deliveryBaseFee', 'deliveryFeePerKm'
+      'deliveryBaseFee', 'deliveryFeePerKm', 'defaultPaymentProvider'
     ];
 
     const update: any = {};

@@ -6,6 +6,7 @@ import logger from '../utils/logger';
 import notificationService from './notification.service';
 import paystackModule from './payments/paystack.module';
 import flutterwaveModule from './payments/flutterwave.module';
+import Setting from '../models/setting.model';
 
 export type PaymentProvider = 'paystack' | 'flutterwave';
 
@@ -16,7 +17,7 @@ export class PaymentService {
   async initializePayment(
     orderId: string,
     userId: string,
-    provider: PaymentProvider = (process.env.DEFAULT_PAYMENT_PROVIDER as PaymentProvider) || 'paystack',
+    provider?: PaymentProvider,
     callbackUrl?: string
   ): Promise<{ authorizationUrl: string; accessCode?: string; reference: string; provider: PaymentProvider }> {
     const order = await Order.findById(orderId);
@@ -33,10 +34,13 @@ export class PaymentService {
     const user = await User.findById(userId);
     if (!user) throw new AppError('User not found', 404);
 
+    const setting = await Setting.findOne();
+    const activeProvider: PaymentProvider = (provider || setting?.defaultPaymentProvider || (process.env.DEFAULT_PAYMENT_PROVIDER as PaymentProvider) || 'paystack') as PaymentProvider;
+
     const reference = `ORD_${order._id}_${Date.now()}`;
     const amount = order.totalAmount;
 
-    if (provider.toLowerCase() === 'flutterwave') {
+    if (activeProvider.toLowerCase() === 'flutterwave') {
       const result = await flutterwaveModule.initializePayment({
         email: user.email,
         amount,

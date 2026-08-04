@@ -10,6 +10,7 @@ export interface ISetting extends Document {
   minOrderAmount: number;
   deliveryBaseFee: number;
   deliveryFeePerKm: number;
+  defaultPaymentProvider: 'paystack' | 'flutterwave';
 }
 
 const settingSchema = new Schema<ISetting>(
@@ -23,6 +24,7 @@ const settingSchema = new Schema<ISetting>(
     minOrderAmount: { type: Number, default: 500 },
     deliveryBaseFee: { type: Number, default: 500 },
     deliveryFeePerKm: { type: Number, default: 100 },
+    defaultPaymentProvider: { type: String, enum: ['paystack', 'flutterwave'], default: 'paystack' },
   },
   { timestamps: true }
 );
