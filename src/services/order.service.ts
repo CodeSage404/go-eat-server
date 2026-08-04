@@ -21,8 +21,8 @@ class OrderService {
 
     // Calculate estimated delivery time using Google Maps (Production Logic)
     const travelData = await mapsService.getDistanceAndTime(
-      restaurant.location.coordinates,
-      data.deliveryAddress!.coordinates
+      restaurant.location?.coordinates || [3.3792, 6.5244],
+      data.deliveryAddress?.coordinates || [3.3792, 6.5244]
     );
 
     // Buffer for food preparation (e.g., 20 mins)

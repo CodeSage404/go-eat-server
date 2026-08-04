@@ -44,6 +44,7 @@ const settingSchema = new mongoose_1.Schema({
     minOrderAmount: { type: Number, default: 500 },
     deliveryBaseFee: { type: Number, default: 500 },
     deliveryFeePerKm: { type: Number, default: 100 },
+    defaultPaymentProvider: { type: String, enum: ['paystack', 'flutterwave'], default: 'paystack' },
 }, { timestamps: true });
 const Setting = mongoose_1.default.model('Setting', settingSchema);
 exports.default = Setting;

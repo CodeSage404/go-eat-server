@@ -325,20 +325,49 @@ class AuthController {
             });
         });
         this.updateUserLocation = (0, catchAsync_1.catchAsync)(async (req, res) => {
-            const { address, coordinates } = req.body;
+            const { address, coordinates, country, countryCode, isNigeria, isItaly, isUk } = req.body;
             const currentUser = req.user;
             if (!address || !coordinates || !Array.isArray(coordinates) || coordinates.length < 2) {
                 throw new appError_1.default('Address string and coordinates array [lng, lat] are required', 400);
             }
             const lng = Number(coordinates[0]);
             const lat = Number(coordinates[1]);
-            const updatedUser = await user_model_1.default.findByIdAndUpdate(currentUser._id, {
+            let resolvedCountry = country;
+            let resolvedCode = countryCode;
+            if (!resolvedCountry) {
+                const lowerAddr = address.toLowerCase();
+                if (lowerAddr.includes('italy') ||
+                    lowerAddr.includes('italia') ||
+                    (lat >= 36.0 && lat <= 47.5 && lng >= 6.5 && lng <= 18.5)) {
+                    resolvedCountry = 'Italy';
+                    resolvedCode = 'IT';
+                }
+                else if (lowerAddr.includes('united kingdom') ||
+                    lowerAddr.includes('uk') ||
+                    lowerAddr.includes('england') ||
+                    lowerAddr.includes('london') ||
+                    (lat >= 49.5 && lat <= 61.0 && lng >= -8.5 && lng <= 2.0)) {
+                    resolvedCountry = 'UK';
+                    resolvedCode = 'UK';
+                }
+                else {
+                    resolvedCountry = 'Nigeria';
+                    resolvedCode = 'NG';
+                }
+            }
+            const updatePayload = {
                 location: {
                     type: 'Point',
                     coordinates: [lng, lat],
                 },
-            }, { new: true });
-            logger_1.default.info(`📍 Location persisted to DB for user ${currentUser._id}: ${address} (${lng}, ${lat})`);
+                country: resolvedCountry,
+                countryCode: resolvedCode || 'NG',
+                isNigeria: isNigeria !== undefined ? isNigeria : resolvedCountry === 'Nigeria',
+                isItaly: isItaly !== undefined ? isItaly : resolvedCountry === 'Italy',
+                isUk: isUk !== undefined ? isUk : resolvedCountry === 'UK',
+            };
+            const updatedUser = await user_model_1.default.findByIdAndUpdate(currentUser._id, updatePayload, { new: true });
+            logger_1.default.info(`📍 Location persisted to DB for user ${currentUser._id}: ${address} (${lng}, ${lat}) [Country: ${resolvedCountry}]`);
             res.status(200).json({
                 status: 'success',
                 message: 'User location saved to database successfully',

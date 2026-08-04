@@ -103,6 +103,8 @@ class LocationController {
                 throw new appError_1.default('Invalid coordinates format', 400);
             }
             let address = '';
+            let country = 'Nigeria';
+            let countryCode = 'NG';
             // 1. Try Google Maps Reverse Geocoding
             try {
                 const apiKey = process.env.GOOGLE_MAPS_API_KEY;
@@ -113,6 +115,27 @@ class LocationController {
                         const formatted = data.results[0].formatted_address;
                         if (formatted && formatted.toLowerCase() !== 'nigeria') {
                             address = formatted;
+                        }
+                        const countryComp = data.results[0].address_components?.find((c) => c.types?.includes('country'));
+                        if (countryComp) {
+                            if (countryComp.short_name === 'IT' || countryComp.long_name === 'Italy') {
+                                country = 'Italy';
+                                countryCode = 'IT';
+                            }
+                            else if (countryComp.short_name === 'GB' ||
+                                countryComp.short_name === 'UK' ||
+                                countryComp.long_name?.includes('United Kingdom')) {
+                                country = 'UK';
+                                countryCode = 'UK';
+                            }
+                            else if (countryComp.short_name === 'NG' || countryComp.long_name === 'Nigeria') {
+                                country = 'Nigeria';
+                                countryCode = 'NG';
+                            }
+                            else {
+                                country = 'Other';
+                                countryCode = countryComp.short_name || 'OT';
+                            }
                         }
                     }
                 }
@@ -135,22 +158,81 @@ class LocationController {
                         if (data && data.display_name) {
                             address = data.display_name;
                         }
+                        if (data && data.address) {
+                            const nomCountry = (data.address.country || '').toLowerCase();
+                            const nomCode = (data.address.country_code || '').toLowerCase();
+                            if (nomCode === 'it' || nomCountry.includes('italy') || nomCountry.includes('italia')) {
+                                country = 'Italy';
+                                countryCode = 'IT';
+                            }
+                            else if (nomCode === 'gb' || nomCode === 'uk' || nomCountry.includes('united kingdom')) {
+                                country = 'UK';
+                                countryCode = 'UK';
+                            }
+                            else if (nomCode === 'ng' || nomCountry.includes('nigeria')) {
+                                country = 'Nigeria';
+                                countryCode = 'NG';
+                            }
+                            else if (nomCountry) {
+                                country = 'Other';
+                                countryCode = nomCode ? nomCode.toUpperCase() : 'OT';
+                            }
+                        }
                     }
                 }
                 catch (nominatimErr) {
                     // Fallback
                 }
             }
-            // 3. Guarantee precise fallback address format if still empty
-            if (!address || address.toLowerCase() === 'nigeria') {
-                address = `Precise Location (${lat.toFixed(4)}, ${lng.toFixed(4)}), Nigeria`;
+            // 3. Coordinate bounding box fallback if country not resolved by API
+            if (country === 'Nigeria' && countryCode === 'NG' && address) {
+                const lowerAddr = address.toLowerCase();
+                if (lowerAddr.includes('italy') || lowerAddr.includes('italia')) {
+                    country = 'Italy';
+                    countryCode = 'IT';
+                }
+                else if (lowerAddr.includes('united kingdom') ||
+                    lowerAddr.includes('uk') ||
+                    lowerAddr.includes('england') ||
+                    lowerAddr.includes('london')) {
+                    country = 'UK';
+                    countryCode = 'UK';
+                }
+                else if (lat >= 36.0 && lat <= 47.5 && lng >= 6.5 && lng <= 18.5) {
+                    country = 'Italy';
+                    countryCode = 'IT';
+                }
+                else if (lat >= 49.5 && lat <= 61.0 && lng >= -8.5 && lng <= 2.0) {
+                    country = 'UK';
+                    countryCode = 'UK';
+                }
             }
+            // 4. Guarantee precise fallback address format if still empty
+            if (!address || address.toLowerCase() === 'nigeria') {
+                if (country === 'Italy') {
+                    address = `Precise Location (${lat.toFixed(4)}, ${lng.toFixed(4)}), Italy`;
+                }
+                else if (country === 'UK') {
+                    address = `Precise Location (${lat.toFixed(4)}, ${lng.toFixed(4)}), UK`;
+                }
+                else {
+                    address = `Precise Location (${lat.toFixed(4)}, ${lng.toFixed(4)}), Nigeria`;
+                }
+            }
+            const isNigeria = country === 'Nigeria';
+            const isItaly = country === 'Italy';
+            const isUk = country === 'UK';
             res.status(200).json({
                 status: 'success',
                 data: {
                     address,
-                    coords: { latitude: lat, longitude: lng }
-                }
+                    coords: { latitude: lat, longitude: lng },
+                    country,
+                    countryCode,
+                    isNigeria,
+                    isItaly,
+                    isUk,
+                },
             });
         });
     }

@@ -144,6 +144,10 @@ const restaurantSchema = new mongoose_1.Schema({
         type: Boolean,
         default: false,
     },
+    isSponsored: {
+        type: Boolean,
+        default: false,
+    },
     popularityScore: {
         type: Number,
         default: 0,

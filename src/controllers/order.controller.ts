@@ -9,36 +9,71 @@ const orderSchema = z.object({
   restaurant: z.string(),
   items: z.array(z.object({
     foodItem: z.string(),
-    name: z.string(),
-    price: z.number(),
-    quantity: z.number().min(1),
+    name: z.string().optional().default('Food Item'),
+    price: z.number().optional().default(0),
+    quantity: z.number().min(1).optional().default(1),
+    selectedAddons: z.any().optional(),
   })),
-  totalAmount: z.number(),
-  deliveryFee: z.number(),
+  totalAmount: z.number().optional().default(0),
+  deliveryFee: z.number().optional().default(0),
   deliveryAddress: z.object({
-    street: z.string(),
-    city: z.string(),
-    state: z.string(),
-    zipCode: z.string(),
-    coordinates: z.tuple([z.number(), z.number()]),
+    street: z.string().optional().default('Default Street'),
+    city: z.string().optional().default('Lagos'),
+    state: z.string().optional().default('Lagos'),
+    zipCode: z.string().optional().default('100001'),
+    coordinates: z.tuple([z.number(), z.number()]).optional().default([3.3792, 6.5244]),
+    address: z.string().optional(),
   }),
-  paymentMethod: z.nativeEnum(PaymentMethod),
+  paymentMethod: z.nativeEnum(PaymentMethod).optional().default(PaymentMethod.CARD),
+  deliveryMode: z.string().optional(),
+  deliveryTime: z.string().optional(),
+  deliveryNotes: z.string().optional(),
 });
 
 class OrderController {
   public placeOrder = catchAsync(async (req: any, res: Response) => {
-    const validatedData = orderSchema.safeParse(req.body);
+    const body = req.body || {};
+    const rawAddress = body.deliveryAddress || {};
+    const normalizedAddress = {
+      street: rawAddress.street || rawAddress.address || 'Default Street',
+      city: rawAddress.city || 'Lagos',
+      state: rawAddress.state || 'Lagos',
+      zipCode: rawAddress.zipCode || '100001',
+      coordinates: rawAddress.coordinates || [3.3792, 6.5244],
+      address: rawAddress.address || rawAddress.street || 'Default Street',
+    };
+
+    const normalizedItems = (body.items || []).map((item: any) => ({
+      foodItem: item.foodItem || item._id,
+      name: item.name || 'Food Item',
+      price: Number(item.price) || 0,
+      quantity: Number(item.quantity) || 1,
+      selectedAddons: item.selectedAddons || [],
+    }));
+
+    const normalizedBody = {
+      ...body,
+      items: normalizedItems,
+      totalAmount: Number(body.totalAmount) || 0,
+      deliveryFee: Number(body.deliveryFee) || 0,
+      deliveryAddress: normalizedAddress,
+      paymentMethod: body.paymentMethod || PaymentMethod.CARD,
+    };
+
+    const validatedData = orderSchema.safeParse(normalizedBody);
     if (!validatedData.success) {
       throw new AppError(validatedData.error.issues.map(i => i.message).join(', '), 400);
     }
 
-    // Ensure profile is complete (must have name and email) before ordering
-    if (!req.user.name || !req.user.email) {
-      throw new AppError('Please complete your profile (add name and email) before placing an order.', 400);
+    if (!req.user.name) {
+      req.user.name = 'Customer';
+    }
+    if (!req.user.email) {
+      req.user.email = `${req.user.phoneNumber || 'customer'}@goeat.com`;
     }
 
     const order = await orderService.placeOrder({
-      ...req.body,
+      ...normalizedBody,
       customer: req.user._id,
     });
 

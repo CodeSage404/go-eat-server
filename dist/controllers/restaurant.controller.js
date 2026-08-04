@@ -22,6 +22,8 @@ const restaurantSchema = zod_1.z.object({
         coordinates: zod_1.z.tuple([zod_1.z.number(), zod_1.z.number()]), // [lng, lat]
     }),
     cuisine: zod_1.z.array(zod_1.z.string()).optional(),
+    isSponsored: zod_1.z.boolean().optional(),
+    isTopSpot: zod_1.z.boolean().optional(),
     openingHours: zod_1.z.object({
         open: zod_1.z.string(),
         close: zod_1.z.string(),

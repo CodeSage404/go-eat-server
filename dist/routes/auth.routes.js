@@ -32,6 +32,21 @@ const router = (0, express_1.Router)();
  *                 type: string
  *               referralCode:
  *                 type: string
+ *               country:
+ *                 type: string
+ *                 example: Nigeria
+ *               countryCode:
+ *                 type: string
+ *                 example: NG
+ *               isNigeria:
+ *                 type: boolean
+ *                 example: true
+ *               isItaly:
+ *                 type: boolean
+ *                 example: false
+ *               isUk:
+ *                 type: boolean
+ *                 example: false
  *     responses:
  *       201:
  *         description: Account created, verification OTP sent.

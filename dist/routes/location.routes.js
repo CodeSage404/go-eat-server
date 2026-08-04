@@ -79,7 +79,36 @@ router.get('/autocomplete', location_controller_1.default.autocomplete);
  *         description: Geographic longitude
  *     responses:
  *       200:
- *         description: Reverse-geocoded address returned successfully.
+ *         description: Reverse-geocoded address and regional country detection flags returned successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: success
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     address:
+ *                       type: string
+ *                       example: "Via Roma, Milan, Italy"
+ *                     country:
+ *                       type: string
+ *                       example: "Italy"
+ *                     countryCode:
+ *                       type: string
+ *                       example: "IT"
+ *                     isNigeria:
+ *                       type: boolean
+ *                       example: false
+ *                     isItaly:
+ *                       type: boolean
+ *                       example: true
+ *                     isUk:
+ *                       type: boolean
+ *                       example: false
  *       400:
  *         description: Invalid or missing coordinates.
  */

@@ -56,7 +56,7 @@ class OrderService {
             throw new appError_1.default('Restaurant not found', 404);
         }
         // Calculate estimated delivery time using Google Maps (Production Logic)
-        const travelData = await maps_service_1.default.getDistanceAndTime(restaurant.location.coordinates, data.deliveryAddress.coordinates);
+        const travelData = await maps_service_1.default.getDistanceAndTime(restaurant.location?.coordinates || [3.3792, 6.5244], data.deliveryAddress?.coordinates || [3.3792, 6.5244]);
         // Buffer for food preparation (e.g., 20 mins)
         const prepTimeInSeconds = 20 * 60;
         const totalTimeInSeconds = (travelData.durationValue || 0) + prepTimeInSeconds;

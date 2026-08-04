@@ -67,13 +67,19 @@ class AdminController {
          * Get platform-wide statistics for the super-admin dashboard
          */
         this.getPlatformStats = (0, catchAsync_1.catchAsync)(async (req, res) => {
+            const regionFilter = this.getRegionFilter(req);
             // User count breakdown
             const userStats = await user_model_1.default.aggregate([
-                { $group: { _id: '$role', count: { $sum: 1 } } }
+                { $match: regionFilter },
+                { $group: { _id: '$role', count: { $sum: 1 } } },
+            ]);
+            // Users by country breakdown
+            const usersByCountry = await user_model_1.default.aggregate([
+                { $group: { _id: '$country', count: { $sum: 1 } } },
             ]);
             // Order status breakdown
             const orderStats = await order_model_1.default.aggregate([
-                { $group: { _id: '$status', count: { $sum: 1 } } }
+                { $group: { _id: '$status', count: { $sum: 1 } } },
             ]);
             // Financial summaries
             const financialStats = await order_model_1.default.aggregate([
@@ -84,9 +90,9 @@ class AdminController {
                         totalSales: { $sum: '$totalAmount' },
                         totalDeliveryFees: { $sum: '$deliveryFee' },
                         totalCommission: { $sum: { $multiply: ['$totalAmount', 0.1] } }, // 10% platform commission
-                        count: { $sum: 1 }
-                    }
-                }
+                        count: { $sum: 1 },
+                    },
+                },
             ]);
             const activeVendors = await restaurant_model_1.default.countDocuments({ status: restaurant_model_1.RestaurantStatus.ACTIVE });
             const pendingVendors = await restaurant_model_1.default.countDocuments({ status: restaurant_model_1.RestaurantStatus.PENDING });
@@ -94,18 +100,19 @@ class AdminController {
                 status: 'success',
                 data: {
                     users: userStats,
+                    usersByCountry,
                     orders: orderStats,
                     financials: financialStats[0] || {
                         totalSales: 0,
                         totalDeliveryFees: 0,
                         totalCommission: 0,
-                        count: 0
+                        count: 0,
                     },
                     restaurants: {
                         active: activeVendors,
-                        pending: pendingVendors
-                    }
-                }
+                        pending: pendingVendors,
+                    },
+                },
             });
         });
         /**
@@ -118,11 +125,13 @@ class AdminController {
                 filter.role = role;
             if (status && status !== 'all')
                 filter.status = status;
+            const regionFilter = this.getRegionFilter(req);
+            Object.assign(filter, regionFilter);
             const users = await user_model_1.default.find(filter).select('-password').sort({ createdAt: -1 });
             res.status(200).json({
                 status: 'success',
                 results: users.length,
-                data: { users }
+                data: { users },
             });
         });
         /**
@@ -1206,7 +1215,7 @@ class AdminController {
             const allowed = [
                 'appName', 'supportEmail', 'commissionRate', 'maxDeliveryDistance',
                 'maintenanceMode', 'enableNotifications', 'minOrderAmount',
-                'deliveryBaseFee', 'deliveryFeePerKm'
+                'deliveryBaseFee', 'deliveryFeePerKm', 'defaultPaymentProvider'
             ];
             const update = {};
             allowed.forEach(key => {
@@ -1476,6 +1485,28 @@ class AdminController {
             res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
             res.status(200).send(csvContent);
         });
+    }
+    /**
+     * Helper to build Mongoose regional query filter based on admin token or ?country query param
+     */
+    getRegionFilter(req) {
+        const queryCountry = req.query.country;
+        const adminUser = req.user;
+        const adminRegion = adminUser?.adminRegion || 'ALL';
+        const targetCountry = adminRegion !== 'ALL'
+            ? adminRegion
+            : queryCountry && queryCountry !== 'ALL'
+                ? queryCountry
+                : null;
+        if (!targetCountry)
+            return {};
+        if (targetCountry === 'Nigeria')
+            return { isNigeria: true };
+        if (targetCountry === 'Italy')
+            return { isItaly: true };
+        if (targetCountry === 'UK')
+            return { isUk: true };
+        return { country: targetCountry };
     }
 }
 exports.default = new AdminController();
