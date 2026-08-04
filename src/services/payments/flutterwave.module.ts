@@ -58,8 +58,8 @@ export class FlutterwaveModule {
         currency: 'NGN',
         redirect_url: params.redirectUrl || 'https://goeatalone.com/payment/callback',
         customer: {
-          email: params.email,
-          name: params.customerName || params.email.split('@')[0],
+          email: params.email && params.email.trim() !== '' ? params.email : 'customer@goeat.com',
+          name: params.customerName || (params.email ? params.email.split('@')[0] : 'Customer'),
           phonenumber: params.customerPhone || '08000000000',
         },
         meta: params.metadata || {},

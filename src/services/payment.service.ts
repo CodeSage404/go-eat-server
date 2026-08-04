@@ -6,13 +6,49 @@ import logger from '../utils/logger';
 import notificationService from './notification.service';
 import paystackModule from './payments/paystack.module';
 import flutterwaveModule from './payments/flutterwave.module';
+import stripeModule from './payments/stripe.module';
 import Setting from '../models/setting.model';
 
-export type PaymentProvider = 'paystack' | 'flutterwave';
+export type PaymentProvider = 'paystack' | 'flutterwave' | 'stripe';
 
 export class PaymentService {
   /**
-   * Initialize Payment for an Order using preferred provider (Paystack or Flutterwave)
+   * Helper to resolve payment provider based on order location and admin settings
+   */
+  private resolveProviderByLocation(order: any, setting: any, requestedProvider?: PaymentProvider): PaymentProvider {
+    if (requestedProvider) return requestedProvider;
+
+    const locationStr = `${order.deliveryAddress?.address || ''} ${order.deliveryAddress?.city || ''} ${order.deliveryAddress?.state || ''} ${order.deliveryAddress?.street || ''}`.toLowerCase();
+
+    let countryCode = 'NG';
+    if (locationStr.includes('uk') || locationStr.includes('united kingdom') || locationStr.includes('london') || locationStr.includes('gb')) {
+      countryCode = 'GB';
+    } else if (locationStr.includes('us') || locationStr.includes('usa') || locationStr.includes('united states')) {
+      countryCode = 'US';
+    } else if (locationStr.includes('italy') || locationStr.includes('italia') || locationStr.includes('rome') || locationStr.includes('milan')) {
+      countryCode = 'IT';
+    } else if (locationStr.includes('canada') || locationStr.includes('toronto')) {
+      countryCode = 'CA';
+    } else if (locationStr.includes('ghana') || locationStr.includes('accra')) {
+      countryCode = 'GH';
+    } else if (locationStr.includes('kenya') || locationStr.includes('nairobi')) {
+      countryCode = 'KE';
+    }
+
+    if (setting?.countryPaymentProviders && Array.isArray(setting.countryPaymentProviders)) {
+      const match = setting.countryPaymentProviders.find(
+        (c: any) => c.countryCode === countryCode && c.isActive !== false
+      );
+      if (match && match.provider) {
+        return match.provider as PaymentProvider;
+      }
+    }
+
+    return (setting?.defaultPaymentProvider || (process.env.DEFAULT_PAYMENT_PROVIDER as PaymentProvider) || 'paystack') as PaymentProvider;
+  }
+
+  /**
+   * Initialize Payment for an Order using preferred provider (Paystack, Flutterwave, or Stripe)
    */
   async initializePayment(
     orderId: string,
@@ -35,14 +71,23 @@ export class PaymentService {
     if (!user) throw new AppError('User not found', 404);
 
     const setting = await Setting.findOne();
-    const activeProvider: PaymentProvider = (provider || setting?.defaultPaymentProvider || (process.env.DEFAULT_PAYMENT_PROVIDER as PaymentProvider) || 'paystack') as PaymentProvider;
+    const activeProvider: PaymentProvider = this.resolveProviderByLocation(order, setting, provider);
+
+    const safeEmail = user.email && user.email.trim() !== ''
+      ? user.email
+      : `${(user.phoneNumber || user._id.toString()).replace(/[^0-9a-zA-Z]/g, '') || 'customer'}@goeat.com`;
+
+    if (!user.email || user.email.trim() === '') {
+      user.email = safeEmail;
+      await user.save({ validateBeforeSave: false });
+    }
 
     const reference = `ORD_${order._id}_${Date.now()}`;
     const amount = order.totalAmount;
 
     if (activeProvider.toLowerCase() === 'flutterwave') {
       const result = await flutterwaveModule.initializePayment({
-        email: user.email,
+        email: safeEmail,
         amount,
         reference,
         customerName: user.name,
@@ -59,10 +104,27 @@ export class PaymentService {
         reference: result.reference,
         provider: 'flutterwave',
       };
+    } else if (activeProvider.toLowerCase() === 'stripe') {
+      const result = await stripeModule.initializePayment({
+        email: safeEmail,
+        amount,
+        reference,
+        redirectUrl: callbackUrl || `${process.env.APP_URL || 'https://api.goeatalone.com'}/payment/callback?reference=${reference}&provider=stripe`,
+        metadata: {
+          orderId: order._id.toString(),
+          customerId: user._id.toString(),
+        },
+      });
+
+      return {
+        authorizationUrl: result.authorizationUrl,
+        reference: result.reference,
+        provider: 'stripe',
+      };
     } else {
       // Default: Paystack
       const result = await paystackModule.initializePayment({
-        email: user.email,
+        email: safeEmail,
         amount,
         reference,
         callbackUrl: callbackUrl || `${process.env.APP_URL || 'https://api.goeatalone.com'}/payment/callback?reference=${reference}&provider=paystack`,
@@ -82,7 +144,7 @@ export class PaymentService {
   }
 
   /**
-   * Verify Payment Status from either Paystack or Flutterwave
+   * Verify Payment Status from either Paystack, Flutterwave, or Stripe
    */
   async verifyPayment(reference: string, provider: PaymentProvider = 'paystack'): Promise<any> {
     let orderId: string | undefined;
@@ -100,6 +162,18 @@ export class PaymentService {
         update_time: new Date().toISOString(),
         email_address: data.customer?.email,
         provider: 'flutterwave',
+      };
+    } else if (provider.toLowerCase() === 'stripe') {
+      const data = await stripeModule.verifyPayment(reference);
+      if (data.status !== 'success') {
+        throw new AppError('Stripe payment was not successful', 400);
+      }
+      orderId = data.metadata?.orderId || reference.split('_')[1];
+      paymentResult = {
+        id: data.id ? String(data.id) : reference,
+        status: 'success',
+        update_time: new Date().toISOString(),
+        provider: 'stripe',
       };
     } else {
       const data = await paystackModule.verifyPayment(reference);

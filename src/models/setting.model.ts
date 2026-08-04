@@ -1,5 +1,12 @@
 import mongoose, { Schema, Document } from 'mongoose';
 
+export interface ICountryPaymentProvider {
+  countryCode: string;
+  countryName: string;
+  provider: 'paystack' | 'flutterwave' | 'stripe';
+  isActive: boolean;
+}
+
 export interface ISetting extends Document {
   appName: string;
   supportEmail: string;
@@ -10,7 +17,8 @@ export interface ISetting extends Document {
   minOrderAmount: number;
   deliveryBaseFee: number;
   deliveryFeePerKm: number;
-  defaultPaymentProvider: 'paystack' | 'flutterwave';
+  defaultPaymentProvider: 'paystack' | 'flutterwave' | 'stripe';
+  countryPaymentProviders: ICountryPaymentProvider[];
 }
 
 const settingSchema = new Schema<ISetting>(
@@ -24,7 +32,26 @@ const settingSchema = new Schema<ISetting>(
     minOrderAmount: { type: Number, default: 500 },
     deliveryBaseFee: { type: Number, default: 500 },
     deliveryFeePerKm: { type: Number, default: 100 },
-    defaultPaymentProvider: { type: String, enum: ['paystack', 'flutterwave'], default: 'paystack' },
+    defaultPaymentProvider: { type: String, enum: ['paystack', 'flutterwave', 'stripe'], default: 'paystack' },
+    countryPaymentProviders: {
+      type: [
+        {
+          countryCode: { type: String, uppercase: true },
+          countryName: { type: String },
+          provider: { type: String, enum: ['paystack', 'flutterwave', 'stripe'] },
+          isActive: { type: Boolean, default: true },
+        },
+      ],
+      default: [
+        { countryCode: 'NG', countryName: 'Nigeria', provider: 'paystack', isActive: true },
+        { countryCode: 'GB', countryName: 'United Kingdom', provider: 'stripe', isActive: true },
+        { countryCode: 'US', countryName: 'United States', provider: 'stripe', isActive: true },
+        { countryCode: 'IT', countryName: 'Italy', provider: 'stripe', isActive: true },
+        { countryCode: 'CA', countryName: 'Canada', provider: 'stripe', isActive: true },
+        { countryCode: 'GH', countryName: 'Ghana', provider: 'paystack', isActive: true },
+        { countryCode: 'KE', countryName: 'Kenya', provider: 'flutterwave', isActive: true },
+      ],
+    },
   },
   { timestamps: true }
 );

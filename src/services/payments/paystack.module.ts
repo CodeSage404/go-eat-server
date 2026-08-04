@@ -58,7 +58,7 @@ export class PaystackModule {
 
     try {
       const payload: Record<string, any> = {
-        email: params.email,
+        email: params.email && params.email.trim() !== '' ? params.email : 'customer@goeat.com',
         amount: amountInKobo,
         reference: params.reference,
         metadata: params.metadata || {},
