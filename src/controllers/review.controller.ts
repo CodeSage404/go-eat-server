@@ -20,7 +20,7 @@ class ReviewController {
     }
 
     // 2. Only delivered orders can be reviewed
-    if (order.status !== OrderStatus.DELIVERED) {
+    if (String(order.status).toLowerCase() !== 'delivered') {
       throw new AppError('You can only review delivered orders', 400);
     }
 
