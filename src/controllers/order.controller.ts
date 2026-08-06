@@ -135,6 +135,20 @@ class OrderController {
     });
   });
 
+  public getOrderById = catchAsync(async (req: any, res: Response) => {
+    const { id } = req.params;
+    const order = await orderService.getOrderById(id);
+    
+    if (!order) {
+      throw new AppError('Order not found', 404);
+    }
+
+    res.status(200).json({
+      status: 'success',
+      data: { order },
+    });
+  });
+
   /**
    * Quick reorder from history
    */

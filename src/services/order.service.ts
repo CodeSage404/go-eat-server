@@ -161,7 +161,14 @@ class OrderService {
   }
 
   async getCustomerOrders(customerId: string): Promise<IOrder[]> {
-    return await Order.find({ customer: customerId }).sort({ createdAt: -1 });
+    return await Order.find({ customer: customerId })
+      .populate('restaurant', 'name address image isSelfPickup hasDelivery location')
+      .populate('items.foodItem', 'name price image')
+      .sort({ createdAt: -1 });
+  }
+
+  async getOrderById(orderId: string): Promise<IOrder | null> {
+    return await Order.findById(orderId).populate('customer restaurant rider items.foodItem');
   }
 
   async getRestaurantOrders(restaurantId: string): Promise<IOrder[]> {
