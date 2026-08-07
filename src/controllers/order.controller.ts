@@ -4,6 +4,7 @@ import orderService from '../services/order.service';
 import { catchAsync } from '../utils/catchAsync';
 import AppError from '../utils/appError';
 import { OrderStatus, PaymentMethod } from '../models/order.model';
+import emailService from '../services/email.service';
 
 const orderSchema = z.object({
   restaurant: z.string(),
@@ -76,6 +77,15 @@ class OrderController {
       ...normalizedBody,
       customer: req.user._id,
     });
+
+    if (req.user.email && !req.user.email.includes('customer@goeat.com')) {
+      emailService.sendTemplateEmail(
+        req.user.email,
+        'ORDER_CONFIRMED',
+        `Order Confirmed: #${order._id.toString().slice(-6).toUpperCase()}`,
+        { orderId: order._id, customerName: req.user.name, total: order.totalAmount }
+      ).catch(err => console.error('Failed to send order email:', err));
+    }
 
     res.status(201).json({
       status: 'success',

@@ -1413,7 +1413,8 @@ class AdminController {
     const allowed = [
       'appName', 'supportEmail', 'commissionRate', 'maxDeliveryDistance',
       'maintenanceMode', 'enableNotifications', 'minOrderAmount',
-      'deliveryBaseFee', 'deliveryFeePerKm', 'defaultPaymentProvider'
+      'deliveryBaseFee', 'deliveryFeePerKm', 'defaultPaymentProvider',
+      'countryPaymentProviders'
     ];
 
     const update: any = {};
@@ -1423,7 +1424,7 @@ class AdminController {
 
     const settings = await Setting.findOneAndUpdate(
       {},
-      update,
+      { $set: update },
       { new: true, upsert: true, runValidators: true }
     );
 
