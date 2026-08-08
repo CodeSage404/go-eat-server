@@ -7,6 +7,7 @@ import {
   vendorStep4Compliance,
   riderRegisterOnboarding,
   getRiderOnboardingStatus,
+  registerInterest,
 } from '../controllers/onboarding.controller';
 import { protect, restrictTo } from '../middleware/auth.middleware';
 import { UserRole } from '../models/user.model';
@@ -15,6 +16,9 @@ const router = Router();
 
 // Public / general endpoint to get outlets and their categories & requirements
 router.get('/outlets', getMainOutlets);
+
+// Public route for landing page waitlist/registration
+router.post('/interest', registerInterest);
 
 // Protected routes for vendor & rider onboarding
 router.use(protect);

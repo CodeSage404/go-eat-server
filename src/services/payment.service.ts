@@ -11,6 +11,7 @@ import Setting from '../models/setting.model';
 
 export type PaymentProvider = 'paystack' | 'flutterwave' | 'stripe';
 
+import emailService from './email.service';
 export class PaymentService {
   /**
    * Helper to resolve payment provider based on order location and admin settings
@@ -214,6 +215,27 @@ export class PaymentService {
         );
       } catch (notifyErr: any) {
         logger.warn('Failed to send order notifications:', notifyErr.message);
+      }
+
+      // Send Email Receipt
+      try {
+        await order.populate('items.foodItem');
+        const user = await User.findById(order.customer);
+        if (user && user.email && !user.email.includes('customer@goeat.com')) {
+          await emailService.sendTemplateEmail(
+            user.email,
+            'ORDER_CONFIRMED',
+            `Order Confirmed: #${order._id.toString().slice(-6).toUpperCase()}`,
+            { 
+              orderId: order._id, 
+              customerName: user.name, 
+              total: order.totalAmount,
+              items: order.items 
+            }
+          );
+        }
+      } catch (emailErr: any) {
+        logger.warn('Failed to send order email:', emailErr.message);
       }
     }
 

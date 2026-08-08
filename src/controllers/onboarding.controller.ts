@@ -4,6 +4,7 @@ import AppError from '../utils/appError';
 import Restaurant from '../models/restaurant.model';
 import RiderOnboarding from '../models/riderOnboarding.model';
 import { MAIN_OUTLETS_ARRAY, MainOutletType } from '../constants/outlets';
+import emailService from '../services/email.service';
 
 export const getMainOutlets = catchAsync(async (req: Request, res: Response) => {
   res.status(200).json({
@@ -211,5 +212,36 @@ export const getRiderOnboardingStatus = catchAsync(async (req: Request, res: Res
     data: {
       riderProfile,
     },
+  });
+});
+
+export const registerInterest = catchAsync(async (req: Request, res: Response) => {
+  const { type, Email, ...formData } = req.body; // 'Email' maps to the form field 'Email'
+
+  if (!Email) {
+    throw new AppError('Email is required', 400);
+  }
+
+  const subject = `Go Eat Registration Received - ${type === 'vendor' ? 'Business' : 'Rider'}`;
+  const htmlContent = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #333;">
+      <h2 style="color: #103E27;">Thank you for your interest!</h2>
+      <p>Hello,</p>
+      <p>We have successfully received your information to register as a <strong>${type === 'vendor' ? 'business' : 'rider'}</strong> on Go-Eat.</p>
+      <p>Your application is currently <strong>under review</strong>. Our team will get back to you shortly with the next steps.</p>
+      <br />
+      <p>Best regards,</p>
+      <p><strong>The Go-Eat Team</strong></p>
+      <hr style="border: 0; border-top: 1px solid #eee; margin-top: 20px;" />
+      <p style="color: #999; font-size: 12px;">This is an automated message. Please do not reply directly to this email.</p>
+    </div>
+  `;
+
+  // Send confirmation to user
+  await emailService.sendEmail(Email, subject, htmlContent, 'partners');
+
+  res.status(200).json({
+    status: 'success',
+    message: 'Information received and confirmation email sent.',
   });
 });

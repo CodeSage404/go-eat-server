@@ -80,7 +80,7 @@ class OrderController {
 
     await order.populate('items.foodItem');
 
-    if (req.user.email && !req.user.email.includes('customer@goeat.com')) {
+    if (order.paymentMethod === PaymentMethod.CASH && req.user.email && !req.user.email.includes('customer@goeat.com')) {
       emailService.sendTemplateEmail(
         req.user.email,
         'ORDER_CONFIRMED',
