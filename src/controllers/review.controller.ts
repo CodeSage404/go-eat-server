@@ -19,9 +19,10 @@ class ReviewController {
       throw new AppError('You can only review your own orders', 403);
     }
 
-    // 2. Only delivered/completed orders can be reviewed
-    if (!['delivered', 'completed'].includes(String(order.status).toLowerCase())) {
-      throw new AppError('You can only review delivered orders', 400);
+    // 2. Check if a review already exists for this order
+    const existingReview = await Review.findOne({ order: orderId, user: req.user!._id });
+    if (existingReview) {
+      throw new AppError('You have already reviewed this order. Thank you!', 400);
     }
 
     // 3. Create review
