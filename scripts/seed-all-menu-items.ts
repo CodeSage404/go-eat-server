@@ -360,24 +360,19 @@ async function seedAllRestaurantsMenuItems() {
         console.log(`Seeding menu items for restaurant: "${restaurant.name}" (${restaurant._id})...`);
 
         for (const catSeed of menuCategoriesSeed) {
-          // Find or create Category for this restaurant
-          let category = await Category.findOne({
-            name: catSeed.name,
-            restaurant: restaurant._id,
+          // Find existing categories for this restaurant or globally
+          let existingCategories = await Category.find({
+            $or: [{ restaurant: restaurant._id }, { isGlobal: true }]
           });
-
-          if (!category) {
-            category = await Category.create({
-              name: catSeed.name,
-              restaurant: restaurant._id,
-              order: catSeed.order,
-              icon: catSeed.icon,
-              image: catSeed.image,
-              isGlobal: false,
-              isActive: true,
-            });
-            totalCategoriesCreated++;
+          
+          if (existingCategories.length === 0) {
+            console.log(`Skipping categories for ${restaurant.name} because no categories exist and creation is disabled.`);
+            continue;
           }
+
+          // Randomly pick an existing category to assign these items to
+          const randomCategory = existingCategories[Math.floor(Math.random() * existingCategories.length)];
+          let category = randomCategory;
 
           // Parallelize food item seeding within this category
           await Promise.all(

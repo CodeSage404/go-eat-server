@@ -78,12 +78,19 @@ class OrderController {
       customer: req.user._id,
     });
 
+    await order.populate('items.foodItem');
+
     if (req.user.email && !req.user.email.includes('customer@goeat.com')) {
       emailService.sendTemplateEmail(
         req.user.email,
         'ORDER_CONFIRMED',
         `Order Confirmed: #${order._id.toString().slice(-6).toUpperCase()}`,
-        { orderId: order._id, customerName: req.user.name, total: order.totalAmount }
+        { 
+          orderId: order._id, 
+          customerName: req.user.name, 
+          total: order.totalAmount,
+          items: order.items 
+        }
       ).catch(err => console.error('Failed to send order email:', err));
     }
 
