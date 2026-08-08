@@ -166,7 +166,13 @@ class OrderService {
         return order;
     }
     async getCustomerOrders(customerId) {
-        return await order_model_1.default.find({ customer: customerId }).sort({ createdAt: -1 });
+        return await order_model_1.default.find({ customer: customerId })
+            .populate('restaurant', 'name address image isSelfPickup hasDelivery location')
+            .populate('items.foodItem', 'name price image')
+            .sort({ createdAt: -1 });
+    }
+    async getOrderById(orderId) {
+        return await order_model_1.default.findById(orderId).populate('customer restaurant rider items.foodItem');
     }
     async getRestaurantOrders(restaurantId) {
         return await order_model_1.default.find({ restaurant: restaurantId }).sort({ createdAt: -1 });

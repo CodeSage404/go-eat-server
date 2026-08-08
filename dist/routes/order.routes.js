@@ -58,6 +58,26 @@ router.post('/', (0, auth_middleware_1.restrictTo)(user_model_1.UserRole.CUSTOME
  *         description: List of orders
  */
 router.get('/my-orders', order_controller_1.default.getMyOrders);
+/**
+ * @openapi
+ * /api/v1/orders/{id}:
+ *   get:
+ *     tags:
+ *       - Orders
+ *     summary: Get order details by ID
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Order details
+ */
+router.get('/:id', order_controller_1.default.getOrderById);
 // Shared/Specific routes for status updates
 /**
  * @openapi

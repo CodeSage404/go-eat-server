@@ -3,12 +3,13 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getRiderOnboardingStatus = exports.riderRegisterOnboarding = exports.vendorStep4Compliance = exports.vendorStep3IdentityVerification = exports.vendorStep2BusinessDetails = exports.vendorStep1SelectOutlet = exports.getMainOutlets = void 0;
+exports.registerInterest = exports.getRiderOnboardingStatus = exports.riderRegisterOnboarding = exports.vendorStep4Compliance = exports.vendorStep3IdentityVerification = exports.vendorStep2BusinessDetails = exports.vendorStep1SelectOutlet = exports.getMainOutlets = void 0;
 const catchAsync_1 = require("../utils/catchAsync");
 const appError_1 = __importDefault(require("../utils/appError"));
 const restaurant_model_1 = __importDefault(require("../models/restaurant.model"));
 const riderOnboarding_model_1 = __importDefault(require("../models/riderOnboarding.model"));
 const outlets_1 = require("../constants/outlets");
+const email_service_1 = __importDefault(require("../services/email.service"));
 exports.getMainOutlets = (0, catchAsync_1.catchAsync)(async (req, res) => {
     res.status(200).json({
         status: 'success',
@@ -155,5 +156,31 @@ exports.getRiderOnboardingStatus = (0, catchAsync_1.catchAsync)(async (req, res)
         data: {
             riderProfile,
         },
+    });
+});
+exports.registerInterest = (0, catchAsync_1.catchAsync)(async (req, res) => {
+    const { type, Email, ...formData } = req.body; // 'Email' maps to the form field 'Email'
+    if (!Email) {
+        throw new appError_1.default('Email is required', 400);
+    }
+    const subject = `Go Eat Registration Received - ${type === 'vendor' ? 'Business' : 'Rider'}`;
+    const htmlContent = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #333;">
+      <h2 style="color: #103E27;">Thank you for your interest!</h2>
+      <p>Hello,</p>
+      <p>We have successfully received your information to register as a <strong>${type === 'vendor' ? 'business' : 'rider'}</strong> on Go-Eat.</p>
+      <p>Your application is currently <strong>under review</strong>. Our team will get back to you shortly with the next steps.</p>
+      <br />
+      <p>Best regards,</p>
+      <p><strong>The Go-Eat Team</strong></p>
+      <hr style="border: 0; border-top: 1px solid #eee; margin-top: 20px;" />
+      <p style="color: #999; font-size: 12px;">This is an automated message. Please do not reply directly to this email.</p>
+    </div>
+  `;
+    // Send confirmation to user
+    await email_service_1.default.sendEmail(Email, subject, htmlContent, 'partners');
+    res.status(200).json({
+        status: 'success',
+        message: 'Information received and confirmation email sent.',
     });
 });

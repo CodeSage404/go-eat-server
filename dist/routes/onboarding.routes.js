@@ -7,6 +7,8 @@ const user_model_1 = require("../models/user.model");
 const router = (0, express_1.Router)();
 // Public / general endpoint to get outlets and their categories & requirements
 router.get('/outlets', onboarding_controller_1.getMainOutlets);
+// Public route for landing page waitlist/registration
+router.post('/interest', onboarding_controller_1.registerInterest);
 // Protected routes for vendor & rider onboarding
 router.use(auth_middleware_1.protect);
 // Vendor Onboarding Wizard routes

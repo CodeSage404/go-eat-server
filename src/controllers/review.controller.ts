@@ -19,8 +19,8 @@ class ReviewController {
       throw new AppError('You can only review your own orders', 403);
     }
 
-    // 2. Only delivered orders can be reviewed
-    if (String(order.status).toLowerCase() !== 'delivered') {
+    // 2. Only delivered/completed orders can be reviewed
+    if (!['delivered', 'completed'].includes(String(order.status).toLowerCase())) {
       throw new AppError('You can only review delivered orders', 400);
     }
 

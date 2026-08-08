@@ -47,6 +47,7 @@ const paystack_module_1 = __importDefault(require("./payments/paystack.module"))
 const flutterwave_module_1 = __importDefault(require("./payments/flutterwave.module"));
 const stripe_module_1 = __importDefault(require("./payments/stripe.module"));
 const setting_model_1 = __importDefault(require("../models/setting.model"));
+const email_service_1 = __importDefault(require("./email.service"));
 class PaymentService {
     /**
      * Helper to resolve payment provider based on order location and admin settings
@@ -230,6 +231,22 @@ class PaymentService {
             }
             catch (notifyErr) {
                 logger_1.default.warn('Failed to send order notifications:', notifyErr.message);
+            }
+            // Send Email Receipt
+            try {
+                await order.populate('items.foodItem');
+                const user = await user_model_1.default.findById(order.customer);
+                if (user && user.email && !user.email.includes('customer@goeat.com')) {
+                    await email_service_1.default.sendTemplateEmail(user.email, 'ORDER_CONFIRMED', `Order Confirmed: #${order._id.toString().slice(-6).toUpperCase()}`, {
+                        orderId: order._id,
+                        customerName: user.name,
+                        total: order.totalAmount,
+                        items: order.items
+                    });
+                }
+            }
+            catch (emailErr) {
+                logger_1.default.warn('Failed to send order email:', emailErr.message);
             }
         }
         return {

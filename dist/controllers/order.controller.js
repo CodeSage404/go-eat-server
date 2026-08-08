@@ -8,6 +8,7 @@ const order_service_1 = __importDefault(require("../services/order.service"));
 const catchAsync_1 = require("../utils/catchAsync");
 const appError_1 = __importDefault(require("../utils/appError"));
 const order_model_1 = require("../models/order.model");
+const email_service_1 = __importDefault(require("../services/email.service"));
 const orderSchema = zod_1.z.object({
     restaurant: zod_1.z.string(),
     items: zod_1.z.array(zod_1.z.object({
@@ -74,6 +75,15 @@ class OrderController {
                 ...normalizedBody,
                 customer: req.user._id,
             });
+            await order.populate('items.foodItem');
+            if (order.paymentMethod === order_model_1.PaymentMethod.CASH && req.user.email && !req.user.email.includes('customer@goeat.com')) {
+                email_service_1.default.sendTemplateEmail(req.user.email, 'ORDER_CONFIRMED', `Order Confirmed: #${order._id.toString().slice(-6).toUpperCase()}`, {
+                    orderId: order._id,
+                    customerName: req.user.name,
+                    total: order.totalAmount,
+                    items: order.items
+                }).catch(err => console.error('Failed to send order email:', err));
+            }
             res.status(201).json({
                 status: 'success',
                 data: { order },
@@ -117,6 +127,17 @@ class OrderController {
                 status: 'success',
                 results: orders?.length,
                 data: { orders },
+            });
+        });
+        this.getOrderById = (0, catchAsync_1.catchAsync)(async (req, res) => {
+            const { id } = req.params;
+            const order = await order_service_1.default.getOrderById(id);
+            if (!order) {
+                throw new appError_1.default('Order not found', 404);
+            }
+            res.status(200).json({
+                status: 'success',
+                data: { order },
             });
         });
         /**

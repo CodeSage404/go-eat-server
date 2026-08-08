@@ -80,8 +80,8 @@ class App {
             });
         });
         this.app.get('/api/v1/timer', (req, res) => {
-            const durationInDays = 102;
-            const targetDate = '2026-09-15T12:00:00Z';
+            const durationInDays = 192;
+            const targetDate = '2026-12-14T12:00:00Z';
             res.status(200).json({
                 success: true,
                 data: {

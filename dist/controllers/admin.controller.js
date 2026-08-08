@@ -1215,14 +1215,15 @@ class AdminController {
             const allowed = [
                 'appName', 'supportEmail', 'commissionRate', 'maxDeliveryDistance',
                 'maintenanceMode', 'enableNotifications', 'minOrderAmount',
-                'deliveryBaseFee', 'deliveryFeePerKm', 'defaultPaymentProvider'
+                'deliveryBaseFee', 'deliveryFeePerKm', 'defaultPaymentProvider',
+                'countryPaymentProviders'
             ];
             const update = {};
             allowed.forEach(key => {
                 if (req.body[key] !== undefined)
                     update[key] = req.body[key];
             });
-            const settings = await setting_model_1.default.findOneAndUpdate({}, update, { new: true, upsert: true, runValidators: true });
+            const settings = await setting_model_1.default.findOneAndUpdate({}, { $set: update }, { new: true, upsert: true, runValidators: true });
             res.status(200).json({
                 status: 'success',
                 message: 'Platform settings updated successfully',
