@@ -18,7 +18,25 @@ const router = Router();
  *     summary: Default / Legacy Paystack Webhook Handler
  */
 router.post('/webhook', paymentController.handlePaystackWebhook);
+
+/**
+ * @openapi
+ * /api/v1/payments/webhook/paystack:
+ *   post:
+ *     tags:
+ *       - Payments
+ *     summary: Paystack Webhook Handler
+ */
 router.post('/webhook/paystack', paymentController.handlePaystackWebhook);
+
+/**
+ * @openapi
+ * /api/v1/payments/webhook/flutterwave:
+ *   post:
+ *     tags:
+ *       - Payments
+ *     summary: Flutterwave Webhook Handler
+ */
 router.post('/webhook/flutterwave', paymentController.handleFlutterwaveWebhook);
 
 /**

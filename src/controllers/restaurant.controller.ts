@@ -5,6 +5,22 @@ import { catchAsync } from '../utils/catchAsync';
 import AppError from '../utils/appError';
 import Restaurant, { RestaurantStatus } from '../models/restaurant.model';
 
+const daySchedule = z.object({
+  isOpen: z.boolean(),
+  open: z.string(),
+  close: z.string(),
+});
+
+const openingHoursSchema = z.object({
+  Monday: daySchedule,
+  Tuesday: daySchedule,
+  Wednesday: daySchedule,
+  Thursday: daySchedule,
+  Friday: daySchedule,
+  Saturday: daySchedule,
+  Sunday: daySchedule,
+});
+
 const restaurantSchema = z.object({
   name: z.string().min(2, 'Name is too short'),
   description: z.string().min(10, 'Description is too short'),
@@ -21,10 +37,38 @@ const restaurantSchema = z.object({
   cuisine: z.array(z.string()).optional(),
   isSponsored: z.boolean().optional(),
   isTopSpot: z.boolean().optional(),
-  openingHours: z.object({
-    open: z.string(),
-    close: z.string(),
-  }),
+  openingHours: openingHoursSchema,
+});
+
+const vendorUpdateRestaurantSchema = z.object({
+  name: z.string().min(2, 'Name is too short').optional(),
+  description: z.string().min(10, 'Description is too short').optional(),
+  address: z.object({
+    street: z.string(),
+    city: z.string(),
+    state: z.string(),
+    zipCode: z.string(),
+  }).optional(),
+  location: z.object({
+    type: z.literal('Point'),
+    coordinates: z.tuple([z.number(), z.number()]), 
+  }).optional(),
+  cuisine: z.array(z.string()).optional(),
+  openingHours: openingHoursSchema.optional(),
+  images: z.object({
+    logo: z.string().optional(),
+    cover: z.string().optional(),
+  }).optional(),
+  businessPhone: z.string().optional(),
+  businessEmail: z.string().email().optional(),
+  businessWebsite: z.string().optional(),
+  tradingName: z.string().optional(),
+  businessCategory: z.string().optional(),
+  bankDetails: z.object({
+    bankName: z.string().optional(),
+    accountNumber: z.string().optional(),
+    accountName: z.string().optional(),
+  }).optional(),
 });
 
 class RestaurantController {
@@ -97,6 +141,50 @@ class RestaurantController {
   });
 
   /**
+   * Get logged in vendor's restaurant
+   */
+  public getMyRestaurant = catchAsync(async (req: any, res: Response) => {
+    const restaurant = await Restaurant.findOne({ owner: req.user._id }).populate('owner', 'name email profileImage');
+
+    if (!restaurant) {
+      throw new AppError('No restaurant profile found for this user', 404);
+    }
+
+    res.status(200).json({
+      status: 'success',
+      data: { restaurant },
+    });
+  });
+
+  /**
+   * Update logged in vendor's restaurant
+   */
+  public updateMyRestaurant = catchAsync(async (req: any, res: Response) => {
+    const restaurant = await Restaurant.findOne({ owner: req.user._id });
+
+    if (!restaurant) {
+      throw new AppError('No restaurant profile found for this user', 404);
+    }
+
+    const validatedData = vendorUpdateRestaurantSchema.safeParse(req.body);
+    if (!validatedData.success) {
+      throw new AppError(validatedData.error.issues.map(i => i.message).join(', '), 400);
+    }
+
+    // validatedData.data now only contains the fields allowed in vendorUpdateRestaurantSchema
+    // all extra fields (like status, isTopSpot, popularityScore) have been stripped out.
+    const updatedRestaurant = await restaurantService.updateRestaurant(
+      restaurant._id.toString(), 
+      validatedData.data as any
+    );
+
+    res.status(200).json({
+      status: 'success',
+      data: { restaurant: updatedRestaurant },
+    });
+  });
+
+  /**
    * Update restaurant profile
    */
   public updateRestaurant = catchAsync(async (req: any, res: Response) => {
@@ -111,7 +199,19 @@ class RestaurantController {
       throw new AppError('You do not have permission to perform this action', 403);
     }
 
-    const updatedRestaurant = await restaurantService.updateRestaurant(req.params.id as string, req.body);
+    // We apply the strict vendor schema to strip unapproved fields if it is a vendor updating their own profile.
+    // If it's an admin, we could allow more fields, but for safety, we'll apply it here too unless we want 
+    // admins to be able to bypass it. Assuming we only want basic edits here.
+    let updateData = req.body;
+    if (req.user.role !== 'admin') {
+      const validatedData = vendorUpdateRestaurantSchema.safeParse(req.body);
+      if (!validatedData.success) {
+        throw new AppError(validatedData.error.issues.map(i => i.message).join(', '), 400);
+      }
+      updateData = validatedData.data;
+    }
+
+    const updatedRestaurant = await restaurantService.updateRestaurant(req.params.id as string, updateData);
 
     res.status(200).json({
       status: 'success',

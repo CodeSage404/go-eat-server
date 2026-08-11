@@ -155,6 +155,23 @@ router.post(
   })
 );
 
+const handleCPanelUpload = catchAsync(async (req: Request, res: Response) => {
+  if (!req.file) {
+    throw new AppError('No image file provided', 400);
+  }
+
+  const result = await saveFileLocally(req.file, req);
+
+  res.status(200).json({
+    status: 'success',
+    data: {
+      imageUrl: result.secure_url,
+      filename: result.filename,
+      provider: 'cpanel',
+    },
+  });
+});
+
 /**
  * @openapi
  * /api/v1/upload/cpanel:
@@ -180,24 +197,33 @@ router.post(
  *       200:
  *         description: Image uploaded to cPanel local storage successfully
  */
-const handleCPanelUpload = catchAsync(async (req: Request, res: Response) => {
-  if (!req.file) {
-    throw new AppError('No image file provided', 400);
-  }
-
-  const result = await saveFileLocally(req.file, req);
-
-  res.status(200).json({
-    status: 'success',
-    data: {
-      imageUrl: result.secure_url,
-      filename: result.filename,
-      provider: 'cpanel',
-    },
-  });
-});
-
 router.post('/cpanel', memUpload.single('image'), handleCPanelUpload);
+
+/**
+ * @openapi
+ * /api/v1/upload/local:
+ *   post:
+ *     tags:
+ *       - Uploads
+ *     summary: Upload an image file to local storage (alias for cPanel)
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - image
+ *             properties:
+ *               image:
+ *                 type: string
+ *                 format: binary
+ *     responses:
+ *       200:
+ *         description: Image uploaded to local storage successfully
+ */
 router.post('/local', memUpload.single('image'), handleCPanelUpload);
 
 export default router;

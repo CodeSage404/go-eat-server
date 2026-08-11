@@ -25,8 +25,13 @@ export interface IRestaurant extends Document {
   rating: number;
   numReviews: number;
   openingHours: {
-    open: string; 
-    close: string; 
+    Monday: { isOpen: boolean; open: string; close: string; };
+    Tuesday: { isOpen: boolean; open: string; close: string; };
+    Wednesday: { isOpen: boolean; open: string; close: string; };
+    Thursday: { isOpen: boolean; open: string; close: string; };
+    Friday: { isOpen: boolean; open: string; close: string; };
+    Saturday: { isOpen: boolean; open: string; close: string; };
+    Sunday: { isOpen: boolean; open: string; close: string; };
   };
   images: {
     logo: string;
@@ -128,8 +133,13 @@ const restaurantSchema = new Schema<IRestaurant>(
       default: 0,
     },
     openingHours: {
-      open: { type: String, required: true },
-      close: { type: String, required: true },
+      Monday: { isOpen: { type: Boolean, default: true }, open: { type: String, default: '08:00 AM' }, close: { type: String, default: '06:00 PM' } },
+      Tuesday: { isOpen: { type: Boolean, default: true }, open: { type: String, default: '08:00 AM' }, close: { type: String, default: '06:00 PM' } },
+      Wednesday: { isOpen: { type: Boolean, default: true }, open: { type: String, default: '08:00 AM' }, close: { type: String, default: '06:00 PM' } },
+      Thursday: { isOpen: { type: Boolean, default: true }, open: { type: String, default: '08:00 AM' }, close: { type: String, default: '06:00 PM' } },
+      Friday: { isOpen: { type: Boolean, default: true }, open: { type: String, default: '08:00 AM' }, close: { type: String, default: '06:00 PM' } },
+      Saturday: { isOpen: { type: Boolean, default: true }, open: { type: String, default: '08:00 AM' }, close: { type: String, default: '06:00 PM' } },
+      Sunday: { isOpen: { type: Boolean, default: false }, open: { type: String, default: '08:00 AM' }, close: { type: String, default: '06:00 PM' } },
     },
     images: {
       logo: { type: String, default: 'default-logo.png' },

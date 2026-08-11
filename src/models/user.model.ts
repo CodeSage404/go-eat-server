@@ -6,6 +6,7 @@ export enum UserRole {
   VENDOR = 'vendor',
   RIDER = 'rider',
   ADMIN = 'admin',
+  STAFF = 'staff',
 }
 
 export enum UserStatus {
@@ -22,6 +23,7 @@ export interface IUser extends Document {
   status: UserStatus;
   phoneNumber?: string;
   customRole?: string;
+  restaurantId?: mongoose.Types.ObjectId;
   profileImage?: string;
   fcmToken?: string;
   notificationsEnabled: boolean;
@@ -98,6 +100,10 @@ const userSchema = new Schema<IUser>(
       type: String,
       lowercase: true,
       trim: true,
+    },
+    restaurantId: {
+      type: Schema.Types.ObjectId,
+      ref: 'Restaurant',
     },
     profileImage: {
       type: String,

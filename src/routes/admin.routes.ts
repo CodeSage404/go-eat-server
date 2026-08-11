@@ -139,14 +139,139 @@ router.get('/platform-stats', adminController.getPlatformStats);
  *         description: CSV file download or JSON export returned successfully
  */
 router.get('/export/:entity', checkPermission(), adminController.exportData);
+/**
+ * @openapi
+ * /api/v1/admin/orders/export:
+ *   get:
+ *     tags:
+ *       - Admin Export
+ *     summary: Export orders data
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Export successful
+ */
 router.get('/orders/export', checkPermission('orders.read'), adminController.exportData);
+
+/**
+ * @openapi
+ * /api/v1/admin/users/export:
+ *   get:
+ *     tags:
+ *       - Admin Export
+ *     summary: Export users data
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Export successful
+ */
 router.get('/users/export', checkPermission('users.read'), adminController.exportData);
+
+/**
+ * @openapi
+ * /api/v1/admin/restaurants/export:
+ *   get:
+ *     tags:
+ *       - Admin Export
+ *     summary: Export restaurants data
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Export successful
+ */
 router.get('/restaurants/export', checkPermission('restaurants.read'), adminController.exportData);
+
+/**
+ * @openapi
+ * /api/v1/admin/outlets/export:
+ *   get:
+ *     tags:
+ *       - Admin Export
+ *     summary: Export outlets data
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Export successful
+ */
 router.get('/outlets/export', checkPermission('restaurants.read'), adminController.exportData);
+
+/**
+ * @openapi
+ * /api/v1/admin/transactions/export:
+ *   get:
+ *     tags:
+ *       - Admin Export
+ *     summary: Export transactions data
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Export successful
+ */
 router.get('/transactions/export', checkPermission('transactions.read'), adminController.exportData);
+
+/**
+ * @openapi
+ * /api/v1/admin/payments/export:
+ *   get:
+ *     tags:
+ *       - Admin Export
+ *     summary: Export payments data
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Export successful
+ */
 router.get('/payments/export', checkPermission('transactions.read'), adminController.exportData);
+
+/**
+ * @openapi
+ * /api/v1/admin/menu-items/export:
+ *   get:
+ *     tags:
+ *       - Admin Export
+ *     summary: Export menu items data
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Export successful
+ */
 router.get('/menu-items/export', checkPermission('restaurants.read'), adminController.exportData);
+
+/**
+ * @openapi
+ * /api/v1/admin/audit-logs/export:
+ *   get:
+ *     tags:
+ *       - Admin Export
+ *     summary: Export audit logs data
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Export successful
+ */
 router.get('/audit-logs/export', checkPermission(), adminController.exportData);
+
+/**
+ * @openapi
+ * /api/v1/admin/reviews/export:
+ *   get:
+ *     tags:
+ *       - Admin Export
+ *     summary: Export reviews data
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Export successful
+ */
 router.get('/reviews/export', checkPermission('users.read'), adminController.exportData);
 
 /**
@@ -177,7 +302,6 @@ router.get('/reviews/export', checkPermission('users.read'), adminController.exp
  *         description: List of users returned
  */
 router.get('/users', checkPermission('users.read'), adminController.getAllUsers);
-router.post('/users', checkPermission('users.create'), adminController.createUser);
 
 /**
  * @openapi
@@ -199,8 +323,6 @@ router.post('/users', checkPermission('users.create'), adminController.createUse
  *         description: User profile details returned
  */
 router.get('/users/:id', checkPermission('users.read'), adminController.getUserById);
-router.patch('/users/:id', checkPermission('users.update'), adminController.updateUser);
-router.delete('/users/:id', checkPermission('users.delete'), adminController.deleteUser);
 
 /**
  * @openapi
@@ -632,8 +754,82 @@ router.get('/menu-items', checkPermission('restaurants.crud'), adminController.g
 
 
 router.get('/menu-items/:id', checkPermission('restaurants.crud'), adminController.getMenuItemById);
+
+/**
+ * @openapi
+ * /api/v1/admin/menu-items:
+ *   post:
+ *     tags:
+ *       - Admin Menu Items
+ *     summary: Create a new menu item
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               image:
+ *                 type: string
+ *                 format: binary
+ *     responses:
+ *       201:
+ *         description: Menu item created successfully
+ */
 router.post('/menu-items', checkPermission('restaurants.crud'), upload.single('image'), adminController.createMenuItem);
+
+/**
+ * @openapi
+ * /api/v1/admin/menu-items/{id}:
+ *   patch:
+ *     tags:
+ *       - Admin Menu Items
+ *     summary: Update details of a menu item
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: false
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               image:
+ *                 type: string
+ *                 format: binary
+ *     responses:
+ *       200:
+ *         description: Menu item updated successfully
+ */
 router.patch('/menu-items/:id', checkPermission('restaurants.crud'), upload.single('image'), adminController.updateMenuItem);
+
+/**
+ * @openapi
+ * /api/v1/admin/menu-items/{id}:
+ *   delete:
+ *     tags:
+ *       - Admin Menu Items
+ *     summary: Delete a menu item permanently
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Menu item deleted successfully
+ */
 router.delete('/menu-items/:id', checkPermission('restaurants.crud'), adminController.deleteMenuItem);
 
 /**
@@ -813,6 +1009,34 @@ router.patch('/transactions/:id/status', checkPermission('payouts.manage'), admi
  *         description: Promo created
  */
 router.get('/promos', checkPermission('promo.manage'), adminController.getAllPromos);
+
+/**
+ * @openapi
+ * /api/v1/admin/promos:
+ *   post:
+ *     tags:
+ *       - Admin Promos
+ *     summary: Create a new promo/coupon code
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [code, discountPercentage, expiryDate]
+ *             properties:
+ *               code:
+ *                 type: string
+ *               discountPercentage:
+ *                 type: number
+ *               expiryDate:
+ *                 type: string
+ *     responses:
+ *       201:
+ *         description: Promo created
+ */
 router.post('/promos', checkPermission('promo.manage'), adminController.createPromo);
 
 /**
@@ -1088,6 +1312,26 @@ router.post('/roles-permissions', checkPermission(), adminController.createRoleP
  *         description: Permissions updated
  */
 router.patch('/roles-permissions/:id', checkPermission(), adminController.updateRolePermissions);
+
+/**
+ * @openapi
+ * /api/v1/admin/roles-permissions/{id}:
+ *   delete:
+ *     tags:
+ *       - Admin Roles
+ *     summary: Delete a role
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Role deleted
+ */
 router.delete('/roles-permissions/:id', checkPermission(), adminController.deleteRolePermissions);
 
 /**
@@ -1136,12 +1380,92 @@ router.get('/system-logs', checkPermission(), adminController.getSystemLogs);
 router.get('/referrals', checkPermission('analytics.view'), adminController.getAllReferrals);
 
 // Reviews
+/**
+ * @openapi
+ * /api/v1/admin/reviews:
+ *   get:
+ *     tags:
+ *       - Admin Reviews
+ *     summary: Get all reviews
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of reviews
+ */
 router.get('/reviews', checkPermission('users.read', 'restaurants.crud'), adminController.getAllReviews);
+
+/**
+ * @openapi
+ * /api/v1/admin/reviews/{id}:
+ *   get:
+ *     tags:
+ *       - Admin Reviews
+ *     summary: Get review by ID
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Review details
+ */
 router.get('/reviews/:id', checkPermission('users.read'), adminController.getReviewById);
+
+/**
+ * @openapi
+ * /api/v1/admin/reviews/{id}:
+ *   delete:
+ *     tags:
+ *       - Admin Reviews
+ *     summary: Delete a review
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Review deleted
+ */
 router.delete('/reviews/:id', checkPermission('users.delete'), adminController.deleteReview);
 
 // Platform Settings
+/**
+ * @openapi
+ * /api/v1/admin/settings:
+ *   get:
+ *     tags:
+ *       - Admin Settings
+ *     summary: Get platform settings
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Settings details
+ */
 router.get('/settings', checkPermission(), adminController.getSettings);
+
+/**
+ * @openapi
+ * /api/v1/admin/settings:
+ *   patch:
+ *     tags:
+ *       - Admin Settings
+ *     summary: Update platform settings
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Settings updated
+ */
 router.patch('/settings', checkPermission(), adminController.updateSettings);
 
 export default router;

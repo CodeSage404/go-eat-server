@@ -5,7 +5,7 @@ import { protect } from '../middleware/auth.middleware';
 const router = express.Router();
 
 /**
- * @swagger
+ * @openapi
  * tags:
  *   name: Cart
  *   description: Cart management API
@@ -13,7 +13,7 @@ const router = express.Router();
 router.use(protect); // All cart routes require authentication
 
 /**
- * @swagger
+ * @openapi
  * /api/v1/cart:
  *   get:
  *     summary: Get user's cart
@@ -29,7 +29,7 @@ router.use(protect); // All cart routes require authentication
 router.get('/', getCart);
 
 /**
- * @swagger
+ * @openapi
  * /api/v1/cart/update:
  *   post:
  *     summary: Update cart items
@@ -65,7 +65,7 @@ router.get('/', getCart);
 router.post('/update', updateCart);
 
 /**
- * @swagger
+ * @openapi
  * /api/v1/cart/clear:
  *   delete:
  *     summary: Clear user's cart

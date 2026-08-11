@@ -280,7 +280,7 @@ class AuthController {
   });
 
   public updateMe = catchAsync(async (req: Request, res: Response) => {
-    const allowedFields = ['name', 'phoneNumber', 'notificationsEnabled'];
+    const allowedFields = ['name', 'phoneNumber', 'notificationsEnabled', 'profileImage'];
     const filteredBody: Record<string, any> = {};
 
     Object.keys(req.body).forEach(key => {

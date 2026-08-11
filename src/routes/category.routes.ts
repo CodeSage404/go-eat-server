@@ -111,6 +111,42 @@ router.post('/', upload.single('image'), categoryController.createCategory);
  *         description: Category updated successfully.
  */
 router.patch('/:id', upload.single('image'), categoryController.updateCategory);
+
+/**
+ * @openapi
+ * /api/v1/categories/{id}:
+ *   put:
+ *     tags:
+ *       - Categories
+ *     summary: Update a category (Admin only)
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: false
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *               image:
+ *                 type: string
+ *                 format: binary
+ *               description:
+ *                 type: string
+ *               isActive:
+ *                 type: boolean
+ *     responses:
+ *       200:
+ *         description: Category updated successfully.
+ */
 router.put('/:id', upload.single('image'), categoryController.updateCategory);
 
 /**
