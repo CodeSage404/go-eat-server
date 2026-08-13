@@ -47,6 +47,7 @@ export interface IOrder extends Document {
   status: OrderStatus;
   estimatedDeliveryTime?: Date;
   deliveryInstructions?: string;
+  cancelReason?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -118,6 +119,10 @@ const orderSchema = new Schema<IOrder>(
       type: Date,
     },
     deliveryInstructions: {
+      type: String,
+      trim: true,
+    },
+    cancelReason: {
       type: String,
       trim: true,
     },

@@ -8,14 +8,14 @@ const cart_controller_1 = require("../controllers/cart.controller");
 const auth_middleware_1 = require("../middleware/auth.middleware");
 const router = express_1.default.Router();
 /**
- * @swagger
+ * @openapi
  * tags:
  *   name: Cart
  *   description: Cart management API
  */
 router.use(auth_middleware_1.protect); // All cart routes require authentication
 /**
- * @swagger
+ * @openapi
  * /api/v1/cart:
  *   get:
  *     summary: Get user's cart
@@ -30,7 +30,7 @@ router.use(auth_middleware_1.protect); // All cart routes require authentication
  */
 router.get('/', cart_controller_1.getCart);
 /**
- * @swagger
+ * @openapi
  * /api/v1/cart/update:
  *   post:
  *     summary: Update cart items
@@ -65,7 +65,7 @@ router.get('/', cart_controller_1.getCart);
  */
 router.post('/update', cart_controller_1.updateCart);
 /**
- * @swagger
+ * @openapi
  * /api/v1/cart/clear:
  *   delete:
  *     summary: Clear user's cart

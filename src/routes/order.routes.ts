@@ -49,7 +49,7 @@ router.post('/', restrictTo(UserRole.CUSTOMER), orderController.placeOrder);
  *   get:
  *     tags:
  *       - Orders
- *     summary: Get logged-in user's orders
+ *     summary: Get logged-in user's orders (Customer, Vendor, or Rider)
  *     security:
  *       - bearerAuth: []
  *     responses:
@@ -106,6 +106,9 @@ router.get('/:id', orderController.getOrderById);
  *               status:
  *                 type: string
  *                 enum: [pending, accepted, preparing, ready, out_for_delivery, delivered, cancelled]
+ *               cancelReason:
+ *                 type: string
+ *                 description: Reason for cancellation if status is cancelled.
  *     responses:
  *       200:
  *         description: Status updated

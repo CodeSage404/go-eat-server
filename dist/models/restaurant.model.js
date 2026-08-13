@@ -89,8 +89,13 @@ const restaurantSchema = new mongoose_1.Schema({
         default: 0,
     },
     openingHours: {
-        open: { type: String, required: true },
-        close: { type: String, required: true },
+        Monday: { isOpen: { type: Boolean, default: true }, open: { type: String, default: '08:00 AM' }, close: { type: String, default: '06:00 PM' } },
+        Tuesday: { isOpen: { type: Boolean, default: true }, open: { type: String, default: '08:00 AM' }, close: { type: String, default: '06:00 PM' } },
+        Wednesday: { isOpen: { type: Boolean, default: true }, open: { type: String, default: '08:00 AM' }, close: { type: String, default: '06:00 PM' } },
+        Thursday: { isOpen: { type: Boolean, default: true }, open: { type: String, default: '08:00 AM' }, close: { type: String, default: '06:00 PM' } },
+        Friday: { isOpen: { type: Boolean, default: true }, open: { type: String, default: '08:00 AM' }, close: { type: String, default: '06:00 PM' } },
+        Saturday: { isOpen: { type: Boolean, default: true }, open: { type: String, default: '08:00 AM' }, close: { type: String, default: '06:00 PM' } },
+        Sunday: { isOpen: { type: Boolean, default: false }, open: { type: String, default: '08:00 AM' }, close: { type: String, default: '06:00 PM' } },
     },
     images: {
         logo: { type: String, default: 'default-logo.png' },

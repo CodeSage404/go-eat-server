@@ -45,6 +45,7 @@ var UserRole;
     UserRole["VENDOR"] = "vendor";
     UserRole["RIDER"] = "rider";
     UserRole["ADMIN"] = "admin";
+    UserRole["STAFF"] = "staff";
 })(UserRole || (exports.UserRole = UserRole = {}));
 var UserStatus;
 (function (UserStatus) {
@@ -91,6 +92,10 @@ const userSchema = new mongoose_1.Schema({
         type: String,
         lowercase: true,
         trim: true,
+    },
+    restaurantId: {
+        type: mongoose_1.Schema.Types.ObjectId,
+        ref: 'Restaurant',
     },
     profileImage: {
         type: String,

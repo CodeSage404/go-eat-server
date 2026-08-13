@@ -264,7 +264,7 @@ class AuthController {
             });
         });
         this.updateMe = (0, catchAsync_1.catchAsync)(async (req, res) => {
-            const allowedFields = ['name', 'phoneNumber', 'notificationsEnabled'];
+            const allowedFields = ['name', 'phoneNumber', 'notificationsEnabled', 'profileImage'];
             const filteredBody = {};
             Object.keys(req.body).forEach(key => {
                 if (allowedFields.includes(key)) {

@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import Promo from '../models/promo.model';
+import Restaurant from '../models/restaurant.model';
 import { catchAsync } from '../utils/catchAsync';
 import AppError from '../utils/appError';
 
@@ -8,9 +9,10 @@ class PromoController {
    * Admin/Vendor: Create a new promotion
    */
   public createPromo = catchAsync(async (req: Request, res: Response) => {
-    // If vendor, bind promo to their restaurant
     if (req.user!.role === 'vendor') {
-      req.body.restaurant = req.user!._id; // Realistically should be the restaurant ID they own, but simplifying for now.
+      const restaurant = await Restaurant.findOne({ owner: req.user!._id });
+      if (!restaurant) throw new AppError('No restaurant found for this vendor', 404);
+      req.body.restaurant = restaurant._id.toString();
     }
 
     const promo = await Promo.create(req.body);
@@ -19,6 +21,49 @@ class PromoController {
       status: 'success',
       data: { promo },
     });
+  });
+
+  /**
+   * Vendor: Get all promos
+   */
+  public getVendorPromos = catchAsync(async (req: any, res: Response) => {
+    const restaurant = await Restaurant.findOne({ owner: req.user._id });
+    if (!restaurant) throw new AppError('No restaurant found for this vendor', 404);
+    
+    const promos = await Promo.find({ restaurant: restaurant._id });
+    res.status(200).json({ status: 'success', results: promos.length, data: { promos } });
+  });
+
+  /**
+   * Vendor: Update promo
+   */
+  public updateVendorPromo = catchAsync(async (req: any, res: Response) => {
+    const { id } = req.params;
+    const restaurant = await Restaurant.findOne({ owner: req.user._id });
+    if (!restaurant) throw new AppError('No restaurant found for this vendor', 404);
+    
+    const promo = await Promo.findOneAndUpdate(
+      { _id: id, restaurant: restaurant._id },
+      req.body,
+      { new: true, runValidators: true }
+    );
+    if (!promo) throw new AppError('Promo not found or not owned by vendor', 404);
+    
+    res.status(200).json({ status: 'success', data: { promo } });
+  });
+
+  /**
+   * Vendor: Delete promo
+   */
+  public deleteVendorPromo = catchAsync(async (req: any, res: Response) => {
+    const { id } = req.params;
+    const restaurant = await Restaurant.findOne({ owner: req.user._id });
+    if (!restaurant) throw new AppError('No restaurant found for this vendor', 404);
+    
+    const promo = await Promo.findOneAndDelete({ _id: id, restaurant: restaurant._id });
+    if (!promo) throw new AppError('Promo not found or not owned by vendor', 404);
+    
+    res.status(204).json({ status: 'success', data: null });
   });
 
   /**

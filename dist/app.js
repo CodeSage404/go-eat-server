@@ -37,6 +37,7 @@ const cookie_routes_1 = __importDefault(require("./routes/cookie.routes"));
 const cart_routes_1 = __importDefault(require("./routes/cart.routes"));
 const onboarding_routes_1 = __importDefault(require("./routes/onboarding.routes"));
 const document_routes_1 = __importDefault(require("./routes/document.routes"));
+const staff_routes_1 = __importDefault(require("./routes/staff.routes"));
 const keepAlive_1 = require("./utils/keepAlive");
 const swagger_ui_express_1 = __importDefault(require("swagger-ui-express"));
 const swagger_1 = require("./config/swagger");
@@ -112,6 +113,7 @@ class App {
         this.app.use('/api/v1/cart', cart_routes_1.default);
         this.app.use('/api/v1/onboarding', onboarding_routes_1.default);
         this.app.use('/api/v1/documents', document_routes_1.default);
+        this.app.use('/api/v1/staff', staff_routes_1.default);
         // Documentation Routes
         this.app.use('/api-docs', swagger_ui_express_1.default.serve, swagger_ui_express_1.default.setup(swagger_1.swaggerSpec));
         this.app.get('/redoc', (req, res) => {

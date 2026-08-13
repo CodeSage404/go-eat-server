@@ -151,8 +151,9 @@ class MenuController {
   });
 
   public updateFoodItem = catchAsync(async (req: any, res: Response) => {
-    const { id } = req.params;
-    // In a real app, we would verify the food item belongs to a restaurant the user owns
+    const { restaurantId, id } = req.params;
+    await this.checkRestaurantOwnership(restaurantId as string, req.user._id, req.user.role);
+
     const foodItem = await menuService.updateFoodItem(id, req.body);
 
     if (!foodItem) {
@@ -166,7 +167,9 @@ class MenuController {
   });
 
   public deleteFoodItem = catchAsync(async (req: any, res: Response) => {
-    const { id } = req.params;
+    const { restaurantId, id } = req.params;
+    await this.checkRestaurantOwnership(restaurantId as string, req.user._id, req.user.role);
+
     await menuService.deleteFoodItem(id as string);
 
     res.status(204).json({

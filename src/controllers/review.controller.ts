@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import Review from '../models/review.model';
 import Order, { OrderStatus } from '../models/order.model';
+import Restaurant from '../models/restaurant.model';
 import { catchAsync } from '../utils/catchAsync';
 import AppError from '../utils/appError';
 
@@ -52,6 +53,47 @@ class ReviewController {
       status: 'success',
       results: reviews.length,
       data: { reviews },
+    });
+  });
+
+  /**
+   * Get all reviews for the logged-in vendor
+   */
+  public getVendorReviews = catchAsync(async (req: any, res: Response) => {
+    const restaurant = await Restaurant.findOne({ owner: req.user._id });
+    if (!restaurant) throw new AppError('No restaurant found for this vendor', 404);
+
+    const reviews = await Review.find({ restaurant: restaurant._id })
+      .populate('user', 'name profileImage')
+      .sort('-createdAt');
+
+    res.status(200).json({
+      status: 'success',
+      results: reviews.length,
+      data: { reviews },
+    });
+  });
+
+  /**
+   * Vendor replies to a review
+   */
+  public replyToReview = catchAsync(async (req: any, res: Response) => {
+    const { id } = req.params;
+    const { reply } = req.body;
+
+    const restaurant = await Restaurant.findOne({ owner: req.user._id });
+    if (!restaurant) throw new AppError('No restaurant found for this vendor', 404);
+
+    const review = await Review.findOne({ _id: id, restaurant: restaurant._id });
+    if (!review) throw new AppError('Review not found or does not belong to your restaurant', 404);
+
+    review.vendorReply = reply;
+    review.vendorReplyDate = new Date();
+    await review.save();
+
+    res.status(200).json({
+      status: 'success',
+      data: { review },
     });
   });
 }

@@ -4,6 +4,7 @@ import orderService from '../services/order.service';
 import { catchAsync } from '../utils/catchAsync';
 import AppError from '../utils/appError';
 import { OrderStatus, PaymentMethod } from '../models/order.model';
+import Restaurant from '../models/restaurant.model';
 import emailService from '../services/email.service';
 
 const orderSchema = z.object({
@@ -102,7 +103,7 @@ class OrderController {
 
   public updateStatus = catchAsync(async (req: any, res: Response) => {
     const { id } = req.params;
-    const { status } = req.body;
+    const { status, cancelReason } = req.body;
 
     if (!Object.values(OrderStatus).includes(status)) {
       throw new AppError('Invalid order status', 400);
@@ -114,6 +115,13 @@ class OrderController {
       req.user._id,
       req.user.role
     );
+
+    if (cancelReason && status === OrderStatus.CANCELLED) {
+      if (order) {
+        order.cancelReason = cancelReason;
+        await order.save();
+      }
+    }
 
     res.status(200).json({
       status: 'success',
@@ -138,9 +146,11 @@ class OrderController {
     if (req.user.role === 'customer') {
       orders = await orderService.getCustomerOrders(req.user._id);
     } else if (req.user.role === 'vendor') {
-      // Need restaurant ID for vendor
-      // For now, get all orders for restaurants owned by this vendor
-      throw new AppError('Use specialized vendor endpoints for orders', 400);
+      const restaurant = await Restaurant.findOne({ owner: req.user._id });
+      if (!restaurant) {
+        throw new AppError('No restaurant found for this vendor', 404);
+      }
+      orders = await orderService.getRestaurantOrders(restaurant._id.toString());
     } else if (req.user.role === 'rider') {
       orders = await orderService.getRiderOrders(req.user._id);
     }

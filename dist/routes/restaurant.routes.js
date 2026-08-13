@@ -46,6 +46,18 @@ const router = (0, express_1.Router)();
 router.get('/', restaurant_controller_1.default.getAllRestaurants);
 /**
  * @openapi
+ * /api/v1/restaurants/migrate-promos:
+ *   post:
+ *     tags:
+ *       - Restaurants
+ *     summary: Migrate and ensure promo fields on all existing restaurants
+ *     responses:
+ *       200:
+ *         description: Successfully migrated promo fields across all restaurants
+ */
+router.post('/migrate-promos', restaurant_controller_1.default.migratePromoFields);
+/**
+ * @openapi
  * /api/v1/restaurants/{id}:
  *   get:
  *     tags:
@@ -61,10 +73,50 @@ router.get('/', restaurant_controller_1.default.getAllRestaurants);
  *       200:
  *         description: Restaurant details
  */
-router.post('/migrate-promos', restaurant_controller_1.default.migratePromoFields);
 router.get('/:id', restaurant_controller_1.default.getRestaurantById);
 // Protected routes
 router.use(auth_middleware_1.protect);
+/**
+ * @openapi
+ * /api/v1/restaurants/my-restaurant:
+ *   get:
+ *     tags:
+ *       - Restaurants
+ *     summary: Get logged in vendor's restaurant
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Restaurant details
+ *       404:
+ *         description: No restaurant found
+ */
+router.get('/my-restaurant', (0, auth_middleware_1.restrictTo)(user_model_1.UserRole.VENDOR), restaurant_controller_1.default.getMyRestaurant);
+/**
+ * @openapi
+ * /api/v1/restaurants/my-restaurant:
+ *   patch:
+ *     tags:
+ *       - Restaurants
+ *     summary: Update logged in vendor's restaurant
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: false
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             description: Vendor updatable fields
+ *     responses:
+ *       200:
+ *         description: Restaurant updated
+ *       400:
+ *         description: Validation error
+ *       404:
+ *         description: No restaurant found
+ */
+router.patch('/my-restaurant', (0, auth_middleware_1.restrictTo)(user_model_1.UserRole.VENDOR), restaurant_controller_1.default.updateMyRestaurant);
 /**
  * @openapi
  * /api/v1/restaurants:

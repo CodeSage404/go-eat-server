@@ -6,6 +6,8 @@ export interface IReview extends Document {
   order: mongoose.Types.ObjectId;
   rating: number;
   comment?: string;
+  vendorReply?: string;
+  vendorReplyDate?: Date;
   createdAt: Date;
 }
 
@@ -36,6 +38,13 @@ const reviewSchema = new Schema<IReview>(
     comment: {
       type: String,
       trim: true,
+    },
+    vendorReply: {
+      type: String,
+      trim: true,
+    },
+    vendorReplyDate: {
+      type: Date,
     },
   },
   {

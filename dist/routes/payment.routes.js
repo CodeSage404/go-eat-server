@@ -20,7 +20,23 @@ const router = (0, express_1.Router)();
  *     summary: Default / Legacy Paystack Webhook Handler
  */
 router.post('/webhook', payment_controller_1.default.handlePaystackWebhook);
+/**
+ * @openapi
+ * /api/v1/payments/webhook/paystack:
+ *   post:
+ *     tags:
+ *       - Payments
+ *     summary: Paystack Webhook Handler
+ */
 router.post('/webhook/paystack', payment_controller_1.default.handlePaystackWebhook);
+/**
+ * @openapi
+ * /api/v1/payments/webhook/flutterwave:
+ *   post:
+ *     tags:
+ *       - Payments
+ *     summary: Flutterwave Webhook Handler
+ */
 router.post('/webhook/flutterwave', payment_controller_1.default.handleFlutterwaveWebhook);
 /**
  * @openapi
