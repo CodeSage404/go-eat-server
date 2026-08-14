@@ -49,11 +49,11 @@ export const startWhatsAppVerification = async (to: string): Promise<string> => 
       const verification = await client.verify.v2
         .services(serviceSid)
         .verifications.create({
-          channel: 'whatsapp',
+          channel: 'sms',
           to: formattedTo,
         });
 
-      logger.info(`📱 WhatsApp verification initiated via Twilio. Sid: ${verification.sid} to ${formattedTo}`);
+      logger.info(`📱 SMS verification initiated via Twilio. Sid: ${verification.sid} to ${formattedTo}`);
       return otp;
     } catch (error: any) {
       logger.warn(`⚠️ Twilio WhatsApp API dispatch error for ${formattedTo}: ${error.message}. Saved dynamic OTP in Redis.`);
@@ -91,10 +91,10 @@ export const checkWhatsAppVerification = async (to: string, code: string): Promi
 
       const isApproved = check.status === 'approved';
       if (isApproved) {
-        logger.info(`✅ WhatsApp verification successful via Twilio for ${formattedTo}`);
+        logger.info(`✅ SMS verification successful via Twilio for ${formattedTo}`);
         return true;
       } else {
-        logger.warn(`⚠️ WhatsApp verification failed via Twilio for ${formattedTo}. Status: ${check.status}`);
+        logger.warn(`⚠️ SMS verification failed via Twilio for ${formattedTo}. Status: ${check.status}`);
       }
     } catch (error: any) {
       logger.error(`❌ Error checking Twilio verification for ${formattedTo}:`, error.message || error);
