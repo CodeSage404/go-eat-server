@@ -55,6 +55,7 @@ export interface IUser extends Document {
   isItaly: boolean;
   isUk: boolean;
   adminRegion?: string;
+  hasChangedPassword?: boolean;
   createdAt: Date;
   updatedAt: Date;
   comparePassword(password: string): Promise<boolean>;
@@ -208,6 +209,10 @@ const userSchema = new Schema<IUser>(
       type: String,
       enum: ['ALL', 'Nigeria', 'Italy', 'UK'],
       default: 'ALL',
+    },
+    hasChangedPassword: {
+      type: Boolean,
+      default: false,
     },
   },
   {

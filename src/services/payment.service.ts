@@ -207,7 +207,11 @@ export class PaymentService {
 
       // Send notifications
       try {
-        await notificationService.notifyNewOrder(order.restaurant.toString(), order._id.toString());
+        const Restaurant = require('../models/restaurant.model').default;
+        const restaurant = await Restaurant.findById(order.restaurant);
+        if (restaurant) {
+          await notificationService.notifyNewOrder(restaurant.owner.toString(), order._id.toString());
+        }
         await notificationService.notifyOrderStatusUpdate(
           order.customer.toString(),
           order._id.toString(),

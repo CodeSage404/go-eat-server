@@ -351,6 +351,7 @@ class AuthController {
     }
 
     user.password = newPassword;
+    user.hasChangedPassword = true;
     await user.save();
 
     const token = authService.signToken(user._id as unknown as string);

@@ -95,6 +95,24 @@ class OrderController {
       ).catch(err => console.error('Failed to send order email:', err));
     }
 
+    const restaurant = await Restaurant.findById(order.restaurant).populate<{ owner: { email: string; name: string } }>('owner');
+    const vendorEmail = restaurant?.businessEmail || restaurant?.owner?.email;
+
+    if (vendorEmail) {
+      emailService.sendTemplateEmail(
+        vendorEmail,
+        'ORDER_CONFIRMED',
+        `New Order Received: #${order._id.toString().slice(-6).toUpperCase()}`,
+        {
+          orderId: order._id,
+          customerName: restaurant?.name || 'Vendor',
+          total: order.totalAmount,
+          items: order.items,
+        },
+        'partners'
+      ).catch(err => console.error('Failed to send vendor order email:', err));
+    }
+
     res.status(201).json({
       status: 'success',
       data: { order },
