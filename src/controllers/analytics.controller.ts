@@ -21,13 +21,14 @@ class AnalyticsController {
     }
 
     const restaurantId = restaurant._id;
+    const activeStatuses = ['pending', 'accepted', 'preparing', 'ready', 'delivered'];
 
     // Aggregate total revenue and order count
     const stats = await Order.aggregate([
       {
         $match: {
           restaurant: new mongoose.Types.ObjectId(restaurantId as unknown as string),
-          status: 'delivered', // Only count completed orders
+          status: { $in: activeStatuses }, // Count all active and completed orders
         },
       },
       {
@@ -45,7 +46,7 @@ class AnalyticsController {
       {
         $match: {
           restaurant: new mongoose.Types.ObjectId(restaurantId as unknown as string),
-          status: 'delivered',
+          status: { $in: activeStatuses },
         },
       },
       { $unwind: '$items' },
