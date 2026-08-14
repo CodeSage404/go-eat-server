@@ -362,6 +362,68 @@ class AuthController {
     });
   });
 
+  public forgotPassword = catchAsync(async (req: Request, res: Response) => {
+    const { email, phoneNumber } = req.body;
+    const identifier = email || phoneNumber;
+
+    if (!identifier) {
+      throw new AppError('Please provide email or phone number', 400);
+    }
+
+    const query = email ? { email: email.toLowerCase() } : { phoneNumber };
+    const user = await User.findOne(query);
+
+    if (!user) {
+      throw new AppError('No user found with that email or phone number', 404);
+    }
+
+    if (phoneNumber) {
+      await this.initiateVerification(phoneNumber, 'phone');
+    } else if (email) {
+      await this.initiateVerification(email.toLowerCase(), 'email');
+    }
+
+    res.status(200).json({
+      status: 'success',
+      message: 'OTP sent successfully. Please check your messages.',
+    });
+  });
+
+  public resetPassword = catchAsync(async (req: Request, res: Response) => {
+    const { email, phoneNumber, otp, newPassword } = req.body;
+    const identifier = email || phoneNumber;
+
+    if (!identifier || !otp || !newPassword) {
+      throw new AppError('Please provide identifier, otp, and newPassword', 400);
+    }
+
+    let isValid = false;
+    if (phoneNumber) {
+      isValid = await checkWhatsAppVerification(phoneNumber, otp);
+    } else if (email) {
+      isValid = await otpUtil.verifyOTP(email.toLowerCase(), otp);
+    }
+
+    if (!isValid) {
+      throw new AppError('Invalid or expired OTP code', 400);
+    }
+
+    const query = email ? { email: email.toLowerCase() } : { phoneNumber };
+    const user = await User.findOne(query).select('+password');
+
+    if (!user) {
+      throw new AppError('User not found', 404);
+    }
+
+    user.password = newPassword;
+    await user.save();
+
+    res.status(200).json({
+      status: 'success',
+      message: 'Password reset successful. You can now log in.',
+    });
+  });
+
   public updateUserLocation = catchAsync(async (req: Request, res: Response) => {
     const { address, coordinates, country, countryCode, isNigeria, isItaly, isUk } = req.body;
     const currentUser = (req as any).user;

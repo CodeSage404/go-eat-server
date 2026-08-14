@@ -213,6 +213,65 @@ router.post('/login', authController.login);
 
 /**
  * @openapi
+ * /api/v1/auth/forgot-password:
+ *   post:
+ *     tags:
+ *       - Auth
+ *     summary: Request Password Reset OTP
+ *     description: Sends an OTP to the user's email or phone number for password reset.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               email:
+ *                 type: string
+ *               phoneNumber:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: OTP sent successfully
+ *       404:
+ *         description: User not found
+ */
+router.post('/forgot-password', authController.forgotPassword);
+
+/**
+ * @openapi
+ * /api/v1/auth/reset-password:
+ *   post:
+ *     tags:
+ *       - Auth
+ *     summary: Reset Password using OTP
+ *     description: Resets the user's password using the OTP sent to their email or phone.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [otp, newPassword]
+ *             properties:
+ *               email:
+ *                 type: string
+ *               phoneNumber:
+ *                 type: string
+ *               otp:
+ *                 type: string
+ *               newPassword:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Password reset successful
+ *       400:
+ *         description: Invalid OTP or missing fields
+ */
+router.post('/reset-password', authController.resetPassword);
+
+/**
+ * @openapi
  * /api/v1/auth/google:
  *   post:
  *     tags:
