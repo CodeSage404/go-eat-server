@@ -55,28 +55,7 @@ router.get('/', restaurantController.getAllRestaurants);
  */
 router.post('/migrate-promos', restaurantController.migratePromoFields);
 
-/**
- * @openapi
- * /api/v1/restaurants/{id}:
- *   get:
- *     tags:
- *       - Restaurants
- *     summary: Get restaurant by ID
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *     responses:
- *       200:
- *         description: Restaurant details
- */
-router.get('/:id', restaurantController.getRestaurantById);
-
-// Protected routes
-router.use(protect);
-
+// Protected Vendor Routes that must come before /:id to prevent routing conflicts
 /**
  * @openapi
  * /api/v1/restaurants/my-restaurant:
@@ -94,6 +73,7 @@ router.use(protect);
  */
 router.get(
   '/my-restaurant',
+  protect,
   restrictTo(UserRole.VENDOR),
   restaurantController.getMyRestaurant
 );
@@ -124,9 +104,34 @@ router.get(
  */
 router.patch(
   '/my-restaurant',
+  protect,
   restrictTo(UserRole.VENDOR),
   restaurantController.updateMyRestaurant
 );
+
+/**
+ * @openapi
+ * /api/v1/restaurants/{id}:
+ *   get:
+ *     tags:
+ *       - Restaurants
+ *     summary: Get restaurant by ID
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Restaurant details
+ *       404:
+ *         description: Restaurant not found
+ */
+router.get('/:id', restaurantController.getRestaurantById);
+
+// Protected routes (for remaining endpoints)
+router.use(protect);
 
 /**
  * @openapi
