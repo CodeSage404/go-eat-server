@@ -24,12 +24,12 @@ const foodItemSchema = z.object({
 });
 
 class MenuController {
-  private async checkRestaurantOwnership(restaurantId: string, userId: string, userRole: string) {
+  private async checkRestaurantOwnership(restaurantId: string, userId: any, userRole: string) {
     const restaurant = await restaurantService.getRestaurantById(restaurantId);
     if (!restaurant) {
       throw new AppError('Restaurant not found', 404);
     }
-    if (restaurant.owner._id.toString() !== userId && userRole !== 'admin') {
+    if (restaurant.owner._id.toString() !== userId.toString() && userRole !== 'admin') {
       throw new AppError('You do not have permission to manage this menu', 403);
     }
   }
