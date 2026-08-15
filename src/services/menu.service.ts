@@ -30,17 +30,45 @@ class MenuService {
   }
 
   async getFullMenu(restaurantId: string): Promise<any[]> {
-    const categories = await this.getCategoriesByRestaurant(restaurantId);
-    const menu = await Promise.all(
-      categories.map(async (category) => {
-        const items = await FoodItem.find({ category: category._id, restaurant: restaurantId });
-        return {
-          ...category.toObject(),
-          items,
-        };
-      })
-    );
-    return menu;
+    // Get custom categories owned by the restaurant
+    const customCategories = await this.getCategoriesByRestaurant(restaurantId);
+    
+    // Get all food items for this restaurant, populated with their category
+    const allFoodItems = await FoodItem.find({ restaurant: restaurantId }).populate('category');
+
+    const categoryMap = new Map<string, any>();
+
+    // Initialize map with custom categories (so even empty ones show up)
+    for (const cat of customCategories) {
+      categoryMap.set(cat._id.toString(), {
+        ...cat.toObject(),
+        items: []
+      });
+    }
+
+    // Assign food items to their categories
+    for (const item of allFoodItems) {
+      const cat: any = item.category;
+      if (!cat) continue;
+      
+      const catId = cat._id.toString();
+      if (categoryMap.has(catId)) {
+        categoryMap.get(catId).items.push(item.toObject());
+      } else {
+        // Global category (not owned by the restaurant)
+        categoryMap.set(catId, {
+          ...(cat.toObject ? cat.toObject() : cat),
+          items: [item.toObject()]
+        });
+      }
+    }
+
+    // Sort categories: Custom categories first (by order), then global categories
+    return Array.from(categoryMap.values()).sort((a, b) => {
+      const orderA = a.order ?? 999;
+      const orderB = b.order ?? 999;
+      return orderA - orderB;
+    });
   }
 
   async updateFoodItem(id: string, data: Partial<IFoodItem>): Promise<IFoodItem | null> {
