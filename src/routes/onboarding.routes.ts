@@ -70,6 +70,15 @@ router.use(protect);
  *     summary: Vendor Onboarding Step 1 - Select Outlet
  *     security:
  *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               outletId:
+ *                 type: string
  *     responses:
  *       200:
  *         description: Step 1 completed
@@ -85,6 +94,17 @@ router.post('/vendor/step-1-outlet', restrictTo(UserRole.VENDOR, UserRole.ADMIN)
  *     summary: Vendor Onboarding Step 2 - Business Details
  *     security:
  *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               businessName:
+ *                 type: string
+ *               businessAddress:
+ *                 type: string
  *     responses:
  *       200:
  *         description: Step 2 completed
@@ -100,6 +120,17 @@ router.post('/vendor/step-2-details', restrictTo(UserRole.VENDOR, UserRole.ADMIN
  *     summary: Vendor Onboarding Step 3 - Identity Verification
  *     security:
  *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               identityType:
+ *                 type: string
+ *               identityDocument:
+ *                 type: string
  *     responses:
  *       200:
  *         description: Step 3 completed
@@ -115,6 +146,15 @@ router.post('/vendor/step-3-identity', restrictTo(UserRole.VENDOR, UserRole.ADMI
  *     summary: Vendor Onboarding Step 4 - Compliance
  *     security:
  *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               agreedToTerms:
+ *                 type: boolean
  *     responses:
  *       200:
  *         description: Step 4 completed
@@ -131,6 +171,17 @@ router.post('/vendor/step-4-compliance', restrictTo(UserRole.VENDOR, UserRole.AD
  *     summary: Rider Onboarding Registration
  *     security:
  *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               vehicleType:
+ *                 type: string
+ *               licenseNumber:
+ *                 type: string
  *     responses:
  *       200:
  *         description: Rider onboarding registration completed

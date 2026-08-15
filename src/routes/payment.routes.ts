@@ -16,6 +16,15 @@ const router = Router();
  *     tags:
  *       - Payments
  *     summary: Default / Legacy Paystack Webhook Handler
+ *     requestBody:
+ *       required: false
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *     responses:
+ *       200:
+ *         description: Webhook received successfully
  */
 router.post('/webhook', paymentController.handlePaystackWebhook);
 
@@ -26,6 +35,15 @@ router.post('/webhook', paymentController.handlePaystackWebhook);
  *     tags:
  *       - Payments
  *     summary: Paystack Webhook Handler
+ *     requestBody:
+ *       required: false
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *     responses:
+ *       200:
+ *         description: Webhook received successfully
  */
 router.post('/webhook/paystack', paymentController.handlePaystackWebhook);
 
@@ -36,6 +54,15 @@ router.post('/webhook/paystack', paymentController.handlePaystackWebhook);
  *     tags:
  *       - Payments
  *     summary: Flutterwave Webhook Handler
+ *     requestBody:
+ *       required: false
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *     responses:
+ *       200:
+ *         description: Webhook received successfully
  */
 router.post('/webhook/flutterwave', paymentController.handleFlutterwaveWebhook);
 
@@ -46,6 +73,15 @@ router.post('/webhook/flutterwave', paymentController.handleFlutterwaveWebhook);
  *     tags:
  *       - Payments
  *     summary: Verify transaction status by reference
+ *     parameters:
+ *       - in: path
+ *         name: reference
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Payment verification status
  */
 router.get('/verify/:reference', paymentController.verifyPayment);
 
@@ -61,6 +97,24 @@ router.use(protect);
  *     tags:
  *       - Payments
  *     summary: Initialize a new payment (Paystack or Flutterwave)
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [orderId, paymentMethod]
+ *             properties:
+ *               orderId:
+ *                 type: string
+ *               paymentMethod:
+ *                 type: string
+ *                 enum: [paystack, flutterwave]
+ *     responses:
+ *       200:
+ *         description: Payment initialized, returns payment URL or details
  */
 router.post('/initialize', paymentController.initializePayment);
 
@@ -152,6 +206,23 @@ router.patch('/:id', restrictTo(UserRole.VENDOR, UserRole.ADMIN), paymentControl
  *     tags:
  *       - Payments
  *     summary: Payout / transfer money to a delivery rider
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [riderId, amount]
+ *             properties:
+ *               riderId:
+ *                 type: string
+ *               amount:
+ *                 type: number
+ *     responses:
+ *       200:
+ *         description: Payout successful
  */
 router.post('/payout/rider', restrictTo(UserRole.ADMIN), paymentController.payoutRider);
 
@@ -162,6 +233,23 @@ router.post('/payout/rider', restrictTo(UserRole.ADMIN), paymentController.payou
  *     tags:
  *       - Payments
  *     summary: Payout / transfer money to a restaurant vendor
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [restaurantId, amount]
+ *             properties:
+ *               restaurantId:
+ *                 type: string
+ *               amount:
+ *                 type: number
+ *     responses:
+ *       200:
+ *         description: Payout successful
  */
 router.post('/payout/restaurant', restrictTo(UserRole.ADMIN), paymentController.payoutRestaurant);
 

@@ -1462,6 +1462,12 @@ router.get('/settings', checkPermission(), adminController.getSettings);
  *     summary: Update platform settings
  *     security:
  *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
  *     responses:
  *       200:
  *         description: Settings updated
