@@ -65,6 +65,83 @@ router.use(protect);
 router.post('/initialize', paymentController.initializePayment);
 
 // ============================================
+// VENDOR ROUTES
+// ============================================
+
+/**
+ * @openapi
+ * /api/v1/payments/vendor:
+ *   get:
+ *     tags:
+ *       - Payments
+ *     summary: Fetch all payments (orders) for a vendor's restaurant
+ *     description: Retrieve all payment records associated with the authenticated vendor's restaurant ID.
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Successfully fetched vendor payments.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: success
+ *                 results:
+ *                   type: integer
+ *                   example: 10
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *       401:
+ *         description: Unauthorized.
+ *       403:
+ *         description: User does not belong to any restaurant.
+ */
+router.get('/vendor', restrictTo(UserRole.VENDOR), paymentController.getVendorPayments);
+
+/**
+ * @openapi
+ * /api/v1/payments/{id}:
+ *   patch:
+ *     tags:
+ *       - Payments
+ *     summary: Update payment details manually
+ *     description: Update the status or reference of a specific payment/order.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         description: The order/payment ID
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               status:
+ *                 type: string
+ *                 example: completed
+ *               reference:
+ *                 type: string
+ *                 example: PAY-REF-12345
+ *     responses:
+ *       200:
+ *         description: Payment updated successfully.
+ *       404:
+ *         description: Payment/Order not found.
+ */
+router.patch('/:id', restrictTo(UserRole.VENDOR, UserRole.ADMIN), paymentController.updatePaymentDetails);
+
+// ============================================
 // PROTECTED ADMIN / SYSTEM PAYOUT ROUTES
 // ============================================
 

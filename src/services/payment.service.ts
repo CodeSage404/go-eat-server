@@ -201,7 +201,7 @@ export class PaymentService {
     }
 
     if (order.status === OrderStatus.PENDING) {
-      order.status = OrderStatus.ACCEPTED;
+      order.paymentStatus = 'completed';
       order.paymentResult = paymentResult;
       await order.save();
 

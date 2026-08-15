@@ -280,7 +280,7 @@ class AdminController {
 
     // Sign JWT token
     const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET as string, {
-      expiresIn: (process.env.JWT_EXPIRES_IN as any) || '90d',
+      expiresIn: (process.env.JWT_EXPIRES_IN as any) || '365d',
     });
 
     user.password = undefined;
@@ -679,7 +679,7 @@ class AdminController {
    */
   public refreshAdminToken = catchAsync(async (req: any, res: Response) => {
     const token = jwt.sign({ id: req.user._id }, process.env.JWT_SECRET as string, {
-      expiresIn: (process.env.JWT_EXPIRES_IN as any) || '90d',
+      expiresIn: (process.env.JWT_EXPIRES_IN as any) || '365d',
     });
 
     res.status(200).json({

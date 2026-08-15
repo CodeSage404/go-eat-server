@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import paymentService, { PaymentProvider } from '../services/payment.service';
 import { catchAsync } from '../utils/catchAsync';
 import AppError from '../utils/appError';
+import Order from '../models/order.model';
 
 class PaymentController {
   /**
@@ -123,6 +124,57 @@ class PaymentController {
       status: 'success',
       message: 'Restaurant payout completed successfully',
       data: payoutResult,
+    });
+  });
+
+  /**
+   * Fetch payments for a vendor's restaurant
+   */
+  public getVendorPayments = catchAsync(async (req: Request, res: Response) => {
+    const restaurantId = req.user?.restaurantId;
+    if (!restaurantId) {
+      throw new AppError('User does not belong to any restaurant', 403);
+    }
+
+    const orders = await Order.find({ restaurant: restaurantId })
+      .sort({ createdAt: -1 })
+      .select('_id totalAmount paymentStatus paymentResult createdAt paymentMethod');
+
+    res.status(200).json({
+      status: 'success',
+      results: orders.length,
+      data: orders,
+    });
+  });
+
+  /**
+   * Update payment details manually (e.g. status or reference)
+   */
+  public updatePaymentDetails = catchAsync(async (req: Request, res: Response) => {
+    const { id } = req.params;
+    const { status, reference } = req.body;
+
+    const order = await Order.findById(id);
+    if (!order) {
+      throw new AppError('Payment/Order not found', 404);
+    }
+
+    if (status) {
+      order.paymentStatus = status;
+    }
+    if (reference) {
+      if (!order.paymentResult) {
+        order.paymentResult = { id: reference, status: order.paymentStatus, update_time: new Date().toISOString(), email_address: '' };
+      } else {
+        order.paymentResult.id = reference;
+      }
+    }
+
+    await order.save();
+
+    res.status(200).json({
+      status: 'success',
+      data: order,
     });
   });
 }

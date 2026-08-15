@@ -10,7 +10,7 @@ const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 class AuthService {
   public signToken(id: string): string {
     const options: SignOptions = {
-      expiresIn: (process.env.JWT_EXPIRES_IN as any) || '90d',
+      expiresIn: (process.env.JWT_EXPIRES_IN as any) || '365d',
     };
 
     return jwt.sign({ id }, process.env.JWT_SECRET!, options);
