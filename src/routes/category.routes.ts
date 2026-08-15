@@ -41,9 +41,8 @@ router.get('/', categoryController.getAllCategories);
  */
 router.get('/:id', categoryController.getCategoryById);
 
-// Protected Admin Routes
+// Protected Routes
 router.use(protect);
-router.use(restrictTo(UserRole.ADMIN));
 
 /**
  * @openapi
@@ -51,7 +50,7 @@ router.use(restrictTo(UserRole.ADMIN));
  *   post:
  *     tags:
  *       - Categories
- *     summary: Create a new category (Admin only)
+ *     summary: Create a new category (Admin/Vendor)
  *     security:
  *       - bearerAuth: []
  *     requestBody:
@@ -73,7 +72,7 @@ router.use(restrictTo(UserRole.ADMIN));
  *       201:
  *         description: Category created successfully.
  */
-router.post('/', upload.single('image'), categoryController.createCategory);
+router.post('/', restrictTo(UserRole.ADMIN, UserRole.VENDOR), upload.single('image'), categoryController.createCategory);
 
 /**
  * @openapi
@@ -110,7 +109,7 @@ router.post('/', upload.single('image'), categoryController.createCategory);
  *       200:
  *         description: Category updated successfully.
  */
-router.patch('/:id', upload.single('image'), categoryController.updateCategory);
+router.patch('/:id', restrictTo(UserRole.ADMIN), upload.single('image'), categoryController.updateCategory);
 
 /**
  * @openapi
@@ -147,7 +146,7 @@ router.patch('/:id', upload.single('image'), categoryController.updateCategory);
  *       200:
  *         description: Category updated successfully.
  */
-router.put('/:id', upload.single('image'), categoryController.updateCategory);
+router.put('/:id', restrictTo(UserRole.ADMIN), upload.single('image'), categoryController.updateCategory);
 
 /**
  * @openapi
@@ -168,6 +167,6 @@ router.put('/:id', upload.single('image'), categoryController.updateCategory);
  *       204:
  *         description: Category deleted successfully.
  */
-router.delete('/:id', categoryController.deleteCategory);
+router.delete('/:id', restrictTo(UserRole.ADMIN), categoryController.deleteCategory);
 
 export default router;
