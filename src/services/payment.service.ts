@@ -205,6 +205,42 @@ export class PaymentService {
       order.paymentResult = paymentResult;
       await order.save();
 
+      // --- NEW LOGIC: Calculate Splits and Payout Vendor automatically ---
+      try {
+        const Restaurant = require('../models/restaurant.model').default;
+        const Setting = require('../models/setting.model').default;
+        const Wallet = require('../models/wallet.model').default;
+
+        const restaurant = await Restaurant.findById(order.restaurant);
+        const setting = await Setting.findOne();
+        const commissionRate = setting?.commissionRate || 10;
+        
+        // Split logic
+        const subtotal = order.totalAmount - (order.deliveryFee || 0);
+        const adminCut = (subtotal * commissionRate) / 100;
+        const vendorCut = subtotal - adminCut;
+        
+        if (restaurant && vendorCut > 0) {
+          // 1. Credit Vendor Wallet internally
+          let vendorWallet = await Wallet.findOne({ user: restaurant.owner });
+          if (!vendorWallet) {
+            vendorWallet = await Wallet.create({ user: restaurant.owner, balance: 0 });
+          }
+          vendorWallet.balance += vendorCut;
+          await vendorWallet.save();
+
+          // 2. Automatically transfer to Vendor Bank
+          try {
+            await this.payoutRestaurant(restaurant.owner.toString(), vendorCut, provider);
+          } catch (payoutErr: any) {
+            logger.warn(`Automatic vendor payout delayed for order ${order._id}: ${payoutErr.message}`);
+          }
+        }
+      } catch (splitErr: any) {
+        logger.error(`Error processing vendor split for order ${order._id}:`, splitErr.message);
+      }
+      // --- END NEW LOGIC ---
+
       // Send notifications
       try {
         const Restaurant = require('../models/restaurant.model').default;

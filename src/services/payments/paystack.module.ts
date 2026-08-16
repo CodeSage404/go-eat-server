@@ -210,6 +210,20 @@ export class PaystackModule {
         error.response?.status || 500
       );
     }
+  /**
+   * Get List of Banks from Paystack
+   */
+  async getBanks(country: string = 'nigeria'): Promise<any[]> {
+    try {
+      const response = await axios.get(
+        `${this.baseUrl}/bank?country=${country}`,
+        { headers: this.getHeaders() }
+      );
+      return response.data.data;
+    } catch (error: any) {
+      logger.error('Paystack getBanks error:', error.response?.data || error.message);
+      return []; // Return empty array instead of crashing, for resilience
+    }
   }
 }
 

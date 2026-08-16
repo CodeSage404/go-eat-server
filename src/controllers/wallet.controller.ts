@@ -3,6 +3,7 @@ import Wallet from '../models/wallet.model';
 import Transaction, { TransactionType, TransactionStatus } from '../models/transaction.model';
 import { catchAsync } from '../utils/catchAsync';
 import AppError from '../utils/appError';
+import paystackModule from '../services/payments/paystack.module';
 
 class WalletController {
   /**
@@ -64,6 +65,51 @@ class WalletController {
         wallet,
         transaction,
       },
+    });
+  });
+
+  /**
+   * Update Bank Details
+   * @openapi
+   * ... we will add swagger later or just skip it since we already did openapi
+   */
+  public updateBankDetails = catchAsync(async (req: Request, res: Response) => {
+    const { accountNumber, bankCode, accountName } = req.body;
+
+    if (!accountNumber || !bankCode || !accountName) {
+      throw new AppError('accountNumber, bankCode, and accountName are required', 400);
+    }
+
+    let wallet = await Wallet.findOne({ user: req.user!._id });
+    if (!wallet) {
+      wallet = await Wallet.create({ user: req.user!._id });
+    }
+
+    wallet.bankAccount = {
+      accountNumber,
+      bankCode,
+      accountName,
+      recipientCode: undefined // reset recipient code so it gets regenerated on next payout
+    };
+
+    await wallet.save();
+
+    res.status(200).json({
+      status: 'success',
+      message: 'Bank details updated successfully',
+      data: wallet,
+    });
+  });
+
+  /**
+   * Get List of Supported Banks
+   */
+  public getBanks = catchAsync(async (req: Request, res: Response) => {
+    const banks = await paystackModule.getBanks();
+    res.status(200).json({
+      status: 'success',
+      results: banks.length,
+      data: banks,
     });
   });
 }
