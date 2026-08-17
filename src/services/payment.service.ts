@@ -124,6 +124,19 @@ export class PaymentService {
       };
     } else {
       // Default: Paystack
+      const Restaurant = require('../models/restaurant.model').default;
+      const restaurantObj = await Restaurant.findById(order.restaurant);
+      const subaccount = restaurantObj?.paystackSubaccountCode;
+      
+      let transactionCharge: number | undefined;
+      if (subaccount) {
+        const commissionRate = setting?.commissionRate || 10;
+        const subtotal = order.totalAmount - (order.deliveryFee || 0);
+        const adminCut = (subtotal * commissionRate) / 100;
+        // Platform retains adminCut + deliveryFee + serviceFee(if any)
+        transactionCharge = adminCut + (order.deliveryFee || 0);
+      }
+
       const result = await paystackModule.initializePayment({
         email: safeEmail,
         amount,
@@ -133,6 +146,8 @@ export class PaymentService {
           orderId: order._id.toString(),
           customerId: user._id.toString(),
         },
+        subaccount,
+        transactionCharge,
       });
 
       return {
@@ -221,19 +236,28 @@ export class PaymentService {
         const vendorCut = subtotal - adminCut;
         
         if (restaurant && vendorCut > 0) {
-          // 1. Credit Vendor Wallet internally
+          // 1. Credit Vendor Wallet internally to reflect their earnings
           let vendorWallet = await Wallet.findOne({ user: restaurant.owner });
           if (!vendorWallet) {
             vendorWallet = await Wallet.create({ user: restaurant.owner, balance: 0 });
           }
-          vendorWallet.balance += vendorCut;
-          await vendorWallet.save();
+          
+          if (restaurant.paystackSubaccountCode && provider === 'paystack') {
+            // Paystack Subaccount automatically settles the vendor! 
+            // We just log it as a successful internal transaction for their records, 
+            // but we don't add to the withdrawable wallet balance (since it's already in their bank).
+            logger.info(`Vendor ${restaurant.owner} automatically paid via Paystack Subaccount.`);
+          } else {
+            // Add to balance for manual payout or other providers
+            vendorWallet.balance += vendorCut;
+            await vendorWallet.save();
 
-          // 2. Automatically transfer to Vendor Bank
-          try {
-            await this.payoutRestaurant(restaurant.owner.toString(), vendorCut, provider);
-          } catch (payoutErr: any) {
-            logger.warn(`Automatic vendor payout delayed for order ${order._id}: ${payoutErr.message}`);
+            // 2. Automatically transfer to Vendor Bank (Fallback for non-subaccount or flutterwave)
+            try {
+              await this.payoutRestaurant(restaurant.owner.toString(), vendorCut, provider);
+            } catch (payoutErr: any) {
+              logger.warn(`Automatic vendor payout delayed for order ${order._id}: ${payoutErr.message}`);
+            }
           }
         }
       } catch (splitErr: any) {

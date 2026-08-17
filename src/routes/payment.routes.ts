@@ -159,6 +159,52 @@ router.get('/vendor', restrictTo(UserRole.VENDOR), paymentController.getVendorPa
 
 /**
  * @openapi
+ * /api/v1/payments/banks:
+ *   get:
+ *     tags:
+ *       - Payments
+ *     summary: Fetch all supported Paystack banks
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Successfully fetched banks
+ */
+router.get('/banks', restrictTo(UserRole.VENDOR), paymentController.getBanks);
+
+/**
+ * @openapi
+ * /api/v1/payments/subaccount:
+ *   post:
+ *     tags:
+ *       - Payments
+ *     summary: Setup bank details and Paystack subaccount for a vendor
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [bankName, bankCode, accountNumber, accountName]
+ *             properties:
+ *               bankName:
+ *                 type: string
+ *               bankCode:
+ *                 type: string
+ *               accountNumber:
+ *                 type: string
+ *               accountName:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Subaccount configured
+ */
+router.post('/subaccount', restrictTo(UserRole.VENDOR), paymentController.setupSubaccount);
+
+/**
+ * @openapi
  * /api/v1/payments/{id}:
  *   patch:
  *     tags:

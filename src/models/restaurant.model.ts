@@ -60,8 +60,10 @@ export interface IRestaurant extends Document {
   businessPhone?: string;
   businessEmail?: string;
   businessWebsite?: string;
+  paystackSubaccountCode?: string;
   bankDetails?: {
     bankName: string;
+    bankCode?: string;
     accountNumber: string;
     accountName: string;
     bvn?: string;
@@ -240,8 +242,13 @@ const restaurantSchema = new Schema<IRestaurant>(
       type: String,
       trim: true,
     },
+    paystackSubaccountCode: {
+      type: String,
+      trim: true,
+    },
     bankDetails: {
       bankName: { type: String },
+      bankCode: { type: String },
       accountNumber: { type: String },
       accountName: { type: String },
       bvn: { type: String },

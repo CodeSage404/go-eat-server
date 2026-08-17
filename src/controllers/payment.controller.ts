@@ -3,6 +3,8 @@ import paymentService, { PaymentProvider } from '../services/payment.service';
 import { catchAsync } from '../utils/catchAsync';
 import AppError from '../utils/appError';
 import Order from '../models/order.model';
+import Restaurant from '../models/restaurant.model';
+import paystackModule from '../services/payments/paystack.module';
 
 class PaymentController {
   /**
@@ -175,6 +177,67 @@ class PaymentController {
     res.status(200).json({
       status: 'success',
       data: order,
+    });
+  });
+
+  /**
+   * Fetch list of supported banks from Paystack
+   */
+  public getBanks = catchAsync(async (req: Request, res: Response) => {
+    const country = (req.query.country as string) || 'nigeria';
+    const banks = await paystackModule.getBanks(country);
+
+    res.status(200).json({
+      status: 'success',
+      data: banks,
+    });
+  });
+
+  /**
+   * Vendor: Setup Bank Details & Paystack Subaccount
+   */
+  public setupSubaccount = catchAsync(async (req: Request, res: Response) => {
+    const restaurantId = req.user?.restaurantId;
+    if (!restaurantId) {
+      throw new AppError('User does not belong to any restaurant', 403);
+    }
+
+    const { bankName, bankCode, accountNumber, accountName } = req.body;
+    if (!bankName || !bankCode || !accountNumber || !accountName) {
+      throw new AppError('bankName, bankCode, accountNumber, and accountName are required', 400);
+    }
+
+    const restaurant = await Restaurant.findById(restaurantId);
+    if (!restaurant) {
+      throw new AppError('Restaurant not found', 404);
+    }
+
+    // Default percentage charge is 0, since we will override with transaction_charge per order
+    const { subaccountCode } = await paystackModule.createSubaccount({
+      businessName: restaurant.name,
+      bankCode,
+      accountNumber,
+      percentageCharge: 0,
+    });
+
+    restaurant.paystackSubaccountCode = subaccountCode;
+    restaurant.bankDetails = {
+      bankName,
+      bankCode,
+      accountNumber,
+      accountName,
+      isVerified: true,
+    };
+
+    await restaurant.save();
+
+    res.status(200).json({
+      status: 'success',
+      message: 'Bank details and subaccount configured successfully',
+      data: {
+        paystackSubaccountCode: subaccountCode,
+        bankDetails: restaurant.bankDetails,
+      },
     });
   });
 }

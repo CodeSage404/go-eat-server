@@ -9,12 +9,21 @@ export interface PaymentInitializeParams {
   reference: string;
   metadata?: Record<string, any>;
   callbackUrl?: string;
+  subaccount?: string;
+  transactionCharge?: number; // in NGN (will be converted to kobo)
 }
 
 export interface PaymentInitializeResult {
   authorizationUrl: string;
   accessCode: string;
   reference: string;
+}
+
+export interface CreateSubaccountParams {
+  businessName: string;
+  bankCode: string;
+  accountNumber: string;
+  percentageCharge: number;
 }
 
 export interface PayoutRecipientParams {
@@ -66,6 +75,14 @@ export class PaystackModule {
 
       if (params.callbackUrl) {
         payload.callback_url = params.callbackUrl;
+      }
+
+      if (params.subaccount) {
+        payload.subaccount = params.subaccount;
+      }
+
+      if (params.transactionCharge !== undefined) {
+        payload.transaction_charge = Math.round(params.transactionCharge * 100);
       }
 
       const response = await axios.post(
@@ -225,6 +242,34 @@ export class PaystackModule {
     } catch (error: any) {
       logger.error('Paystack getBanks error:', error.response?.data || error.message);
       return []; // Return empty array instead of crashing, for resilience
+    }
+  }
+
+  /**
+   * Create a Subaccount for Vendor Payouts
+   */
+  async createSubaccount(params: CreateSubaccountParams): Promise<{ subaccountCode: string }> {
+    try {
+      const response = await axios.post(
+        `${this.baseUrl}/subaccount`,
+        {
+          business_name: params.businessName,
+          settlement_bank: params.bankCode,
+          account_number: params.accountNumber,
+          percentage_charge: params.percentageCharge,
+        },
+        { headers: this.getHeaders() }
+      );
+
+      return {
+        subaccountCode: response.data.data.subaccount_code,
+      };
+    } catch (error: any) {
+      logger.error('Paystack createSubaccount error:', error.response?.data || error.message);
+      throw new AppError(
+        error.response?.data?.message || 'Failed to create Paystack subaccount',
+        error.response?.status || 500
+      );
     }
   }
 }
