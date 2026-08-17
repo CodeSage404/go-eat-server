@@ -210,6 +210,8 @@ export class PaystackModule {
         error.response?.status || 500
       );
     }
+  }
+
   /**
    * Get List of Banks from Paystack
    */
