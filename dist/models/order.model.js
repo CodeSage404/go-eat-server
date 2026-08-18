@@ -119,6 +119,10 @@ const orderSchema = new mongoose_1.Schema({
         type: String,
         trim: true,
     },
+    cancelReason: {
+        type: String,
+        trim: true,
+    },
 }, {
     timestamps: true,
 });

@@ -42,6 +42,12 @@ class PaystackModule {
             if (params.callbackUrl) {
                 payload.callback_url = params.callbackUrl;
             }
+            if (params.subaccount) {
+                payload.subaccount = params.subaccount;
+            }
+            if (params.transactionCharge !== undefined) {
+                payload.transaction_charge = Math.round(params.transactionCharge * 100);
+            }
             const response = await axios_1.default.post(`${this.baseUrl}/transaction/initialize`, payload, { headers: this.getHeaders() });
             const data = response.data.data;
             return {
@@ -149,6 +155,39 @@ class PaystackModule {
         catch (error) {
             logger_1.default.error('Paystack initiatePayout error:', error.response?.data || error.message);
             throw new appError_1.default(error.response?.data?.message || 'Paystack payout initiation failed', error.response?.status || 500);
+        }
+    }
+    /**
+     * Get List of Banks from Paystack
+     */
+    async getBanks(country = 'nigeria') {
+        try {
+            const response = await axios_1.default.get(`${this.baseUrl}/bank?country=${country}`, { headers: this.getHeaders() });
+            return response.data.data;
+        }
+        catch (error) {
+            logger_1.default.error('Paystack getBanks error:', error.response?.data || error.message);
+            return []; // Return empty array instead of crashing, for resilience
+        }
+    }
+    /**
+     * Create a Subaccount for Vendor Payouts
+     */
+    async createSubaccount(params) {
+        try {
+            const response = await axios_1.default.post(`${this.baseUrl}/subaccount`, {
+                business_name: params.businessName,
+                settlement_bank: params.bankCode,
+                account_number: params.accountNumber,
+                percentage_charge: params.percentageCharge,
+            }, { headers: this.getHeaders() });
+            return {
+                subaccountCode: response.data.data.subaccount_code,
+            };
+        }
+        catch (error) {
+            logger_1.default.error('Paystack createSubaccount error:', error.response?.data || error.message);
+            throw new appError_1.default(error.response?.data?.message || 'Failed to create Paystack subaccount', error.response?.status || 500);
         }
     }
 }

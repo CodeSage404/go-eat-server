@@ -148,6 +148,17 @@ class PaymentService {
         }
         else {
             // Default: Paystack
+            const Restaurant = require('../models/restaurant.model').default;
+            const restaurantObj = await Restaurant.findById(order.restaurant);
+            const subaccount = restaurantObj?.paystackSubaccountCode;
+            let transactionCharge;
+            if (subaccount) {
+                const commissionRate = setting?.commissionRate || 10;
+                const subtotal = order.totalAmount - (order.deliveryFee || 0);
+                const adminCut = (subtotal * commissionRate) / 100;
+                // Platform retains adminCut + deliveryFee + serviceFee(if any)
+                transactionCharge = adminCut + (order.deliveryFee || 0);
+            }
             const result = await paystack_module_1.default.initializePayment({
                 email: safeEmail,
                 amount,
@@ -157,6 +168,8 @@ class PaymentService {
                     orderId: order._id.toString(),
                     customerId: user._id.toString(),
                 },
+                subaccount,
+                transactionCharge,
             });
             return {
                 authorizationUrl: result.authorizationUrl,
@@ -221,12 +234,58 @@ class PaymentService {
             throw new appError_1.default('Order associated with payment not found', 404);
         }
         if (order.status === order_model_1.OrderStatus.PENDING) {
-            order.status = order_model_1.OrderStatus.ACCEPTED;
+            order.paymentStatus = 'completed';
             order.paymentResult = paymentResult;
             await order.save();
+            // --- NEW LOGIC: Calculate Splits and Payout Vendor automatically ---
+            try {
+                const Restaurant = require('../models/restaurant.model').default;
+                const Setting = require('../models/setting.model').default;
+                const Wallet = require('../models/wallet.model').default;
+                const restaurant = await Restaurant.findById(order.restaurant);
+                const setting = await Setting.findOne();
+                const commissionRate = setting?.commissionRate || 10;
+                // Split logic
+                const subtotal = order.totalAmount - (order.deliveryFee || 0);
+                const adminCut = (subtotal * commissionRate) / 100;
+                const vendorCut = subtotal - adminCut;
+                if (restaurant && vendorCut > 0) {
+                    // 1. Credit Vendor Wallet internally to reflect their earnings
+                    let vendorWallet = await Wallet.findOne({ user: restaurant.owner });
+                    if (!vendorWallet) {
+                        vendorWallet = await Wallet.create({ user: restaurant.owner, balance: 0 });
+                    }
+                    if (restaurant.paystackSubaccountCode && provider === 'paystack') {
+                        // Paystack Subaccount automatically settles the vendor! 
+                        // We just log it as a successful internal transaction for their records, 
+                        // but we don't add to the withdrawable wallet balance (since it's already in their bank).
+                        logger_1.default.info(`Vendor ${restaurant.owner} automatically paid via Paystack Subaccount.`);
+                    }
+                    else {
+                        // Add to balance for manual payout or other providers
+                        vendorWallet.balance += vendorCut;
+                        await vendorWallet.save();
+                        // 2. Automatically transfer to Vendor Bank (Fallback for non-subaccount or flutterwave)
+                        try {
+                            await this.payoutRestaurant(restaurant.owner.toString(), vendorCut, provider);
+                        }
+                        catch (payoutErr) {
+                            logger_1.default.warn(`Automatic vendor payout delayed for order ${order._id}: ${payoutErr.message}`);
+                        }
+                    }
+                }
+            }
+            catch (splitErr) {
+                logger_1.default.error(`Error processing vendor split for order ${order._id}:`, splitErr.message);
+            }
+            // --- END NEW LOGIC ---
             // Send notifications
             try {
-                await notification_service_1.default.notifyNewOrder(order.restaurant.toString(), order._id.toString());
+                const Restaurant = require('../models/restaurant.model').default;
+                const restaurant = await Restaurant.findById(order.restaurant);
+                if (restaurant) {
+                    await notification_service_1.default.notifyNewOrder(restaurant.owner.toString(), order._id.toString());
+                }
                 await notification_service_1.default.notifyOrderStatusUpdate(order.customer.toString(), order._id.toString(), order.status);
             }
             catch (notifyErr) {

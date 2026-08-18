@@ -46,7 +46,7 @@ const googleClient = new google_auth_library_1.OAuth2Client(process.env.GOOGLE_C
 class AuthService {
     signToken(id) {
         const options = {
-            expiresIn: process.env.JWT_EXPIRES_IN || '90d',
+            expiresIn: process.env.JWT_EXPIRES_IN || '365d',
         };
         return jsonwebtoken_1.default.sign({ id }, process.env.JWT_SECRET, options);
     }

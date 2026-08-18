@@ -201,6 +201,10 @@ const userSchema = new mongoose_1.Schema({
         enum: ['ALL', 'Nigeria', 'Italy', 'UK'],
         default: 'ALL',
     },
+    hasChangedPassword: {
+        type: Boolean,
+        default: false,
+    },
 }, {
     timestamps: true,
 });

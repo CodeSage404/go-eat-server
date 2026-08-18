@@ -52,10 +52,10 @@ const startWhatsAppVerification = async (to) => {
             const verification = await client.verify.v2
                 .services(serviceSid)
                 .verifications.create({
-                channel: 'whatsapp',
+                channel: 'sms',
                 to: formattedTo,
             });
-            logger_1.default.info(`📱 WhatsApp verification initiated via Twilio. Sid: ${verification.sid} to ${formattedTo}`);
+            logger_1.default.info(`📱 SMS verification initiated via Twilio. Sid: ${verification.sid} to ${formattedTo}`);
             return otp;
         }
         catch (error) {
@@ -92,11 +92,11 @@ const checkWhatsAppVerification = async (to, code) => {
             });
             const isApproved = check.status === 'approved';
             if (isApproved) {
-                logger_1.default.info(`✅ WhatsApp verification successful via Twilio for ${formattedTo}`);
+                logger_1.default.info(`✅ SMS verification successful via Twilio for ${formattedTo}`);
                 return true;
             }
             else {
-                logger_1.default.warn(`⚠️ WhatsApp verification failed via Twilio for ${formattedTo}. Status: ${check.status}`);
+                logger_1.default.warn(`⚠️ SMS verification failed via Twilio for ${formattedTo}. Status: ${check.status}`);
             }
         }
         catch (error) {

@@ -1404,6 +1404,12 @@ router.get('/settings', (0, auth_middleware_1.checkPermission)(), admin_controll
  *     summary: Update platform settings
  *     security:
  *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
  *     responses:
  *       200:
  *         description: Settings updated

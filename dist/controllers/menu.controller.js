@@ -119,8 +119,8 @@ class MenuController {
             });
         });
         this.updateFoodItem = (0, catchAsync_1.catchAsync)(async (req, res) => {
-            const { id } = req.params;
-            // In a real app, we would verify the food item belongs to a restaurant the user owns
+            const { restaurantId, id } = req.params;
+            await this.checkRestaurantOwnership(restaurantId, req.user._id, req.user.role);
             const foodItem = await menu_service_1.default.updateFoodItem(id, req.body);
             if (!foodItem) {
                 throw new appError_1.default('Food item not found', 404);
@@ -131,7 +131,8 @@ class MenuController {
             });
         });
         this.deleteFoodItem = (0, catchAsync_1.catchAsync)(async (req, res) => {
-            const { id } = req.params;
+            const { restaurantId, id } = req.params;
+            await this.checkRestaurantOwnership(restaurantId, req.user._id, req.user.role);
             await menu_service_1.default.deleteFoodItem(id);
             res.status(204).json({
                 status: 'success',
@@ -144,7 +145,7 @@ class MenuController {
         if (!restaurant) {
             throw new appError_1.default('Restaurant not found', 404);
         }
-        if (restaurant.owner._id.toString() !== userId && userRole !== 'admin') {
+        if (restaurant.owner._id.toString() !== userId.toString() && userRole !== 'admin') {
             throw new appError_1.default('You do not have permission to manage this menu', 403);
         }
     }

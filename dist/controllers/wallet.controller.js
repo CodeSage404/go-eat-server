@@ -40,6 +40,7 @@ const wallet_model_1 = __importDefault(require("../models/wallet.model"));
 const transaction_model_1 = __importStar(require("../models/transaction.model"));
 const catchAsync_1 = require("../utils/catchAsync");
 const appError_1 = __importDefault(require("../utils/appError"));
+const paystack_module_1 = __importDefault(require("../services/payments/paystack.module"));
 class WalletController {
     constructor() {
         /**
@@ -92,6 +93,44 @@ class WalletController {
                     wallet,
                     transaction,
                 },
+            });
+        });
+        /**
+         * Update Bank Details
+         * @openapi
+         * ... we will add swagger later or just skip it since we already did openapi
+         */
+        this.updateBankDetails = (0, catchAsync_1.catchAsync)(async (req, res) => {
+            const { accountNumber, bankCode, accountName } = req.body;
+            if (!accountNumber || !bankCode || !accountName) {
+                throw new appError_1.default('accountNumber, bankCode, and accountName are required', 400);
+            }
+            let wallet = await wallet_model_1.default.findOne({ user: req.user._id });
+            if (!wallet) {
+                wallet = await wallet_model_1.default.create({ user: req.user._id });
+            }
+            wallet.bankAccount = {
+                accountNumber,
+                bankCode,
+                accountName,
+                recipientCode: undefined // reset recipient code so it gets regenerated on next payout
+            };
+            await wallet.save();
+            res.status(200).json({
+                status: 'success',
+                message: 'Bank details updated successfully',
+                data: wallet,
+            });
+        });
+        /**
+         * Get List of Supported Banks
+         */
+        this.getBanks = (0, catchAsync_1.catchAsync)(async (req, res) => {
+            const banks = await paystack_module_1.default.getBanks();
+            res.status(200).json({
+                status: 'success',
+                results: banks.length,
+                data: banks,
             });
         });
     }

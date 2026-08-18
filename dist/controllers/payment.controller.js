@@ -6,6 +6,9 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const payment_service_1 = __importDefault(require("../services/payment.service"));
 const catchAsync_1 = require("../utils/catchAsync");
 const appError_1 = __importDefault(require("../utils/appError"));
+const order_model_1 = __importDefault(require("../models/order.model"));
+const restaurant_model_1 = __importDefault(require("../models/restaurant.model"));
+const paystack_module_1 = __importDefault(require("../services/payments/paystack.module"));
 class PaymentController {
     constructor() {
         /**
@@ -96,6 +99,102 @@ class PaymentController {
                 status: 'success',
                 message: 'Restaurant payout completed successfully',
                 data: payoutResult,
+            });
+        });
+        /**
+         * Fetch payments for a vendor's restaurant
+         */
+        this.getVendorPayments = (0, catchAsync_1.catchAsync)(async (req, res) => {
+            const restaurantId = req.user?.restaurantId;
+            if (!restaurantId) {
+                throw new appError_1.default('User does not belong to any restaurant', 403);
+            }
+            const orders = await order_model_1.default.find({ restaurant: restaurantId })
+                .sort({ createdAt: -1 })
+                .select('_id totalAmount paymentStatus paymentResult createdAt paymentMethod');
+            res.status(200).json({
+                status: 'success',
+                results: orders.length,
+                data: orders,
+            });
+        });
+        /**
+         * Update payment details manually (e.g. status or reference)
+         */
+        this.updatePaymentDetails = (0, catchAsync_1.catchAsync)(async (req, res) => {
+            const { id } = req.params;
+            const { status, reference } = req.body;
+            const order = await order_model_1.default.findById(id);
+            if (!order) {
+                throw new appError_1.default('Payment/Order not found', 404);
+            }
+            if (status) {
+                order.paymentStatus = status;
+            }
+            if (reference) {
+                if (!order.paymentResult) {
+                    order.paymentResult = { id: reference, status: order.paymentStatus, update_time: new Date().toISOString(), email_address: '' };
+                }
+                else {
+                    order.paymentResult.id = reference;
+                }
+            }
+            await order.save();
+            res.status(200).json({
+                status: 'success',
+                data: order,
+            });
+        });
+        /**
+         * Fetch list of supported banks from Paystack
+         */
+        this.getBanks = (0, catchAsync_1.catchAsync)(async (req, res) => {
+            const country = req.query.country || 'nigeria';
+            const banks = await paystack_module_1.default.getBanks(country);
+            res.status(200).json({
+                status: 'success',
+                data: banks,
+            });
+        });
+        /**
+         * Vendor: Setup Bank Details & Paystack Subaccount
+         */
+        this.setupSubaccount = (0, catchAsync_1.catchAsync)(async (req, res) => {
+            const restaurantId = req.user?.restaurantId;
+            if (!restaurantId) {
+                throw new appError_1.default('User does not belong to any restaurant', 403);
+            }
+            const { bankName, bankCode, accountNumber, accountName } = req.body;
+            if (!bankName || !bankCode || !accountNumber || !accountName) {
+                throw new appError_1.default('bankName, bankCode, accountNumber, and accountName are required', 400);
+            }
+            const restaurant = await restaurant_model_1.default.findById(restaurantId);
+            if (!restaurant) {
+                throw new appError_1.default('Restaurant not found', 404);
+            }
+            // Default percentage charge is 0, since we will override with transaction_charge per order
+            const { subaccountCode } = await paystack_module_1.default.createSubaccount({
+                businessName: restaurant.name,
+                bankCode,
+                accountNumber,
+                percentageCharge: 0,
+            });
+            restaurant.paystackSubaccountCode = subaccountCode;
+            restaurant.bankDetails = {
+                bankName,
+                bankCode,
+                accountNumber,
+                accountName,
+                isVerified: true,
+            };
+            await restaurant.save();
+            res.status(200).json({
+                status: 'success',
+                message: 'Bank details and subaccount configured successfully',
+                data: {
+                    paystackSubaccountCode: subaccountCode,
+                    bankDetails: restaurant.bankDetails,
+                },
             });
         });
     }

@@ -61,6 +61,13 @@ const reviewSchema = new mongoose_1.Schema({
         type: String,
         trim: true,
     },
+    vendorReply: {
+        type: String,
+        trim: true,
+    },
+    vendorReplyDate: {
+        type: Date,
+    },
 }, {
     timestamps: true,
 });

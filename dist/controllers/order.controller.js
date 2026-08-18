@@ -8,6 +8,7 @@ const order_service_1 = __importDefault(require("../services/order.service"));
 const catchAsync_1 = require("../utils/catchAsync");
 const appError_1 = __importDefault(require("../utils/appError"));
 const order_model_1 = require("../models/order.model");
+const restaurant_model_1 = __importDefault(require("../models/restaurant.model"));
 const email_service_1 = __importDefault(require("../services/email.service"));
 const orderSchema = zod_1.z.object({
     restaurant: zod_1.z.string(),
@@ -84,6 +85,16 @@ class OrderController {
                     items: order.items
                 }).catch(err => console.error('Failed to send order email:', err));
             }
+            const restaurant = await restaurant_model_1.default.findById(order.restaurant).populate('owner');
+            const vendorEmail = restaurant?.businessEmail || restaurant?.owner?.email;
+            if (vendorEmail) {
+                email_service_1.default.sendTemplateEmail(vendorEmail, 'ORDER_CONFIRMED', `New Order Received: #${order._id.toString().slice(-6).toUpperCase()}`, {
+                    orderId: order._id,
+                    customerName: restaurant?.name || 'Vendor',
+                    total: order.totalAmount,
+                    items: order.items,
+                }, 'partners').catch(err => console.error('Failed to send vendor order email:', err));
+            }
             res.status(201).json({
                 status: 'success',
                 data: { order },
@@ -91,11 +102,17 @@ class OrderController {
         });
         this.updateStatus = (0, catchAsync_1.catchAsync)(async (req, res) => {
             const { id } = req.params;
-            const { status } = req.body;
+            const { status, cancelReason } = req.body;
             if (!Object.values(order_model_1.OrderStatus).includes(status)) {
                 throw new appError_1.default('Invalid order status', 400);
             }
             const order = await order_service_1.default.updateOrderStatus(id, status, req.user._id, req.user.role);
+            if (cancelReason && status === order_model_1.OrderStatus.CANCELLED) {
+                if (order) {
+                    order.cancelReason = cancelReason;
+                    await order.save();
+                }
+            }
             res.status(200).json({
                 status: 'success',
                 data: { order },
@@ -116,9 +133,11 @@ class OrderController {
                 orders = await order_service_1.default.getCustomerOrders(req.user._id);
             }
             else if (req.user.role === 'vendor') {
-                // Need restaurant ID for vendor
-                // For now, get all orders for restaurants owned by this vendor
-                throw new appError_1.default('Use specialized vendor endpoints for orders', 400);
+                const restaurant = await restaurant_model_1.default.findOne({ owner: req.user._id });
+                if (!restaurant) {
+                    throw new appError_1.default('No restaurant found for this vendor', 404);
+                }
+                orders = await order_service_1.default.getRestaurantOrders(restaurant._id.toString());
             }
             else if (req.user.role === 'rider') {
                 orders = await order_service_1.default.getRiderOrders(req.user._id);

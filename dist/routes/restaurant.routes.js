@@ -56,26 +56,7 @@ router.get('/', restaurant_controller_1.default.getAllRestaurants);
  *         description: Successfully migrated promo fields across all restaurants
  */
 router.post('/migrate-promos', restaurant_controller_1.default.migratePromoFields);
-/**
- * @openapi
- * /api/v1/restaurants/{id}:
- *   get:
- *     tags:
- *       - Restaurants
- *     summary: Get restaurant by ID
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *     responses:
- *       200:
- *         description: Restaurant details
- */
-router.get('/:id', restaurant_controller_1.default.getRestaurantById);
-// Protected routes
-router.use(auth_middleware_1.protect);
+// Protected Vendor Routes that must come before /:id to prevent routing conflicts
 /**
  * @openapi
  * /api/v1/restaurants/my-restaurant:
@@ -91,7 +72,7 @@ router.use(auth_middleware_1.protect);
  *       404:
  *         description: No restaurant found
  */
-router.get('/my-restaurant', (0, auth_middleware_1.restrictTo)(user_model_1.UserRole.VENDOR), restaurant_controller_1.default.getMyRestaurant);
+router.get('/my-restaurant', auth_middleware_1.protect, (0, auth_middleware_1.restrictTo)(user_model_1.UserRole.VENDOR), restaurant_controller_1.default.getMyRestaurant);
 /**
  * @openapi
  * /api/v1/restaurants/my-restaurant:
@@ -116,7 +97,29 @@ router.get('/my-restaurant', (0, auth_middleware_1.restrictTo)(user_model_1.User
  *       404:
  *         description: No restaurant found
  */
-router.patch('/my-restaurant', (0, auth_middleware_1.restrictTo)(user_model_1.UserRole.VENDOR), restaurant_controller_1.default.updateMyRestaurant);
+router.patch('/my-restaurant', auth_middleware_1.protect, (0, auth_middleware_1.restrictTo)(user_model_1.UserRole.VENDOR), restaurant_controller_1.default.updateMyRestaurant);
+/**
+ * @openapi
+ * /api/v1/restaurants/{id}:
+ *   get:
+ *     tags:
+ *       - Restaurants
+ *     summary: Get restaurant by ID
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Restaurant details
+ *       404:
+ *         description: Restaurant not found
+ */
+router.get('/:id', restaurant_controller_1.default.getRestaurantById);
+// Protected routes (for remaining endpoints)
+router.use(auth_middleware_1.protect);
 /**
  * @openapi
  * /api/v1/restaurants:

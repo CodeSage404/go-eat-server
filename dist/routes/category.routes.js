@@ -42,16 +42,15 @@ router.get('/', category_controller_1.default.getAllCategories);
  *         description: Category not found.
  */
 router.get('/:id', category_controller_1.default.getCategoryById);
-// Protected Admin Routes
+// Protected Routes
 router.use(auth_middleware_1.protect);
-router.use((0, auth_middleware_1.restrictTo)(user_model_1.UserRole.ADMIN));
 /**
  * @openapi
  * /api/v1/categories:
  *   post:
  *     tags:
  *       - Categories
- *     summary: Create a new category (Admin only)
+ *     summary: Create a new category (Admin/Vendor)
  *     security:
  *       - bearerAuth: []
  *     requestBody:
@@ -73,7 +72,7 @@ router.use((0, auth_middleware_1.restrictTo)(user_model_1.UserRole.ADMIN));
  *       201:
  *         description: Category created successfully.
  */
-router.post('/', upload_1.upload.single('image'), category_controller_1.default.createCategory);
+router.post('/', (0, auth_middleware_1.restrictTo)(user_model_1.UserRole.ADMIN, user_model_1.UserRole.VENDOR), upload_1.upload.single('image'), category_controller_1.default.createCategory);
 /**
  * @openapi
  * /api/v1/categories/{id}:
@@ -109,7 +108,7 @@ router.post('/', upload_1.upload.single('image'), category_controller_1.default.
  *       200:
  *         description: Category updated successfully.
  */
-router.patch('/:id', upload_1.upload.single('image'), category_controller_1.default.updateCategory);
+router.patch('/:id', (0, auth_middleware_1.restrictTo)(user_model_1.UserRole.ADMIN), upload_1.upload.single('image'), category_controller_1.default.updateCategory);
 /**
  * @openapi
  * /api/v1/categories/{id}:
@@ -145,7 +144,7 @@ router.patch('/:id', upload_1.upload.single('image'), category_controller_1.defa
  *       200:
  *         description: Category updated successfully.
  */
-router.put('/:id', upload_1.upload.single('image'), category_controller_1.default.updateCategory);
+router.put('/:id', (0, auth_middleware_1.restrictTo)(user_model_1.UserRole.ADMIN), upload_1.upload.single('image'), category_controller_1.default.updateCategory);
 /**
  * @openapi
  * /api/v1/categories/{id}:
@@ -165,5 +164,5 @@ router.put('/:id', upload_1.upload.single('image'), category_controller_1.defaul
  *       204:
  *         description: Category deleted successfully.
  */
-router.delete('/:id', category_controller_1.default.deleteCategory);
+router.delete('/:id', (0, auth_middleware_1.restrictTo)(user_model_1.UserRole.ADMIN), category_controller_1.default.deleteCategory);
 exports.default = router;

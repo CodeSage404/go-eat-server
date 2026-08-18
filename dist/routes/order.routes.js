@@ -50,7 +50,7 @@ router.post('/', (0, auth_middleware_1.restrictTo)(user_model_1.UserRole.CUSTOME
  *   get:
  *     tags:
  *       - Orders
- *     summary: Get logged-in user's orders
+ *     summary: Get logged-in user's orders (Customer, Vendor, or Rider)
  *     security:
  *       - bearerAuth: []
  *     responses:
@@ -105,6 +105,9 @@ router.get('/:id', order_controller_1.default.getOrderById);
  *               status:
  *                 type: string
  *                 enum: [pending, accepted, preparing, ready, out_for_delivery, delivered, cancelled]
+ *               cancelReason:
+ *                 type: string
+ *                 description: Reason for cancellation if status is cancelled.
  *     responses:
  *       200:
  *         description: Status updated

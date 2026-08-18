@@ -5,6 +5,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const review_model_1 = __importDefault(require("../models/review.model"));
 const order_model_1 = __importDefault(require("../models/order.model"));
+const restaurant_model_1 = __importDefault(require("../models/restaurant.model"));
 const catchAsync_1 = require("../utils/catchAsync");
 const appError_1 = __importDefault(require("../utils/appError"));
 class ReviewController {
@@ -50,6 +51,42 @@ class ReviewController {
                 status: 'success',
                 results: reviews.length,
                 data: { reviews },
+            });
+        });
+        /**
+         * Get all reviews for the logged-in vendor
+         */
+        this.getVendorReviews = (0, catchAsync_1.catchAsync)(async (req, res) => {
+            const restaurant = await restaurant_model_1.default.findOne({ owner: req.user._id });
+            if (!restaurant)
+                throw new appError_1.default('No restaurant found for this vendor', 404);
+            const reviews = await review_model_1.default.find({ restaurant: restaurant._id })
+                .populate('user', 'name profileImage')
+                .sort('-createdAt');
+            res.status(200).json({
+                status: 'success',
+                results: reviews.length,
+                data: { reviews },
+            });
+        });
+        /**
+         * Vendor replies to a review
+         */
+        this.replyToReview = (0, catchAsync_1.catchAsync)(async (req, res) => {
+            const { id } = req.params;
+            const { reply } = req.body;
+            const restaurant = await restaurant_model_1.default.findOne({ owner: req.user._id });
+            if (!restaurant)
+                throw new appError_1.default('No restaurant found for this vendor', 404);
+            const review = await review_model_1.default.findOne({ _id: id, restaurant: restaurant._id });
+            if (!review)
+                throw new appError_1.default('Review not found or does not belong to your restaurant', 404);
+            review.vendorReply = reply;
+            review.vendorReplyDate = new Date();
+            await review.save();
+            res.status(200).json({
+                status: 'success',
+                data: { review },
             });
         });
     }

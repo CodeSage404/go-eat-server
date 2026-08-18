@@ -15,6 +15,23 @@ router.use(auth_middleware_1.protect);
  *     summary: Upload a new document
  *     security:
  *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             required: [file, documentType, ownerId, ownerType]
+ *             properties:
+ *               file:
+ *                 type: string
+ *                 format: binary
+ *               documentType:
+ *                 type: string
+ *               ownerId:
+ *                 type: string
+ *               ownerType:
+ *                 type: string
  *     responses:
  *       201:
  *         description: Document uploaded successfully
@@ -60,6 +77,17 @@ router.get('/owner/:ownerType/:ownerId', document_controller_1.getOwnerDocuments
  *         required: true
  *         schema:
  *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [status]
+ *             properties:
+ *               status:
+ *                 type: string
+ *                 enum: [pending, verified, rejected, expired]
  *     responses:
  *       200:
  *         description: Status updated

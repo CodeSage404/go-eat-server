@@ -196,8 +196,13 @@ const restaurantSchema = new mongoose_1.Schema({
         type: String,
         trim: true,
     },
+    paystackSubaccountCode: {
+        type: String,
+        trim: true,
+    },
     bankDetails: {
         bankName: { type: String },
+        bankCode: { type: String },
         accountNumber: { type: String },
         accountName: { type: String },
         bvn: { type: String },

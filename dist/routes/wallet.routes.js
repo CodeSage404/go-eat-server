@@ -25,6 +25,47 @@ router.use(auth_middleware_1.protect);
 router.get('/me', (0, auth_middleware_1.restrictTo)(user_model_1.UserRole.RIDER, user_model_1.UserRole.VENDOR), wallet_controller_1.default.getMyWallet);
 /**
  * @openapi
+ * /api/v1/wallets/me/bank:
+ *   put:
+ *     summary: Update bank account details
+ *     tags:
+ *       - Wallets
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               accountNumber:
+ *                 type: string
+ *               bankCode:
+ *                 type: string
+ *               accountName:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Success
+ */
+router.put('/me/bank', (0, auth_middleware_1.restrictTo)(user_model_1.UserRole.RIDER, user_model_1.UserRole.VENDOR), wallet_controller_1.default.updateBankDetails);
+/**
+ * @openapi
+ * /api/v1/wallets/banks:
+ *   get:
+ *     summary: Get list of supported banks
+ *     tags:
+ *       - Wallets
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Success
+ */
+router.get('/banks', (0, auth_middleware_1.restrictTo)(user_model_1.UserRole.RIDER, user_model_1.UserRole.VENDOR), wallet_controller_1.default.getBanks);
+/**
+ * @openapi
  * /api/v1/wallets/request-payout:
  *   post:
  *     tags:

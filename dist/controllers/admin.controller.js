@@ -256,7 +256,7 @@ class AdminController {
             }
             // Sign JWT token
             const token = jsonwebtoken_1.default.sign({ id: user._id }, process.env.JWT_SECRET, {
-                expiresIn: process.env.JWT_EXPIRES_IN || '90d',
+                expiresIn: process.env.JWT_EXPIRES_IN || '365d',
             });
             user.password = undefined;
             // Resolve permissions for the login response
@@ -610,7 +610,7 @@ class AdminController {
          */
         this.refreshAdminToken = (0, catchAsync_1.catchAsync)(async (req, res) => {
             const token = jsonwebtoken_1.default.sign({ id: req.user._id }, process.env.JWT_SECRET, {
-                expiresIn: process.env.JWT_EXPIRES_IN || '90d',
+                expiresIn: process.env.JWT_EXPIRES_IN || '365d',
             });
             res.status(200).json({
                 status: 'success',
