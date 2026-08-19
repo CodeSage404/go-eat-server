@@ -83,6 +83,16 @@ export interface IRestaurant extends Document {
   };
   complianceStatus?: 'pending' | 'approved' | 'rejected' | 'expired';
   baseCurrency: string;
+  autoAcceptOrders: boolean;
+  orderAlerts: boolean;
+  specialDays?: {
+    name: string;
+    date: string;
+    description?: string;
+    isClosed: boolean;
+    open?: string;
+    close?: string;
+  }[];
   createdAt: Date;
   updatedAt: Date;
 }
@@ -279,6 +289,24 @@ const restaurantSchema = new Schema<IRestaurant>(
       type: String,
       default: 'NGN',
     },
+    autoAcceptOrders: {
+      type: Boolean,
+      default: false,
+    },
+    orderAlerts: {
+      type: Boolean,
+      default: true,
+    },
+    specialDays: [
+      {
+        name: { type: String, required: true },
+        date: { type: String, required: true },
+        description: { type: String },
+        isClosed: { type: Boolean, default: false },
+        open: { type: String },
+        close: { type: String },
+      }
+    ],
   },
   {
     timestamps: true,
