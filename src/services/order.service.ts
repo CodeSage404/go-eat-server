@@ -50,14 +50,19 @@ class OrderService {
 
     // Production-grade permission and status flow validation
     if (role === 'vendor') {
-      const restaurant = await Restaurant.findById(order.restaurant);
-      if (!restaurant || restaurant.owner.toString() !== userId) {
-        throw new AppError('You do not have permission to manage this restaurant\'s orders', 403);
+      // order.restaurant may be a populated document or a plain ObjectId — extract the ID safely
+      const restaurantId = (order.restaurant as any)?._id
+        ? (order.restaurant as any)._id.toString()
+        : order.restaurant.toString();
+
+      const restaurant = await Restaurant.findById(restaurantId);
+      if (!restaurant || restaurant.owner.toString() !== userId.toString()) {
+        throw new AppError("You do not have permission to manage this outlet's orders", 403);
       }
 
       const allowedVendorStatuses = [OrderStatus.ACCEPTED, OrderStatus.PREPARING, OrderStatus.READY, OrderStatus.CANCELLED];
       if (!allowedVendorStatuses.includes(status)) {
-        throw new AppError(`Vendors cannot set order status to ${status}`, 400);
+        throw new AppError(`Outlets cannot set order status to ${status}`, 400);
       }
     }
     else if (role === 'rider') {
