@@ -504,7 +504,6 @@ class AdminController {
     }
 
     try {
-      // Create the restaurant
       const restaurant = await Restaurant.create({
         owner: user._id,
         name: name,
@@ -518,6 +517,9 @@ class AdminController {
         status: RestaurantStatus.ACTIVE, // Auto-approved
         images: images,
       });
+
+      user.restaurantId = restaurant._id as mongoose.Types.ObjectId;
+      await user.save({ validateBeforeSave: false });
 
       // Send Welcome / Partner email to the vendor owner!
       try {
