@@ -91,7 +91,9 @@ class OrderService {
       ? (order.restaurant as any)
       : await Restaurant.findById(order.restaurant.toString());
 
-    const vendorUserId = restaurantDoc?.owner
+    const vendorUserId = (restaurantDoc?.owner as any)?._id
+      ? (restaurantDoc.owner as any)._id.toString()
+      : restaurantDoc?.owner
       ? restaurantDoc.owner.toString()
       : null;
 
