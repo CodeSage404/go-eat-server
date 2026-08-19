@@ -35,6 +35,7 @@ import cartRoutes from './routes/cart.routes';
 import onboardingRoutes from './routes/onboarding.routes';
 import documentRoutes from './routes/document.routes';
 import staffRoutes from './routes/staff.routes';
+import notificationRoutes from './routes/notification.routes';
 import { startKeepAlivePing } from './utils/keepAlive';
 
 import swaggerUi from 'swagger-ui-express';
@@ -126,6 +127,7 @@ class App {
     this.app.use('/api/v1/onboarding', onboardingRoutes);
     this.app.use('/api/v1/documents', documentRoutes);
     this.app.use('/api/v1/staff', staffRoutes);
+    this.app.use('/api/v1/notifications', notificationRoutes);
 
     // Documentation Routes
     this.app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));

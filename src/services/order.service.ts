@@ -82,12 +82,57 @@ class OrderService {
     order.status = status;
     await order.save();
 
-    // Notify Customer via Push and Socket
+    // Extract IDs safely from potentially populated fields
+    const customerId = (order.customer as any)?._id
+      ? (order.customer as any)._id.toString()
+      : order.customer.toString();
+
+    const restaurantDoc = (order.restaurant as any)?._id
+      ? (order.restaurant as any)
+      : await Restaurant.findById(order.restaurant.toString());
+
+    const vendorUserId = restaurantDoc?.owner
+      ? restaurantDoc.owner.toString()
+      : null;
+
+    const shortId = order._id.toString().substring(0, 6).toUpperCase();
+
+    // Status-specific messages for the customer
+    const customerMessages: Record<string, string> = {
+      [OrderStatus.ACCEPTED]: `Great news! Your order #${shortId} has been accepted by the outlet.`,
+      [OrderStatus.PREPARING]: `Your food is being prepared! Order #${shortId} is cooking now.`,
+      [OrderStatus.READY]: `Your order #${shortId} is ready and waiting for a courier to pick it up.`,
+      [OrderStatus.OUT_FOR_DELIVERY]: `Your order #${shortId} has been picked up and is on its way!`,
+      [OrderStatus.DELIVERED]: `Your order #${shortId} has been delivered. Enjoy your meal!`,
+      [OrderStatus.CANCELLED]: `Your order #${shortId} has been cancelled.`,
+    };
+
+    // Status-specific messages for the vendor/outlet
+    const vendorMessages: Record<string, string> = {
+      [OrderStatus.ACCEPTED]: `You accepted order #${shortId}. Start preparing when ready!`,
+      [OrderStatus.PREPARING]: `Order #${shortId} is now marked as preparing.`,
+      [OrderStatus.READY]: `Order #${shortId} is marked ready. Waiting for courier pickup.`,
+      [OrderStatus.OUT_FOR_DELIVERY]: `Order #${shortId} has been picked up by the courier and is on its way to the customer.`,
+      [OrderStatus.DELIVERED]: `Order #${shortId} has been delivered successfully!`,
+      [OrderStatus.CANCELLED]: `Order #${shortId} has been cancelled.`,
+    };
+
+    // Notify Customer
     await notificationService.notifyOrderStatusUpdate(
-      order.customer._id.toString(),
+      customerId,
       order._id.toString(),
-      order.status
+      customerMessages[status] || `Your order #${shortId} status: ${status.replace('_', ' ')}`
     );
+
+    // Notify Vendor/Outlet (if we have their user ID)
+    if (vendorUserId) {
+      await notificationService.notifyVendorOrderUpdate(
+        vendorUserId,
+        order._id.toString(),
+        status,
+        vendorMessages[status] || `Order #${shortId} status: ${status.replace('_', ' ')}`
+      );
+    }
 
     // If order is DELIVERED, credit the Rider's wallet
     if (status === OrderStatus.DELIVERED && order.rider) {
