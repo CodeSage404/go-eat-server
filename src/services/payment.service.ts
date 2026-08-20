@@ -300,7 +300,7 @@ export class PaymentService {
         }
 
         const Restaurant = require('../models/restaurant.model').default;
-        const restaurant = await Restaurant.findById(order.restaurant).populate<{ owner: { email: string; name: string } }>('owner');
+        const restaurant: any = await Restaurant.findById(order.restaurant).populate('owner');
         const vendorEmail = restaurant?.businessEmail || restaurant?.owner?.email;
 
         if (vendorEmail) {
