@@ -237,6 +237,14 @@ class SettlementService {
 
       if (effectiveStatus === OrderStatus.ACCEPTED) {
         refundAmount = order.totalAmount; // Full refund if prep hasn't materially commenced
+        const restaurant = await Restaurant.findById(order.restaurant);
+        if (restaurant && restaurant.owner) {
+          const wallet = await Wallet.findOne({ user: restaurant.owner });
+          if (wallet && breakdown.outletNetSettlement > 0) {
+            wallet.pendingBalance = Math.max(0, wallet.pendingBalance - breakdown.outletNetSettlement);
+            await wallet.save();
+          }
+        }
       } else if (
         effectiveStatus === OrderStatus.PREPARING ||
         effectiveStatus === OrderStatus.READY ||
@@ -259,6 +267,19 @@ class SettlementService {
     } else {
       order.status = OrderStatus.CANCELLED_BY_GOEAT;
       refundAmount = order.totalAmount;
+    }
+
+    // Always clear courier pending earnings if rider was assigned and not compensated
+    if (order.rider && courierCompensation === 0) {
+      const riderId = (order.rider as any)?._id
+        ? (order.rider as any)._id.toString()
+        : order.rider.toString();
+
+      const riderWallet = await Wallet.findOne({ user: riderId });
+      if (riderWallet && breakdown.courierEarnings > 0) {
+        riderWallet.pendingBalance = Math.max(0, riderWallet.pendingBalance - breakdown.courierEarnings);
+        await riderWallet.save();
+      }
     }
 
     order.refundAmount = refundAmount;
