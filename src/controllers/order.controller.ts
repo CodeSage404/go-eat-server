@@ -81,36 +81,40 @@ class OrderController {
 
     await order.populate('items.foodItem');
 
-    if (order.paymentMethod === PaymentMethod.CASH && req.user.email && !req.user.email.includes('customer@goeat.com')) {
-      emailService.sendTemplateEmail(
-        req.user.email,
-        'ORDER_CONFIRMED',
-        `Order Confirmed: #${order._id.toString().slice(-6).toUpperCase()}`,
-        { 
-          orderId: order._id, 
-          customerName: req.user.name, 
-          total: order.totalAmount,
-          items: order.items 
-        }
-      ).catch(err => console.error('Failed to send order email:', err));
-    }
+    // Send emails immediately only for CASH orders.
+    // For CARD orders, emails are sent after successful payment verification.
+    if (order.paymentMethod === PaymentMethod.CASH) {
+      if (req.user.email && !req.user.email.includes('customer@goeat.com')) {
+        emailService.sendTemplateEmail(
+          req.user.email,
+          'ORDER_CONFIRMED',
+          `Order Confirmed: #${order._id.toString().slice(-6).toUpperCase()}`,
+          { 
+            orderId: order._id, 
+            customerName: req.user.name, 
+            total: order.totalAmount,
+            items: order.items 
+          }
+        ).catch(err => console.error('Failed to send order email:', err));
+      }
 
-    const restaurant = await Restaurant.findById(order.restaurant).populate<{ owner: { email: string; name: string } }>('owner');
-    const vendorEmail = restaurant?.businessEmail || restaurant?.owner?.email;
+      const restaurant = await Restaurant.findById(order.restaurant).populate<{ owner: { email: string; name: string } }>('owner');
+      const vendorEmail = restaurant?.businessEmail || restaurant?.owner?.email;
 
-    if (vendorEmail) {
-      emailService.sendTemplateEmail(
-        vendorEmail,
-        'ORDER_CONFIRMED',
-        `New Order Received: #${order._id.toString().slice(-6).toUpperCase()}`,
-        {
-          orderId: order._id,
-          customerName: restaurant?.name || 'Vendor',
-          total: order.totalAmount,
-          items: order.items,
-        },
-        'partners'
-      ).catch(err => console.error('Failed to send vendor order email:', err));
+      if (vendorEmail) {
+        emailService.sendTemplateEmail(
+          vendorEmail,
+          'ORDER_CONFIRMED',
+          `New Order Received: #${order._id.toString().slice(-6).toUpperCase()}`,
+          {
+            orderId: order._id,
+            customerName: restaurant?.name || 'Vendor',
+            total: order.totalAmount,
+            items: order.items,
+          },
+          'partners'
+        ).catch(err => console.error('Failed to send vendor order email:', err));
+      }
     }
 
     res.status(201).json({
