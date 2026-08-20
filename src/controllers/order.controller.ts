@@ -104,11 +104,12 @@ class OrderController {
       if (vendorEmail) {
         emailService.sendTemplateEmail(
           vendorEmail,
-          'ORDER_CONFIRMED',
+          'VENDOR_ORDER_RECEIVED',
           `New Order Received: #${order._id.toString().slice(-6).toUpperCase()}`,
           {
             orderId: order._id,
-            customerName: restaurant?.name || 'Vendor',
+            outletName: restaurant?.name || 'Partner',
+            customerName: req.user.name || 'Customer',
             total: order.totalAmount,
             items: order.items,
           },
@@ -125,7 +126,7 @@ class OrderController {
 
   public updateStatus = catchAsync(async (req: any, res: Response) => {
     const { id } = req.params;
-    const { status, cancelReason } = req.body;
+    const { status, cancelReason, estimatedPrepTime } = req.body;
 
     if (!Object.values(OrderStatus).includes(status)) {
       throw new AppError('Invalid order status', 400);
@@ -136,7 +137,8 @@ class OrderController {
       status as OrderStatus,
       req.user._id,
       req.user.role,
-      cancelReason
+      cancelReason,
+      estimatedPrepTime ? Number(estimatedPrepTime) : undefined
     );
 
     res.status(200).json({

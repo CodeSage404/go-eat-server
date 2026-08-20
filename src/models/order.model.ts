@@ -68,6 +68,7 @@ export interface IOrder extends Document {
     email_address: string;
   };
   status: OrderStatus;
+  estimatedPrepTime?: number; // In minutes
   estimatedDeliveryTime?: Date;
   deliveryInstructions?: string;
   cancellationInitiator?: 'customer' | 'outlet' | 'courier' | 'goeat';
@@ -159,6 +160,10 @@ const orderSchema = new Schema<IOrder>(
       type: String,
       enum: Object.values(OrderStatus),
       default: OrderStatus.PENDING,
+    },
+    estimatedPrepTime: {
+      type: Number,
+      default: 20,
     },
     estimatedDeliveryTime: {
       type: Date,

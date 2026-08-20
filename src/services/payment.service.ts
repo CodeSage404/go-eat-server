@@ -306,11 +306,12 @@ export class PaymentService {
         if (vendorEmail) {
           await emailService.sendTemplateEmail(
             vendorEmail,
-            'ORDER_CONFIRMED',
+            'VENDOR_ORDER_RECEIVED',
             `New Order Received: #${order._id.toString().slice(-6).toUpperCase()}`,
             {
               orderId: order._id,
-              customerName: restaurant?.name || 'Vendor',
+              outletName: restaurant?.name || 'Partner',
+              customerName: user?.name || 'Customer',
               total: order.totalAmount,
               items: order.items,
             },

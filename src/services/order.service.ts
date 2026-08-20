@@ -103,6 +103,13 @@ class OrderService {
     if (cancelReason) {
       order.cancelReason = cancelReason;
     }
+    if (estimatedPrepTime) {
+      order.estimatedPrepTime = estimatedPrepTime;
+      order.estimatedDeliveryTime = new Date(Date.now() + estimatedPrepTime * 60 * 1000);
+    } else if (status === OrderStatus.ACCEPTED || status === OrderStatus.PREPARING) {
+      order.estimatedPrepTime = order.estimatedPrepTime || 20;
+      order.estimatedDeliveryTime = new Date(Date.now() + order.estimatedPrepTime * 60 * 1000);
+    }
     await order.save();
 
     // Extract IDs safely from potentially populated fields
@@ -121,37 +128,84 @@ class OrderService {
       : null;
 
     const shortId = order._id.toString().substring(0, 6).toUpperCase();
+    const outletName = restaurantDoc?.name || 'Outlet';
+    const prepTimeText = order.estimatedPrepTime ? `${order.estimatedPrepTime} mins` : '20 mins';
 
-    // Status-specific messages for the customer
+    // Rich status-specific messages for the customer
     const customerMessages: Record<string, string> = {
-      [OrderStatus.ACCEPTED]: `Great news! Your order #${shortId} has been accepted by the outlet.`,
-      [OrderStatus.PREPARING]: `Your food is being prepared! Order #${shortId} is cooking now.`,
-      [OrderStatus.READY]: `Your order #${shortId} is ready and waiting for a courier to pick it up.`,
-      [OrderStatus.READY_FOR_COLLECTION]: `Your order #${shortId} is ready and waiting for a courier to pick it up.`,
-      [OrderStatus.OUT_FOR_DELIVERY]: `Your order #${shortId} has been picked up and is on its way!`,
-      [OrderStatus.DELIVERED]: `Your order #${shortId} has been delivered. Enjoy your meal!`,
-      [OrderStatus.CANCELLED]: `Your order #${shortId} has been cancelled.`,
+      [OrderStatus.ACCEPTED]: `Order #${shortId} from ${outletName} has been accepted and is being prepared! (Est. prep time: ${prepTimeText})`,
+      [OrderStatus.PREPARING]: `Order #${shortId} from ${outletName} is currently cooking! (Est. prep time: ${prepTimeText})`,
+      [OrderStatus.READY]: `Order #${shortId} is ready and waiting for courier pickup at ${outletName}.`,
+      [OrderStatus.READY_FOR_COLLECTION]: `Order #${shortId} is ready and waiting for courier pickup at ${outletName}.`,
+      [OrderStatus.OUT_FOR_DELIVERY]: `Your order #${shortId} from ${outletName} has been picked up and is on its way to your address!`,
+      [OrderStatus.DELIVERED]: `Your order #${shortId} from ${outletName} has been delivered. Enjoy your meal!`,
+      [OrderStatus.CANCELLED]: `Your order #${shortId} from ${outletName} has been cancelled.`,
     };
 
-    // Status-specific messages for the vendor/outlet
+    // Rich status-specific titles for customer in-app notifications
+    const customerTitles: Record<string, string> = {
+      [OrderStatus.ACCEPTED]: `Order Accepted & Preparing 🧑‍🍳`,
+      [OrderStatus.PREPARING]: `Order Cooking 🍳`,
+      [OrderStatus.READY]: `Order Ready for Pickup 📦`,
+      [OrderStatus.READY_FOR_COLLECTION]: `Order Ready for Pickup 📦`,
+      [OrderStatus.OUT_FOR_DELIVERY]: `Order Out for Delivery 🛵`,
+      [OrderStatus.DELIVERED]: `Order Delivered 🎉`,
+      [OrderStatus.CANCELLED]: `Order Cancelled ❌`,
+    };
+
+    // Rich status-specific messages for the vendor/outlet
     const vendorMessages: Record<string, string> = {
-      [OrderStatus.ACCEPTED]: `You accepted order #${shortId}. Start preparing when ready!`,
-      [OrderStatus.PREPARING]: `Order #${shortId} is now marked as preparing.`,
-      [OrderStatus.READY]: `Order #${shortId} is marked ready. Waiting for courier pickup.`,
-      [OrderStatus.READY_FOR_COLLECTION]: `Order #${shortId} is marked ready. Waiting for courier pickup.`,
-      [OrderStatus.OUT_FOR_DELIVERY]: `Order #${shortId} has been picked up by the courier and is on its way to the customer.`,
-      [OrderStatus.DELIVERED]: `Order #${shortId} has been delivered successfully!`,
+      [OrderStatus.ACCEPTED]: `You accepted order #${shortId}. Estimated prep time set to ${prepTimeText}.`,
+      [OrderStatus.PREPARING]: `Order #${shortId} is marked as preparing.`,
+      [OrderStatus.READY]: `Order #${shortId} marked ready. Waiting for courier pickup.`,
+      [OrderStatus.READY_FOR_COLLECTION]: `Order #${shortId} marked ready. Waiting for courier pickup.`,
+      [OrderStatus.OUT_FOR_DELIVERY]: `Order #${shortId} picked up by courier and on its way to customer.`,
+      [OrderStatus.DELIVERED]: `Order #${shortId} delivered successfully!`,
       [OrderStatus.CANCELLED]: `Order #${shortId} has been cancelled.`,
     };
 
-    // Notify Customer
-    await notificationService.notifyOrderStatusUpdate(
+    // Notify Customer via Notification Service
+    await notificationService.sendNotification(
       customerId,
-      order._id.toString(),
-      customerMessages[status] || `Your order #${shortId} status: ${status.replace('_', ' ')}`
+      customerTitles[status] || `Order Update 🛵`,
+      customerMessages[status] || `Your order #${shortId} status is now ${status.replace('_', ' ')}.`,
+      { orderId: order._id.toString(), status, estimatedPrepTime: order.estimatedPrepTime, type: 'ORDER_UPDATE' },
+      NotificationType.ORDER_UPDATE
     );
 
-    // Notify Vendor/Outlet (if we have their user ID)
+    // Emit Real-Time Socket Event to Customer
+    emitToUser(customerId, SOCKET_EVENTS.ORDER_STATUS_UPDATE, {
+      orderId: order._id.toString(),
+      status,
+      estimatedPrepTime: order.estimatedPrepTime,
+      estimatedDeliveryTime: order.estimatedDeliveryTime,
+    });
+
+    if (status === OrderStatus.ACCEPTED || status === OrderStatus.PREPARING) {
+      emitToUser(customerId, SOCKET_EVENTS.ORDER_PREPARING, {
+        orderId: order._id.toString(),
+        status: 'preparing',
+        estimatedPrepTime: order.estimatedPrepTime,
+        estimatedDeliveryTime: order.estimatedDeliveryTime,
+      });
+
+      // Send Email to Customer informing them order is accepted & being prepared
+      const customerUser = (order.customer as any)?.email ? (order.customer as any) : await User.findById(customerId);
+      if (customerUser && customerUser.email && !customerUser.email.includes('customer@goeat.com')) {
+        emailService.sendTemplateEmail(
+          customerUser.email,
+          'ORDER_PREPARING',
+          `Order Accepted & Being Prepared! 🧑‍🍳`,
+          {
+            orderId: order._id,
+            customerName: customerUser.name || 'Customer',
+            estimatedPrepTime: order.estimatedPrepTime || 20,
+          }
+        ).catch(err => logger.error('Failed to send order preparing email:', err));
+      }
+    }
+
+    // Notify Vendor/Outlet
     if (vendorUserId) {
       await notificationService.notifyVendorOrderUpdate(
         vendorUserId,

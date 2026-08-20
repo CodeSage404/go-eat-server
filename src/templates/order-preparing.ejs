@@ -1,0 +1,12 @@
+<h2 style="color: #0F3725; margin-top: 0; font-weight: 800;">Your Order is Being Prepared! 🧑‍🍳</h2>
+<p>Dear <strong><%= customerName %></strong>,</p>
+<p>Great news! The restaurant has accepted your order <strong>#<%= orderId.toString().slice(-6).toUpperCase() %></strong> and is currently preparing your meal.</p>
+
+<div class="highlight-box" style="margin-top: 20px;">
+  <h3 style="margin-top: 0; color: #0F3725; border-bottom: 1px solid #E5E7EB; padding-bottom: 8px;">Estimated Prep Time</h3>
+  <p style="font-size: 18px; font-weight: bold; color: #16A34A; margin: 8px 0;">
+    ⏱️ <%= typeof estimatedPrepTime !== 'undefined' ? estimatedPrepTime : 20 %> minutes
+  </p>
+</div>
+
+<p style="color: #4B5563; margin-top: 24px;">We'll send you another update as soon as your order is ready for pickup or delivery!</p>

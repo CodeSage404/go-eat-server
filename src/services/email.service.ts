@@ -9,6 +9,8 @@ export type EmailTemplateType =
   | 'OTP_VERIFICATION' 
   | 'CREDENTIALS_ALERT' 
   | 'ORDER_CONFIRMED' 
+  | 'VENDOR_ORDER_RECEIVED'
+  | 'ORDER_PREPARING'
   | 'PASSWORD_RESET'
   | 'WELCOME_USER';
 
