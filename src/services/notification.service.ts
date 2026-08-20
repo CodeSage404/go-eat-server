@@ -1,3 +1,4 @@
+import mongoose from 'mongoose';
 import admin from 'firebase-admin';
 import logger from '../utils/logger';
 import User from '../models/user.model';
