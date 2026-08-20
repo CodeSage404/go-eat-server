@@ -205,7 +205,7 @@ export class PaymentService {
         provider: 'paystack',
       };
 
-      const orderIdList = metaOrderIds ? metaOrderIds.split(',').map(s => s.trim()) : [orderId];
+      const orderIdList = metaOrderIds ? metaOrderIds.split(',').map((s: string) => s.trim()) : [orderId];
       const orders = await Order.find({ _id: { $in: orderIdList } });
 
       for (const order of orders) {
@@ -266,56 +266,57 @@ export class PaymentService {
           } catch (notifyErr: any) {
             logger.warn('Failed to send order notifications:', notifyErr.message);
           }
-        }
-      }
 
-      // Send Email Receipt to Customer & Order Notification to Vendor upon successful payment
-      try {
-        await order.populate('items.foodItem');
-        const user = await User.findById(order.customer);
-        if (user && user.email && !user.email.includes('customer@goeat.com')) {
-          await emailService.sendTemplateEmail(
-            user.email,
-            'ORDER_CONFIRMED',
-            `Order Confirmed: #${order._id.toString().slice(-6).toUpperCase()}`,
-            { 
-              orderId: order._id, 
-              customerName: user.name, 
-              total: order.totalAmount,
-              items: order.items 
+          // Send Email Receipt to Customer & Order Notification to Vendor upon successful payment
+          try {
+            await order.populate('items.foodItem');
+            const user = await User.findById(order.customer);
+            if (user && user.email && !user.email.includes('customer@goeat.com')) {
+              await emailService.sendTemplateEmail(
+                user.email,
+                'ORDER_CONFIRMED',
+                `Order Confirmed: #${order._id.toString().slice(-6).toUpperCase()}`,
+                { 
+                  orderId: order._id, 
+                  customerName: user.name, 
+                  total: order.totalAmount,
+                  items: order.items 
+                }
+              );
             }
-          );
-        }
 
-        const Restaurant = require('../models/restaurant.model').default;
-        const restaurant: any = await Restaurant.findById(order.restaurant).populate('owner');
-        const vendorEmail = restaurant?.businessEmail || restaurant?.owner?.email;
+            const Restaurant = require('../models/restaurant.model').default;
+            const restaurant: any = await Restaurant.findById(order.restaurant).populate('owner');
+            const vendorEmail = restaurant?.businessEmail || restaurant?.owner?.email;
 
-        if (vendorEmail) {
-          await emailService.sendTemplateEmail(
-            vendorEmail,
-            'VENDOR_ORDER_RECEIVED',
-            `New Order Received: #${order._id.toString().slice(-6).toUpperCase()}`,
-            {
-              orderId: order._id,
-              outletName: restaurant?.name || 'Partner',
-              customerName: user?.name || 'Customer',
-              total: order.totalAmount,
-              items: order.items,
-            },
-            'partners'
-          );
+            if (vendorEmail) {
+              await emailService.sendTemplateEmail(
+                vendorEmail,
+                'VENDOR_ORDER_RECEIVED',
+                `New Order Received: #${order._id.toString().slice(-6).toUpperCase()}`,
+                {
+                  orderId: order._id,
+                  outletName: restaurant?.name || 'Partner',
+                  customerName: user?.name || 'Customer',
+                  total: order.totalAmount,
+                  items: order.items,
+                },
+                'partners'
+              );
+            }
+          } catch (emailErr: any) {
+            logger.warn('Failed to send order email:', emailErr.message);
+          }
         }
-      } catch (emailErr: any) {
-        logger.warn('Failed to send order email:', emailErr.message);
       }
-    }
 
-    return {
-      orderId: order._id,
-      status: order.status,
-      paymentResult: order.paymentResult,
-    };
+      const primaryOrder = orders[0];
+      return {
+        orderId: primaryOrder ? primaryOrder._id : orderId,
+        status: primaryOrder ? primaryOrder.status : 'completed',
+        paymentResult,
+      };
+    }
   }
 
   /**
