@@ -281,7 +281,7 @@ export class PaymentService {
         logger.warn('Failed to send order notifications:', notifyErr.message);
       }
 
-      // Send Email Receipt
+      // Send Email Receipt to Customer & Order Notification to Vendor upon successful payment
       try {
         await order.populate('items.foodItem');
         const user = await User.findById(order.customer);
@@ -296,6 +296,25 @@ export class PaymentService {
               total: order.totalAmount,
               items: order.items 
             }
+          );
+        }
+
+        const Restaurant = require('../models/restaurant.model').default;
+        const restaurant = await Restaurant.findById(order.restaurant).populate<{ owner: { email: string; name: string } }>('owner');
+        const vendorEmail = restaurant?.businessEmail || restaurant?.owner?.email;
+
+        if (vendorEmail) {
+          await emailService.sendTemplateEmail(
+            vendorEmail,
+            'ORDER_CONFIRMED',
+            `New Order Received: #${order._id.toString().slice(-6).toUpperCase()}`,
+            {
+              orderId: order._id,
+              customerName: restaurant?.name || 'Vendor',
+              total: order.totalAmount,
+              items: order.items,
+            },
+            'partners'
           );
         }
       } catch (emailErr: any) {

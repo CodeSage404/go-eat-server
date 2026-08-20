@@ -1,12 +1,12 @@
-import { Request, Response } from 'express';
+import { Response } from 'express';
 import Cart from '../models/cart.model';
 import { AuthRequest } from '../middleware/auth.middleware';
-import mongoose from 'mongoose';
 
 export const getCart = async (req: AuthRequest, res: Response) => {
   try {
     const cart = await Cart.findOne({ user: req.user?._id })
       .populate('items.menuItemId')
+      .populate('items.restaurant')
       .populate('restaurant');
       
     if (!cart) {
@@ -27,17 +27,24 @@ export const updateCart = async (req: AuthRequest, res: Response) => {
       await Cart.findOneAndDelete({ user: req.user?._id });
       return res.status(200).json({ success: true, data: null });
     }
+
+    const formattedItems = (items || []).map((item: any) => ({
+      menuItemId: item.cartItemId ? (item._id || item.cartItemId.split('_')[0]) : (item._id || item.menuItemId),
+      restaurant: item.restaurantId || restaurantId,
+      quantity: item.quantity || 1,
+    }));
     
     const cart = await Cart.findOneAndUpdate(
       { user: req.user?._id },
       { 
         user: req.user?._id,
-        restaurant: restaurantId,
-        items: items
+        restaurant: restaurantId || formattedItems[0]?.restaurant,
+        items: formattedItems
       },
       { new: true, upsert: true }
     )
     .populate('items.menuItemId')
+    .populate('items.restaurant')
     .populate('restaurant');
     
     res.status(200).json({ success: true, data: cart });
