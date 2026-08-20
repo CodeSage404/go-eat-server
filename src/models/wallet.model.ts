@@ -2,7 +2,9 @@ import mongoose, { Schema, Document } from 'mongoose';
 
 export interface IWallet extends Document {
   user: mongoose.Types.ObjectId; // Rider or Vendor
-  balance: number;
+  balance: number; // Available withdrawable balance
+  availableBalance: number; // Alias for withdrawable balance
+  pendingBalance: number; // Accepted orders in progress
   currency: string;
   bankAccount?: {
     accountNumber: string;
@@ -11,6 +13,8 @@ export interface IWallet extends Document {
     recipientCode?: string;
   };
   lastPayoutDate?: Date;
+  isSettlementOnHold: boolean;
+  holdReason?: string;
   isActive: boolean;
   createdAt: Date;
   updatedAt: Date;
@@ -29,6 +33,16 @@ const walletSchema = new Schema<IWallet>(
       default: 0,
       min: 0,
     },
+    availableBalance: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    pendingBalance: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
     currency: {
       type: String,
       default: 'NGN', // Nigerian Naira
@@ -42,6 +56,13 @@ const walletSchema = new Schema<IWallet>(
     lastPayoutDate: {
       type: Date,
     },
+    isSettlementOnHold: {
+      type: Boolean,
+      default: false,
+    },
+    holdReason: {
+      type: String,
+    },
     isActive: {
       type: Boolean,
       default: true,
@@ -51,6 +72,16 @@ const walletSchema = new Schema<IWallet>(
     timestamps: true,
   }
 );
+
+// Sync balance and availableBalance pre-save
+walletSchema.pre('save', function (next) {
+  if (this.isModified('balance') && !this.isModified('availableBalance')) {
+    this.availableBalance = this.balance;
+  } else if (this.isModified('availableBalance') && !this.isModified('balance')) {
+    this.balance = this.availableBalance;
+  }
+  next();
+});
 
 const Wallet = mongoose.model<IWallet>('Wallet', walletSchema);
 

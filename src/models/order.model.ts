@@ -1,13 +1,31 @@
 import mongoose, { Schema, Document } from 'mongoose';
 
 export enum OrderStatus {
+  PAYMENT_PENDING = 'payment_pending',
+  PAID = 'paid',
+  SENT_TO_OUTLET = 'sent_to_outlet',
   PENDING = 'pending',
   ACCEPTED = 'accepted',
   PREPARING = 'preparing',
+  READY_FOR_COLLECTION = 'ready_for_collection',
   READY = 'ready',
+  COURIER_ASSIGNED = 'courier_assigned',
+  COURIER_COLLECTED = 'courier_collected',
   OUT_FOR_DELIVERY = 'out_for_delivery',
   DELIVERED = 'delivered',
+  COMPLETED = 'completed',
+  SETTLEMENT_AVAILABLE = 'settlement_available',
+  REJECTED = 'rejected',
   CANCELLED = 'cancelled',
+  CANCELLED_BY_CUSTOMER = 'cancelled_by_customer',
+  CANCELLED_BY_OUTLET = 'cancelled_by_outlet',
+  CANCELLED_BY_GOEAT = 'cancelled_by_goeat',
+  COURIER_REASSIGNMENT = 'courier_reassignment',
+  REFUND_PENDING = 'refund_pending',
+  PARTIALLY_REFUNDED = 'partially_refunded',
+  FULLY_REFUNDED = 'fully_refunded',
+  PAYMENT_DISPUTED = 'payment_disputed',
+  SETTLEMENT_ON_HOLD = 'settlement_on_hold',
 }
 
 export enum PaymentMethod {
@@ -28,6 +46,11 @@ export interface IOrder extends Document {
   rider?: mongoose.Types.ObjectId;
   items: IOrderItem[];
   totalAmount: number;
+  grossAmount?: number;
+  commissionRate?: number; // e.g. 0.15 for 15%
+  commissionAmount?: number; // e.g. 1500
+  outletNetSettlement?: number; // e.g. 8500
+  courierEarnings?: number;
   deliveryFee: number;
   deliveryAddress: {
     street: string;
@@ -47,7 +70,9 @@ export interface IOrder extends Document {
   status: OrderStatus;
   estimatedDeliveryTime?: Date;
   deliveryInstructions?: string;
+  cancellationInitiator?: 'customer' | 'outlet' | 'courier' | 'goeat';
   cancelReason?: string;
+  refundAmount?: number;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -79,6 +104,26 @@ const orderSchema = new Schema<IOrder>(
     totalAmount: {
       type: Number,
       required: true,
+    },
+    grossAmount: {
+      type: Number,
+      default: 0,
+    },
+    commissionRate: {
+      type: Number,
+      default: 0.15, // Default 15% platform commission
+    },
+    commissionAmount: {
+      type: Number,
+      default: 0,
+    },
+    outletNetSettlement: {
+      type: Number,
+      default: 0,
+    },
+    courierEarnings: {
+      type: Number,
+      default: 0,
     },
     deliveryFee: {
       type: Number,
@@ -122,9 +167,17 @@ const orderSchema = new Schema<IOrder>(
       type: String,
       trim: true,
     },
+    cancellationInitiator: {
+      type: String,
+      enum: ['customer', 'outlet', 'courier', 'goeat'],
+    },
     cancelReason: {
       type: String,
       trim: true,
+    },
+    refundAmount: {
+      type: Number,
+      default: 0,
     },
   },
   {

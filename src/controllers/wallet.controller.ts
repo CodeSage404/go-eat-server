@@ -7,7 +7,7 @@ import paystackModule from '../services/payments/paystack.module';
 
 class WalletController {
   /**
-   * Get my wallet and recent transactions
+   * Get my wallet, settlement balances, and recent transactions
    */
   public getMyWallet = catchAsync(async (req: Request, res: Response) => {
     let wallet = await Wallet.findOne({ user: req.user!._id });
@@ -19,34 +19,61 @@ class WalletController {
 
     const transactions = await Transaction.find({ wallet: wallet._id })
       .sort({ createdAt: -1 })
-      .limit(20);
+      .limit(30);
 
     res.status(200).json({
       status: 'success',
       data: {
-        wallet,
+        wallet: {
+          _id: wallet._id,
+          user: wallet.user,
+          balance: wallet.balance,
+          availableBalance: wallet.availableBalance || wallet.balance,
+          pendingBalance: wallet.pendingBalance || 0,
+          currency: wallet.currency,
+          bankAccount: wallet.bankAccount,
+          isSettlementOnHold: wallet.isSettlementOnHold || false,
+          holdReason: wallet.holdReason,
+          lastPayoutDate: wallet.lastPayoutDate,
+          isActive: wallet.isActive,
+          createdAt: wallet.createdAt,
+          updatedAt: wallet.updatedAt,
+        },
         transactions,
       },
     });
   });
 
   /**
-   * Request a withdrawal (simulates processing weekly payouts)
+   * Request a withdrawal from Available Balance
+   * Enforces GoEat Operational Policy Section 6:
+   * - Withdrawals cannot be made from Pending Balance.
+   * - Blocked if settlement is on hold.
    */
   public requestWithdrawal = catchAsync(async (req: Request, res: Response) => {
     const { amount } = req.body;
+
+    if (!amount || amount <= 0) {
+      throw new AppError('A valid withdrawal amount is required', 400);
+    }
 
     const wallet = await Wallet.findOne({ user: req.user!._id });
     if (!wallet) {
       throw new AppError('Wallet not found', 404);
     }
 
-    if (wallet.balance < amount) {
-      throw new AppError('Insufficient balance', 400);
+    if (wallet.isSettlementOnHold) {
+      throw new AppError(`Settlement is temporarily on hold: ${wallet.holdReason || 'Account investigation or dispute'}`, 400);
     }
 
-    // Deduct from wallet
+    const withdrawableBalance = wallet.availableBalance || wallet.balance;
+    if (withdrawableBalance < amount) {
+      throw new AppError(`Insufficient available balance. Available: ${withdrawableBalance}, Requested: ${amount}. (Note: Pending funds cannot be withdrawn until order completion).`, 400);
+    }
+
+    // Deduct from available balance
     wallet.balance -= amount;
+    wallet.availableBalance -= amount;
     wallet.lastPayoutDate = new Date();
     await wallet.save();
 
@@ -56,13 +83,19 @@ class WalletController {
       amount,
       type: TransactionType.WITHDRAWAL,
       status: TransactionStatus.COMPLETED, // Mocking instant processing for now
-      description: 'Weekly Payout to Bank Account',
+      description: 'Payout to verified bank account',
     });
 
     res.status(200).json({
       status: 'success',
       data: {
-        wallet,
+        wallet: {
+          _id: wallet._id,
+          balance: wallet.balance,
+          availableBalance: wallet.availableBalance,
+          pendingBalance: wallet.pendingBalance,
+          lastPayoutDate: wallet.lastPayoutDate,
+        },
         transaction,
       },
     });
@@ -70,8 +103,6 @@ class WalletController {
 
   /**
    * Update Bank Details
-   * @openapi
-   * ... we will add swagger later or just skip it since we already did openapi
    */
   public updateBankDetails = catchAsync(async (req: Request, res: Response) => {
     const { accountNumber, bankCode, accountName } = req.body;

@@ -3,6 +3,7 @@ import Restaurant from '../models/restaurant.model';
 import User, { UserRole } from '../models/user.model';
 import { emitToUser } from '../io';
 import notificationService from './notification.service';
+import settlementService from './settlement.service';
 import mapsService from './maps.service';
 import AppError from '../utils/appError';
 import Wallet from '../models/wallet.model';
@@ -136,27 +137,23 @@ class OrderService {
       );
     }
 
-    // If order is DELIVERED, credit the Rider's wallet
-    if (status === OrderStatus.DELIVERED && order.rider) {
-      const riderId = order.rider._id.toString();
-      let wallet = await Wallet.findOne({ user: riderId });
-      if (!wallet) wallet = await Wallet.create({ user: riderId });
-
-      wallet.balance += order.deliveryFee || 0;
-      await wallet.save();
-
-      await Transaction.create({
-        wallet: wallet._id,
-        amount: order.deliveryFee || 0,
-        type: TransactionType.EARNING,
-        status: TransactionStatus.COMPLETED,
-        description: `Delivery fee for order ${order._id}`,
-        reference: order._id.toString(),
-      });
+    // Operational Policy Settlement Triggers
+    if (status === OrderStatus.ACCEPTED) {
+      await settlementService.processOrderAccepted(order);
+    } else if (status === OrderStatus.DELIVERED || status === OrderStatus.COMPLETED) {
+      await settlementService.processOrderCompleted(order);
+    } else if (
+      status === OrderStatus.CANCELLED ||
+      status === OrderStatus.CANCELLED_BY_CUSTOMER ||
+      status === OrderStatus.CANCELLED_BY_OUTLET ||
+      status === OrderStatus.REJECTED
+    ) {
+      const initiator = role === 'vendor' ? 'outlet' : role === 'rider' ? 'courier' : 'customer';
+      await settlementService.processOrderCancellation(order, initiator, 'Status set to cancelled');
     }
 
     // If order is READY, notify nearby riders
-    if (status === OrderStatus.READY) {
+    if (status === OrderStatus.READY || status === OrderStatus.READY_FOR_COLLECTION) {
       this.notifyNearbyRiders(order);
     }
 
@@ -201,6 +198,9 @@ class OrderService {
     ).populate('customer restaurant rider');
 
     if (order) {
+      // Process courier pending earnings
+      await settlementService.processCourierAssigned(order, riderId);
+
       // Notify Customer and Restaurant
       emitToUser(order.customer._id.toString(), SOCKET_EVENTS.RIDER_ASSIGNED, order.rider);
       const restaurant = await Restaurant.findById(order.restaurant);
