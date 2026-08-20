@@ -43,7 +43,13 @@ class OrderService {
   /**
    * Update order status and notify relevant parties
    */
-  async updateOrderStatus(orderId: string, status: OrderStatus, userId: string, role: string): Promise<IOrder | null> {
+  async updateOrderStatus(
+    orderId: string,
+    status: OrderStatus,
+    userId: string,
+    role: string,
+    cancelReason?: string
+  ): Promise<IOrder | null> {
     const order = await Order.findById(orderId).populate('customer restaurant rider');
     if (!order) {
       throw new AppError('Order not found', 404);
@@ -51,7 +57,6 @@ class OrderService {
 
     // Production-grade permission and status flow validation
     if (role === 'vendor') {
-      // order.restaurant may be a populated document or a plain ObjectId — extract the ID safely
       const restaurantId = (order.restaurant as any)?._id
         ? (order.restaurant as any)._id.toString()
         : order.restaurant.toString();
@@ -61,26 +66,43 @@ class OrderService {
         throw new AppError("You do not have permission to manage this outlet's orders", 403);
       }
 
-      const allowedVendorStatuses = [OrderStatus.ACCEPTED, OrderStatus.PREPARING, OrderStatus.READY, OrderStatus.CANCELLED];
+      const allowedVendorStatuses = [OrderStatus.ACCEPTED, OrderStatus.PREPARING, OrderStatus.READY, OrderStatus.READY_FOR_COLLECTION, OrderStatus.CANCELLED, OrderStatus.CANCELLED_BY_OUTLET];
       if (!allowedVendorStatuses.includes(status)) {
         throw new AppError(`Outlets cannot set order status to ${status}`, 400);
       }
-    }
-    else if (role === 'rider') {
-      if (!order.rider || order.rider._id.toString() !== userId) {
+    } else if (role === 'rider') {
+      if (!order.rider || (order.rider as any)._id?.toString() !== userId && order.rider.toString() !== userId) {
         throw new AppError('You are not the assigned courier for this order', 403);
       }
 
-      const allowedRiderStatuses = [OrderStatus.OUT_FOR_DELIVERY, OrderStatus.DELIVERED, OrderStatus.CANCELLED];
+      const allowedRiderStatuses = [OrderStatus.OUT_FOR_DELIVERY, OrderStatus.COURIER_COLLECTED, OrderStatus.DELIVERED, OrderStatus.CANCELLED];
       if (!allowedRiderStatuses.includes(status)) {
         throw new AppError(`Couriers cannot set order status to ${status}`, 400);
       }
-    }
-    else if (role !== 'admin') {
+    } else if (role === 'customer') {
+      const customerId = (order.customer as any)?._id
+        ? (order.customer as any)._id.toString()
+        : order.customer.toString();
+
+      if (customerId !== userId.toString()) {
+        throw new AppError('You are not authorized to manage this order', 403);
+      }
+
+      const allowedCustomerStatuses = [OrderStatus.CANCELLED, OrderStatus.CANCELLED_BY_CUSTOMER, OrderStatus.REJECTED];
+      if (!allowedCustomerStatuses.includes(status)) {
+        throw new AppError(`Customers cannot set order status to ${status}`, 400);
+      }
+    } else if (role !== 'admin') {
       throw new AppError('Unauthorized to update order status', 403);
     }
 
+    // Capture pre-mutation status for cancellation matrix processing
+    const previousStatus = order.status;
+
     order.status = status;
+    if (cancelReason) {
+      order.cancelReason = cancelReason;
+    }
     await order.save();
 
     // Extract IDs safely from potentially populated fields
@@ -105,6 +127,7 @@ class OrderService {
       [OrderStatus.ACCEPTED]: `Great news! Your order #${shortId} has been accepted by the outlet.`,
       [OrderStatus.PREPARING]: `Your food is being prepared! Order #${shortId} is cooking now.`,
       [OrderStatus.READY]: `Your order #${shortId} is ready and waiting for a courier to pick it up.`,
+      [OrderStatus.READY_FOR_COLLECTION]: `Your order #${shortId} is ready and waiting for a courier to pick it up.`,
       [OrderStatus.OUT_FOR_DELIVERY]: `Your order #${shortId} has been picked up and is on its way!`,
       [OrderStatus.DELIVERED]: `Your order #${shortId} has been delivered. Enjoy your meal!`,
       [OrderStatus.CANCELLED]: `Your order #${shortId} has been cancelled.`,
@@ -115,6 +138,7 @@ class OrderService {
       [OrderStatus.ACCEPTED]: `You accepted order #${shortId}. Start preparing when ready!`,
       [OrderStatus.PREPARING]: `Order #${shortId} is now marked as preparing.`,
       [OrderStatus.READY]: `Order #${shortId} is marked ready. Waiting for courier pickup.`,
+      [OrderStatus.READY_FOR_COLLECTION]: `Order #${shortId} is marked ready. Waiting for courier pickup.`,
       [OrderStatus.OUT_FOR_DELIVERY]: `Order #${shortId} has been picked up by the courier and is on its way to the customer.`,
       [OrderStatus.DELIVERED]: `Order #${shortId} has been delivered successfully!`,
       [OrderStatus.CANCELLED]: `Order #${shortId} has been cancelled.`,
@@ -148,8 +172,8 @@ class OrderService {
       status === OrderStatus.CANCELLED_BY_OUTLET ||
       status === OrderStatus.REJECTED
     ) {
-      const initiator = role === 'vendor' ? 'outlet' : role === 'rider' ? 'courier' : 'customer';
-      await settlementService.processOrderCancellation(order, initiator, 'Status set to cancelled');
+      const initiator = role === 'vendor' ? 'outlet' : role === 'rider' ? 'courier' : role === 'customer' ? 'customer' : 'goeat';
+      await settlementService.processOrderCancellation(order, initiator, cancelReason || 'Order status cancelled', previousStatus);
     }
 
     // If order is READY, notify nearby riders
@@ -193,7 +217,7 @@ class OrderService {
   async assignRider(orderId: string, riderId: string): Promise<IOrder | null> {
     const order = await Order.findByIdAndUpdate(
       orderId,
-      { rider: riderId, status: OrderStatus.ACCEPTED },
+      { rider: riderId, status: OrderStatus.COURIER_ASSIGNED },
       { new: true }
     ).populate('customer restaurant rider');
 

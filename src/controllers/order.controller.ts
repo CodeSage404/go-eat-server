@@ -131,15 +131,9 @@ class OrderController {
       id as string,
       status as OrderStatus,
       req.user._id,
-      req.user.role
+      req.user.role,
+      cancelReason
     );
-
-    if (cancelReason && status === OrderStatus.CANCELLED) {
-      if (order) {
-        order.cancelReason = cancelReason;
-        await order.save();
-      }
-    }
 
     res.status(200).json({
       status: 'success',

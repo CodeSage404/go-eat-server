@@ -91,6 +91,17 @@ class SettlementService {
    */
   public async processOrderCompleted(order: IOrder): Promise<void> {
     try {
+      // Idempotency check: verify order hasn't already been settled
+      const existingTx = await Transaction.findOne({
+        reference: order._id.toString(),
+        type: TransactionType.SETTLEMENT,
+      });
+
+      if (existingTx || order.status === OrderStatus.COMPLETED) {
+        logger.info(`ℹ️ Order #${order._id} already settled. Skipping duplicate completion processing.`);
+        return;
+      }
+
       const breakdown = this.calculateOutletSettlement(order);
       const restaurant = await Restaurant.findById(order.restaurant);
 
@@ -120,7 +131,10 @@ class SettlementService {
 
       // 2. Process Courier Settlement
       if (order.rider) {
-        const riderId = order.rider._id ? order.rider._id.toString() : order.rider.toString();
+        const riderId = (order.rider as any)?._id
+          ? (order.rider as any)._id.toString()
+          : order.rider.toString();
+
         let wallet = await Wallet.findOne({ user: riderId });
         if (!wallet) {
           wallet = await Wallet.create({ user: riderId });
@@ -151,12 +165,13 @@ class SettlementService {
 
   /**
    * Cancellation Responsibility Matrix Processor
-   * Resolves financial liability, refunds, and courier compensation based on cancellation stage & initiator.
+   * Resolves financial liability, refunds, and courier compensation based on pre-cancellation order stage & initiator.
    */
   public async processOrderCancellation(
     order: IOrder,
     initiator: 'customer' | 'outlet' | 'courier' | 'goeat',
-    reason: string
+    reason: string,
+    previousStatus?: OrderStatus
   ): Promise<{ refundAmount: number; courierCompensation: number }> {
     let refundAmount = 0;
     let courierCompensation = 0;
@@ -164,11 +179,16 @@ class SettlementService {
     order.cancellationInitiator = initiator;
     order.cancelReason = reason;
 
-    const currentStatus = order.status;
+    // Use previousStatus to accurately evaluate the stage reached before cancellation was requested
+    const effectiveStatus = previousStatus || order.status;
     const breakdown = this.calculateOutletSettlement(order);
 
     // 1. Outlet Rejects / Cancels Before Acceptance
-    if (currentStatus === OrderStatus.PENDING || currentStatus === OrderStatus.SENT_TO_OUTLET) {
+    if (
+      effectiveStatus === OrderStatus.PENDING ||
+      effectiveStatus === OrderStatus.PAYMENT_PENDING ||
+      effectiveStatus === OrderStatus.SENT_TO_OUTLET
+    ) {
       refundAmount = order.totalAmount; // Full refund to customer
       order.status = OrderStatus.REJECTED;
     }
@@ -190,7 +210,10 @@ class SettlementService {
       // If courier was already assigned/dispatched, courier gets compensation
       if (order.rider) {
         courierCompensation = Math.round((order.deliveryFee || 0) * 0.8); // 80% compensation for dispatched courier
-        const riderId = (order.rider as any)._id ? (order.rider as any)._id.toString() : order.rider.toString();
+        const riderId = (order.rider as any)?._id
+          ? (order.rider as any)._id.toString()
+          : order.rider.toString();
+
         let riderWallet = await Wallet.findOne({ user: riderId });
         if (!riderWallet) riderWallet = await Wallet.create({ user: riderId });
 
@@ -212,9 +235,13 @@ class SettlementService {
     else if (initiator === 'customer') {
       order.status = OrderStatus.CANCELLED_BY_CUSTOMER;
 
-      if (currentStatus === OrderStatus.ACCEPTED) {
+      if (effectiveStatus === OrderStatus.ACCEPTED) {
         refundAmount = order.totalAmount; // Full refund if prep hasn't materially commenced
-      } else if (currentStatus === OrderStatus.PREPARING || currentStatus === OrderStatus.READY) {
+      } else if (
+        effectiveStatus === OrderStatus.PREPARING ||
+        effectiveStatus === OrderStatus.READY ||
+        effectiveStatus === OrderStatus.READY_FOR_COLLECTION
+      ) {
         // Preparation started: Customer receives partial refund; outlet cost protected
         refundAmount = Math.round(order.totalAmount * 0.5); // 50% partial refund
 
