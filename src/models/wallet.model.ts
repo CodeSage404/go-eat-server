@@ -74,13 +74,12 @@ const walletSchema = new Schema<IWallet>(
 );
 
 // Sync balance and availableBalance pre-save
-walletSchema.pre('save', function (next) {
+walletSchema.pre('save', function (this: any) {
   if (this.isModified('balance') && !this.isModified('availableBalance')) {
     this.availableBalance = this.balance;
   } else if (this.isModified('availableBalance') && !this.isModified('balance')) {
     this.balance = this.availableBalance;
   }
-  next();
 });
 
 const Wallet = mongoose.model<IWallet>('Wallet', walletSchema);
