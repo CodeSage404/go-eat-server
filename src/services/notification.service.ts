@@ -56,7 +56,16 @@ class NotificationService {
     } catch (err) {
       logger.error('❌ Error persisting notification:', err);
       // Still try socket even if DB fails
-      emitToUser(userId, SOCKET_EVENTS.NOTIFICATION, { title, body, data });
+      emitToUser(userId, SOCKET_EVENTS.NOTIFICATION, {
+        _id: new mongoose.Types.ObjectId().toString(),
+        title,
+        body,
+        type: data.type || 'system',
+        isRead: false,
+        orderId: data.orderId,
+        data,
+        createdAt: new Date().toISOString(),
+      });
     }
 
     // 3. Send via Push Notification (FCM)
