@@ -51,7 +51,8 @@ class OrderService {
     status: OrderStatus,
     userId: string,
     role: string,
-    cancelReason?: string
+    cancelReason?: string,
+    estimatedPrepTime?: number
   ): Promise<IOrder | null> {
     const order = await Order.findById(orderId).populate('customer restaurant rider');
     if (!order) {
