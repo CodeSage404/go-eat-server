@@ -4,6 +4,9 @@ import User, { UserRole } from '../models/user.model';
 import { emitToUser } from '../io';
 import notificationService from './notification.service';
 import settlementService from './settlement.service';
+import emailService from './email.service';
+import logger from '../utils/logger';
+import { NotificationType } from '../models/userNotification.model';
 import mapsService from './maps.service';
 import AppError from '../utils/appError';
 import Wallet from '../models/wallet.model';
@@ -201,7 +204,7 @@ class OrderService {
             customerName: customerUser.name || 'Customer',
             estimatedPrepTime: order.estimatedPrepTime || 20,
           }
-        ).catch(err => logger.error('Failed to send order preparing email:', err));
+        ).catch((err: any) => logger.error('Failed to send order preparing email:', err));
       }
     }
 
