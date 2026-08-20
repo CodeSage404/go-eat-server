@@ -70,7 +70,16 @@ class OrderService {
         throw new AppError("You do not have permission to manage this outlet's orders", 403);
       }
 
-      const allowedVendorStatuses = [OrderStatus.ACCEPTED, OrderStatus.PREPARING, OrderStatus.READY, OrderStatus.READY_FOR_COLLECTION, OrderStatus.CANCELLED, OrderStatus.CANCELLED_BY_OUTLET];
+      const allowedVendorStatuses = [
+        OrderStatus.ACCEPTED,
+        OrderStatus.PREPARING,
+        OrderStatus.READY,
+        OrderStatus.READY_FOR_COLLECTION,
+        OrderStatus.OUT_FOR_DELIVERY,
+        OrderStatus.DELIVERED,
+        OrderStatus.CANCELLED,
+        OrderStatus.CANCELLED_BY_OUTLET
+      ];
       if (!allowedVendorStatuses.includes(status)) {
         throw new AppError(`Outlets cannot set order status to ${status}`, 400);
       }
