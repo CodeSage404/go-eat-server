@@ -9,6 +9,7 @@ const getCart = async (req, res) => {
     try {
         const cart = await cart_model_1.default.findOne({ user: req.user?._id })
             .populate('items.menuItemId')
+            .populate('items.restaurant')
             .populate('restaurant');
         if (!cart) {
             return res.status(200).json({ success: true, data: null });
@@ -27,12 +28,18 @@ const updateCart = async (req, res) => {
             await cart_model_1.default.findOneAndDelete({ user: req.user?._id });
             return res.status(200).json({ success: true, data: null });
         }
+        const formattedItems = (items || []).map((item) => ({
+            menuItemId: item.cartItemId ? (item._id || item.cartItemId.split('_')[0]) : (item._id || item.menuItemId),
+            restaurant: item.restaurantId || restaurantId,
+            quantity: item.quantity || 1,
+        }));
         const cart = await cart_model_1.default.findOneAndUpdate({ user: req.user?._id }, {
             user: req.user?._id,
-            restaurant: restaurantId,
-            items: items
+            restaurant: restaurantId || formattedItems[0]?.restaurant,
+            items: formattedItems
         }, { new: true, upsert: true })
             .populate('items.menuItemId')
+            .populate('items.restaurant')
             .populate('restaurant');
         res.status(200).json({ success: true, data: cart });
     }

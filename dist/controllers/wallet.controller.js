@@ -44,7 +44,7 @@ const paystack_module_1 = __importDefault(require("../services/payments/paystack
 class WalletController {
     constructor() {
         /**
-         * Get my wallet and recent transactions
+         * Get my wallet, settlement balances, and recent transactions
          */
         this.getMyWallet = (0, catchAsync_1.catchAsync)(async (req, res) => {
             let wallet = await wallet_model_1.default.findOne({ user: req.user._id });
@@ -54,29 +54,54 @@ class WalletController {
             }
             const transactions = await transaction_model_1.default.find({ wallet: wallet._id })
                 .sort({ createdAt: -1 })
-                .limit(20);
+                .limit(30);
             res.status(200).json({
                 status: 'success',
                 data: {
-                    wallet,
+                    wallet: {
+                        _id: wallet._id,
+                        user: wallet.user,
+                        balance: wallet.balance,
+                        availableBalance: wallet.availableBalance || wallet.balance,
+                        pendingBalance: wallet.pendingBalance || 0,
+                        currency: wallet.currency,
+                        bankAccount: wallet.bankAccount,
+                        isSettlementOnHold: wallet.isSettlementOnHold || false,
+                        holdReason: wallet.holdReason,
+                        lastPayoutDate: wallet.lastPayoutDate,
+                        isActive: wallet.isActive,
+                        createdAt: wallet.createdAt,
+                        updatedAt: wallet.updatedAt,
+                    },
                     transactions,
                 },
             });
         });
         /**
-         * Request a withdrawal (simulates processing weekly payouts)
+         * Request a withdrawal from Available Balance
+         * Enforces GoEat Operational Policy Section 6:
+         * - Withdrawals cannot be made from Pending Balance.
+         * - Blocked if settlement is on hold.
          */
         this.requestWithdrawal = (0, catchAsync_1.catchAsync)(async (req, res) => {
             const { amount } = req.body;
+            if (!amount || amount <= 0) {
+                throw new appError_1.default('A valid withdrawal amount is required', 400);
+            }
             const wallet = await wallet_model_1.default.findOne({ user: req.user._id });
             if (!wallet) {
                 throw new appError_1.default('Wallet not found', 404);
             }
-            if (wallet.balance < amount) {
-                throw new appError_1.default('Insufficient balance', 400);
+            if (wallet.isSettlementOnHold) {
+                throw new appError_1.default(`Settlement is temporarily on hold: ${wallet.holdReason || 'Account investigation or dispute'}`, 400);
             }
-            // Deduct from wallet
+            const withdrawableBalance = wallet.availableBalance || wallet.balance;
+            if (withdrawableBalance < amount) {
+                throw new appError_1.default(`Insufficient available balance. Available: ${withdrawableBalance}, Requested: ${amount}. (Note: Pending funds cannot be withdrawn until order completion).`, 400);
+            }
+            // Deduct from available balance
             wallet.balance -= amount;
+            wallet.availableBalance -= amount;
             wallet.lastPayoutDate = new Date();
             await wallet.save();
             // Create withdrawal transaction
@@ -85,20 +110,24 @@ class WalletController {
                 amount,
                 type: transaction_model_1.TransactionType.WITHDRAWAL,
                 status: transaction_model_1.TransactionStatus.COMPLETED, // Mocking instant processing for now
-                description: 'Weekly Payout to Bank Account',
+                description: 'Payout to verified bank account',
             });
             res.status(200).json({
                 status: 'success',
                 data: {
-                    wallet,
+                    wallet: {
+                        _id: wallet._id,
+                        balance: wallet.balance,
+                        availableBalance: wallet.availableBalance,
+                        pendingBalance: wallet.pendingBalance,
+                        lastPayoutDate: wallet.lastPayoutDate,
+                    },
                     transaction,
                 },
             });
         });
         /**
          * Update Bank Details
-         * @openapi
-         * ... we will add swagger later or just skip it since we already did openapi
          */
         this.updateBankDetails = (0, catchAsync_1.catchAsync)(async (req, res) => {
             const { accountNumber, bankCode, accountName } = req.body;

@@ -69,6 +69,16 @@ const vendorUpdateRestaurantSchema = zod_1.z.object({
         accountNumber: zod_1.z.string().optional(),
         accountName: zod_1.z.string().optional(),
     }).optional(),
+    autoAcceptOrders: zod_1.z.boolean().optional(),
+    orderAlerts: zod_1.z.boolean().optional(),
+    specialDays: zod_1.z.array(zod_1.z.object({
+        name: zod_1.z.string(),
+        date: zod_1.z.string(),
+        description: zod_1.z.string().optional(),
+        isClosed: zod_1.z.boolean(),
+        open: zod_1.z.string().optional(),
+        close: zod_1.z.string().optional(),
+    })).optional(),
 });
 class RestaurantController {
     constructor() {

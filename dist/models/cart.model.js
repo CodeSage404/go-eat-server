@@ -44,7 +44,7 @@ const cartSchema = new mongoose_1.Schema({
     restaurant: {
         type: mongoose_1.Schema.Types.ObjectId,
         ref: 'Restaurant',
-        required: true,
+        required: false,
     },
     items: [
         {
@@ -52,6 +52,11 @@ const cartSchema = new mongoose_1.Schema({
                 type: mongoose_1.Schema.Types.ObjectId,
                 ref: 'FoodItem',
                 required: true,
+            },
+            restaurant: {
+                type: mongoose_1.Schema.Types.ObjectId,
+                ref: 'Restaurant',
+                required: false,
             },
             quantity: {
                 type: Number,

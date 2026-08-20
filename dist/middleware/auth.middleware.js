@@ -58,6 +58,15 @@ exports.protect = (0, catchAsync_1.catchAsync)(async (req, res, next) => {
     if (currentUser.status === 'suspended') {
         return next(new appError_1.default('Your account has been suspended. Please contact support.', 403));
     }
+    if (currentUser.role === 'vendor' && !currentUser.restaurantId) {
+        const mongoose = require('mongoose');
+        const Restaurant = mongoose.model('Restaurant');
+        const restaurant = await Restaurant.findOne({ owner: currentUser._id });
+        if (restaurant) {
+            currentUser.restaurantId = restaurant._id;
+            await currentUser.save({ validateBeforeSave: false });
+        }
+    }
     req.user = currentUser;
     next();
 });

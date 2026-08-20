@@ -37,13 +37,31 @@ exports.PaymentMethod = exports.OrderStatus = void 0;
 const mongoose_1 = __importStar(require("mongoose"));
 var OrderStatus;
 (function (OrderStatus) {
+    OrderStatus["PAYMENT_PENDING"] = "payment_pending";
+    OrderStatus["PAID"] = "paid";
+    OrderStatus["SENT_TO_OUTLET"] = "sent_to_outlet";
     OrderStatus["PENDING"] = "pending";
     OrderStatus["ACCEPTED"] = "accepted";
     OrderStatus["PREPARING"] = "preparing";
+    OrderStatus["READY_FOR_COLLECTION"] = "ready_for_collection";
     OrderStatus["READY"] = "ready";
+    OrderStatus["COURIER_ASSIGNED"] = "courier_assigned";
+    OrderStatus["COURIER_COLLECTED"] = "courier_collected";
     OrderStatus["OUT_FOR_DELIVERY"] = "out_for_delivery";
     OrderStatus["DELIVERED"] = "delivered";
+    OrderStatus["COMPLETED"] = "completed";
+    OrderStatus["SETTLEMENT_AVAILABLE"] = "settlement_available";
+    OrderStatus["REJECTED"] = "rejected";
     OrderStatus["CANCELLED"] = "cancelled";
+    OrderStatus["CANCELLED_BY_CUSTOMER"] = "cancelled_by_customer";
+    OrderStatus["CANCELLED_BY_OUTLET"] = "cancelled_by_outlet";
+    OrderStatus["CANCELLED_BY_GOEAT"] = "cancelled_by_goeat";
+    OrderStatus["COURIER_REASSIGNMENT"] = "courier_reassignment";
+    OrderStatus["REFUND_PENDING"] = "refund_pending";
+    OrderStatus["PARTIALLY_REFUNDED"] = "partially_refunded";
+    OrderStatus["FULLY_REFUNDED"] = "fully_refunded";
+    OrderStatus["PAYMENT_DISPUTED"] = "payment_disputed";
+    OrderStatus["SETTLEMENT_ON_HOLD"] = "settlement_on_hold";
 })(OrderStatus || (exports.OrderStatus = OrderStatus = {}));
 var PaymentMethod;
 (function (PaymentMethod) {
@@ -76,6 +94,26 @@ const orderSchema = new mongoose_1.Schema({
     totalAmount: {
         type: Number,
         required: true,
+    },
+    grossAmount: {
+        type: Number,
+        default: 0,
+    },
+    commissionRate: {
+        type: Number,
+        default: 0.15, // Default 15% platform commission
+    },
+    commissionAmount: {
+        type: Number,
+        default: 0,
+    },
+    outletNetSettlement: {
+        type: Number,
+        default: 0,
+    },
+    courierEarnings: {
+        type: Number,
+        default: 0,
     },
     deliveryFee: {
         type: Number,
@@ -119,9 +157,17 @@ const orderSchema = new mongoose_1.Schema({
         type: String,
         trim: true,
     },
+    cancellationInitiator: {
+        type: String,
+        enum: ['customer', 'outlet', 'courier', 'goeat'],
+    },
     cancelReason: {
         type: String,
         trim: true,
+    },
+    refundAmount: {
+        type: Number,
+        default: 0,
     },
 }, {
     timestamps: true,

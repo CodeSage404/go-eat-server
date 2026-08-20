@@ -38,7 +38,12 @@ const mongoose_1 = __importStar(require("mongoose"));
 var TransactionType;
 (function (TransactionType) {
     TransactionType["EARNING"] = "earning";
+    TransactionType["SETTLEMENT"] = "settlement";
+    TransactionType["COMMISSION"] = "commission";
     TransactionType["WITHDRAWAL"] = "withdrawal";
+    TransactionType["CANCELLATION_COMPENSATION"] = "cancellation_compensation";
+    TransactionType["REFUND"] = "refund";
+    TransactionType["HOLD"] = "hold";
 })(TransactionType || (exports.TransactionType = TransactionType = {}));
 var TransactionStatus;
 (function (TransactionStatus) {

@@ -215,7 +215,7 @@ export class PaymentService {
       throw new AppError('Order associated with payment not found', 404);
     }
 
-    if (order.status === OrderStatus.PENDING) {
+    if (order.status === OrderStatus.PENDING && order.paymentStatus !== 'completed') {
       order.paymentStatus = 'completed';
       order.paymentResult = paymentResult;
       await order.save();

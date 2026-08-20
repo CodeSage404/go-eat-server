@@ -233,6 +233,24 @@ const restaurantSchema = new mongoose_1.Schema({
         type: String,
         default: 'NGN',
     },
+    autoAcceptOrders: {
+        type: Boolean,
+        default: false,
+    },
+    orderAlerts: {
+        type: Boolean,
+        default: true,
+    },
+    specialDays: [
+        {
+            name: { type: String, required: true },
+            date: { type: String, required: true },
+            description: { type: String },
+            isClosed: { type: Boolean, default: false },
+            open: { type: String },
+            close: { type: String },
+        }
+    ],
 }, {
     timestamps: true,
 });

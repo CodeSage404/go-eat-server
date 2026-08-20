@@ -462,7 +462,6 @@ class AdminController {
                 }
             }
             try {
-                // Create the restaurant
                 const restaurant = await restaurant_model_1.default.create({
                     owner: user._id,
                     name: name,
@@ -476,6 +475,8 @@ class AdminController {
                     status: restaurant_model_1.RestaurantStatus.ACTIVE, // Auto-approved
                     images: images,
                 });
+                user.restaurantId = restaurant._id;
+                await user.save({ validateBeforeSave: false });
                 // Send Welcome / Partner email to the vendor owner!
                 try {
                     await email_util_1.default.sendTemplateEmail(email.toLowerCase(), 'WELCOME_PARTNER', 'Welcome to the Go-Eat Family — Partner Onboarding Successful!', {

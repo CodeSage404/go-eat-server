@@ -33,64 +33,56 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.NotificationType = void 0;
 const mongoose_1 = __importStar(require("mongoose"));
-const walletSchema = new mongoose_1.Schema({
+/**
+ * Per-user in-app notification (order updates, promotions, system alerts).
+ * Each document represents one notification delivered to one user.
+ */
+var NotificationType;
+(function (NotificationType) {
+    NotificationType["ORDER_UPDATE"] = "order_update";
+    NotificationType["NEW_ORDER"] = "new_order";
+    NotificationType["PROMOTION"] = "promotion";
+    NotificationType["SYSTEM"] = "system";
+})(NotificationType || (exports.NotificationType = NotificationType = {}));
+const userNotificationSchema = new mongoose_1.Schema({
     user: {
         type: mongoose_1.Schema.Types.ObjectId,
         ref: 'User',
-        required: true,
-        unique: true, // One wallet per user
+        required: [true, 'Notification must belong to a user'],
+        index: true,
     },
-    balance: {
-        type: Number,
-        default: 0,
-        min: 0,
-    },
-    availableBalance: {
-        type: Number,
-        default: 0,
-        min: 0,
-    },
-    pendingBalance: {
-        type: Number,
-        default: 0,
-        min: 0,
-    },
-    currency: {
+    title: {
         type: String,
-        default: 'NGN', // Nigerian Naira
+        required: [true, 'Notification title is required'],
+        trim: true,
     },
-    bankAccount: {
-        accountNumber: { type: String, trim: true },
-        bankCode: { type: String, trim: true },
-        accountName: { type: String, trim: true },
-        recipientCode: { type: String, trim: true },
+    body: {
+        type: String,
+        required: [true, 'Notification body is required'],
+        trim: true,
     },
-    lastPayoutDate: {
-        type: Date,
+    type: {
+        type: String,
+        enum: Object.values(NotificationType),
+        default: NotificationType.SYSTEM,
     },
-    isSettlementOnHold: {
+    isRead: {
         type: Boolean,
         default: false,
     },
-    holdReason: {
-        type: String,
+    orderId: {
+        type: mongoose_1.Schema.Types.ObjectId,
+        ref: 'Order',
     },
-    isActive: {
-        type: Boolean,
-        default: true,
+    data: {
+        type: mongoose_1.Schema.Types.Mixed,
     },
 }, {
     timestamps: true,
 });
-// Sync balance and availableBalance pre-save
-walletSchema.pre('save', function () {
-    if (this.isModified('balance') && !this.isModified('availableBalance')) {
-        this.availableBalance = this.balance;
-    }
-    else if (this.isModified('availableBalance') && !this.isModified('balance')) {
-        this.balance = this.availableBalance;
-    }
-});
-const Wallet = mongoose_1.default.model('Wallet', walletSchema);
-exports.default = Wallet;
+// Compound index for fast "get my unread notifications" queries
+userNotificationSchema.index({ user: 1, isRead: 1, createdAt: -1 });
+const UserNotification = mongoose_1.default.model('UserNotification', userNotificationSchema);
+exports.default = UserNotification;

@@ -77,23 +77,27 @@ class OrderController {
                 customer: req.user._id,
             });
             await order.populate('items.foodItem');
-            if (order.paymentMethod === order_model_1.PaymentMethod.CASH && req.user.email && !req.user.email.includes('customer@goeat.com')) {
-                email_service_1.default.sendTemplateEmail(req.user.email, 'ORDER_CONFIRMED', `Order Confirmed: #${order._id.toString().slice(-6).toUpperCase()}`, {
-                    orderId: order._id,
-                    customerName: req.user.name,
-                    total: order.totalAmount,
-                    items: order.items
-                }).catch(err => console.error('Failed to send order email:', err));
-            }
-            const restaurant = await restaurant_model_1.default.findById(order.restaurant).populate('owner');
-            const vendorEmail = restaurant?.businessEmail || restaurant?.owner?.email;
-            if (vendorEmail) {
-                email_service_1.default.sendTemplateEmail(vendorEmail, 'ORDER_CONFIRMED', `New Order Received: #${order._id.toString().slice(-6).toUpperCase()}`, {
-                    orderId: order._id,
-                    customerName: restaurant?.name || 'Vendor',
-                    total: order.totalAmount,
-                    items: order.items,
-                }, 'partners').catch(err => console.error('Failed to send vendor order email:', err));
+            // Send emails immediately only for CASH orders.
+            // For CARD orders, emails are sent after successful payment verification.
+            if (order.paymentMethod === order_model_1.PaymentMethod.CASH) {
+                if (req.user.email && !req.user.email.includes('customer@goeat.com')) {
+                    email_service_1.default.sendTemplateEmail(req.user.email, 'ORDER_CONFIRMED', `Order Confirmed: #${order._id.toString().slice(-6).toUpperCase()}`, {
+                        orderId: order._id,
+                        customerName: req.user.name,
+                        total: order.totalAmount,
+                        items: order.items
+                    }).catch(err => console.error('Failed to send order email:', err));
+                }
+                const restaurant = await restaurant_model_1.default.findById(order.restaurant).populate('owner');
+                const vendorEmail = restaurant?.businessEmail || restaurant?.owner?.email;
+                if (vendorEmail) {
+                    email_service_1.default.sendTemplateEmail(vendorEmail, 'ORDER_CONFIRMED', `New Order Received: #${order._id.toString().slice(-6).toUpperCase()}`, {
+                        orderId: order._id,
+                        customerName: restaurant?.name || 'Vendor',
+                        total: order.totalAmount,
+                        items: order.items,
+                    }, 'partners').catch(err => console.error('Failed to send vendor order email:', err));
+                }
             }
             res.status(201).json({
                 status: 'success',
@@ -106,13 +110,7 @@ class OrderController {
             if (!Object.values(order_model_1.OrderStatus).includes(status)) {
                 throw new appError_1.default('Invalid order status', 400);
             }
-            const order = await order_service_1.default.updateOrderStatus(id, status, req.user._id, req.user.role);
-            if (cancelReason && status === order_model_1.OrderStatus.CANCELLED) {
-                if (order) {
-                    order.cancelReason = cancelReason;
-                    await order.save();
-                }
-            }
+            const order = await order_service_1.default.updateOrderStatus(id, status, req.user._id, req.user.role, cancelReason);
             res.status(200).json({
                 status: 'success',
                 data: { order },
