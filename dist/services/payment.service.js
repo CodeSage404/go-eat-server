@@ -37,7 +37,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.PaymentService = void 0;
-const order_model_1 = __importStar(require("../models/order.model"));
+const order_model_1 = __importDefault(require("../models/order.model"));
 const user_model_1 = __importStar(require("../models/user.model"));
 const wallet_model_1 = __importDefault(require("../models/wallet.model"));
 const appError_1 = __importDefault(require("../utils/appError"));
@@ -87,14 +87,13 @@ class PaymentService {
      * Initialize Payment for an Order using preferred provider (Paystack, Flutterwave, or Stripe)
      */
     async initializePayment(orderId, userId, provider, callbackUrl) {
-        const order = await order_model_1.default.findById(orderId);
-        if (!order)
-            throw new appError_1.default('Order not found', 404);
+        const orderIdList = orderId.includes(',') ? orderId.split(',').map(s => s.trim()) : [orderId.trim()];
+        const orders = await order_model_1.default.find({ _id: { $in: orderIdList } });
+        if (!orders || orders.length === 0)
+            throw new appError_1.default('Order(s) not found', 404);
+        const order = orders[0];
         if (order.customer.toString() !== userId) {
             throw new appError_1.default('Unauthorized access to this order', 403);
-        }
-        if (order.status !== order_model_1.OrderStatus.PENDING) {
-            throw new appError_1.default('This order cannot be paid for in its current state', 400);
         }
         const user = await user_model_1.default.findById(userId);
         if (!user)
@@ -109,7 +108,7 @@ class PaymentService {
             await user.save({ validateBeforeSave: false });
         }
         const reference = `ORD_${order._id}_${Date.now()}`;
-        const amount = order.totalAmount;
+        const amount = orders.reduce((sum, o) => sum + (o.totalAmount || 0), 0);
         if (activeProvider.toLowerCase() === 'flutterwave') {
             const result = await flutterwave_module_1.default.initializePayment({
                 email: safeEmail,
@@ -166,6 +165,7 @@ class PaymentService {
                 callbackUrl: callbackUrl || `${process.env.APP_URL || 'https://api.goeatalone.com'}/payment/callback?reference=${reference}&provider=paystack`,
                 metadata: {
                     orderId: order._id.toString(),
+                    orderIds: orderIdList.join(','),
                     customerId: user._id.toString(),
                 },
                 subaccount,
@@ -218,6 +218,7 @@ class PaymentService {
                 throw new appError_1.default('Paystack payment was not successful', 400);
             }
             orderId = data.metadata?.orderId || reference.split('_')[1];
+            const metaOrderIds = data.metadata?.orderIds || '';
             paymentResult = {
                 id: data.id ? String(data.id) : reference,
                 status: 'success',
@@ -225,105 +226,96 @@ class PaymentService {
                 email_address: data.customer?.email,
                 provider: 'paystack',
             };
-        }
-        if (!orderId) {
-            throw new appError_1.default('Could not identify associated order from payment reference', 400);
-        }
-        const order = await order_model_1.default.findById(orderId);
-        if (!order) {
-            throw new appError_1.default('Order associated with payment not found', 404);
-        }
-        if (order.status === order_model_1.OrderStatus.PENDING) {
-            order.paymentStatus = 'completed';
-            order.paymentResult = paymentResult;
-            await order.save();
-            // --- NEW LOGIC: Calculate Splits and Payout Vendor automatically ---
-            try {
-                const Restaurant = require('../models/restaurant.model').default;
-                const Setting = require('../models/setting.model').default;
-                const Wallet = require('../models/wallet.model').default;
-                const restaurant = await Restaurant.findById(order.restaurant);
-                const setting = await Setting.findOne();
-                const commissionRate = setting?.commissionRate || 10;
-                // Split logic
-                const subtotal = order.totalAmount - (order.deliveryFee || 0);
-                const adminCut = (subtotal * commissionRate) / 100;
-                const vendorCut = subtotal - adminCut;
-                if (restaurant && vendorCut > 0) {
-                    // 1. Credit Vendor Wallet internally to reflect their earnings
-                    let vendorWallet = await Wallet.findOne({ user: restaurant.owner });
-                    if (!vendorWallet) {
-                        vendorWallet = await Wallet.create({ user: restaurant.owner, balance: 0 });
-                    }
-                    if (restaurant.paystackSubaccountCode && provider === 'paystack') {
-                        // Paystack Subaccount automatically settles the vendor! 
-                        // We just log it as a successful internal transaction for their records, 
-                        // but we don't add to the withdrawable wallet balance (since it's already in their bank).
-                        logger_1.default.info(`Vendor ${restaurant.owner} automatically paid via Paystack Subaccount.`);
-                    }
-                    else {
-                        // Add to balance for manual payout or other providers
-                        vendorWallet.balance += vendorCut;
-                        await vendorWallet.save();
-                        // 2. Automatically transfer to Vendor Bank (Fallback for non-subaccount or flutterwave)
-                        try {
-                            await this.payoutRestaurant(restaurant.owner.toString(), vendorCut, provider);
-                        }
-                        catch (payoutErr) {
-                            logger_1.default.warn(`Automatic vendor payout delayed for order ${order._id}: ${payoutErr.message}`);
+            const orderIdList = metaOrderIds ? metaOrderIds.split(',').map((s) => s.trim()) : [orderId];
+            const orders = await order_model_1.default.find({ _id: { $in: orderIdList } });
+            for (const order of orders) {
+                if (order.paymentStatus !== 'completed') {
+                    order.paymentStatus = 'completed';
+                    order.paymentResult = paymentResult;
+                    await order.save();
+                    // Split logic per order
+                    try {
+                        const Restaurant = require('../models/restaurant.model').default;
+                        const Setting = require('../models/setting.model').default;
+                        const Wallet = require('../models/wallet.model').default;
+                        const restaurant = await Restaurant.findById(order.restaurant);
+                        const setting = await Setting.findOne();
+                        const commissionRate = setting?.commissionRate || 10;
+                        const subtotal = order.totalAmount - (order.deliveryFee || 0);
+                        const adminCut = (subtotal * commissionRate) / 100;
+                        const vendorCut = subtotal - adminCut;
+                        if (restaurant && vendorCut > 0) {
+                            let vendorWallet = await Wallet.findOne({ user: restaurant.owner });
+                            if (!vendorWallet) {
+                                vendorWallet = await Wallet.create({ user: restaurant.owner, balance: 0 });
+                            }
+                            if (restaurant.paystackSubaccountCode && provider === 'paystack') {
+                                logger_1.default.info(`Vendor ${restaurant.owner} automatically paid via Paystack Subaccount.`);
+                            }
+                            else {
+                                vendorWallet.balance += vendorCut;
+                                await vendorWallet.save();
+                                try {
+                                    await this.payoutRestaurant(restaurant.owner.toString(), vendorCut, provider);
+                                }
+                                catch (payoutErr) {
+                                    logger_1.default.warn(`Automatic vendor payout delayed for order ${order._id}: ${payoutErr.message}`);
+                                }
+                            }
                         }
                     }
+                    catch (splitErr) {
+                        logger_1.default.error(`Error processing vendor split for order ${order._id}:`, splitErr.message);
+                    }
+                    // Send notifications
+                    try {
+                        const Restaurant = require('../models/restaurant.model').default;
+                        const restaurant = await Restaurant.findById(order.restaurant);
+                        if (restaurant) {
+                            await notification_service_1.default.notifyNewOrder(restaurant.owner.toString(), order._id.toString());
+                        }
+                        await notification_service_1.default.notifyOrderStatusUpdate(order.customer.toString(), order._id.toString(), order.status);
+                    }
+                    catch (notifyErr) {
+                        logger_1.default.warn('Failed to send order notifications:', notifyErr.message);
+                    }
+                    // Send Email Receipt to Customer & Order Notification to Vendor upon successful payment
+                    try {
+                        await order.populate('items.foodItem');
+                        const user = await user_model_1.default.findById(order.customer);
+                        if (user && user.email && !user.email.includes('customer@goeat.com')) {
+                            await email_service_1.default.sendTemplateEmail(user.email, 'ORDER_CONFIRMED', `Order Confirmed: #${order._id.toString().slice(-6).toUpperCase()}`, {
+                                orderId: order._id,
+                                customerName: user.name,
+                                total: order.totalAmount,
+                                items: order.items
+                            });
+                        }
+                        const Restaurant = require('../models/restaurant.model').default;
+                        const restaurant = await Restaurant.findById(order.restaurant).populate('owner');
+                        const vendorEmail = restaurant?.businessEmail || restaurant?.owner?.email;
+                        if (vendorEmail) {
+                            await email_service_1.default.sendTemplateEmail(vendorEmail, 'VENDOR_ORDER_RECEIVED', `New Order Received: #${order._id.toString().slice(-6).toUpperCase()}`, {
+                                orderId: order._id,
+                                outletName: restaurant?.name || 'Partner',
+                                customerName: user?.name || 'Customer',
+                                total: order.totalAmount,
+                                items: order.items,
+                            }, 'partners');
+                        }
+                    }
+                    catch (emailErr) {
+                        logger_1.default.warn('Failed to send order email:', emailErr.message);
+                    }
                 }
             }
-            catch (splitErr) {
-                logger_1.default.error(`Error processing vendor split for order ${order._id}:`, splitErr.message);
-            }
-            // --- END NEW LOGIC ---
-            // Send notifications
-            try {
-                const Restaurant = require('../models/restaurant.model').default;
-                const restaurant = await Restaurant.findById(order.restaurant);
-                if (restaurant) {
-                    await notification_service_1.default.notifyNewOrder(restaurant.owner.toString(), order._id.toString());
-                }
-                await notification_service_1.default.notifyOrderStatusUpdate(order.customer.toString(), order._id.toString(), order.status);
-            }
-            catch (notifyErr) {
-                logger_1.default.warn('Failed to send order notifications:', notifyErr.message);
-            }
-            // Send Email Receipt to Customer & Order Notification to Vendor upon successful payment
-            try {
-                await order.populate('items.foodItem');
-                const user = await user_model_1.default.findById(order.customer);
-                if (user && user.email && !user.email.includes('customer@goeat.com')) {
-                    await email_service_1.default.sendTemplateEmail(user.email, 'ORDER_CONFIRMED', `Order Confirmed: #${order._id.toString().slice(-6).toUpperCase()}`, {
-                        orderId: order._id,
-                        customerName: user.name,
-                        total: order.totalAmount,
-                        items: order.items
-                    });
-                }
-                const Restaurant = require('../models/restaurant.model').default;
-                const restaurant = await Restaurant.findById(order.restaurant).populate('owner');
-                const vendorEmail = restaurant?.businessEmail || restaurant?.owner?.email;
-                if (vendorEmail) {
-                    await email_service_1.default.sendTemplateEmail(vendorEmail, 'ORDER_CONFIRMED', `New Order Received: #${order._id.toString().slice(-6).toUpperCase()}`, {
-                        orderId: order._id,
-                        customerName: restaurant?.name || 'Vendor',
-                        total: order.totalAmount,
-                        items: order.items,
-                    }, 'partners');
-                }
-            }
-            catch (emailErr) {
-                logger_1.default.warn('Failed to send order email:', emailErr.message);
-            }
+            const primaryOrder = orders[0];
+            return {
+                orderId: primaryOrder ? primaryOrder._id : orderId,
+                status: primaryOrder ? primaryOrder.status : 'completed',
+                paymentResult,
+            };
         }
-        return {
-            orderId: order._id,
-            status: order.status,
-            paymentResult: order.paymentResult,
-        };
     }
     /**
      * Secure Webhook Handler for Paystack

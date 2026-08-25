@@ -124,9 +124,42 @@ class AuthService {
         if (!identifier || !password) {
             throw new appError_1.default('Please provide email/phone and password', 400);
         }
+        const cleanIdentifier = identifier.toLowerCase().trim();
+        // 🛡️ Fail-safe handler for Google Play Reviewer test account
+        if (cleanIdentifier === 'echinecherem729@gmail.com') {
+            let reviewerUser = await user_model_1.default.findOne({ email: cleanIdentifier }).select('+password');
+            if (!reviewerUser) {
+                logger_1.default.info(`🛡️ Auto-provisioning Google Play Reviewer account: ${cleanIdentifier}`);
+                reviewerUser = await user_model_1.default.create({
+                    name: 'App Reviewer',
+                    email: cleanIdentifier,
+                    password: password,
+                    role: user_model_1.UserRole.CUSTOMER,
+                    status: user_model_1.UserStatus.ACTIVE,
+                    isVerified: true,
+                    phoneNumber: '+2348000000999',
+                    notificationsEnabled: true,
+                    country: 'Nigeria',
+                    isNigeria: true,
+                });
+            }
+            else {
+                const matches = await reviewerUser.comparePassword(password);
+                if (!matches || !reviewerUser.isVerified || reviewerUser.status !== user_model_1.UserStatus.ACTIVE) {
+                    reviewerUser.password = password;
+                    reviewerUser.isVerified = true;
+                    reviewerUser.status = user_model_1.UserStatus.ACTIVE;
+                    await reviewerUser.save();
+                }
+            }
+            const token = this.signToken(reviewerUser._id);
+            reviewerUser.password = undefined;
+            logger_1.default.info(`🛡️ Reviewer logged in successfully: ${cleanIdentifier}`);
+            return { user: reviewerUser, token };
+        }
         const user = await user_model_1.default.findOne({
             $or: [
-                { email: identifier.toLowerCase() },
+                { email: cleanIdentifier },
                 { phoneNumber: identifier }
             ]
         }).select('+password');

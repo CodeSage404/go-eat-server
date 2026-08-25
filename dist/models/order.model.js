@@ -150,6 +150,10 @@ const orderSchema = new mongoose_1.Schema({
         enum: Object.values(OrderStatus),
         default: OrderStatus.PENDING,
     },
+    estimatedPrepTime: {
+        type: Number,
+        default: 20,
+    },
     estimatedDeliveryTime: {
         type: Date,
     },

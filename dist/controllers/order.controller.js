@@ -91,9 +91,10 @@ class OrderController {
                 const restaurant = await restaurant_model_1.default.findById(order.restaurant).populate('owner');
                 const vendorEmail = restaurant?.businessEmail || restaurant?.owner?.email;
                 if (vendorEmail) {
-                    email_service_1.default.sendTemplateEmail(vendorEmail, 'ORDER_CONFIRMED', `New Order Received: #${order._id.toString().slice(-6).toUpperCase()}`, {
+                    email_service_1.default.sendTemplateEmail(vendorEmail, 'VENDOR_ORDER_RECEIVED', `New Order Received: #${order._id.toString().slice(-6).toUpperCase()}`, {
                         orderId: order._id,
-                        customerName: restaurant?.name || 'Vendor',
+                        outletName: restaurant?.name || 'Partner',
+                        customerName: req.user.name || 'Customer',
                         total: order.totalAmount,
                         items: order.items,
                     }, 'partners').catch(err => console.error('Failed to send vendor order email:', err));
@@ -106,11 +107,11 @@ class OrderController {
         });
         this.updateStatus = (0, catchAsync_1.catchAsync)(async (req, res) => {
             const { id } = req.params;
-            const { status, cancelReason } = req.body;
+            const { status, cancelReason, estimatedPrepTime } = req.body;
             if (!Object.values(order_model_1.OrderStatus).includes(status)) {
                 throw new appError_1.default('Invalid order status', 400);
             }
-            const order = await order_service_1.default.updateOrderStatus(id, status, req.user._id, req.user.role, cancelReason);
+            const order = await order_service_1.default.updateOrderStatus(id, status, req.user._id, req.user.role, cancelReason, estimatedPrepTime ? Number(estimatedPrepTime) : undefined);
             res.status(200).json({
                 status: 'success',
                 data: { order },
