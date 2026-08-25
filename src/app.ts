@@ -91,15 +91,15 @@ class App {
     });
 
     this.app.get('/api/v1/timer', (req: Request, res: Response) => {
-      const durationInDays = 192;
-      
-      const targetDate = '2026-12-14T12:00:00Z';
+      // 1 month (30 days) + 30 days = 60 days total countdown duration
+      const totalDays = 60;
+      const targetDate = new Date(Date.now() + totalDays * 24 * 60 * 60 * 1000).toISOString();
 
       res.status(200).json({
         success: true,
         data: {
-          totalDays: durationInDays,
-          targetDate: targetDate, 
+          totalDays,
+          targetDate, 
           serverTime: new Date().toISOString()
         }
       });

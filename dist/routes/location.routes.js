@@ -113,4 +113,49 @@ router.get('/autocomplete', location_controller_1.default.autocomplete);
  *         description: Invalid or missing coordinates.
  */
 router.get('/detect', location_controller_1.default.detectLocation);
+/**
+ * @openapi
+ * /api/v1/location/detect-ip-country:
+ *   get:
+ *     tags:
+ *       - Location
+ *     summary: Detect Client Country from IP Address
+ *     description: Inspects client IP address (x-forwarded-for / req.ip) and resolves country and target route (ng, it, or uk).
+ *     responses:
+ *       200:
+ *         description: Country and target routing path returned successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: success
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     ip:
+ *                       type: string
+ *                       example: "102.89.23.12"
+ *                     country:
+ *                       type: string
+ *                       example: "Nigeria"
+ *                     countryCode:
+ *                       type: string
+ *                       example: "NG"
+ *                     targetRoute:
+ *                       type: string
+ *                       example: "ng"
+ *                     isNigeria:
+ *                       type: boolean
+ *                       example: true
+ *                     isItaly:
+ *                       type: boolean
+ *                       example: false
+ *                     isUk:
+ *                       type: boolean
+ *                       example: false
+ */
+router.get('/detect-ip-country', location_controller_1.default.detectIpCountry);
 exports.default = router;

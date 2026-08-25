@@ -247,6 +247,90 @@ class LocationController {
       },
     });
   });
+
+  /**
+   * Detects user's country from request IP address
+   * Returns targetRoute ('ng', 'it', or 'uk') for coming-soons web app redirection
+   */
+  public detectIpCountry = catchAsync(async (req: Request, res: Response) => {
+    let clientIp =
+      (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() ||
+      req.socket.remoteAddress ||
+      req.ip ||
+      '';
+
+    if (clientIp.startsWith('::ffff:')) {
+      clientIp = clientIp.replace('::ffff:', '');
+    }
+
+    let countryCode = 'UK';
+    let country = 'United Kingdom';
+    let targetRoute = 'uk';
+
+    const isLocalIp =
+      !clientIp ||
+      clientIp === '::1' ||
+      clientIp === '127.0.0.1' ||
+      clientIp.startsWith('192.168.') ||
+      clientIp.startsWith('10.') ||
+      clientIp.startsWith('172.16.');
+
+    if (!isLocalIp) {
+      try {
+        const response = await fetch(`https://ipapi.co/${clientIp}/json/`, {
+          headers: { 'User-Agent': 'GoEatApp/1.0' },
+        });
+        const data = (await response.json()) as any;
+        if (data && data.country_code) {
+          countryCode = data.country_code.toUpperCase();
+          country = data.country_name || countryCode;
+        }
+      } catch (err) {
+        try {
+          const fallbackRes = await fetch(`http://ip-api.com/json/${clientIp}`);
+          const fallbackData = (await fallbackRes.json()) as any;
+          if (fallbackData && fallbackData.countryCode) {
+            countryCode = fallbackData.countryCode.toUpperCase();
+            country = fallbackData.country || countryCode;
+          }
+        } catch (fErr) {
+          // Ignore fallback error
+        }
+      }
+    }
+
+    if (countryCode === 'NG') {
+      targetRoute = 'ng';
+      country = 'Nigeria';
+    } else if (countryCode === 'IT') {
+      targetRoute = 'it';
+      country = 'Italy';
+    } else if (countryCode === 'GB' || countryCode === 'UK') {
+      targetRoute = 'uk';
+      country = 'United Kingdom';
+      countryCode = 'UK';
+    } else {
+      targetRoute = 'uk';
+    }
+
+    const isNigeria = targetRoute === 'ng';
+    const isItaly = targetRoute === 'it';
+    const isUk = targetRoute === 'uk';
+
+    res.status(200).json({
+      status: 'success',
+      data: {
+        ip: clientIp,
+        country,
+        countryCode,
+        targetRoute,
+        isNigeria,
+        isItaly,
+        isUk,
+      },
+    });
+  });
 }
 
 export default new LocationController();
+
