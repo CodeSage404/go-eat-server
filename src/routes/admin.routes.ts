@@ -683,7 +683,7 @@ router.patch('/orders/:id/status', checkPermission('orders.accept', 'orders.disp
  *       201:
  *         description: Menu item created successfully
  */
-router.get('/menu-items', checkPermission('restaurants.crud'), adminController.getAllMenuItems);
+router.get('/menu-items', checkPermission('restaurants.crud', 'restaurants.onboard'), adminController.getAllMenuItems);
 
 /**
  * @openapi
@@ -753,7 +753,7 @@ router.get('/menu-items', checkPermission('restaurants.crud'), adminController.g
  */
 
 
-router.get('/menu-items/:id', checkPermission('restaurants.crud'), adminController.getMenuItemById);
+router.get('/menu-items/:id', checkPermission('restaurants.crud', 'restaurants.onboard'), adminController.getMenuItemById);
 
 /**
  * @openapi
@@ -778,7 +778,7 @@ router.get('/menu-items/:id', checkPermission('restaurants.crud'), adminControll
  *       201:
  *         description: Menu item created successfully
  */
-router.post('/menu-items', checkPermission('restaurants.crud'), upload.single('image'), adminController.createMenuItem);
+router.post('/menu-items', checkPermission('restaurants.crud', 'restaurants.onboard'), upload.single('image'), adminController.createMenuItem);
 
 /**
  * @openapi
@@ -809,7 +809,7 @@ router.post('/menu-items', checkPermission('restaurants.crud'), upload.single('i
  *       200:
  *         description: Menu item updated successfully
  */
-router.patch('/menu-items/:id', checkPermission('restaurants.crud'), upload.single('image'), adminController.updateMenuItem);
+router.patch('/menu-items/:id', checkPermission('restaurants.crud', 'restaurants.onboard'), upload.single('image'), adminController.updateMenuItem);
 
 /**
  * @openapi
