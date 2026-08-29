@@ -84,12 +84,16 @@ const checkPermission = (...permissions) => {
         if (!req.user) {
             return next(new appError_1.default('You are not logged in!', 401));
         }
+        // Super Admin has full unrestricted access
         if (req.user.role === user_model_1.UserRole.ADMIN && (!req.user.customRole || req.user.customRole === 'super-admin')) {
             return next();
         }
-        if (req.user.role === user_model_1.UserRole.ADMIN && req.user.customRole) {
-            const rolePerm = await role_model_1.default.findOne({ roleName: req.user.customRole });
+        // Check permissions defined for customRole
+        if (req.user.customRole) {
+            const rolePerm = await role_model_1.default.findOne({ roleName: req.user.customRole.toLowerCase() });
             if (rolePerm) {
+                if (permissions.length === 0)
+                    return next();
                 const hasAny = permissions.some(p => rolePerm.permissions.includes(p));
                 if (hasAny)
                     return next();

@@ -38,9 +38,9 @@ const router = Router();
 router.post('/auth/login', adminController.adminLogin);
 
 
-// Enforce auth & restrict all endpoints to platform Admins only
+// Enforce auth & restrict all endpoints to platform Admins and Staff members
 router.use(protect);
-router.use(restrictTo(UserRole.ADMIN));
+router.use(restrictTo(UserRole.ADMIN, UserRole.STAFF));
 
 // Protected Admin Auth Routes
 /**

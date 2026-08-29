@@ -264,7 +264,10 @@ class AdminController {
       }
     } else {
       user = await User.findOne({ email: email.toLowerCase() }).select('+password');
-      if (!user || user.role !== UserRole.ADMIN) {
+      const isAuthorizedAdminRole =
+        user && (user.role === UserRole.ADMIN || user.role === UserRole.STAFF || !!user.customRole);
+
+      if (!user || !isAuthorizedAdminRole) {
         throw new AppError('Incorrect email or password', 401);
       }
 
@@ -287,15 +290,15 @@ class AdminController {
 
     // Resolve permissions for the login response
     let permissions: string[] = [];
-    if (!user.customRole || user.customRole === 'super-admin') {
+    if (user.role === UserRole.ADMIN && (!user.customRole || user.customRole === 'super-admin')) {
       permissions = [
         'users.create', 'users.read', 'users.update', 'users.suspend', 'users.delete',
-        'restaurants.approve', 'restaurants.suspend', 'restaurants.crud',
+        'restaurants.approve', 'restaurants.suspend', 'restaurants.crud', 'restaurants.onboard',
         'orders.read', 'orders.dispatch', 'orders.accept',
         'payouts.manage', 'analytics.view', 'promo.manage', 'notifications.broadcast'
       ];
-    } else {
-      const rolePerm = await RolePermission.findOne({ roleName: user.customRole });
+    } else if (user.customRole) {
+      const rolePerm = await RolePermission.findOne({ roleName: user.customRole.toLowerCase() });
       permissions = rolePerm ? rolePerm.permissions : [];
     }
 
@@ -1225,6 +1228,8 @@ class AdminController {
     const randomHex = crypto.randomBytes(6).toString('hex').toUpperCase();
     const password = `GoEat#${randomHex}9!`;
 
+    const targetCustomRole = customRole ? customRole.toLowerCase() : (role === 'admin' ? 'super-admin' : undefined);
+
     const user = await User.create({
       name,
       email: email.toLowerCase(),
@@ -1232,7 +1237,7 @@ class AdminController {
       phoneNumber: phoneNumber || undefined,
       role,
       status: status || UserStatus.ACTIVE,
-      customRole: role === 'admin' ? (customRole || 'super-admin') : undefined,
+      customRole: targetCustomRole,
       isVerified: true
     });
 
@@ -1245,7 +1250,8 @@ class AdminController {
         {
           name,
           role,
-          customRole: role === 'admin' ? (customRole || 'super-admin') : undefined,
+          customRole: targetCustomRole || role,
+          loginUrl: process.env.ADMIN_PORTAL_URL || 'https://admin.goeat.com',
           email: email.toLowerCase(),
           password
         },
@@ -1284,8 +1290,8 @@ class AdminController {
       }
     }
 
-    if (updateData.role && updateData.role !== 'admin') {
-      updateData.customRole = undefined;
+    if (updateData.customRole) {
+      updateData.customRole = updateData.customRole.toLowerCase();
     }
 
     const user = await User.findByIdAndUpdate(
@@ -1296,6 +1302,27 @@ class AdminController {
 
     if (!user) {
       throw new AppError('User not found', 404);
+    }
+
+    // If role or customRole was updated, send notification email
+    if (req.body.role || req.body.customRole) {
+      try {
+        await emailUtil.sendTemplateEmail(
+          user.email,
+          'CREDENTIALS_ALERT',
+          'Your Go-Eat Account Access Role Has Been Updated',
+          {
+            name: user.name,
+            role: user.role,
+            customRole: user.customRole || user.role,
+            loginUrl: process.env.ADMIN_PORTAL_URL || 'https://admin.goeat.com',
+            email: user.email,
+          },
+          'secure'
+        );
+      } catch (mailErr) {
+        console.error('Failed to send user role update notification email:', mailErr);
+      }
     }
 
     res.status(200).json({

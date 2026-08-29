@@ -127,6 +127,20 @@ class UserController {
                 data: { user },
             });
         });
+        /**
+         * Update user FCM / Push notification token
+         */
+        this.updateFcmToken = (0, catchAsync_1.catchAsync)(async (req, res) => {
+            const { fcmToken } = req.body;
+            if (!fcmToken) {
+                throw new appError_1.default('FCM push token is required', 400);
+            }
+            const user = await user_model_1.default.findByIdAndUpdate(req.user._id, { fcmToken }, { new: true, runValidators: true }).select('-password');
+            res.status(200).json({
+                status: 'success',
+                data: { user },
+            });
+        });
     }
 }
 exports.default = new UserController();

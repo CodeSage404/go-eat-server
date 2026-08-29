@@ -198,4 +198,32 @@ router.route('/favorites')
 router.route('/profile')
     .get(user_controller_1.default.getProfile)
     .put(user_controller_1.default.updateProfile);
+/**
+ * @openapi
+ * /api/v1/users/fcm-token:
+ *   patch:
+ *     tags:
+ *       - Users
+ *     summary: Update User FCM Push Notification Token
+ *     description: Stores or updates the user's Expo / Firebase Cloud Messaging push notification token in MongoDB.
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [fcmToken]
+ *             properties:
+ *               fcmToken:
+ *                 type: string
+ *                 example: ExponentPushToken[xxxxxxxxxxxxxxxxxxxxxx]
+ *     responses:
+ *       200:
+ *         description: FCM push token updated successfully.
+ *       400:
+ *         description: FCM token is required.
+ */
+router.patch('/fcm-token', user_controller_1.default.updateFcmToken);
 exports.default = router;

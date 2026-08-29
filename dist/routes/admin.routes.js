@@ -39,9 +39,9 @@ const router = (0, express_1.Router)();
  *         description: Invalid email or password.
  */
 router.post('/auth/login', admin_controller_1.default.adminLogin);
-// Enforce auth & restrict all endpoints to platform Admins only
+// Enforce auth & restrict all endpoints to platform Admins and Staff members
 router.use(auth_middleware_1.protect);
-router.use((0, auth_middleware_1.restrictTo)(user_model_1.UserRole.ADMIN));
+router.use((0, auth_middleware_1.restrictTo)(user_model_1.UserRole.ADMIN, user_model_1.UserRole.STAFF));
 // Protected Admin Auth Routes
 /**
  * @openapi

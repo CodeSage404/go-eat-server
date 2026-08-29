@@ -176,16 +176,36 @@ class AuthService {
         let socialId;
         let name;
         if (type === 'google') {
-            const ticket = await googleClient.verifyIdToken({
-                idToken: token,
-                audience: process.env.GOOGLE_CLIENT_ID,
-            });
-            const payload = ticket.getPayload();
-            if (!payload)
-                throw new appError_1.default('Invalid Google token', 400);
-            email = payload.email;
-            socialId = payload.sub;
-            name = payload.name;
+            try {
+                const ticket = await googleClient.verifyIdToken({
+                    idToken: token,
+                    audience: process.env.GOOGLE_CLIENT_ID,
+                });
+                const payload = ticket.getPayload();
+                if (payload) {
+                    email = payload.email;
+                    socialId = payload.sub;
+                    name = payload.name;
+                }
+                else {
+                    throw new Error('No payload');
+                }
+            }
+            catch (tokenErr) {
+                // Fallback verification via Google UserInfo API
+                const userInfoRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+                    headers: { Authorization: `Bearer ${token}` },
+                });
+                const userInfo = (await userInfoRes.json());
+                if (userInfo && userInfo.email) {
+                    email = userInfo.email;
+                    socialId = userInfo.sub || userInfo.id;
+                    name = userInfo.name || email.split('@')[0];
+                }
+                else {
+                    throw new appError_1.default('Invalid Google authentication token', 400);
+                }
+            }
         }
         else {
             const { sub: appleSub, email: appleEmail } = await apple_signin_auth_1.default.verifyIdToken(token, {
