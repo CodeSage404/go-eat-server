@@ -1226,16 +1226,33 @@ class AdminController {
       throw new AppError('Please specify name, email, and role', 400);
     }
 
-    // Always generate a secure cryptographic random password for manually created users
-    const randomHex = crypto.randomBytes(6).toString('hex').toUpperCase();
-    const password = `GoEat#${randomHex}9!`;
+    // Check if user with email or phone already exists
+    const existing = await User.findOne({
+      $or: [
+        { email: email.toLowerCase() },
+        ...(phoneNumber ? [{ phoneNumber }] : [])
+      ]
+    });
+    if (existing) {
+      if (existing.email.toLowerCase() === email.toLowerCase()) {
+        throw new AppError(`A user with this email address (${email}) already exists.`, 400);
+      }
+      if (phoneNumber && existing.phoneNumber === phoneNumber) {
+        throw new AppError(`A user with this phone number (${phoneNumber}) already exists.`, 400);
+      }
+    }
 
     const targetCustomRole = customRole ? customRole.toLowerCase() : (role === 'admin' ? 'super-admin' : undefined);
+
+    // Generate or use provided password
+    const userPassword = req.body.password && req.body.password.trim() !== ''
+      ? req.body.password.trim()
+      : `GoEat#${crypto.randomBytes(6).toString('hex').toUpperCase()}9!`;
 
     const user = await User.create({
       name,
       email: email.toLowerCase(),
-      password,
+      password: userPassword,
       phoneNumber: phoneNumber || undefined,
       role,
       status: status || UserStatus.ACTIVE,
@@ -1255,7 +1272,7 @@ class AdminController {
           customRole: targetCustomRole || role,
           loginUrl: process.env.ADMIN_PORTAL_URL || 'https://admin.goeat.com',
           email: email.toLowerCase(),
-          password
+          password: userPassword
         },
         'secure'
       );

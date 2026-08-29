@@ -180,7 +180,28 @@ class App {
     });
 
     this.app.use((err: any, req: Request, res: Response, next: NextFunction) => {
-      logger.error(err.stack);
+      logger.error(err.stack || err.message);
+
+      // Handle MongoDB 11000 Duplicate Key Errors gracefully
+      if (err.code === 11000 || (err.name === 'MongoServerError' && err.code === 11000)) {
+        const field = Object.keys(err.keyValue || {})[0] || 'field';
+        const value = err.keyValue ? err.keyValue[field] : '';
+        const fieldLabel = field === 'phoneNumber' ? 'phone number' : field === 'email' ? 'email address' : field;
+        return res.status(400).json({
+          status: 'fail',
+          message: `An account with this ${fieldLabel} (${value}) already exists. Please use a different ${fieldLabel}.`
+        });
+      }
+
+      // Handle Mongoose Validation Error
+      if (err.name === 'ValidationError') {
+        const errors = Object.values(err.errors || {}).map((el: any) => el.message);
+        return res.status(400).json({
+          status: 'fail',
+          message: `Invalid input: ${errors.join('. ')}`
+        });
+      }
+
       const statusCode = err.statusCode || 500;
       const status = err.status || 'error';
       res.status(statusCode).json({

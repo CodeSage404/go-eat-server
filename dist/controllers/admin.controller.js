@@ -1055,14 +1055,30 @@ class AdminController {
             if (!name || !email || !role) {
                 throw new appError_1.default('Please specify name, email, and role', 400);
             }
-            // Always generate a secure cryptographic random password for manually created users
-            const randomHex = crypto_1.default.randomBytes(6).toString('hex').toUpperCase();
-            const password = `GoEat#${randomHex}9!`;
+            // Check if user with email or phone already exists
+            const existing = await user_model_1.default.findOne({
+                $or: [
+                    { email: email.toLowerCase() },
+                    ...(phoneNumber ? [{ phoneNumber }] : [])
+                ]
+            });
+            if (existing) {
+                if (existing.email.toLowerCase() === email.toLowerCase()) {
+                    throw new appError_1.default(`A user with this email address (${email}) already exists.`, 400);
+                }
+                if (phoneNumber && existing.phoneNumber === phoneNumber) {
+                    throw new appError_1.default(`A user with this phone number (${phoneNumber}) already exists.`, 400);
+                }
+            }
             const targetCustomRole = customRole ? customRole.toLowerCase() : (role === 'admin' ? 'super-admin' : undefined);
+            // Generate or use provided password
+            const userPassword = req.body.password && req.body.password.trim() !== ''
+                ? req.body.password.trim()
+                : `GoEat#${crypto_1.default.randomBytes(6).toString('hex').toUpperCase()}9!`;
             const user = await user_model_1.default.create({
                 name,
                 email: email.toLowerCase(),
-                password,
+                password: userPassword,
                 phoneNumber: phoneNumber || undefined,
                 role,
                 status: status || user_model_1.UserStatus.ACTIVE,
@@ -1077,7 +1093,7 @@ class AdminController {
                     customRole: targetCustomRole || role,
                     loginUrl: process.env.ADMIN_PORTAL_URL || 'https://admin.goeat.com',
                     email: email.toLowerCase(),
-                    password
+                    password: userPassword
                 }, 'secure');
             }
             catch (mailErr) {
