@@ -121,8 +121,9 @@ class AdminController {
         this.getAllUsers = (0, catchAsync_1.catchAsync)(async (req, res) => {
             const { role, status } = req.query;
             const filter = {};
-            if (role && role !== 'all')
-                filter.role = role;
+            if (role && role !== 'all') {
+                filter.$or = [{ role }, { customRole: role.toLowerCase() }];
+            }
             if (status && status !== 'all')
                 filter.status = status;
             const regionFilter = this.getRegionFilter(req);
