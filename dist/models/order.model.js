@@ -161,6 +161,17 @@ const orderSchema = new mongoose_1.Schema({
         type: String,
         trim: true,
     },
+    deliveryPin: {
+        type: String,
+        trim: true,
+    },
+    deliveryPinVerified: {
+        type: Boolean,
+        default: false,
+    },
+    deliveryPinVerifiedAt: {
+        type: Date,
+    },
     cancellationInitiator: {
         type: String,
         enum: ['customer', 'outlet', 'courier', 'goeat'],

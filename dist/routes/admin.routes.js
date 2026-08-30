@@ -657,7 +657,7 @@ router.patch('/orders/:id/status', (0, auth_middleware_1.checkPermission)('order
  *       201:
  *         description: Menu item created successfully
  */
-router.get('/menu-items', (0, auth_middleware_1.checkPermission)('restaurants.crud'), admin_controller_1.default.getAllMenuItems);
+router.get('/menu-items', (0, auth_middleware_1.checkPermission)('restaurants.crud', 'restaurants.onboard'), admin_controller_1.default.getAllMenuItems);
 /**
  * @openapi
  * /api/v1/admin/menu-items/{id}:
@@ -724,7 +724,7 @@ router.get('/menu-items', (0, auth_middleware_1.checkPermission)('restaurants.cr
  *       200:
  *         description: Menu item deleted successfully
  */
-router.get('/menu-items/:id', (0, auth_middleware_1.checkPermission)('restaurants.crud'), admin_controller_1.default.getMenuItemById);
+router.get('/menu-items/:id', (0, auth_middleware_1.checkPermission)('restaurants.crud', 'restaurants.onboard'), admin_controller_1.default.getMenuItemById);
 /**
  * @openapi
  * /api/v1/admin/menu-items:
@@ -748,7 +748,7 @@ router.get('/menu-items/:id', (0, auth_middleware_1.checkPermission)('restaurant
  *       201:
  *         description: Menu item created successfully
  */
-router.post('/menu-items', (0, auth_middleware_1.checkPermission)('restaurants.crud'), upload_1.upload.single('image'), admin_controller_1.default.createMenuItem);
+router.post('/menu-items', (0, auth_middleware_1.checkPermission)('restaurants.crud', 'restaurants.onboard'), upload_1.upload.single('image'), admin_controller_1.default.createMenuItem);
 /**
  * @openapi
  * /api/v1/admin/menu-items/{id}:
@@ -778,7 +778,7 @@ router.post('/menu-items', (0, auth_middleware_1.checkPermission)('restaurants.c
  *       200:
  *         description: Menu item updated successfully
  */
-router.patch('/menu-items/:id', (0, auth_middleware_1.checkPermission)('restaurants.crud'), upload_1.upload.single('image'), admin_controller_1.default.updateMenuItem);
+router.patch('/menu-items/:id', (0, auth_middleware_1.checkPermission)('restaurants.crud', 'restaurants.onboard'), upload_1.upload.single('image'), admin_controller_1.default.updateMenuItem);
 /**
  * @openapi
  * /api/v1/admin/menu-items/{id}:

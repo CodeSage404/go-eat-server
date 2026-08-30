@@ -4549,3 +4549,11 @@
 2026-07-20 09:44:12 [info]: 	⚡ Email dispatched via Brevo HTTPS API to echinecherem729@gmail.com (MessageID: <202607200844.24657700151@smtp-relay.mailin.fr>)
 2026-07-20 10:08:14 [info]: 	⚡ Redis Client Connected
 2026-07-20 10:08:15 [info]: 	🔑 OTP stored in Redis for echinecherem729@gmail.com
+2026-08-30 15:56:19 [info]: 	🔥 Firebase Admin initialized
+2026-08-30 15:57:05 [warn]: 	⚠️ MongoDB Disconnected
+2026-08-30 16:03:20 [info]: 	🔥 Firebase Admin initialized
+2026-08-30 16:03:41 [info]: 	🚀 Connected to MongoDB: ac-hjwrplp-shard-00-01.dupeyhe.mongodb.net
+2026-08-30 16:03:45 [info]: 	✅ Verified & migrated promo fields across all restaurant documents.
+2026-08-30 16:11:57 [info]: 	🔥 Firebase Admin initialized
+2026-08-30 16:12:15 [info]: 	🚀 Connected to MongoDB: ac-hjwrplp-shard-00-01.dupeyhe.mongodb.net
+2026-08-30 16:12:31 [info]: 	✅ Verified & migrated promo fields across all restaurant documents.

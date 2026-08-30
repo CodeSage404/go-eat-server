@@ -198,12 +198,41 @@ class OrderController {
    * Quick reorder from history
    */
   public reorder = catchAsync(async (req: any, res: Response) => {
-    const { orderId } = req.params;
-    const newOrder = await orderService.reorder(orderId as string, req.user._id);
+    const { orderId, id } = req.params;
+    const targetId = orderId || id;
+    const newOrder = await orderService.reorder(targetId as string, req.user._id);
 
     res.status(201).json({
       status: 'success',
       data: { order: newOrder },
+    });
+  });
+
+  /**
+   * Verify delivery PIN from customer and mark order as delivered
+   */
+  public verifyDeliveryPin = catchAsync(async (req: any, res: Response) => {
+    const { id } = req.params;
+    const pinSchema = z.object({
+      pin: z.string().min(4, 'Delivery PIN must be at least 4 digits').max(6, 'Delivery PIN is maximum 6 digits'),
+    });
+
+    const validated = pinSchema.safeParse(req.body);
+    if (!validated.success) {
+      throw new AppError(validated.error.issues.map((i) => i.message).join(', '), 400);
+    }
+
+    const order = await orderService.verifyDeliveryPin(
+      id,
+      validated.data.pin,
+      req.user._id.toString(),
+      req.user.role
+    );
+
+    res.status(200).json({
+      status: 'success',
+      message: 'Delivery verified successfully',
+      data: { order },
     });
   });
 }

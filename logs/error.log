@@ -4235,3 +4235,9 @@
 2026-07-11 17:29:06 [error]: 	❌ Error sending WhatsApp via Twilio:
 2026-07-12 21:37:24 [error]: 	❌ Error sending WhatsApp via Twilio:
 2026-07-18 18:44:31 [error]: 	❌ Error starting Twilio WhatsApp verification for +2349168464955:
+2026-08-30 15:57:05 [error]: MongoNetworkError: connection 1 to 65.62.27.115:27017 closed
+    at Connection.onClose (C:\Users\Immanuel\Desktop\EMStack\Go-Eat\server\node_modules\mongodb\src\cmap\connection.ts:323:18)
+    at TLSSocket.emit (node:events:520:35)
+    at TLSSocket.emit (node:domain:489:12)
+    at node:net:346:12
+    at TCP.done (node:_tls_wrap:649:7)

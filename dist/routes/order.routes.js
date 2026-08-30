@@ -154,4 +154,63 @@ router.patch('/:id/accept', (0, auth_middleware_1.restrictTo)(user_model_1.UserR
  *         description: New order created from history.
  */
 router.post('/:id/reorder', (0, auth_middleware_1.restrictTo)(user_model_1.UserRole.CUSTOMER), order_controller_1.default.reorder);
+/**
+ * @openapi
+ * /api/v1/orders/{id}/verify-delivery:
+ *   post:
+ *     tags:
+ *       - Orders
+ *     summary: Verify customer delivery PIN and complete delivery hand-off
+ *     description: Validates the 4-digit recipient PIN provided by the customer to the courier or outlet upon delivery. Once verified, sets order status to delivered, logs verification timestamp, triggers payout settlements, and sends delivery confirmation notifications.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         description: The unique MongoDB ID of the order
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - pin
+ *             properties:
+ *               pin:
+ *                 type: string
+ *                 description: The 4-digit numeric delivery verification PIN provided by the recipient
+ *                 example: "5821"
+ *     responses:
+ *       200:
+ *         description: Delivery PIN verified successfully, order marked as delivered
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: "success"
+ *                 message:
+ *                   type: string
+ *                   example: "Delivery verified successfully"
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     order:
+ *                       type: object
+ *       400:
+ *         description: Invalid or incorrect delivery PIN, or order is in a non-deliverable state
+ *       401:
+ *         description: Unauthorized, missing or invalid authentication token
+ *       403:
+ *         description: Forbidden, user is not assigned rider, outlet owner, or authorized administrator
+ *       404:
+ *         description: Order not found
+ */
+router.post('/:id/verify-delivery', (0, auth_middleware_1.restrictTo)(user_model_1.UserRole.RIDER, user_model_1.UserRole.VENDOR, user_model_1.UserRole.ADMIN), order_controller_1.default.verifyDeliveryPin);
 exports.default = router;

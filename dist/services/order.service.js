@@ -63,6 +63,11 @@ class OrderService {
         const prepTimeInSeconds = 20 * 60;
         const totalTimeInSeconds = (travelData.durationValue || 0) + prepTimeInSeconds;
         data.estimatedDeliveryTime = new Date(Date.now() + totalTimeInSeconds * 1000);
+        // Auto-generate unique 4-digit Delivery Verification PIN if not provided
+        if (!data.deliveryPin) {
+            data.deliveryPin = Math.floor(1000 + Math.random() * 9000).toString();
+        }
+        data.deliveryPinVerified = false;
         // Create the order
         const order = await order_model_1.default.create(data);
         // Notify Restaurant (Vendor) via Push and Socket
@@ -304,9 +309,52 @@ class OrderService {
             deliveryFee: originalOrder.deliveryFee,
             deliveryAddress: originalOrder.deliveryAddress,
             paymentMethod: originalOrder.paymentMethod,
-            status: order_model_1.OrderStatus.PENDING
+            status: order_model_1.OrderStatus.PENDING,
         };
         return await this.placeOrder(newOrderData);
+    }
+    /**
+     * Verify delivery PIN and complete order delivery
+     */
+    async verifyDeliveryPin(orderId, pin, userId, role) {
+        const order = await order_model_1.default.findById(orderId).populate('customer restaurant rider');
+        if (!order) {
+            throw new appError_1.default('Order not found', 404);
+        }
+        // Role check: Only assigned rider, outlet owner, or admin can verify delivery
+        const isSuperAdmin = role === 'admin' || role === 'superadmin';
+        const isAssignedRider = order.rider &&
+            (order.rider._id?.toString() === userId || order.rider.toString() === userId);
+        let isOutletOwner = false;
+        if (role === 'vendor') {
+            const restaurantId = order.restaurant?._id
+                ? order.restaurant._id.toString()
+                : order.restaurant.toString();
+            const restaurant = await restaurant_model_1.default.findById(restaurantId);
+            if (restaurant && restaurant.owner.toString() === userId) {
+                isOutletOwner = true;
+            }
+        }
+        if (!isSuperAdmin && !isAssignedRider && !isOutletOwner) {
+            throw new appError_1.default('You do not have authorization to confirm delivery for this order', 403);
+        }
+        if (order.status === order_model_1.OrderStatus.DELIVERED || order.status === order_model_1.OrderStatus.COMPLETED) {
+            throw new appError_1.default('This order has already been marked as delivered', 400);
+        }
+        if (order.status === order_model_1.OrderStatus.CANCELLED || order.status === order_model_1.OrderStatus.REJECTED) {
+            throw new appError_1.default('Cannot verify delivery for a cancelled or rejected order', 400);
+        }
+        // Validate 4-digit PIN match
+        const formattedInputPin = String(pin || '').trim();
+        if (order.deliveryPin && order.deliveryPin !== formattedInputPin) {
+            throw new appError_1.default('Invalid delivery verification PIN. Please request the 4-digit PIN from the recipient.', 400);
+        }
+        order.deliveryPinVerified = true;
+        order.deliveryPinVerifiedAt = new Date();
+        await order.save();
+        // Transition order status to DELIVERED through existing pipeline (notifies customer & triggers settlements)
+        const updatedOrder = await this.updateOrderStatus(orderId, order_model_1.OrderStatus.DELIVERED, userId, role);
+        return updatedOrder || order;
     }
 }
 exports.default = new OrderService();

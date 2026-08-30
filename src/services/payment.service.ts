@@ -1,6 +1,7 @@
 import Order, { OrderStatus } from '../models/order.model';
 import User, { UserRole } from '../models/user.model';
 import Wallet from '../models/wallet.model';
+import Restaurant from '../models/restaurant.model';
 import AppError from '../utils/appError';
 import logger from '../utils/logger';
 import notificationService from './notification.service';
@@ -8,10 +9,9 @@ import paystackModule from './payments/paystack.module';
 import flutterwaveModule from './payments/flutterwave.module';
 import stripeModule from './payments/stripe.module';
 import Setting from '../models/setting.model';
+import emailService from './email.service';
 
 export type PaymentProvider = 'paystack' | 'flutterwave' | 'stripe';
-
-import emailService from './email.service';
 export class PaymentService {
   /**
    * Helper to resolve payment provider based on order location and admin settings
@@ -216,10 +216,6 @@ export class PaymentService {
 
           // Split logic per order
           try {
-            const Restaurant = require('../models/restaurant.model').default;
-            const Setting = require('../models/setting.model').default;
-            const Wallet = require('../models/wallet.model').default;
-
             const restaurant = await Restaurant.findById(order.restaurant);
             const setting = await Setting.findOne();
             const commissionRate = setting?.commissionRate || 10;
@@ -253,7 +249,6 @@ export class PaymentService {
 
           // Send notifications
           try {
-            const Restaurant = require('../models/restaurant.model').default;
             const restaurant = await Restaurant.findById(order.restaurant);
             if (restaurant) {
               await notificationService.notifyNewOrder(restaurant.owner.toString(), order._id.toString());
@@ -285,7 +280,6 @@ export class PaymentService {
               );
             }
 
-            const Restaurant = require('../models/restaurant.model').default;
             const restaurant: any = await Restaurant.findById(order.restaurant).populate('owner');
             const vendorEmail = restaurant?.businessEmail || restaurant?.owner?.email;
 

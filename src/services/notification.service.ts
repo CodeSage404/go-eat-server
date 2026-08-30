@@ -69,21 +69,44 @@ class NotificationService {
       });
     }
 
-    // 3. Send via Push Notification (FCM)
+    // 3. Send via Push Notification (Expo or Native FCM)
     try {
       const user = await User.findById(userId);
       if (user && user.fcmToken && user.notificationsEnabled) {
-        const message = {
-          notification: { title, body },
-          data: { ...data, click_action: 'FLUTTER_NOTIFICATION_CLICK' },
-          token: user.fcmToken,
-        };
+        if (user.fcmToken.startsWith('ExponentPushToken') || user.fcmToken.startsWith('ExpoPushToken')) {
+          // Send via Expo Push API
+          const expoMessage = {
+            to: user.fcmToken,
+            sound: 'default',
+            title,
+            body,
+            data: { ...data, orderId: data.orderId },
+          };
+          const response = await fetch('https://exp.host/--/api/v2/push/send', {
+            method: 'POST',
+            headers: {
+              Accept: 'application/json',
+              'Accept-encoding': 'gzip, deflate',
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(expoMessage),
+          });
+          const expoResult = await response.json();
+          logger.info(`📲 Expo push notification sent to user ${userId} (${user.email || user.phoneNumber}):`, expoResult);
+        } else if (admin.apps?.length) {
+          // Send via Native Firebase FCM
+          const message = {
+            notification: { title, body },
+            data: { ...data, click_action: 'FLUTTER_NOTIFICATION_CLICK' },
+            token: user.fcmToken,
+          };
 
-        await admin.messaging().send(message);
-        logger.info(`📲 Push notification sent to user: ${userId}`);
+          await admin.messaging().send(message);
+          logger.info(`📲 Native FCM push notification sent to user: ${userId}`);
+        }
       }
-    } catch (error) {
-      logger.error('❌ Error sending push notification:', error);
+    } catch (error: any) {
+      logger.error('❌ Error sending push notification:', error.message || error);
     }
   }
 
