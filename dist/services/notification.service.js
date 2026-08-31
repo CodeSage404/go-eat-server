@@ -100,21 +100,45 @@ class NotificationService {
                 createdAt: new Date().toISOString(),
             });
         }
-        // 3. Send via Push Notification (FCM)
+        // 3. Send via Push Notification (Expo or Native FCM)
         try {
             const user = await user_model_1.default.findById(userId);
             if (user && user.fcmToken && user.notificationsEnabled) {
-                const message = {
-                    notification: { title, body },
-                    data: { ...data, click_action: 'FLUTTER_NOTIFICATION_CLICK' },
-                    token: user.fcmToken,
-                };
-                await firebase_admin_1.default.messaging().send(message);
-                logger_1.default.info(`📲 Push notification sent to user: ${userId}`);
+                if (user.fcmToken.startsWith('ExponentPushToken') || user.fcmToken.startsWith('ExpoPushToken')) {
+                    // Send via Expo Push API
+                    const expoMessage = {
+                        to: user.fcmToken,
+                        sound: 'default',
+                        title,
+                        body,
+                        data: { ...data, orderId: data.orderId },
+                    };
+                    const response = await fetch('https://exp.host/--/api/v2/push/send', {
+                        method: 'POST',
+                        headers: {
+                            Accept: 'application/json',
+                            'Accept-encoding': 'gzip, deflate',
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(expoMessage),
+                    });
+                    const expoResult = await response.json();
+                    logger_1.default.info(`📲 Expo push notification sent to user ${userId} (${user.email || user.phoneNumber}):`, expoResult);
+                }
+                else if (firebase_admin_1.default.apps?.length) {
+                    // Send via Native Firebase FCM
+                    const message = {
+                        notification: { title, body },
+                        data: { ...data, click_action: 'FLUTTER_NOTIFICATION_CLICK' },
+                        token: user.fcmToken,
+                    };
+                    await firebase_admin_1.default.messaging().send(message);
+                    logger_1.default.info(`📲 Native FCM push notification sent to user: ${userId}`);
+                }
             }
         }
         catch (error) {
-            logger_1.default.error('❌ Error sending push notification:', error);
+            logger_1.default.error('❌ Error sending push notification:', error.message || error);
         }
     }
     /**

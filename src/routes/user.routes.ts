@@ -230,5 +230,30 @@ router.route('/profile')
  */
 router.patch('/fcm-token', userController.updateFcmToken);
 
+/**
+ * @openapi
+ * /api/v1/users/status/toggle-online:
+ *   patch:
+ *     tags:
+ *       - Users
+ *     summary: Toggle Rider / Vendor Online Shift Status
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [isOnline]
+ *             properties:
+ *               isOnline:
+ *                 type: boolean
+ *     responses:
+ *       200:
+ *         description: Online shift status updated successfully.
+ */
+router.patch('/status/toggle-online', userController.toggleOnlineStatus);
+
 export default router;
 

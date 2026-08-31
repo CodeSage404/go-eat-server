@@ -45,6 +45,21 @@ router.post('/', restrictTo(UserRole.CUSTOMER), orderController.placeOrder);
 
 /**
  * @openapi
+ * /api/v1/orders/available-jobs:
+ *   get:
+ *     tags:
+ *       - Orders
+ *     summary: Get available delivery jobs ready for courier pickup
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of available delivery jobs
+ */
+router.get('/available-jobs', restrictTo(UserRole.RIDER, UserRole.ADMIN), orderController.getAvailableJobs);
+
+/**
+ * @openapi
  * /api/v1/orders/my-orders:
  *   get:
  *     tags:

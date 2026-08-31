@@ -160,6 +160,24 @@ class UserController {
       data: { user },
     });
   });
+
+  /**
+   * Toggle Rider / Vendor Online Shift Status
+   */
+  public toggleOnlineStatus = catchAsync(async (req: Request, res: Response) => {
+    const { isOnline } = req.body;
+    const user = await User.findByIdAndUpdate(
+      req.user!._id,
+      { isOnline: Boolean(isOnline) },
+      { new: true, runValidators: true }
+    ).select('-password');
+
+    res.status(200).json({
+      status: 'success',
+      message: `Shift status set to ${isOnline ? 'Online' : 'Offline'}`,
+      data: { user },
+    });
+  });
 }
 
 export default new UserController();

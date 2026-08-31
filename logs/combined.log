@@ -4557,3 +4557,6 @@
 2026-08-30 16:11:57 [info]: 	🔥 Firebase Admin initialized
 2026-08-30 16:12:15 [info]: 	🚀 Connected to MongoDB: ac-hjwrplp-shard-00-01.dupeyhe.mongodb.net
 2026-08-30 16:12:31 [info]: 	✅ Verified & migrated promo fields across all restaurant documents.
+2026-08-31 01:00:46 [info]: 	🔥 Firebase Admin initialized
+2026-08-31 01:00:51 [info]: 	🚀 Connected to MongoDB: ac-hjwrplp-shard-00-02.dupeyhe.mongodb.net
+2026-08-31 01:00:53 [info]: 	✅ Verified & migrated promo fields across all restaurant documents.

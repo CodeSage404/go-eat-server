@@ -70,8 +70,13 @@ class OrderService {
         data.deliveryPinVerified = false;
         // Create the order
         const order = await order_model_1.default.create(data);
+        const shortId = order._id.toString().slice(-6).toUpperCase();
         // Notify Restaurant (Vendor) via Push and Socket
         await notification_service_1.default.notifyNewOrder(restaurant.owner.toString(), order._id.toString());
+        // Notify Customer via Push and Socket
+        if (order.customer) {
+            await notification_service_1.default.sendNotification(order.customer.toString(), `Order Placed! 🍽️`, `Your order #${shortId} from ${restaurant.name} has been placed successfully and sent to the outlet!`, { orderId: order._id.toString(), status: 'pending', type: 'ORDER_UPDATE' }, userNotification_model_1.NotificationType.ORDER_UPDATE);
+        }
         return order;
     }
     /**
@@ -243,26 +248,44 @@ class OrderService {
      * Find and notify nearby riders about a ready order
      */
     async notifyNearbyRiders(order) {
-        const restaurant = await restaurant_model_1.default.findById(order.restaurant);
-        if (!restaurant)
-            return;
-        // Find riders within Xkm who are online
-        const riders = await user_model_1.default.find({
-            role: user_model_1.UserRole.RIDER,
-            isOnline: true,
-            location: {
-                $near: {
-                    $geometry: {
-                        type: 'Point',
-                        coordinates: restaurant.location.coordinates,
-                    },
-                    $maxDistance: constants_1.APP_CONSTANTS.MAX_RIDER_DISTANCE_METERS,
-                },
+        try {
+            const populatedOrder = await order_model_1.default.findById(order._id)
+                .populate('restaurant', 'name address location images phoneContact rating')
+                .populate('customer', 'name phoneNumber email profileImage')
+                .populate('items.foodItem', 'name price image');
+            // Find riders who are online
+            const riders = await user_model_1.default.find({
+                role: user_model_1.UserRole.RIDER,
+                isOnline: true,
+            });
+            riders.forEach((rider) => {
+                notification_service_1.default.notifyRiderAvailableOrder(rider._id.toString(), order._id.toString());
+                (0, io_1.emitToUser)(rider._id.toString(), 'NEW_DELIVERY_REQUEST', populatedOrder || order);
+            });
+        }
+        catch (err) {
+            logger_1.default.error('Error notifying riders about available order:', err);
+        }
+    }
+    /**
+     * Get available delivery jobs for couriers
+     */
+    async getAvailableDeliveryJobs() {
+        return await order_model_1.default.find({
+            status: {
+                $in: [
+                    order_model_1.OrderStatus.ACCEPTED,
+                    order_model_1.OrderStatus.PREPARING,
+                    order_model_1.OrderStatus.READY,
+                    order_model_1.OrderStatus.READY_FOR_COLLECTION,
+                ],
             },
-        });
-        riders.forEach((rider) => {
-            notification_service_1.default.notifyRiderAvailableOrder(rider._id.toString(), order._id.toString());
-        });
+            rider: null,
+        })
+            .populate('restaurant', 'name address location images phoneContact rating')
+            .populate('customer', 'name phoneNumber email profileImage')
+            .populate('items.foodItem', 'name price image')
+            .sort({ createdAt: -1 });
     }
     /**
      * Assign a rider to an order

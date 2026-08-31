@@ -40,6 +40,7 @@ exports.PaymentService = void 0;
 const order_model_1 = __importDefault(require("../models/order.model"));
 const user_model_1 = __importStar(require("../models/user.model"));
 const wallet_model_1 = __importDefault(require("../models/wallet.model"));
+const restaurant_model_1 = __importDefault(require("../models/restaurant.model"));
 const appError_1 = __importDefault(require("../utils/appError"));
 const logger_1 = __importDefault(require("../utils/logger"));
 const notification_service_1 = __importDefault(require("./notification.service"));
@@ -235,19 +236,16 @@ class PaymentService {
                     await order.save();
                     // Split logic per order
                     try {
-                        const Restaurant = require('../models/restaurant.model').default;
-                        const Setting = require('../models/setting.model').default;
-                        const Wallet = require('../models/wallet.model').default;
-                        const restaurant = await Restaurant.findById(order.restaurant);
-                        const setting = await Setting.findOne();
+                        const restaurant = await restaurant_model_1.default.findById(order.restaurant);
+                        const setting = await setting_model_1.default.findOne();
                         const commissionRate = setting?.commissionRate || 10;
                         const subtotal = order.totalAmount - (order.deliveryFee || 0);
                         const adminCut = (subtotal * commissionRate) / 100;
                         const vendorCut = subtotal - adminCut;
                         if (restaurant && vendorCut > 0) {
-                            let vendorWallet = await Wallet.findOne({ user: restaurant.owner });
+                            let vendorWallet = await wallet_model_1.default.findOne({ user: restaurant.owner });
                             if (!vendorWallet) {
-                                vendorWallet = await Wallet.create({ user: restaurant.owner, balance: 0 });
+                                vendorWallet = await wallet_model_1.default.create({ user: restaurant.owner, balance: 0 });
                             }
                             if (restaurant.paystackSubaccountCode && provider === 'paystack') {
                                 logger_1.default.info(`Vendor ${restaurant.owner} automatically paid via Paystack Subaccount.`);
@@ -269,8 +267,7 @@ class PaymentService {
                     }
                     // Send notifications
                     try {
-                        const Restaurant = require('../models/restaurant.model').default;
-                        const restaurant = await Restaurant.findById(order.restaurant);
+                        const restaurant = await restaurant_model_1.default.findById(order.restaurant);
                         if (restaurant) {
                             await notification_service_1.default.notifyNewOrder(restaurant.owner.toString(), order._id.toString());
                         }
@@ -291,8 +288,7 @@ class PaymentService {
                                 items: order.items
                             });
                         }
-                        const Restaurant = require('../models/restaurant.model').default;
-                        const restaurant = await Restaurant.findById(order.restaurant).populate('owner');
+                        const restaurant = await restaurant_model_1.default.findById(order.restaurant).populate('owner');
                         const vendorEmail = restaurant?.businessEmail || restaurant?.owner?.email;
                         if (vendorEmail) {
                             await email_service_1.default.sendTemplateEmail(vendorEmail, 'VENDOR_ORDER_RECEIVED', `New Order Received: #${order._id.toString().slice(-6).toUpperCase()}`, {

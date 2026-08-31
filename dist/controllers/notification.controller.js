@@ -6,6 +6,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const userNotification_model_1 = __importDefault(require("../models/userNotification.model"));
 const catchAsync_1 = require("../utils/catchAsync");
 const appError_1 = __importDefault(require("../utils/appError"));
+const user_model_1 = __importDefault(require("../models/user.model"));
+const notification_service_1 = __importDefault(require("../services/notification.service"));
 class NotificationController {
     constructor() {
         /**
@@ -106,6 +108,56 @@ class NotificationController {
             res.status(200).json({
                 status: 'success',
                 message: 'All notifications marked as read',
+            });
+        });
+        /**
+         * @openapi
+         * /api/v1/notifications/test-push:
+         *   post:
+         *     tags:
+         *       - Notifications
+         *     summary: Send a test push notification to a user by email
+         *     security:
+         *       - bearerAuth: []
+         *     requestBody:
+         *       required: true
+         *       content:
+         *         application/json:
+         *           schema:
+         *             type: object
+         *             properties:
+         *               email:
+         *                 type: string
+         *                 example: echinecherem729@gmail.com
+         *               title:
+         *                 type: string
+         *                 example: Go-Eat Test Notification
+         *               body:
+         *                 type: string
+         *                 example: This is a test push notification
+         *     responses:
+         *       200:
+         *         description: Test notification dispatched
+         *       404:
+         *         description: User not found
+         */
+        this.sendTestPush = (0, catchAsync_1.catchAsync)(async (req, res) => {
+            const { email, title, body } = req.body;
+            const targetEmail = (email || req.user?.email || '').toLowerCase();
+            const user = await user_model_1.default.findOne({ email: targetEmail });
+            if (!user) {
+                throw new appError_1.default(`User with email ${targetEmail} not found`, 404);
+            }
+            await notification_service_1.default.sendNotification(user._id.toString(), title || 'Go-Eat Push Notification Test 🍔', body || 'Hello! Your push notification service is working properly.', { type: 'TEST', timestamp: new Date().toISOString() });
+            res.status(200).json({
+                status: 'success',
+                message: `Test notification dispatched to ${targetEmail}`,
+                data: {
+                    userId: user._id,
+                    email: user.email,
+                    fcmToken: user.fcmToken ? `${user.fcmToken.substring(0, 15)}...` : null,
+                    notificationsEnabled: user.notificationsEnabled,
+                },
             });
         });
     }

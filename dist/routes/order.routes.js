@@ -46,6 +46,20 @@ router.use(auth_middleware_1.protect);
 router.post('/', (0, auth_middleware_1.restrictTo)(user_model_1.UserRole.CUSTOMER), order_controller_1.default.placeOrder);
 /**
  * @openapi
+ * /api/v1/orders/available-jobs:
+ *   get:
+ *     tags:
+ *       - Orders
+ *     summary: Get available delivery jobs ready for courier pickup
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of available delivery jobs
+ */
+router.get('/available-jobs', (0, auth_middleware_1.restrictTo)(user_model_1.UserRole.RIDER, user_model_1.UserRole.ADMIN), order_controller_1.default.getAvailableJobs);
+/**
+ * @openapi
  * /api/v1/orders/my-orders:
  *   get:
  *     tags:

@@ -43,8 +43,21 @@ class OrderService {
     // Create the order
     const order = await Order.create(data);
 
+    const shortId = order._id.toString().slice(-6).toUpperCase();
+
     // Notify Restaurant (Vendor) via Push and Socket
     await notificationService.notifyNewOrder(restaurant.owner.toString(), order._id.toString());
+
+    // Notify Customer via Push and Socket
+    if (order.customer) {
+      await notificationService.sendNotification(
+        order.customer.toString(),
+        `Order Placed! 🍽️`,
+        `Your order #${shortId} from ${restaurant.name} has been placed successfully and sent to the outlet!`,
+        { orderId: order._id.toString(), status: 'pending', type: 'ORDER_UPDATE' },
+        NotificationType.ORDER_UPDATE
+      );
+    }
 
     return order;
   }
@@ -261,27 +274,46 @@ class OrderService {
    * Find and notify nearby riders about a ready order
    */
   private async notifyNearbyRiders(order: IOrder) {
-    const restaurant = await Restaurant.findById(order.restaurant);
-    if (!restaurant) return;
+    try {
+      const populatedOrder = await Order.findById(order._id)
+        .populate('restaurant', 'name address location images phoneContact rating')
+        .populate('customer', 'name phoneNumber email profileImage')
+        .populate('items.foodItem', 'name price image');
 
-    // Find riders within Xkm who are online
-    const riders = await User.find({
-      role: UserRole.RIDER,
-      isOnline: true,
-      location: {
-        $near: {
-          $geometry: {
-            type: 'Point',
-            coordinates: restaurant.location.coordinates,
-          },
-          $maxDistance: APP_CONSTANTS.MAX_RIDER_DISTANCE_METERS,
-        },
+      // Find riders who are online
+      const riders = await User.find({
+        role: UserRole.RIDER,
+        isOnline: true,
+      });
+
+      riders.forEach((rider) => {
+        notificationService.notifyRiderAvailableOrder(rider._id.toString(), order._id.toString());
+        emitToUser(rider._id.toString(), 'NEW_DELIVERY_REQUEST', populatedOrder || order);
+      });
+    } catch (err) {
+      logger.error('Error notifying riders about available order:', err);
+    }
+  }
+
+  /**
+   * Get available delivery jobs for couriers
+   */
+  async getAvailableDeliveryJobs(): Promise<IOrder[]> {
+    return await Order.find({
+      status: {
+        $in: [
+          OrderStatus.ACCEPTED,
+          OrderStatus.PREPARING,
+          OrderStatus.READY,
+          OrderStatus.READY_FOR_COLLECTION,
+        ],
       },
-    });
-
-    riders.forEach((rider) => {
-      notificationService.notifyRiderAvailableOrder(rider._id.toString(), order._id.toString());
-    });
+      rider: null,
+    })
+      .populate('restaurant', 'name address location images phoneContact rating')
+      .populate('customer', 'name phoneNumber email profileImage')
+      .populate('items.foodItem', 'name price image')
+      .sort({ createdAt: -1 });
   }
 
   /**

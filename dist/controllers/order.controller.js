@@ -126,6 +126,14 @@ class OrderController {
                 data: { order },
             });
         });
+        this.getAvailableJobs = (0, catchAsync_1.catchAsync)(async (_req, res) => {
+            const orders = await order_service_1.default.getAvailableDeliveryJobs();
+            res.status(200).json({
+                status: 'success',
+                results: orders.length,
+                data: { orders },
+            });
+        });
         this.getMyOrders = (0, catchAsync_1.catchAsync)(async (req, res) => {
             let orders = [];
             if (req.user.role === 'customer') {
