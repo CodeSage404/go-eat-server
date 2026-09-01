@@ -129,10 +129,17 @@ class NotificationService {
                     logger_1.default.info(`📲 Expo push notification sent to user ${userId} (${user.email || user.phoneNumber}):`, expoResult);
                 }
                 else if (firebase_admin_1.default.apps?.length) {
+                    // Ensure all data values are strings for FCM specifications
+                    const stringifiedData = { click_action: 'FLUTTER_NOTIFICATION_CLICK' };
+                    if (data && typeof data === 'object') {
+                        for (const [k, v] of Object.entries(data)) {
+                            stringifiedData[k] = typeof v === 'string' ? v : JSON.stringify(v);
+                        }
+                    }
                     // Send via Native Firebase FCM
                     const message = {
                         notification: { title, body },
-                        data: { ...data, click_action: 'FLUTTER_NOTIFICATION_CLICK' },
+                        data: stringifiedData,
                         token: user.fcmToken,
                         android: {
                             priority: 'high',
@@ -142,8 +149,8 @@ class NotificationService {
                             payload: { aps: { sound: 'default', badge: 1 } },
                         },
                     };
-                    await firebase_admin_1.default.messaging().send(message);
-                    logger_1.default.info(`📲 Native FCM push notification sent to user: ${userId}`);
+                    const fcmResponse = await firebase_admin_1.default.messaging().send(message);
+                    logger_1.default.info(`📲 Native FCM push notification sent to user: ${userId} (${user.email || user.phoneNumber}). MessageID: ${fcmResponse}`);
                 }
             }
         }
