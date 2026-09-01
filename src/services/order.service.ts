@@ -46,38 +46,44 @@ class OrderService {
 
     const shortId = order._id.toString().slice(-6).toUpperCase();
 
-    // Notify Restaurant (Vendor) via Push, Socket, and In-app
-    await notificationService.notifyNewOrder(restaurant.owner.toString(), order._id.toString());
+    // For CASH orders, send notifications and receipts immediately.
+    // For CARD / online payment orders, notifications and receipts are deferred until payment verification in payment.service.ts.
+    const isCashOrder = order.paymentMethod?.toLowerCase() === 'cash';
 
-    // Notify Customer via Push, Socket, and In-app
-    if (order.customer) {
-      await notificationService.sendNotification(
-        order.customer.toString(),
-        `Order Placed! 🍽️`,
-        `Your order #${shortId} from ${restaurant.name} has been placed successfully and sent to the outlet!`,
-        { orderId: order._id.toString(), status: 'pending', type: 'ORDER_UPDATE' },
-        NotificationType.ORDER_UPDATE
-      );
+    if (isCashOrder) {
+      // Notify Restaurant (Vendor) via Push, Socket, and In-app
+      await notificationService.notifyNewOrder(restaurant.owner.toString(), order._id.toString());
 
-      // Send Itemized Receipt Email to Customer
-      try {
-        await order.populate('items.foodItem');
-        const customerUser = await User.findById(order.customer);
-        if (customerUser && customerUser.email && !customerUser.email.includes('customer@goeat.com')) {
-          emailService.sendTemplateEmail(
-            customerUser.email,
-            'ORDER_CONFIRMED',
-            `Order Receipt: #${shortId} from ${restaurant.name}`,
-            {
-              orderId: order._id,
-              customerName: customerUser.name || 'Customer',
-              total: order.totalAmount,
-              items: order.items,
-            }
-          ).catch((err: any) => logger.warn('Failed to send order placed receipt email:', err.message));
+      // Notify Customer via Push, Socket, and In-app
+      if (order.customer) {
+        await notificationService.sendNotification(
+          order.customer.toString(),
+          `Order Placed! 🍽️`,
+          `Your order #${shortId} from ${restaurant.name} has been placed successfully and sent to the outlet!`,
+          { orderId: order._id.toString(), status: 'pending', type: 'ORDER_UPDATE' },
+          NotificationType.ORDER_UPDATE
+        );
+
+        // Send Itemized Receipt Email to Customer
+        try {
+          await order.populate('items.foodItem');
+          const customerUser = await User.findById(order.customer);
+          if (customerUser && customerUser.email && !customerUser.email.includes('customer@goeat.com')) {
+            emailService.sendTemplateEmail(
+              customerUser.email,
+              'ORDER_CONFIRMED',
+              `Order Receipt: #${shortId} from ${restaurant.name}`,
+              {
+                orderId: order._id,
+                customerName: customerUser.name || 'Customer',
+                total: order.totalAmount,
+                items: order.items,
+              }
+            ).catch((err: any) => logger.warn('Failed to send order placed receipt email:', err.message));
+          }
+        } catch (emailErr: any) {
+          logger.warn('Error preparing customer receipt email on placeOrder:', emailErr.message);
         }
-      } catch (emailErr: any) {
-        logger.warn('Error preparing customer receipt email on placeOrder:', emailErr.message);
       }
     }
 

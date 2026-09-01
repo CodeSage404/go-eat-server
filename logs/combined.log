@@ -4564,3 +4564,12 @@
 2026-09-01 18:43:51 [info]: 	📲 Expo push notification sent to user 6a6203e2e20f3aab7dd9d9a4 (echinecherem729@gmail.com):
 2026-09-01 18:50:31 [info]: 	🔥 Firebase Admin initialized
 2026-09-01 18:50:35 [info]: 	📲 Expo push notification sent to user 6a6203e2e20f3aab7dd9d9a4 (echinecherem729@gmail.com):
+2026-09-01 22:47:24 [info]: 	📱 Twilio client initialized for WhatsApp & SMS Verify service
+2026-09-01 22:47:24 [info]: 	🔑 Fresh OTP (999627) stored in memory for +2349121059853
+2026-09-01 22:47:24 [info]: 	🔑 Fresh OTP (999627) stored in memory for 09121059853
+2026-09-01 22:47:34 [info]: 	📱 WhatsApp verification initiated via Twilio. Sid: VE3106acd1ac34c2d9bce65461498a3d32 to +2349121059853
+2026-09-01 22:54:11 [warn]: 	⚠️ [SMS MOCK] Twilio not fully configured. Message: "Your Go-Eat verification code is 481920. Valid for 10 minutes." to +2349121059853
+2026-09-02 00:10:08 [info]: 	📱 Twilio client initialized for WhatsApp & SMS messaging
+2026-09-02 00:10:08 [info]: 	🔑 Fresh OTP (262022) stored in memory for +2349121059853
+2026-09-02 00:10:08 [info]: 	🔑 Fresh OTP (262022) stored in memory for 09121059853
+2026-09-02 00:10:10 [info]: 	📱 WhatsApp OTP dispatched via Twilio. SID: SM1383b7e34d84c0ba4edb8f68aed1d7fe to whatsapp:+2349121059853

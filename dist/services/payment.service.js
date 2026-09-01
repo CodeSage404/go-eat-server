@@ -49,6 +49,7 @@ const flutterwave_module_1 = __importDefault(require("./payments/flutterwave.mod
 const stripe_module_1 = __importDefault(require("./payments/stripe.module"));
 const setting_model_1 = __importDefault(require("../models/setting.model"));
 const email_service_1 = __importDefault(require("./email.service"));
+const userNotification_model_1 = require("../models/userNotification.model");
 class PaymentService {
     /**
      * Helper to resolve payment provider based on order location and admin settings
@@ -265,13 +266,16 @@ class PaymentService {
                     catch (splitErr) {
                         logger_1.default.error(`Error processing vendor split for order ${order._id}:`, splitErr.message);
                     }
-                    // Send notifications
+                    // Send notifications upon verified payment
                     try {
                         const restaurant = await restaurant_model_1.default.findById(order.restaurant);
+                        const shortId = order._id.toString().slice(-6).toUpperCase();
                         if (restaurant) {
                             await notification_service_1.default.notifyNewOrder(restaurant.owner.toString(), order._id.toString());
                         }
-                        await notification_service_1.default.notifyOrderStatusUpdate(order.customer.toString(), order._id.toString(), order.status);
+                        if (order.customer) {
+                            await notification_service_1.default.sendNotification(order.customer.toString(), `Order Placed! 🍽️`, `Your payment was verified! Order #${shortId} from ${restaurant?.name || 'the outlet'} has been placed successfully and sent to the kitchen!`, { orderId: order._id.toString(), status: 'pending', type: 'ORDER_UPDATE' }, userNotification_model_1.NotificationType.ORDER_UPDATE);
+                        }
                     }
                     catch (notifyErr) {
                         logger_1.default.warn('Failed to send order notifications:', notifyErr.message);

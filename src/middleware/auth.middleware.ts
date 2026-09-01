@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import User, { IUser, UserRole, UserStatus } from '../models/user.model';
+import Restaurant from '../models/restaurant.model';
 import RolePermission from '../models/role.model';
 import { catchAsync } from '../utils/catchAsync';
 import AppError from '../utils/appError';
@@ -41,8 +42,6 @@ export const protect = catchAsync(async (req: AuthRequest, res: Response, next: 
   }
 
   if (currentUser.role === 'vendor' && !currentUser.restaurantId) {
-    const mongoose = require('mongoose');
-    const Restaurant = mongoose.model('Restaurant');
     const restaurant = await Restaurant.findOne({ owner: currentUser._id });
     if (restaurant) {
       currentUser.restaurantId = restaurant._id;

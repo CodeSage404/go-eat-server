@@ -2,28 +2,37 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.mongoSanitizeMiddleware = void 0;
 /**
- * Recursively removes / renames dangerous MongoDB operator keys ($ and .)
- * Mutates objects in-place to avoid "Cannot set property query which has only a getter" errors in Express.
+ * Recursively sanitizes MongoDB injection operators ($ and .) in-place.
+ * Uses a WeakSet to prevent circular reference recursion and ignores binary/Date buffers.
  */
-function sanitizeInPlace(obj) {
+function sanitizeInPlace(obj, seen = new WeakSet()) {
     if (!obj || typeof obj !== 'object')
         return obj;
+    // Skip instances of non-plain objects
+    if (obj instanceof Date || obj instanceof RegExp || Buffer.isBuffer(obj)) {
+        return obj;
+    }
+    // Prevent circular reference loops
+    if (seen.has(obj)) {
+        return obj;
+    }
+    seen.add(obj);
     if (Array.isArray(obj)) {
         for (let i = 0; i < obj.length; i++) {
-            obj[i] = sanitizeInPlace(obj[i]);
+            obj[i] = sanitizeInPlace(obj[i], seen);
         }
         return obj;
     }
-    // Handle plain objects
+    // Sanitize plain object keys & nested values
     for (const key of Object.keys(obj)) {
         if (key.startsWith('$') || key.includes('.')) {
             const safeKey = key.replace(/^\$|\./g, '_');
-            const value = sanitizeInPlace(obj[key]);
+            const value = sanitizeInPlace(obj[key], seen);
             obj[safeKey] = value;
             delete obj[key];
         }
         else if (typeof obj[key] === 'object' && obj[key] !== null) {
-            sanitizeInPlace(obj[key]);
+            sanitizeInPlace(obj[key], seen);
         }
     }
     return obj;

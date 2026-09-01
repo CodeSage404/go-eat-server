@@ -10,6 +10,7 @@ import flutterwaveModule from './payments/flutterwave.module';
 import stripeModule from './payments/stripe.module';
 import Setting from '../models/setting.model';
 import emailService from './email.service';
+import { NotificationType } from '../models/userNotification.model';
 
 export type PaymentProvider = 'paystack' | 'flutterwave' | 'stripe';
 export class PaymentService {
@@ -247,17 +248,22 @@ export class PaymentService {
             logger.error(`Error processing vendor split for order ${order._id}:`, splitErr.message);
           }
 
-          // Send notifications
+          // Send notifications upon verified payment
           try {
             const restaurant = await Restaurant.findById(order.restaurant);
+            const shortId = order._id.toString().slice(-6).toUpperCase();
             if (restaurant) {
               await notificationService.notifyNewOrder(restaurant.owner.toString(), order._id.toString());
             }
-            await notificationService.notifyOrderStatusUpdate(
-              order.customer.toString(),
-              order._id.toString(),
-              order.status
-            );
+            if (order.customer) {
+              await notificationService.sendNotification(
+                order.customer.toString(),
+                `Order Placed! 🍽️`,
+                `Your payment was verified! Order #${shortId} from ${restaurant?.name || 'the outlet'} has been placed successfully and sent to the kitchen!`,
+                { orderId: order._id.toString(), status: 'pending', type: 'ORDER_UPDATE' },
+                NotificationType.ORDER_UPDATE
+              );
+            }
           } catch (notifyErr: any) {
             logger.warn('Failed to send order notifications:', notifyErr.message);
           }

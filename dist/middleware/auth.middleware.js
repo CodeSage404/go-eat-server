@@ -39,6 +39,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.checkPermission = exports.restrictTo = exports.protect = void 0;
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const user_model_1 = __importStar(require("../models/user.model"));
+const restaurant_model_1 = __importDefault(require("../models/restaurant.model"));
 const role_model_1 = __importDefault(require("../models/role.model"));
 const catchAsync_1 = require("../utils/catchAsync");
 const appError_1 = __importDefault(require("../utils/appError"));
@@ -67,9 +68,7 @@ exports.protect = (0, catchAsync_1.catchAsync)(async (req, res, next) => {
         return next(new appError_1.default('Password recently changed. Please log in again.', 401));
     }
     if (currentUser.role === 'vendor' && !currentUser.restaurantId) {
-        const mongoose = require('mongoose');
-        const Restaurant = mongoose.model('Restaurant');
-        const restaurant = await Restaurant.findOne({ owner: currentUser._id });
+        const restaurant = await restaurant_model_1.default.findOne({ owner: currentUser._id });
         if (restaurant) {
             currentUser.restaurantId = restaurant._id;
             await currentUser.save({ validateBeforeSave: false });

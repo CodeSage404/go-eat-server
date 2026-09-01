@@ -71,17 +71,23 @@ class AuthController {
             await otp_util_1.default.storePendingUser(identifier, cleanData, 600);
             // Send OTP (If email/phone sending fails, error is thrown BEFORE DB creation)
             const verifyByPhone = !!cleanData.phoneNumber;
+            let dispatchResult;
             if (verifyByPhone) {
-                await this.initiateVerification(cleanData.phoneNumber, 'phone');
+                dispatchResult = await this.initiateVerification(cleanData.phoneNumber, 'phone');
             }
             else if (cleanData.email) {
-                await this.initiateVerification(cleanData.email, 'email');
+                dispatchResult = await this.initiateVerification(cleanData.email, 'email');
             }
+            const channelText = dispatchResult?.channel === 'whatsapp'
+                ? 'WhatsApp'
+                : (dispatchResult?.channel === 'sms' ? 'SMS' : (dispatchResult?.channel === 'email' ? 'email' : 'device'));
             res.status(200).json({
                 status: 'success',
-                message: verifyByPhone
-                    ? 'Signup payload saved. Please verify your phone number with the OTP code.'
-                    : 'Signup payload saved. Please verify your email with the OTP code.',
+                message: `Signup details saved. A fresh verification code has been sent via ${channelText}.`,
+                data: {
+                    channel: dispatchResult?.channel,
+                    remainingAttempts: dispatchResult?.remaining,
+                },
             });
         });
         this.signupCourier = (0, catchAsync_1.catchAsync)(async (req, res) => {
@@ -107,17 +113,23 @@ class AuthController {
             }
             await otp_util_1.default.storePendingUser(identifier, cleanData, 600);
             const verifyByPhone = !!cleanData.phoneNumber;
+            let dispatchResult;
             if (verifyByPhone) {
-                await this.initiateVerification(cleanData.phoneNumber, 'phone');
+                dispatchResult = await this.initiateVerification(cleanData.phoneNumber, 'phone');
             }
             else if (cleanData.email) {
-                await this.initiateVerification(cleanData.email, 'email');
+                dispatchResult = await this.initiateVerification(cleanData.email, 'email');
             }
+            const channelText = dispatchResult?.channel === 'whatsapp'
+                ? 'WhatsApp'
+                : (dispatchResult?.channel === 'sms' ? 'SMS' : (dispatchResult?.channel === 'email' ? 'email' : 'device'));
             res.status(200).json({
                 status: 'success',
-                message: verifyByPhone
-                    ? 'Courier signup payload saved. Please verify your phone number.'
-                    : 'Courier signup payload saved. Please verify your email.',
+                message: `Courier signup details saved. A fresh verification code has been sent via ${channelText}.`,
+                data: {
+                    channel: dispatchResult?.channel,
+                    remainingAttempts: dispatchResult?.remaining,
+                },
             });
         });
         this.signupVendor = (0, catchAsync_1.catchAsync)(async (req, res) => {
@@ -143,17 +155,23 @@ class AuthController {
             }
             await otp_util_1.default.storePendingUser(identifier, cleanData, 600);
             const verifyByPhone = !!cleanData.phoneNumber;
+            let dispatchResult;
             if (verifyByPhone) {
-                await this.initiateVerification(cleanData.phoneNumber, 'phone');
+                dispatchResult = await this.initiateVerification(cleanData.phoneNumber, 'phone');
             }
             else if (cleanData.email) {
-                await this.initiateVerification(cleanData.email, 'email');
+                dispatchResult = await this.initiateVerification(cleanData.email, 'email');
             }
+            const channelText = dispatchResult?.channel === 'whatsapp'
+                ? 'WhatsApp'
+                : (dispatchResult?.channel === 'sms' ? 'SMS' : (dispatchResult?.channel === 'email' ? 'email' : 'device'));
             res.status(200).json({
                 status: 'success',
-                message: verifyByPhone
-                    ? 'Vendor signup payload saved. Please verify your phone number.'
-                    : 'Vendor signup payload saved. Please verify your email.',
+                message: `Vendor signup details saved. A fresh verification code has been sent via ${channelText}.`,
+                data: {
+                    channel: dispatchResult?.channel,
+                    remainingAttempts: dispatchResult?.remaining,
+                },
             });
         });
         this.verifyOTP = (0, catchAsync_1.catchAsync)(async (req, res) => {
@@ -172,6 +190,8 @@ class AuthController {
             if (!isValid) {
                 throw new appError_1.default('Invalid or expired OTP code', 400);
             }
+            // Reset OTP request rate limit upon successful verification
+            await otp_util_1.default.resetRequestLimit(identifier);
             let user;
             // Check if there is a pending registration payload cached in Redis
             const pendingUserData = await otp_util_1.default.getPendingUser(identifier);
@@ -212,17 +232,23 @@ class AuthController {
             if (!identifier) {
                 throw new appError_1.default('Please provide an email or phone number to resend OTP', 400);
             }
+            let dispatchResult;
             if (phoneNumber) {
-                await this.initiateVerification(phoneNumber, 'phone');
+                dispatchResult = await this.initiateVerification(phoneNumber, 'phone');
             }
             else if (email) {
-                await this.initiateVerification(email, 'email');
+                dispatchResult = await this.initiateVerification(email, 'email');
             }
+            const channelText = dispatchResult?.channel === 'whatsapp'
+                ? 'WhatsApp'
+                : (dispatchResult?.channel === 'sms' ? 'SMS' : (dispatchResult?.channel === 'email' ? 'email' : 'device'));
             res.status(200).json({
                 status: 'success',
-                message: phoneNumber
-                    ? 'Verification OTP code resent successfully to your WhatsApp.'
-                    : 'Verification OTP code resent successfully to your email address.',
+                message: `A fresh verification code has been sent via ${channelText}. (${dispatchResult?.remaining || 0} resend attempts remaining).`,
+                data: {
+                    channel: dispatchResult?.channel,
+                    remainingAttempts: dispatchResult?.remaining,
+                },
             });
         });
         this.login = (0, catchAsync_1.catchAsync)(async (req, res) => {
@@ -427,14 +453,26 @@ class AuthController {
         });
     }
     async initiateVerification(identifier, type) {
+        // Check and enforce OTP request rate limit (Max 6 attempts per identifier per 30 minutes)
+        const { allowed, count, remaining } = await otp_util_1.default.checkAndIncrementRequestLimit(identifier, 6, 1800);
+        if (!allowed) {
+            throw new appError_1.default('You have exceeded the maximum limit of 6 OTP requests for this account. Please wait 30 minutes before requesting another code or sign up using an alternative email address.', 429);
+        }
         if (type === 'email') {
             const otp = otp_util_1.default.generateOTP();
             await otp_util_1.default.storeOTP(identifier, otp);
-            await email_service_1.default.sendOTP(identifier, otp);
+            try {
+                await email_service_1.default.sendOTP(identifier, otp);
+                return { channel: 'email', remaining };
+            }
+            catch (err) {
+                throw new appError_1.default('Unable to send verification email. Please verify your email address or try again.', 400);
+            }
         }
         else {
             const formattedPhone = identifier.startsWith('+') ? identifier : `+234${identifier.replace(/^0/, '')}`;
-            await (0, twilioVerify_util_1.startWhatsAppVerification)(formattedPhone);
+            const result = await (0, twilioVerify_util_1.startWhatsAppVerification)(formattedPhone);
+            return { channel: result.channel, remaining };
         }
     }
 }
