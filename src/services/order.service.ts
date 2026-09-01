@@ -1,3 +1,4 @@
+import crypto from 'crypto';
 import Order, { IOrder, OrderStatus } from '../models/order.model';
 import Restaurant from '../models/restaurant.model';
 import User, { UserRole } from '../models/user.model';
@@ -45,10 +46,10 @@ class OrderService {
 
     const shortId = order._id.toString().slice(-6).toUpperCase();
 
-    // Notify Restaurant (Vendor) via Push and Socket
+    // Notify Restaurant (Vendor) via Push, Socket, and In-app
     await notificationService.notifyNewOrder(restaurant.owner.toString(), order._id.toString());
 
-    // Notify Customer via Push and Socket
+    // Notify Customer via Push, Socket, and In-app
     if (order.customer) {
       await notificationService.sendNotification(
         order.customer.toString(),
@@ -57,6 +58,27 @@ class OrderService {
         { orderId: order._id.toString(), status: 'pending', type: 'ORDER_UPDATE' },
         NotificationType.ORDER_UPDATE
       );
+
+      // Send Itemized Receipt Email to Customer
+      try {
+        await order.populate('items.foodItem');
+        const customerUser = await User.findById(order.customer);
+        if (customerUser && customerUser.email && !customerUser.email.includes('customer@goeat.com')) {
+          emailService.sendTemplateEmail(
+            customerUser.email,
+            'ORDER_CONFIRMED',
+            `Order Receipt: #${shortId} from ${restaurant.name}`,
+            {
+              orderId: order._id,
+              customerName: customerUser.name || 'Customer',
+              total: order.totalAmount,
+              items: order.items,
+            }
+          ).catch((err: any) => logger.warn('Failed to send order placed receipt email:', err.message));
+        }
+      } catch (emailErr: any) {
+        logger.warn('Error preparing customer receipt email on placeOrder:', emailErr.message);
+      }
     }
 
     return order;
@@ -235,6 +257,13 @@ class OrderService {
           }
         ).catch((err: any) => logger.error('Failed to send order preparing email:', err));
       }
+    } else if (status === OrderStatus.OUT_FOR_DELIVERY && order.deliveryPin) {
+      // Send separate dedicated PIN reminder notification
+      notificationService.notifyOrderDeliveryPin(
+        customerId,
+        order._id.toString(),
+        order.deliveryPin
+      ).catch((err: any) => logger.warn('Failed to send delivery PIN push notification:', err.message));
     }
 
     // Notify Vendor/Outlet
@@ -422,17 +451,44 @@ class OrderService {
       throw new AppError('Cannot verify delivery for a cancelled or rejected order', 400);
     }
 
-    // Validate 4-digit PIN match
-    const formattedInputPin = String(pin || '').trim();
-    if (order.deliveryPin && order.deliveryPin !== formattedInputPin) {
+    // Defend against PIN brute forcing: Max 5 failed attempts per order
+    const MAX_PIN_ATTEMPTS = 5;
+    const currentAttempts = order.failedPinAttempts || 0;
+
+    if (currentAttempts >= MAX_PIN_ATTEMPTS) {
       throw new AppError(
-        'Invalid delivery verification PIN. Please request the 4-digit PIN from the recipient.',
+        'Too many incorrect PIN attempts. For security reasons, this order verification has been locked. Please contact support.',
+        429
+      );
+    }
+
+    // Constant-time PIN verification
+    const formattedInputPin = String(pin || '').trim();
+    const actualPin = String(order.deliveryPin || '').trim();
+
+    let isPinMatch = false;
+    if (actualPin && formattedInputPin) {
+      try {
+        const inputBuf = Buffer.from(formattedInputPin);
+        const actualBuf = Buffer.from(actualPin);
+        isPinMatch = (inputBuf.length === actualBuf.length) && crypto.timingSafeEqual(inputBuf, actualBuf);
+      } catch {
+        isPinMatch = false;
+      }
+    }
+
+    if (!isPinMatch) {
+      await Order.findByIdAndUpdate(orderId, { $inc: { failedPinAttempts: 1 } });
+      const remainingAttempts = MAX_PIN_ATTEMPTS - (currentAttempts + 1);
+      throw new AppError(
+        `Invalid delivery verification PIN. ${remainingAttempts} attempt(s) remaining before order verification is locked.`,
         400
       );
     }
 
     order.deliveryPinVerified = true;
     order.deliveryPinVerifiedAt = new Date();
+    order.failedPinAttempts = 0;
     await order.save();
 
     // Transition order status to DELIVERED through existing pipeline (notifies customer & triggers settlements)

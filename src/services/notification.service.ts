@@ -72,15 +72,18 @@ class NotificationService {
     // 3. Send via Push Notification (Expo or Native FCM)
     try {
       const user = await User.findById(userId);
-      if (user && user.fcmToken && user.notificationsEnabled) {
+      if (user && user.fcmToken && user.notificationsEnabled !== false) {
         if (user.fcmToken.startsWith('ExponentPushToken') || user.fcmToken.startsWith('ExpoPushToken')) {
-          // Send via Expo Push API
+          // Send via Expo Push API with high priority and sound
           const expoMessage = {
             to: user.fcmToken,
             sound: 'default',
             title,
             body,
             data: { ...data, orderId: data.orderId },
+            priority: 'high',
+            channelId: 'default',
+            _displayInForeground: true,
           };
           const response = await fetch('https://exp.host/--/api/v2/push/send', {
             method: 'POST',
@@ -95,10 +98,17 @@ class NotificationService {
           logger.info(`📲 Expo push notification sent to user ${userId} (${user.email || user.phoneNumber}):`, expoResult);
         } else if (admin.apps?.length) {
           // Send via Native Firebase FCM
-          const message = {
+          const message: any = {
             notification: { title, body },
             data: { ...data, click_action: 'FLUTTER_NOTIFICATION_CLICK' },
             token: user.fcmToken,
+            android: {
+              priority: 'high',
+              notification: { sound: 'default', channelId: 'default' },
+            },
+            apns: {
+              payload: { aps: { sound: 'default', badge: 1 } },
+            },
           };
 
           await admin.messaging().send(message);
@@ -182,6 +192,45 @@ class NotificationService {
       NOTIFICATION_MESSAGES.ORDER.RIDER_AVAILABLE.BODY,
       { orderId, type: 'RIDER_JOB' },
       NotificationType.NEW_ORDER
+    );
+  }
+
+  /**
+   * Notify customer with their 4-digit Delivery Hand-off PIN
+   */
+  async notifyOrderDeliveryPin(customerId: string, orderId: string, pin: string) {
+    await this.sendNotification(
+      customerId,
+      'Your Delivery PIN is Here 🔑',
+      `Give this 4-digit PIN (${pin}) to your courier upon arrival to receive your meal.`,
+      { orderId, pin, type: 'DELIVERY_PIN' },
+      NotificationType.ORDER_UPDATE
+    );
+  }
+
+  /**
+   * Notify user about wallet updates (deposits, payouts, refunds)
+   */
+  async notifyWalletTransaction(userId: string, title: string, body: string, amount: number, transactionId?: string) {
+    await this.sendNotification(
+      userId,
+      title,
+      body,
+      { amount, transactionId, type: 'WALLET_UPDATE' },
+      NotificationType.WALLET
+    );
+  }
+
+  /**
+   * Broadcast promotional discount or platform campaign
+   */
+  async notifyPromotion(userId: string, title: string, body: string, promoCode?: string) {
+    await this.sendNotification(
+      userId,
+      title,
+      body,
+      { promoCode, type: 'PROMO' },
+      NotificationType.PROMOTION
     );
   }
 }

@@ -5,6 +5,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.FlutterwaveModule = void 0;
 const axios_1 = __importDefault(require("axios"));
+const crypto_1 = __importDefault(require("crypto"));
 const appError_1 = __importDefault(require("../../utils/appError"));
 const logger_1 = __importDefault(require("../../utils/logger"));
 class FlutterwaveModule {
@@ -106,9 +107,20 @@ class FlutterwaveModule {
      * Cryptographically verify Flutterwave Webhook Signature (verif-hash header)
      */
     verifyWebhookSignature(signatureHeader) {
-        if (!signatureHeader)
+        if (!signatureHeader || !this.secretHash)
             return false;
-        return signatureHeader === this.secretHash;
+        try {
+            const signatureBuffer = Buffer.from(signatureHeader, 'utf8');
+            const hashBuffer = Buffer.from(this.secretHash, 'utf8');
+            if (signatureBuffer.length !== hashBuffer.length) {
+                return false;
+            }
+            return crypto_1.default.timingSafeEqual(signatureBuffer, hashBuffer);
+        }
+        catch (err) {
+            logger_1.default.error('Error during Flutterwave webhook verification:', err);
+            return false;
+        }
     }
     /**
      * Initiate Payout / Bank Transfer (Riders / Restaurants)

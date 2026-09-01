@@ -1,4 +1,5 @@
 import axios from 'axios';
+import crypto from 'crypto';
 import AppError from '../../utils/appError';
 import logger from '../../utils/logger';
 
@@ -144,8 +145,21 @@ export class FlutterwaveModule {
    * Cryptographically verify Flutterwave Webhook Signature (verif-hash header)
    */
   verifyWebhookSignature(signatureHeader: string): boolean {
-    if (!signatureHeader) return false;
-    return signatureHeader === this.secretHash;
+    if (!signatureHeader || !this.secretHash) return false;
+
+    try {
+      const signatureBuffer = Buffer.from(signatureHeader, 'utf8');
+      const hashBuffer = Buffer.from(this.secretHash, 'utf8');
+
+      if (signatureBuffer.length !== hashBuffer.length) {
+        return false;
+      }
+
+      return crypto.timingSafeEqual(signatureBuffer, hashBuffer);
+    } catch (err) {
+      logger.error('Error during Flutterwave webhook verification:', err);
+      return false;
+    }
   }
 
   /**

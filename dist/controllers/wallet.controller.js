@@ -41,6 +41,7 @@ const transaction_model_1 = __importStar(require("../models/transaction.model"))
 const catchAsync_1 = require("../utils/catchAsync");
 const appError_1 = __importDefault(require("../utils/appError"));
 const paystack_module_1 = __importDefault(require("../services/payments/paystack.module"));
+const notification_service_1 = __importDefault(require("../services/notification.service"));
 class WalletController {
     constructor() {
         /**
@@ -112,6 +113,8 @@ class WalletController {
                 status: transaction_model_1.TransactionStatus.COMPLETED, // Mocking instant processing for now
                 description: 'Payout to verified bank account',
             });
+            // Notify user via In-App, Real-Time Socket, and Push Notification
+            notification_service_1.default.notifyWalletTransaction(req.user._id.toString(), 'Withdrawal Initiated 💸', `Your payout request of ₦${amount.toLocaleString()} has been received and processed.`, amount, transaction._id.toString()).catch(() => { });
             res.status(200).json({
                 status: 'success',
                 data: {

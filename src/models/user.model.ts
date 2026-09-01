@@ -1,5 +1,6 @@
 import mongoose, { Schema, Document } from 'mongoose';
 import bcrypt from 'bcryptjs';
+import crypto from 'crypto';
 
 export enum UserRole {
   CUSTOMER = 'customer',
@@ -56,9 +57,11 @@ export interface IUser extends Document {
   isUk: boolean;
   adminRegion?: string;
   hasChangedPassword?: boolean;
+  passwordChangedAt?: Date;
   createdAt: Date;
   updatedAt: Date;
   comparePassword(password: string): Promise<boolean>;
+  hasChangedPasswordAfter?(jwtTimestamp: number): boolean;
 }
 
 const userSchema = new Schema<IUser>(
@@ -214,6 +217,9 @@ const userSchema = new Schema<IUser>(
       type: Boolean,
       default: false,
     },
+    passwordChangedAt: {
+      type: Date,
+    },
   },
   {
     timestamps: true,
@@ -228,15 +234,31 @@ userSchema.pre('save', async function () {
     this.isUk = (this.country === 'UK');
   }
   if (!this.referralCode) {
-    this.referralCode = `GE-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+    const randomHex = crypto.randomBytes(3).toString('hex').toUpperCase();
+    this.referralCode = `GE-${randomHex}`;
   }
-  if (!this.isModified('password')) return;
-  this.password = await bcrypt.hash(this.password!, 10);
+  if (!this.isModified('password') || !this.password) return;
+
+  // 12 rounds bcrypt hash for hardened security
+  this.password = await bcrypt.hash(this.password, 12);
+
+  if (!this.isNew) {
+    this.passwordChangedAt = new Date(Date.now() - 1000);
+  }
 });
 
 // Instance method to compare password
 userSchema.methods.comparePassword = async function (candidatePassword: string): Promise<boolean> {
   return await bcrypt.compare(candidatePassword, this.password!);
+};
+
+// Check if user changed password after JWT was issued
+userSchema.methods.hasChangedPasswordAfter = function (jwtTimestamp: number): boolean {
+  if (this.passwordChangedAt) {
+    const changedTimestamp = parseInt((this.passwordChangedAt.getTime() / 1000).toString(), 10);
+    return jwtTimestamp < changedTimestamp;
+  }
+  return false;
 };
 
 // Indexes for fast lookup, regional filtering, & geospatial queries

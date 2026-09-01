@@ -19,7 +19,12 @@ export const protect = catchAsync(async (req: AuthRequest, res: Response, next: 
     return next(new AppError('You are not logged in! Please log in to get access.', 401));
   }
 
-  const decoded: any = jwt.verify(token, process.env.JWT_SECRET!);
+  const jwtSecret = process.env.JWT_SECRET;
+  if (!jwtSecret) {
+    return next(new AppError('Server authentication configuration error.', 500));
+  }
+
+  const decoded: any = jwt.verify(token, jwtSecret);
 
   const currentUser = await User.findById(decoded.id);
   if (!currentUser) {
@@ -28,6 +33,11 @@ export const protect = catchAsync(async (req: AuthRequest, res: Response, next: 
 
   if (currentUser.status === 'suspended') {
     return next(new AppError('Your account has been suspended. Please contact support.', 403));
+  }
+
+  // Check if password was changed after token was issued
+  if (currentUser.hasChangedPasswordAfter && currentUser.hasChangedPasswordAfter(decoded.iat)) {
+    return next(new AppError('Password recently changed. Please log in again.', 401));
   }
 
   if (currentUser.role === 'vendor' && !currentUser.restaurantId) {

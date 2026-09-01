@@ -108,13 +108,25 @@ class PaystackModule {
      * Cryptographically verify Paystack Webhook Signature (HMAC SHA-512)
      */
     verifyWebhookSignature(payload, signature) {
-        if (!signature)
+        if (!signature || !this.secretKey)
             return false;
-        const hash = crypto_1.default
-            .createHmac('sha512', this.secretKey)
-            .update(typeof payload === 'string' ? payload : JSON.stringify(payload))
-            .digest('hex');
-        return hash === signature;
+        try {
+            const rawBody = typeof payload === 'string' ? payload : JSON.stringify(payload);
+            const computedHash = crypto_1.default
+                .createHmac('sha512', this.secretKey)
+                .update(rawBody)
+                .digest('hex');
+            const signatureBuffer = Buffer.from(signature, 'hex');
+            const hashBuffer = Buffer.from(computedHash, 'hex');
+            if (signatureBuffer.length !== hashBuffer.length) {
+                return false;
+            }
+            return crypto_1.default.timingSafeEqual(signatureBuffer, hashBuffer);
+        }
+        catch (err) {
+            logger_1.default.error('Error during timing-safe webhook signature verification:', err);
+            return false;
+        }
     }
     /**
      * Create Transfer Recipient (for Riders / Restaurants payout)

@@ -1,0 +1,25 @@
+2026-09-01 18:37:07 [error]: MongooseServerSelectionError: connect ECONNREFUSED ::1:27017, connect ECONNREFUSED 127.0.0.1:27017
+    at _handleConnectionErrors (C:\Users\Immanuel\Desktop\EMStack\Go-Eat\server\node_modules\mongoose\lib\connection.js:1180:11)
+    at NativeConnection.openUri (C:\Users\Immanuel\Desktop\EMStack\Go-Eat\server\node_modules\mongoose\lib\connection.js:1111:11)
+    at async connectDB (C:\Users\Immanuel\Desktop\EMStack\Go-Eat\server\src\config\db.ts:11:18)
+    at async run (C:\Users\Immanuel\Desktop\EMStack\Go-Eat\server\src\scripts\test-push-user.ts:12:5)
+2026-09-01 18:38:56 [error]: MongooseServerSelectionError: connect ECONNREFUSED ::1:27017, connect ECONNREFUSED 127.0.0.1:27017
+    at _handleConnectionErrors (C:\Users\Immanuel\Desktop\EMStack\Go-Eat\server\node_modules\mongoose\lib\connection.js:1180:11)
+    at NativeConnection.openUri (C:\Users\Immanuel\Desktop\EMStack\Go-Eat\server\node_modules\mongoose\lib\connection.js:1111:11)
+    at async connectDB (C:\Users\Immanuel\Desktop\EMStack\Go-Eat\server\src\config\db.ts:11:18)
+    at async run (C:\Users\Immanuel\Desktop\EMStack\Go-Eat\server\src\scripts\test-push-user.ts:12:5)
+2026-09-01 18:40:06 [error]: MongooseServerSelectionError: connect ECONNREFUSED ::1:27017, connect ECONNREFUSED 127.0.0.1:27017
+    at _handleConnectionErrors (C:\Users\Immanuel\Desktop\EMStack\Go-Eat\server\node_modules\mongoose\lib\connection.js:1180:11)
+    at NativeConnection.openUri (C:\Users\Immanuel\Desktop\EMStack\Go-Eat\server\node_modules\mongoose\lib\connection.js:1111:11)
+    at async connectDB (C:\Users\Immanuel\Desktop\EMStack\Go-Eat\server\src\config\db.ts:11:18)
+    at async run (C:\Users\Immanuel\Desktop\EMStack\Go-Eat\server\src\scripts\test-push-user.ts:12:5)
+2026-09-01 18:43:03 [error]: MongooseServerSelectionError: connect ECONNREFUSED ::1:27017, connect ECONNREFUSED 127.0.0.1:27017
+    at _handleConnectionErrors (C:\Users\Immanuel\Desktop\EMStack\Go-Eat\server\node_modules\mongoose\lib\connection.js:1180:11)
+    at NativeConnection.openUri (C:\Users\Immanuel\Desktop\EMStack\Go-Eat\server\node_modules\mongoose\lib\connection.js:1111:11)
+    at async connectDB (C:\Users\Immanuel\Desktop\EMStack\Go-Eat\server\src\config\db.ts:11:18)
+    at async run (C:\Users\Immanuel\Desktop\EMStack\Go-Eat\server\src\scripts\test-push-user.ts:12:5)
+2026-09-01 18:51:23 [error]: MongooseServerSelectionError: connect ECONNREFUSED ::1:27017, connect ECONNREFUSED 127.0.0.1:27017
+    at _handleConnectionErrors (C:\Users\Immanuel\Desktop\EMStack\Go-Eat\server\node_modules\mongoose\lib\connection.js:1180:11)
+    at NativeConnection.openUri (C:\Users\Immanuel\Desktop\EMStack\Go-Eat\server\node_modules\mongoose\lib\connection.js:1111:11)
+    at async connectDB (C:\Users\Immanuel\Desktop\EMStack\Go-Eat\server\src\config\db.ts:11:18)
+    at async run (C:\Users\Immanuel\Desktop\EMStack\Go-Eat\server\src\scripts\test-push-user.ts:12:5)

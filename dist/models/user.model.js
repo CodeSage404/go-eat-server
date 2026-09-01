@@ -39,6 +39,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.UserStatus = exports.UserRole = void 0;
 const mongoose_1 = __importStar(require("mongoose"));
 const bcryptjs_1 = __importDefault(require("bcryptjs"));
+const crypto_1 = __importDefault(require("crypto"));
 var UserRole;
 (function (UserRole) {
     UserRole["CUSTOMER"] = "customer";
@@ -205,6 +206,9 @@ const userSchema = new mongoose_1.Schema({
         type: Boolean,
         default: false,
     },
+    passwordChangedAt: {
+        type: Date,
+    },
 }, {
     timestamps: true,
 });
@@ -216,15 +220,28 @@ userSchema.pre('save', async function () {
         this.isUk = (this.country === 'UK');
     }
     if (!this.referralCode) {
-        this.referralCode = `GE-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+        const randomHex = crypto_1.default.randomBytes(3).toString('hex').toUpperCase();
+        this.referralCode = `GE-${randomHex}`;
     }
-    if (!this.isModified('password'))
+    if (!this.isModified('password') || !this.password)
         return;
-    this.password = await bcryptjs_1.default.hash(this.password, 10);
+    // 12 rounds bcrypt hash for hardened security
+    this.password = await bcryptjs_1.default.hash(this.password, 12);
+    if (!this.isNew) {
+        this.passwordChangedAt = new Date(Date.now() - 1000);
+    }
 });
 // Instance method to compare password
 userSchema.methods.comparePassword = async function (candidatePassword) {
     return await bcryptjs_1.default.compare(candidatePassword, this.password);
+};
+// Check if user changed password after JWT was issued
+userSchema.methods.hasChangedPasswordAfter = function (jwtTimestamp) {
+    if (this.passwordChangedAt) {
+        const changedTimestamp = parseInt((this.passwordChangedAt.getTime() / 1000).toString(), 10);
+        return jwtTimestamp < changedTimestamp;
+    }
+    return false;
 };
 // Indexes for fast lookup, regional filtering, & geospatial queries
 userSchema.index({ location: '2dsphere' });

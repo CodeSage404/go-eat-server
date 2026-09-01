@@ -44,6 +44,7 @@ var NotificationType;
     NotificationType["ORDER_UPDATE"] = "order_update";
     NotificationType["NEW_ORDER"] = "new_order";
     NotificationType["PROMOTION"] = "promotion";
+    NotificationType["WALLET"] = "wallet";
     NotificationType["SYSTEM"] = "system";
 })(NotificationType || (exports.NotificationType = NotificationType = {}));
 const userNotificationSchema = new mongoose_1.Schema({

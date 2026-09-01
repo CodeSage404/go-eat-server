@@ -7,6 +7,7 @@ const express_1 = require("express");
 const order_controller_1 = __importDefault(require("../controllers/order.controller"));
 const auth_middleware_1 = require("../middleware/auth.middleware");
 const user_model_1 = require("../models/user.model");
+const rateLimiter_1 = require("../middleware/rateLimiter");
 const router = (0, express_1.Router)();
 router.use(auth_middleware_1.protect);
 // Customer routes
@@ -226,5 +227,5 @@ router.post('/:id/reorder', (0, auth_middleware_1.restrictTo)(user_model_1.UserR
  *       404:
  *         description: Order not found
  */
-router.post('/:id/verify-delivery', (0, auth_middleware_1.restrictTo)(user_model_1.UserRole.RIDER, user_model_1.UserRole.VENDOR, user_model_1.UserRole.ADMIN), order_controller_1.default.verifyDeliveryPin);
+router.post('/:id/verify-delivery', rateLimiter_1.pinVerificationLimiter, (0, auth_middleware_1.restrictTo)(user_model_1.UserRole.RIDER, user_model_1.UserRole.VENDOR, user_model_1.UserRole.ADMIN), order_controller_1.default.verifyDeliveryPin);
 exports.default = router;

@@ -103,15 +103,18 @@ class NotificationService {
         // 3. Send via Push Notification (Expo or Native FCM)
         try {
             const user = await user_model_1.default.findById(userId);
-            if (user && user.fcmToken && user.notificationsEnabled) {
+            if (user && user.fcmToken && user.notificationsEnabled !== false) {
                 if (user.fcmToken.startsWith('ExponentPushToken') || user.fcmToken.startsWith('ExpoPushToken')) {
-                    // Send via Expo Push API
+                    // Send via Expo Push API with high priority and sound
                     const expoMessage = {
                         to: user.fcmToken,
                         sound: 'default',
                         title,
                         body,
                         data: { ...data, orderId: data.orderId },
+                        priority: 'high',
+                        channelId: 'default',
+                        _displayInForeground: true,
                     };
                     const response = await fetch('https://exp.host/--/api/v2/push/send', {
                         method: 'POST',
@@ -131,6 +134,13 @@ class NotificationService {
                         notification: { title, body },
                         data: { ...data, click_action: 'FLUTTER_NOTIFICATION_CLICK' },
                         token: user.fcmToken,
+                        android: {
+                            priority: 'high',
+                            notification: { sound: 'default', channelId: 'default' },
+                        },
+                        apns: {
+                            payload: { aps: { sound: 'default', badge: 1 } },
+                        },
                     };
                     await firebase_admin_1.default.messaging().send(message);
                     logger_1.default.info(`📲 Native FCM push notification sent to user: ${userId}`);
@@ -173,6 +183,24 @@ class NotificationService {
      */
     async notifyRiderAvailableOrder(riderId, orderId) {
         await this.sendNotification(riderId, constants_1.NOTIFICATION_MESSAGES.ORDER.RIDER_AVAILABLE.TITLE, constants_1.NOTIFICATION_MESSAGES.ORDER.RIDER_AVAILABLE.BODY, { orderId, type: 'RIDER_JOB' }, userNotification_model_1.NotificationType.NEW_ORDER);
+    }
+    /**
+     * Notify customer with their 4-digit Delivery Hand-off PIN
+     */
+    async notifyOrderDeliveryPin(customerId, orderId, pin) {
+        await this.sendNotification(customerId, 'Your Delivery PIN is Here 🔑', `Give this 4-digit PIN (${pin}) to your courier upon arrival to receive your meal.`, { orderId, pin, type: 'DELIVERY_PIN' }, userNotification_model_1.NotificationType.ORDER_UPDATE);
+    }
+    /**
+     * Notify user about wallet updates (deposits, payouts, refunds)
+     */
+    async notifyWalletTransaction(userId, title, body, amount, transactionId) {
+        await this.sendNotification(userId, title, body, { amount, transactionId, type: 'WALLET_UPDATE' }, userNotification_model_1.NotificationType.WALLET);
+    }
+    /**
+     * Broadcast promotional discount or platform campaign
+     */
+    async notifyPromotion(userId, title, body, promoCode) {
+        await this.sendNotification(userId, title, body, { promoCode, type: 'PROMO' }, userNotification_model_1.NotificationType.PROMOTION);
     }
 }
 exports.default = new NotificationService();

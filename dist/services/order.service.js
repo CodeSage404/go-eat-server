@@ -36,6 +36,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+const crypto_1 = __importDefault(require("crypto"));
 const order_model_1 = __importStar(require("../models/order.model"));
 const restaurant_model_1 = __importDefault(require("../models/restaurant.model"));
 const user_model_1 = __importStar(require("../models/user.model"));
@@ -71,11 +72,27 @@ class OrderService {
         // Create the order
         const order = await order_model_1.default.create(data);
         const shortId = order._id.toString().slice(-6).toUpperCase();
-        // Notify Restaurant (Vendor) via Push and Socket
+        // Notify Restaurant (Vendor) via Push, Socket, and In-app
         await notification_service_1.default.notifyNewOrder(restaurant.owner.toString(), order._id.toString());
-        // Notify Customer via Push and Socket
+        // Notify Customer via Push, Socket, and In-app
         if (order.customer) {
             await notification_service_1.default.sendNotification(order.customer.toString(), `Order Placed! 🍽️`, `Your order #${shortId} from ${restaurant.name} has been placed successfully and sent to the outlet!`, { orderId: order._id.toString(), status: 'pending', type: 'ORDER_UPDATE' }, userNotification_model_1.NotificationType.ORDER_UPDATE);
+            // Send Itemized Receipt Email to Customer
+            try {
+                await order.populate('items.foodItem');
+                const customerUser = await user_model_1.default.findById(order.customer);
+                if (customerUser && customerUser.email && !customerUser.email.includes('customer@goeat.com')) {
+                    email_service_1.default.sendTemplateEmail(customerUser.email, 'ORDER_CONFIRMED', `Order Receipt: #${shortId} from ${restaurant.name}`, {
+                        orderId: order._id,
+                        customerName: customerUser.name || 'Customer',
+                        total: order.totalAmount,
+                        items: order.items,
+                    }).catch((err) => logger_1.default.warn('Failed to send order placed receipt email:', err.message));
+                }
+            }
+            catch (emailErr) {
+                logger_1.default.warn('Error preparing customer receipt email on placeOrder:', emailErr.message);
+            }
         }
         return order;
     }
@@ -219,6 +236,10 @@ class OrderService {
                     estimatedPrepTime: order.estimatedPrepTime || 20,
                 }).catch((err) => logger_1.default.error('Failed to send order preparing email:', err));
             }
+        }
+        else if (status === order_model_1.OrderStatus.OUT_FOR_DELIVERY && order.deliveryPin) {
+            // Send separate dedicated PIN reminder notification
+            notification_service_1.default.notifyOrderDeliveryPin(customerId, order._id.toString(), order.deliveryPin).catch((err) => logger_1.default.warn('Failed to send delivery PIN push notification:', err.message));
         }
         // Notify Vendor/Outlet
         if (vendorUserId) {
@@ -367,13 +388,34 @@ class OrderService {
         if (order.status === order_model_1.OrderStatus.CANCELLED || order.status === order_model_1.OrderStatus.REJECTED) {
             throw new appError_1.default('Cannot verify delivery for a cancelled or rejected order', 400);
         }
-        // Validate 4-digit PIN match
+        // Defend against PIN brute forcing: Max 5 failed attempts per order
+        const MAX_PIN_ATTEMPTS = 5;
+        const currentAttempts = order.failedPinAttempts || 0;
+        if (currentAttempts >= MAX_PIN_ATTEMPTS) {
+            throw new appError_1.default('Too many incorrect PIN attempts. For security reasons, this order verification has been locked. Please contact support.', 429);
+        }
+        // Constant-time PIN verification
         const formattedInputPin = String(pin || '').trim();
-        if (order.deliveryPin && order.deliveryPin !== formattedInputPin) {
-            throw new appError_1.default('Invalid delivery verification PIN. Please request the 4-digit PIN from the recipient.', 400);
+        const actualPin = String(order.deliveryPin || '').trim();
+        let isPinMatch = false;
+        if (actualPin && formattedInputPin) {
+            try {
+                const inputBuf = Buffer.from(formattedInputPin);
+                const actualBuf = Buffer.from(actualPin);
+                isPinMatch = (inputBuf.length === actualBuf.length) && crypto_1.default.timingSafeEqual(inputBuf, actualBuf);
+            }
+            catch {
+                isPinMatch = false;
+            }
+        }
+        if (!isPinMatch) {
+            await order_model_1.default.findByIdAndUpdate(orderId, { $inc: { failedPinAttempts: 1 } });
+            const remainingAttempts = MAX_PIN_ATTEMPTS - (currentAttempts + 1);
+            throw new appError_1.default(`Invalid delivery verification PIN. ${remainingAttempts} attempt(s) remaining before order verification is locked.`, 400);
         }
         order.deliveryPinVerified = true;
         order.deliveryPinVerifiedAt = new Date();
+        order.failedPinAttempts = 0;
         await order.save();
         // Transition order status to DELIVERED through existing pipeline (notifies customer & triggers settlements)
         const updatedOrder = await this.updateOrderStatus(orderId, order_model_1.OrderStatus.DELIVERED, userId, role);

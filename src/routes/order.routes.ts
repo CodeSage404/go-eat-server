@@ -2,6 +2,7 @@ import { Router } from 'express';
 import orderController from '../controllers/order.controller';
 import { protect, restrictTo } from '../middleware/auth.middleware';
 import { UserRole } from '../models/user.model';
+import { pinVerificationLimiter } from '../middleware/rateLimiter';
 
 const router = Router();
 
@@ -233,6 +234,7 @@ router.post('/:id/reorder', restrictTo(UserRole.CUSTOMER), orderController.reord
  */
 router.post(
   '/:id/verify-delivery',
+  pinVerificationLimiter,
   restrictTo(UserRole.RIDER, UserRole.VENDOR, UserRole.ADMIN),
   orderController.verifyDeliveryPin
 );

@@ -4,6 +4,7 @@ import Transaction, { TransactionType, TransactionStatus } from '../models/trans
 import { catchAsync } from '../utils/catchAsync';
 import AppError from '../utils/appError';
 import paystackModule from '../services/payments/paystack.module';
+import notificationService from '../services/notification.service';
 
 class WalletController {
   /**
@@ -85,6 +86,15 @@ class WalletController {
       status: TransactionStatus.COMPLETED, // Mocking instant processing for now
       description: 'Payout to verified bank account',
     });
+
+    // Notify user via In-App, Real-Time Socket, and Push Notification
+    notificationService.notifyWalletTransaction(
+      req.user!._id.toString(),
+      'Withdrawal Initiated 💸',
+      `Your payout request of ₦${amount.toLocaleString()} has been received and processed.`,
+      amount,
+      transaction._id.toString()
+    ).catch(() => {});
 
     res.status(200).json({
       status: 'success',

@@ -5,6 +5,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
 const auth_controller_1 = __importDefault(require("../controllers/auth.controller"));
+const rateLimiter_1 = require("../middleware/rateLimiter");
 const router = (0, express_1.Router)();
 // Specialized Signup Routes
 /**
@@ -51,7 +52,7 @@ const router = (0, express_1.Router)();
  *       201:
  *         description: Account created, verification OTP sent.
  */
-router.post('/signup/user', auth_controller_1.default.signupUser);
+router.post('/signup/user', rateLimiter_1.authLimiter, auth_controller_1.default.signupUser);
 /**
  * @openapi
  * /api/v1/auth/signup/courier:
@@ -85,14 +86,14 @@ router.post('/signup/user', auth_controller_1.default.signupUser);
  *       201:
  *         description: Courier account created.
  */
-router.post('/signup/courier', auth_controller_1.default.signupCourier);
+router.post('/signup/courier', rateLimiter_1.authLimiter, auth_controller_1.default.signupCourier);
 /**
  * @openapi
  * /api/v1/auth/signup/vendor:
  *   post:
  *     tags:
  *       - Auth
- *     summary: Signup as Vendor (Restaurant Owner)
+ *     summary: Signup as Vendor (Outlet Owner)
  *     requestBody:
  *       required: true
  *       content:
@@ -121,7 +122,7 @@ router.post('/signup/courier', auth_controller_1.default.signupCourier);
  *       201:
  *         description: Vendor account created.
  */
-router.post('/signup/vendor', auth_controller_1.default.signupVendor);
+router.post('/signup/vendor', rateLimiter_1.authLimiter, auth_controller_1.default.signupVendor);
 // Verification Routes
 /**
  * @openapi
@@ -148,7 +149,7 @@ router.post('/signup/vendor', auth_controller_1.default.signupVendor);
  *       200:
  *         description: Account verified.
  */
-router.post('/verify-otp', auth_controller_1.default.verifyOTP);
+router.post('/verify-otp', rateLimiter_1.otpLimiter, auth_controller_1.default.verifyOTP);
 /**
  * @openapi
  * /api/v1/auth/resend-otp:
@@ -174,7 +175,7 @@ router.post('/verify-otp', auth_controller_1.default.verifyOTP);
  *       400:
  *         description: Missing identifier parameters.
  */
-router.post('/resend-otp', auth_controller_1.default.resendOTP);
+router.post('/resend-otp', rateLimiter_1.otpLimiter, auth_controller_1.default.resendOTP);
 // Shared Routes
 /**
  * @openapi
@@ -207,7 +208,7 @@ router.post('/resend-otp', auth_controller_1.default.resendOTP);
  *       401:
  *         description: Unauthorized
  */
-router.post('/login', auth_controller_1.default.login);
+router.post('/login', rateLimiter_1.authLimiter, auth_controller_1.default.login);
 /**
  * @openapi
  * /api/v1/auth/forgot-password:
@@ -233,7 +234,7 @@ router.post('/login', auth_controller_1.default.login);
  *       404:
  *         description: User not found
  */
-router.post('/forgot-password', auth_controller_1.default.forgotPassword);
+router.post('/forgot-password', rateLimiter_1.authLimiter, auth_controller_1.default.forgotPassword);
 /**
  * @openapi
  * /api/v1/auth/reset-password:
@@ -264,7 +265,7 @@ router.post('/forgot-password', auth_controller_1.default.forgotPassword);
  *       400:
  *         description: Invalid OTP or missing fields
  */
-router.post('/reset-password', auth_controller_1.default.resetPassword);
+router.post('/reset-password', rateLimiter_1.authLimiter, auth_controller_1.default.resetPassword);
 /**
  * @openapi
  * /api/v1/auth/google:

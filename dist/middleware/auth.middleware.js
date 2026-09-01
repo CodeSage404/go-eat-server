@@ -50,13 +50,21 @@ exports.protect = (0, catchAsync_1.catchAsync)(async (req, res, next) => {
     if (!token) {
         return next(new appError_1.default('You are not logged in! Please log in to get access.', 401));
     }
-    const decoded = jsonwebtoken_1.default.verify(token, process.env.JWT_SECRET);
+    const jwtSecret = process.env.JWT_SECRET;
+    if (!jwtSecret) {
+        return next(new appError_1.default('Server authentication configuration error.', 500));
+    }
+    const decoded = jsonwebtoken_1.default.verify(token, jwtSecret);
     const currentUser = await user_model_1.default.findById(decoded.id);
     if (!currentUser) {
         return next(new appError_1.default('The user belonging to this token no longer exists.', 401));
     }
     if (currentUser.status === 'suspended') {
         return next(new appError_1.default('Your account has been suspended. Please contact support.', 403));
+    }
+    // Check if password was changed after token was issued
+    if (currentUser.hasChangedPasswordAfter && currentUser.hasChangedPasswordAfter(decoded.iat)) {
+        return next(new appError_1.default('Password recently changed. Please log in again.', 401));
     }
     if (currentUser.role === 'vendor' && !currentUser.restaurantId) {
         const mongoose = require('mongoose');

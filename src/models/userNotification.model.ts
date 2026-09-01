@@ -9,6 +9,7 @@ export enum NotificationType {
   ORDER_UPDATE = 'order_update',
   NEW_ORDER = 'new_order',
   PROMOTION = 'promotion',
+  WALLET = 'wallet',
   SYSTEM = 'system',
 }
 
