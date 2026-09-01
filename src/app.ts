@@ -3,7 +3,7 @@ import path from 'path';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
-import mongoSanitize from 'express-mongo-sanitize';
+import mongoSanitizeMiddleware from './middleware/sanitize.middleware';
 import http from 'http';
 import { Server } from 'socket.io';
 import dotenv from 'dotenv';
@@ -73,7 +73,7 @@ class App {
   private config(): void {
     this.app.use(express.json({ limit: '2mb' }));
     this.app.use(express.urlencoded({ extended: true, limit: '2mb' }));
-    this.app.use(mongoSanitize({ replaceWith: '_' }));
+    this.app.use(mongoSanitizeMiddleware);
     this.app.use(cors());
     this.app.use(helmet());
     this.app.use(morgan('dev'));

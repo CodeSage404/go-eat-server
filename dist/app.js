@@ -7,7 +7,7 @@ const express_1 = __importDefault(require("express"));
 const cors_1 = __importDefault(require("cors"));
 const helmet_1 = __importDefault(require("helmet"));
 const morgan_1 = __importDefault(require("morgan"));
-const express_mongo_sanitize_1 = __importDefault(require("express-mongo-sanitize"));
+const sanitize_middleware_1 = __importDefault(require("./middleware/sanitize.middleware"));
 const http_1 = __importDefault(require("http"));
 const socket_io_1 = require("socket.io");
 const dotenv_1 = __importDefault(require("dotenv"));
@@ -66,7 +66,7 @@ class App {
     config() {
         this.app.use(express_1.default.json({ limit: '2mb' }));
         this.app.use(express_1.default.urlencoded({ extended: true, limit: '2mb' }));
-        this.app.use((0, express_mongo_sanitize_1.default)({ replaceWith: '_' }));
+        this.app.use(sanitize_middleware_1.default);
         this.app.use((0, cors_1.default)());
         this.app.use((0, helmet_1.default)());
         this.app.use((0, morgan_1.default)('dev'));
