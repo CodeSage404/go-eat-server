@@ -300,6 +300,42 @@ router.post('/google', authController.googleLogin);
 
 /**
  * @openapi
+ * /api/v1/auth/social:
+ *   post:
+ *     tags:
+ *       - Auth
+ *     summary: General Social Login (Google / Apple)
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [token]
+ *             properties:
+ *               token:
+ *                 type: string
+ *                 description: Social ID or access token
+ *               type:
+ *                 type: string
+ *                 enum: [google, apple]
+ *                 default: google
+ *               role:
+ *                 type: string
+ *                 enum: [customer, vendor, rider]
+ *     responses:
+ *       200:
+ *         description: Social login successful.
+ */
+router.post('/social', (req, res, next) => {
+  if (req.body.type === 'apple') {
+    return authController.appleLogin(req, res, next);
+  }
+  return authController.googleLogin(req, res, next);
+});
+
+/**
+ * @openapi
  * /api/v1/auth/apple:
  *   post:
  *     tags:
