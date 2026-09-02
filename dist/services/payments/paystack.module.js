@@ -202,6 +202,34 @@ class PaystackModule {
             throw new appError_1.default(error.response?.data?.message || 'Failed to create Paystack subaccount', error.response?.status || 500);
         }
     }
+    /**
+     * Resolve Account Number to verify account name
+     */
+    async resolveAccountNumber(accountNumber, bankCode) {
+        if (this.secretKey.includes('placeholder') || process.env.USE_MOCK_PAYMENT === 'true') {
+            return {
+                accountNumber,
+                accountName: 'GO-EAT VERIFIED VENDOR OUTLET',
+            };
+        }
+        try {
+            const response = await axios_1.default.get(`${this.baseUrl}/bank/resolve?account_number=${accountNumber}&bank_code=${bankCode}`, { headers: this.getHeaders() });
+            return {
+                accountNumber: response.data.data.account_number,
+                accountName: response.data.data.account_name,
+            };
+        }
+        catch (error) {
+            if (process.env.NODE_ENV !== 'production') {
+                return {
+                    accountNumber,
+                    accountName: 'VERIFIED RESTAURANT HOLDINGS',
+                };
+            }
+            logger_1.default.error('Paystack resolveAccountNumber error:', error.response?.data || error.message);
+            throw new appError_1.default(error.response?.data?.message || 'Could not resolve account name. Please check account number and bank.', error.response?.status || 400);
+        }
+    }
 }
 exports.PaystackModule = PaystackModule;
 exports.default = new PaystackModule();

@@ -188,21 +188,21 @@ class OrderService {
         const prepTimeText = order.estimatedPrepTime ? `${order.estimatedPrepTime} mins` : '20 mins';
         // Rich status-specific messages for the customer
         const customerMessages = {
-            [order_model_1.OrderStatus.ACCEPTED]: `Order #${shortId} from ${outletName} has been accepted and is being prepared! (Est. prep time: ${prepTimeText})`,
-            [order_model_1.OrderStatus.PREPARING]: `Order #${shortId} from ${outletName} is currently cooking! (Est. prep time: ${prepTimeText})`,
-            [order_model_1.OrderStatus.READY]: `Order #${shortId} is ready and waiting for courier pickup at ${outletName}.`,
-            [order_model_1.OrderStatus.READY_FOR_COLLECTION]: `Order #${shortId} is ready and waiting for courier pickup at ${outletName}.`,
-            [order_model_1.OrderStatus.OUT_FOR_DELIVERY]: `Your order #${shortId} from ${outletName} has been picked up and is on its way to your address!`,
+            [order_model_1.OrderStatus.ACCEPTED]: `Your order #${shortId} from ${outletName} has been accepted and is being prepared.`,
+            [order_model_1.OrderStatus.PREPARING]: `Your meal for order #${shortId} is currently being prepared at ${outletName} (Est. ~${prepTimeText}).`,
+            [order_model_1.OrderStatus.READY]: `Your order #${shortId} from ${outletName} is ready and available for pickup!`,
+            [order_model_1.OrderStatus.READY_FOR_COLLECTION]: `Your order #${shortId} from ${outletName} is ready and available for pickup!`,
+            [order_model_1.OrderStatus.OUT_FOR_DELIVERY]: `Your order #${shortId} has been picked up by the courier and is on the way to your address!`,
             [order_model_1.OrderStatus.DELIVERED]: `Your order #${shortId} from ${outletName} has been delivered. Enjoy your meal!`,
             [order_model_1.OrderStatus.CANCELLED]: `Your order #${shortId} from ${outletName} has been cancelled.`,
         };
         // Rich status-specific titles for customer in-app notifications
         const customerTitles = {
-            [order_model_1.OrderStatus.ACCEPTED]: `Order Accepted & Preparing 🧑‍🍳`,
-            [order_model_1.OrderStatus.PREPARING]: `Order Cooking 🍳`,
+            [order_model_1.OrderStatus.ACCEPTED]: `Order Accepted 🧑‍🍳`,
+            [order_model_1.OrderStatus.PREPARING]: `Order Preparing 🍳`,
             [order_model_1.OrderStatus.READY]: `Order Ready for Pickup 📦`,
             [order_model_1.OrderStatus.READY_FOR_COLLECTION]: `Order Ready for Pickup 📦`,
-            [order_model_1.OrderStatus.OUT_FOR_DELIVERY]: `Order Out for Delivery 🛵`,
+            [order_model_1.OrderStatus.OUT_FOR_DELIVERY]: `Order on the Way 🛵`,
             [order_model_1.OrderStatus.DELIVERED]: `Order Delivered 🎉`,
             [order_model_1.OrderStatus.CANCELLED]: `Order Cancelled ❌`,
         };
@@ -210,10 +210,10 @@ class OrderService {
         const vendorMessages = {
             [order_model_1.OrderStatus.ACCEPTED]: `You accepted order #${shortId}. Estimated prep time set to ${prepTimeText}.`,
             [order_model_1.OrderStatus.PREPARING]: `Order #${shortId} is marked as preparing.`,
-            [order_model_1.OrderStatus.READY]: `Order #${shortId} marked ready. Waiting for courier pickup.`,
-            [order_model_1.OrderStatus.READY_FOR_COLLECTION]: `Order #${shortId} marked ready. Waiting for courier pickup.`,
-            [order_model_1.OrderStatus.OUT_FOR_DELIVERY]: `Order #${shortId} picked up by courier and on its way to customer.`,
-            [order_model_1.OrderStatus.DELIVERED]: `Order #${shortId} delivered successfully!`,
+            [order_model_1.OrderStatus.READY]: `Order #${shortId} is marked as ready and available for courier pickup.`,
+            [order_model_1.OrderStatus.READY_FOR_COLLECTION]: `Order #${shortId} is marked as ready and available for courier pickup.`,
+            [order_model_1.OrderStatus.OUT_FOR_DELIVERY]: `Order #${shortId} has been collected by the courier and is on its way to the customer.`,
+            [order_model_1.OrderStatus.DELIVERED]: `Order #${shortId} delivered successfully! Earnings credited to your wallet.`,
             [order_model_1.OrderStatus.CANCELLED]: `Order #${shortId} has been cancelled.`,
         };
         // Notify Customer via Notification Service
@@ -249,6 +249,10 @@ class OrderService {
         // Notify Vendor/Outlet
         if (vendorUserId) {
             await notification_service_1.default.notifyVendorOrderUpdate(vendorUserId, order._id.toString(), status, vendorMessages[status] || `Order #${shortId} status: ${status.replace('_', ' ')}`);
+            // Schedule late alert if accepted/preparing
+            if (status === order_model_1.OrderStatus.ACCEPTED || status === order_model_1.OrderStatus.PREPARING) {
+                this.schedulePrepTimeAlert(order._id.toString(), vendorUserId, order.estimatedPrepTime || 20, shortId);
+            }
         }
         // Operational Policy Settlement Triggers
         if (status === order_model_1.OrderStatus.ACCEPTED) {
@@ -292,6 +296,24 @@ class OrderService {
         catch (err) {
             logger_1.default.error('Error notifying riders about available order:', err);
         }
+    }
+    /**
+     * Schedule late preparation alert notification to the vendor
+     */
+    schedulePrepTimeAlert(orderId, vendorUserId, prepTimeMinutes, shortId) {
+        const delayMs = prepTimeMinutes * 60 * 1000;
+        setTimeout(async () => {
+            try {
+                const checkOrder = await order_model_1.default.findById(orderId);
+                if (checkOrder && (checkOrder.status === order_model_1.OrderStatus.ACCEPTED || checkOrder.status === order_model_1.OrderStatus.PREPARING)) {
+                    logger_1.default.warn(`⏱️ Prep time expired for order #${shortId}. Sending late alert to vendor ${vendorUserId}.`);
+                    await notification_service_1.default.sendNotification(vendorUserId, `Prep Time Alert: Order #${shortId} Running Late! ⏱️`, `Your estimated prep time of ${prepTimeMinutes} mins for order #${shortId} has elapsed. Please finish meal preparation and mark as ready for pickup.`, { orderId, type: 'PREP_TIME_ALERT', status: checkOrder.status }, userNotification_model_1.NotificationType.ORDER_UPDATE);
+                }
+            }
+            catch (err) {
+                logger_1.default.error(`Failed to execute prep time alert for order #${shortId}:`, err);
+            }
+        }, delayMs);
     }
     /**
      * Get available delivery jobs for couriers

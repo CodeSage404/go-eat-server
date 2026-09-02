@@ -52,38 +52,62 @@ const email_service_1 = __importDefault(require("./email.service"));
 const userNotification_model_1 = require("../models/userNotification.model");
 class PaymentService {
     /**
-     * Helper to resolve payment provider based on order location and admin settings
+     * Helper to resolve payment provider based on order location, user country, and admin settings
      */
-    resolveProviderByLocation(order, setting, requestedProvider) {
+    resolveProviderByLocation(order, setting, user, requestedProvider) {
         if (requestedProvider)
             return requestedProvider;
-        const locationStr = `${order.deliveryAddress?.address || ''} ${order.deliveryAddress?.city || ''} ${order.deliveryAddress?.state || ''} ${order.deliveryAddress?.street || ''}`.toLowerCase();
-        let countryCode = 'NG';
-        if (locationStr.includes('uk') || locationStr.includes('united kingdom') || locationStr.includes('london') || locationStr.includes('gb')) {
-            countryCode = 'GB';
+        // 1. Determine Country Code from User profile or Order address
+        let countryCode = (user?.countryCode || '').toUpperCase();
+        if (!countryCode) {
+            if (user?.isNigeria)
+                countryCode = 'NG';
+            else if (user?.isUk)
+                countryCode = 'GB';
+            else if (user?.isItaly)
+                countryCode = 'IT';
         }
-        else if (locationStr.includes('us') || locationStr.includes('usa') || locationStr.includes('united states')) {
-            countryCode = 'US';
+        if (!countryCode) {
+            const locationStr = `${order.deliveryAddress?.address || ''} ${order.deliveryAddress?.city || ''} ${order.deliveryAddress?.state || ''} ${order.deliveryAddress?.street || ''}`.toLowerCase();
+            if (locationStr.includes('uk') || locationStr.includes('united kingdom') || locationStr.includes('london') || locationStr.includes('gb')) {
+                countryCode = 'GB';
+            }
+            else if (locationStr.includes('us') || locationStr.includes('usa') || locationStr.includes('united states')) {
+                countryCode = 'US';
+            }
+            else if (locationStr.includes('italy') || locationStr.includes('italia') || locationStr.includes('rome') || locationStr.includes('milan')) {
+                countryCode = 'IT';
+            }
+            else if (locationStr.includes('canada') || locationStr.includes('toronto')) {
+                countryCode = 'CA';
+            }
+            else if (locationStr.includes('ghana') || locationStr.includes('accra')) {
+                countryCode = 'GH';
+            }
+            else if (locationStr.includes('kenya') || locationStr.includes('nairobi')) {
+                countryCode = 'KE';
+            }
+            else if (locationStr.includes('south africa') || locationStr.includes('johannesburg')) {
+                countryCode = 'ZA';
+            }
+            else {
+                countryCode = 'NG';
+            }
         }
-        else if (locationStr.includes('italy') || locationStr.includes('italia') || locationStr.includes('rome') || locationStr.includes('milan')) {
-            countryCode = 'IT';
-        }
-        else if (locationStr.includes('canada') || locationStr.includes('toronto')) {
-            countryCode = 'CA';
-        }
-        else if (locationStr.includes('ghana') || locationStr.includes('accra')) {
-            countryCode = 'GH';
-        }
-        else if (locationStr.includes('kenya') || locationStr.includes('nairobi')) {
-            countryCode = 'KE';
-        }
+        // 2. Check Admin Platform Settings (Country-specific payment provider mapping)
         if (setting?.countryPaymentProviders && Array.isArray(setting.countryPaymentProviders)) {
-            const match = setting.countryPaymentProviders.find((c) => c.countryCode === countryCode && c.isActive !== false);
+            const match = setting.countryPaymentProviders.find((c) => c.countryCode?.toUpperCase() === countryCode && c.isActive !== false);
             if (match && match.provider) {
                 return match.provider;
             }
         }
-        return (setting?.defaultPaymentProvider || process.env.DEFAULT_PAYMENT_PROVIDER || 'paystack');
+        // 3. African Countries default to Paystack / Flutterwave
+        const africanCountries = ['NG', 'GH', 'KE', 'ZA', 'EG', 'RW', 'UG', 'TZ', 'CI', 'SN', 'CM'];
+        if (africanCountries.includes(countryCode)) {
+            return (setting?.defaultPaymentProvider === 'flutterwave' ? 'flutterwave' : 'paystack');
+        }
+        // 4. Outside Africa (UK, US, Europe, Canada, etc.) defaults to Stripe
+        return 'stripe';
     }
     /**
      * Initialize Payment for an Order using preferred provider (Paystack, Flutterwave, or Stripe)
@@ -101,7 +125,7 @@ class PaymentService {
         if (!user)
             throw new appError_1.default('User not found', 404);
         const setting = await setting_model_1.default.findOne();
-        const activeProvider = this.resolveProviderByLocation(order, setting, provider);
+        const activeProvider = this.resolveProviderByLocation(order, setting, user, provider);
         const safeEmail = user.email && user.email.trim() !== ''
             ? user.email
             : `${(user.phoneNumber || user._id.toString()).replace(/[^0-9a-zA-Z]/g, '') || 'customer'}@goeat.com`;
@@ -111,6 +135,8 @@ class PaymentService {
         }
         const reference = `ORD_${order._id}_${Date.now()}`;
         const amount = orders.reduce((sum, o) => sum + (o.totalAmount || 0), 0);
+        const serverBaseUrl = (process.env.RENDER_EXTERNAL_URL || 'https://go-eat-server-z96s.onrender.com').replace(/\/$/, '');
+        const defaultCallbackUrl = `${serverBaseUrl}/api/v1/payments/callback?reference=${reference}`;
         if (activeProvider.toLowerCase() === 'flutterwave') {
             const result = await flutterwave_module_1.default.initializePayment({
                 email: safeEmail,
@@ -118,7 +144,7 @@ class PaymentService {
                 reference,
                 customerName: user.name,
                 customerPhone: user.phoneNumber,
-                redirectUrl: callbackUrl || `${process.env.APP_URL || 'https://api.goeatalone.com'}/payment/callback?reference=${reference}&provider=flutterwave`,
+                redirectUrl: callbackUrl || `${defaultCallbackUrl}&provider=flutterwave`,
                 metadata: {
                     orderId: order._id.toString(),
                     customerId: user._id.toString(),
@@ -135,7 +161,7 @@ class PaymentService {
                 email: safeEmail,
                 amount,
                 reference,
-                redirectUrl: callbackUrl || `${process.env.APP_URL || 'https://api.goeatalone.com'}/payment/callback?reference=${reference}&provider=stripe`,
+                redirectUrl: callbackUrl || `${defaultCallbackUrl}&provider=stripe`,
                 metadata: {
                     orderId: order._id.toString(),
                     customerId: user._id.toString(),
@@ -164,7 +190,7 @@ class PaymentService {
                 email: safeEmail,
                 amount,
                 reference,
-                callbackUrl: callbackUrl || `${process.env.APP_URL || 'https://api.goeatalone.com'}/payment/callback?reference=${reference}&provider=paystack`,
+                callbackUrl: callbackUrl || `${defaultCallbackUrl}&provider=paystack`,
                 metadata: {
                     orderId: order._id.toString(),
                     orderIds: orderIdList.join(','),

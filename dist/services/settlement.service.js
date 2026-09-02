@@ -51,7 +51,7 @@ class SettlementService {
         const commissionRate = order.commissionRate || 0.15; // Default 15%
         const commissionAmount = Math.round(grossAmount * commissionRate * 100) / 100;
         const outletNetSettlement = Math.max(0, Math.round((grossAmount - commissionAmount) * 100) / 100);
-        const courierEarnings = (order.deliveryFee || 0);
+        const courierEarnings = (order.deliveryFee || 0) + (order.tipAmount || 0);
         return {
             grossAmount,
             commissionRate,
@@ -94,7 +94,7 @@ class SettlementService {
      */
     async processCourierAssigned(order, riderId) {
         try {
-            const earnings = order.deliveryFee || 0;
+            const earnings = (order.deliveryFee || 0) + (order.tipAmount || 0);
             let wallet = await wallet_model_1.default.findOne({ user: riderId });
             if (!wallet) {
                 wallet = await wallet_model_1.default.create({ user: riderId });

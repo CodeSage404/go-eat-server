@@ -13,6 +13,29 @@ const router = (0, express_1.Router)();
 // ============================================
 /**
  * @openapi
+ * /api/v1/payments/callback:
+ *   get:
+ *     tags:
+ *       - Payments
+ *     summary: Payment Gateway Redirect Callback Page
+ *     parameters:
+ *       - in: query
+ *         name: reference
+ *         schema:
+ *           type: string
+ *         description: Transaction reference
+ *       - in: query
+ *         name: provider
+ *         schema:
+ *           type: string
+ *         description: Payment provider (paystack, flutterwave, stripe)
+ *     responses:
+ *       200:
+ *         description: Rendered HTML callback confirmation page
+ */
+router.get('/callback', payment_controller_1.default.handlePaymentCallback);
+/**
+ * @openapi
  * /api/v1/payments/webhook:
  *   post:
  *     tags:
@@ -165,6 +188,35 @@ router.get('/vendor', (0, auth_middleware_1.restrictTo)(user_model_1.UserRole.VE
  *         description: Successfully fetched banks
  */
 router.get('/banks', (0, auth_middleware_1.restrictTo)(user_model_1.UserRole.VENDOR), payment_controller_1.default.getBanks);
+/**
+ * @openapi
+ * /api/v1/payments/resolve-account:
+ *   get:
+ *     tags:
+ *       - Payments
+ *     summary: Resolve and verify Nigerian bank account name
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: accountNumber
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: 10-digit Nigerian NUBAN account number
+ *       - in: query
+ *         name: bankCode
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: 3-digit CBN bank code
+ *     responses:
+ *       200:
+ *         description: Account successfully resolved and verified
+ *       400:
+ *         description: Invalid account details
+ */
+router.get('/resolve-account', (0, auth_middleware_1.restrictTo)(user_model_1.UserRole.VENDOR), payment_controller_1.default.resolveAccountNumber);
 /**
  * @openapi
  * /api/v1/payments/subaccount:

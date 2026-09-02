@@ -119,6 +119,15 @@ const orderSchema = new mongoose_1.Schema({
         type: Number,
         default: 0,
     },
+    tipAmount: {
+        type: Number,
+        default: 0,
+    },
+    orderType: {
+        type: String,
+        enum: ['delivery', 'pickup'],
+        default: 'delivery',
+    },
     deliveryAddress: {
         street: { type: String, required: true },
         city: { type: String, required: true },

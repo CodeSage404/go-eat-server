@@ -145,6 +145,11 @@ class OrderController {
                     throw new appError_1.default('No restaurant found for this vendor', 404);
                 }
                 orders = await order_service_1.default.getRestaurantOrders(restaurant._id.toString());
+                orders = orders.map((ord) => {
+                    const obj = ord.toObject ? ord.toObject() : { ...ord };
+                    delete obj.deliveryPin;
+                    return obj;
+                });
             }
             else if (req.user.role === 'rider') {
                 orders = await order_service_1.default.getRiderOrders(req.user._id);
@@ -161,9 +166,13 @@ class OrderController {
             if (!order) {
                 throw new appError_1.default('Order not found', 404);
             }
+            const orderObj = order.toObject ? order.toObject() : { ...order };
+            if (req.user.role === 'vendor') {
+                delete orderObj.deliveryPin;
+            }
             res.status(200).json({
                 status: 'success',
-                data: { order },
+                data: { order: orderObj },
             });
         });
         /**

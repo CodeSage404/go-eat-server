@@ -52,6 +52,8 @@ export interface IOrder extends Document {
   outletNetSettlement?: number; // e.g. 8500
   courierEarnings?: number;
   deliveryFee: number;
+  tipAmount?: number;
+  orderType?: 'delivery' | 'pickup';
   deliveryAddress: {
     street: string;
     city: string;
@@ -133,6 +135,15 @@ const orderSchema = new Schema<IOrder>(
     deliveryFee: {
       type: Number,
       default: 0,
+    },
+    tipAmount: {
+      type: Number,
+      default: 0,
+    },
+    orderType: {
+      type: String,
+      enum: ['delivery', 'pickup'],
+      default: 'delivery',
     },
     deliveryAddress: {
       street: { type: String, required: true },
