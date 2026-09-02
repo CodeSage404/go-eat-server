@@ -14,6 +14,7 @@ const orderSchema = z.object({
     name: z.string().optional().default('Food Item'),
     price: z.number().optional().default(0),
     quantity: z.number().min(1).optional().default(1),
+    image: z.string().optional(),
     selectedAddons: z.any().optional(),
   })),
   totalAmount: z.number().optional().default(0),
@@ -50,6 +51,7 @@ class OrderController {
       name: item.name || 'Food Item',
       price: Number(item.price) || 0,
       quantity: Number(item.quantity) || 1,
+      image: item.image || item.foodItem?.image || '',
       selectedAddons: item.selectedAddons || [],
     }));
 

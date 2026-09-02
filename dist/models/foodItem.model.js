@@ -70,12 +70,32 @@ const foodItemSchema = new mongoose_1.Schema({
         type: Boolean,
         default: false,
     },
+    isVegan: {
+        type: Boolean,
+        default: false,
+    },
     isSpicy: {
+        type: Boolean,
+        default: false,
+    },
+    isGlutenFree: {
+        type: Boolean,
+        default: false,
+    },
+    isHalal: {
         type: Boolean,
         default: false,
     },
     calories: {
         type: Number,
+    },
+    preparationTime: {
+        type: Number,
+        default: 20,
+    },
+    allergens: {
+        type: [String],
+        default: [],
     },
 }, {
     timestamps: true,

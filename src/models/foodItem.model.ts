@@ -9,8 +9,13 @@ export interface IFoodItem extends Document {
   restaurant: mongoose.Types.ObjectId;
   isAvailable: boolean;
   isVegetarian: boolean;
+  isVegan: boolean;
   isSpicy: boolean;
+  isGlutenFree: boolean;
+  isHalal: boolean;
   calories?: number;
+  preparationTime?: number;
+  allergens?: string[];
   createdAt: Date;
   updatedAt: Date;
 }
@@ -52,12 +57,32 @@ const foodItemSchema = new Schema<IFoodItem>(
       type: Boolean,
       default: false,
     },
+    isVegan: {
+      type: Boolean,
+      default: false,
+    },
     isSpicy: {
+      type: Boolean,
+      default: false,
+    },
+    isGlutenFree: {
+      type: Boolean,
+      default: false,
+    },
+    isHalal: {
       type: Boolean,
       default: false,
     },
     calories: {
       type: Number,
+    },
+    preparationTime: {
+      type: Number,
+      default: 20,
+    },
+    allergens: {
+      type: [String],
+      default: [],
     },
   },
   {

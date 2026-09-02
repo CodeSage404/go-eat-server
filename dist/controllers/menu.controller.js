@@ -20,9 +20,27 @@ const foodItemSchema = zod_1.z.object({
     description: zod_1.z.string().optional(),
     price: zod_1.z.coerce.number().positive('Price must be positive'),
     category: zod_1.z.string().min(1, 'Category ID is required'),
-    isVegetarian: zod_1.z.enum(['true', 'false', '']).transform(val => val === 'true').optional(),
-    isSpicy: zod_1.z.enum(['true', 'false', '']).transform(val => val === 'true').optional(),
+    isVegetarian: zod_1.z.union([zod_1.z.boolean(), zod_1.z.enum(['true', 'false', '']).transform(val => val === 'true')]).optional(),
+    isVegan: zod_1.z.union([zod_1.z.boolean(), zod_1.z.enum(['true', 'false', '']).transform(val => val === 'true')]).optional(),
+    isSpicy: zod_1.z.union([zod_1.z.boolean(), zod_1.z.enum(['true', 'false', '']).transform(val => val === 'true')]).optional(),
+    isGlutenFree: zod_1.z.union([zod_1.z.boolean(), zod_1.z.enum(['true', 'false', '']).transform(val => val === 'true')]).optional(),
+    isHalal: zod_1.z.union([zod_1.z.boolean(), zod_1.z.enum(['true', 'false', '']).transform(val => val === 'true')]).optional(),
+    isAvailable: zod_1.z.union([zod_1.z.boolean(), zod_1.z.enum(['true', 'false', '']).transform(val => val === 'true')]).optional(),
     calories: zod_1.z.coerce.number().optional(),
+    preparationTime: zod_1.z.coerce.number().optional(),
+    prepTime: zod_1.z.coerce.number().optional(),
+    allergens: zod_1.z.union([
+        zod_1.z.array(zod_1.z.string()),
+        zod_1.z.string().transform(val => {
+            try {
+                const parsed = JSON.parse(val);
+                if (Array.isArray(parsed))
+                    return parsed;
+            }
+            catch { }
+            return val.split(',').map(s => s.trim()).filter(Boolean);
+        })
+    ]).optional(),
 });
 class MenuController {
     constructor() {
@@ -107,12 +125,14 @@ class MenuController {
             if (!validatedData.success) {
                 throw new appError_1.default(validatedData.error.issues.map(i => i.message).join(', '), 400);
             }
-            const foodItem = await menu_service_1.default.addFoodItem({
+            const foodItemData = {
                 ...validatedData.data,
                 category: validatedData.data.category,
                 restaurant: restaurantId,
-                image: req.file?.path
-            });
+                image: req.file?.path || 'default-food.png',
+                preparationTime: validatedData.data.preparationTime || validatedData.data.prepTime || 20,
+            };
+            const foodItem = await menu_service_1.default.addFoodItem(foodItemData);
             res.status(201).json({
                 status: 'success',
                 data: { foodItem },
@@ -121,7 +141,14 @@ class MenuController {
         this.updateFoodItem = (0, catchAsync_1.catchAsync)(async (req, res) => {
             const { restaurantId, id } = req.params;
             await this.checkRestaurantOwnership(restaurantId, req.user._id, req.user.role);
-            const foodItem = await menu_service_1.default.updateFoodItem(id, req.body);
+            const updateData = { ...req.body };
+            if (updateData.prepTime && !updateData.preparationTime) {
+                updateData.preparationTime = Number(updateData.prepTime);
+            }
+            if (updateData.calories !== undefined) {
+                updateData.calories = Number(updateData.calories) || undefined;
+            }
+            const foodItem = await menu_service_1.default.updateFoodItem(id, updateData);
             if (!foodItem) {
                 throw new appError_1.default('Food item not found', 404);
             }

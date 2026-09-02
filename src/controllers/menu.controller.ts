@@ -18,9 +18,25 @@ const foodItemSchema = z.object({
   description: z.string().optional(),
   price: z.coerce.number().positive('Price must be positive'),
   category: z.string().min(1, 'Category ID is required'),
-  isVegetarian: z.enum(['true', 'false', '']).transform(val => val === 'true').optional(),
-  isSpicy: z.enum(['true', 'false', '']).transform(val => val === 'true').optional(),
+  isVegetarian: z.union([z.boolean(), z.enum(['true', 'false', '']).transform(val => val === 'true')]).optional(),
+  isVegan: z.union([z.boolean(), z.enum(['true', 'false', '']).transform(val => val === 'true')]).optional(),
+  isSpicy: z.union([z.boolean(), z.enum(['true', 'false', '']).transform(val => val === 'true')]).optional(),
+  isGlutenFree: z.union([z.boolean(), z.enum(['true', 'false', '']).transform(val => val === 'true')]).optional(),
+  isHalal: z.union([z.boolean(), z.enum(['true', 'false', '']).transform(val => val === 'true')]).optional(),
+  isAvailable: z.union([z.boolean(), z.enum(['true', 'false', '']).transform(val => val === 'true')]).optional(),
   calories: z.coerce.number().optional(),
+  preparationTime: z.coerce.number().optional(),
+  prepTime: z.coerce.number().optional(),
+  allergens: z.union([
+    z.array(z.string()),
+    z.string().transform(val => {
+      try {
+        const parsed = JSON.parse(val);
+        if (Array.isArray(parsed)) return parsed;
+      } catch {}
+      return val.split(',').map(s => s.trim()).filter(Boolean);
+    })
+  ]).optional(),
 });
 
 class MenuController {
@@ -137,12 +153,15 @@ class MenuController {
       throw new AppError(validatedData.error.issues.map(i => i.message).join(', '), 400);
     }
 
-    const foodItem = await menuService.addFoodItem({
+    const foodItemData: any = {
       ...validatedData.data,
       category: validatedData.data.category as any,
       restaurant: restaurantId as any,
-      image: req.file?.path
-    });
+      image: req.file?.path || 'default-food.png',
+      preparationTime: validatedData.data.preparationTime || validatedData.data.prepTime || 20,
+    };
+
+    const foodItem = await menuService.addFoodItem(foodItemData);
 
     res.status(201).json({
       status: 'success',
@@ -154,7 +173,15 @@ class MenuController {
     const { restaurantId, id } = req.params;
     await this.checkRestaurantOwnership(restaurantId as string, req.user._id, req.user.role);
 
-    const foodItem = await menuService.updateFoodItem(id, req.body);
+    const updateData: any = { ...req.body };
+    if (updateData.prepTime && !updateData.preparationTime) {
+      updateData.preparationTime = Number(updateData.prepTime);
+    }
+    if (updateData.calories !== undefined) {
+      updateData.calories = Number(updateData.calories) || undefined;
+    }
+
+    const foodItem = await menuService.updateFoodItem(id, updateData);
 
     if (!foodItem) {
       throw new AppError('Food item not found', 404);

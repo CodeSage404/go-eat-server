@@ -423,7 +423,10 @@ class OrderService {
   }
 
   async getRestaurantOrders(restaurantId: string): Promise<IOrder[]> {
-    return await Order.find({ restaurant: restaurantId }).sort({ createdAt: -1 });
+    return await Order.find({ restaurant: restaurantId })
+      .populate('customer', 'name phoneNumber email')
+      .populate('items.foodItem', 'name price image')
+      .sort({ createdAt: -1 });
   }
 
   async getRiderOrders(riderId: string): Promise<IOrder[]> {
