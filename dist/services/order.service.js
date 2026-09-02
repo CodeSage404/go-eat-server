@@ -37,6 +37,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const crypto_1 = __importDefault(require("crypto"));
+const mongoose_1 = __importDefault(require("mongoose"));
 const order_model_1 = __importStar(require("../models/order.model"));
 const restaurant_model_1 = __importDefault(require("../models/restaurant.model"));
 const user_model_1 = __importStar(require("../models/user.model"));
@@ -359,7 +360,13 @@ class OrderService {
             .sort({ createdAt: -1 });
     }
     async getOrderById(orderId) {
-        return await order_model_1.default.findById(orderId).populate('customer restaurant rider items.foodItem');
+        if (!orderId)
+            return null;
+        const targetId = orderId.includes(',') ? orderId.split(',')[0].trim() : orderId.trim();
+        if (!mongoose_1.default.Types.ObjectId.isValid(targetId)) {
+            return null;
+        }
+        return await order_model_1.default.findById(targetId).populate('customer restaurant rider items.foodItem');
     }
     async getRestaurantOrders(restaurantId) {
         return await order_model_1.default.find({ restaurant: restaurantId }).sort({ createdAt: -1 });

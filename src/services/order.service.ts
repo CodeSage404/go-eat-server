@@ -1,4 +1,5 @@
 import crypto from 'crypto';
+import mongoose from 'mongoose';
 import Order, { IOrder, OrderStatus } from '../models/order.model';
 import Restaurant from '../models/restaurant.model';
 import User, { UserRole } from '../models/user.model';
@@ -413,7 +414,12 @@ class OrderService {
   }
 
   async getOrderById(orderId: string): Promise<IOrder | null> {
-    return await Order.findById(orderId).populate('customer restaurant rider items.foodItem');
+    if (!orderId) return null;
+    const targetId = orderId.includes(',') ? orderId.split(',')[0].trim() : orderId.trim();
+    if (!mongoose.Types.ObjectId.isValid(targetId)) {
+      return null;
+    }
+    return await Order.findById(targetId).populate('customer restaurant rider items.foodItem');
   }
 
   async getRestaurantOrders(restaurantId: string): Promise<IOrder[]> {
