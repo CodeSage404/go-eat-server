@@ -106,7 +106,7 @@ class StaffController {
     const staffMember = await User.findOneAndUpdate(
       { _id: id, restaurantId: restaurant._id, role: UserRole.STAFF },
       validatedData,
-      { new: true, runValidators: true }
+      { returnDocument: 'after', runValidators: true }
     ).select('name email role customRole status profileImage');
 
     if (!staffMember) {

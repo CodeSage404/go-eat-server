@@ -37,7 +37,7 @@ const updateCart = async (req, res) => {
             user: req.user?._id,
             restaurant: restaurantId || formattedItems[0]?.restaurant,
             items: formattedItems
-        }, { new: true, upsert: true })
+        }, { returnDocument: 'after', upsert: true })
             .populate('items.menuItemId')
             .populate('items.restaurant')
             .populate('restaurant');

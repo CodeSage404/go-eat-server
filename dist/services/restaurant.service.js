@@ -123,13 +123,13 @@ class RestaurantService {
      * Update restaurant
      */
     async updateRestaurant(id, data) {
-        return await restaurant_model_1.default.findByIdAndUpdate(id, data, { new: true, runValidators: true });
+        return await restaurant_model_1.default.findByIdAndUpdate(id, data, { returnDocument: 'after', runValidators: true });
     }
     /**
      * Delete (deactivate) restaurant
      */
     async deleteRestaurant(id) {
-        return await restaurant_model_1.default.findByIdAndUpdate(id, { status: restaurant_model_1.RestaurantStatus.INACTIVE }, { new: true });
+        return await restaurant_model_1.default.findByIdAndUpdate(id, { status: restaurant_model_1.RestaurantStatus.INACTIVE }, { returnDocument: 'after' });
     }
 }
 exports.default = new RestaurantService();

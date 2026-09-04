@@ -53,7 +53,7 @@ exports.updateDocumentStatus = (0, catchAsync_1.catchAsync)(async (req, res) => 
     const document = await document_model_1.default.findByIdAndUpdate(id, {
         verificationStatus,
         rejectionReason: verificationStatus === 'rejected' ? rejectionReason : undefined,
-    }, { new: true, runValidators: true });
+    }, { returnDocument: 'after', runValidators: true });
     if (!document) {
         throw new appError_1.default('Document not found', 404);
     }

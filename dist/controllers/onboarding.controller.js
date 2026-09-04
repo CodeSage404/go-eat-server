@@ -33,7 +33,7 @@ exports.vendorStep1SelectOutlet = (0, catchAsync_1.catchAsync)(async (req, res) 
     if (!validOutlets.includes(outletType)) {
         throw new appError_1.default('Invalid outlet type selected', 400);
     }
-    const restaurant = await restaurant_model_1.default.findByIdAndUpdate(restaurantId, { outletType }, { new: true, runValidators: true });
+    const restaurant = await restaurant_model_1.default.findByIdAndUpdate(restaurantId, { outletType }, { returnDocument: 'after', runValidators: true });
     if (!restaurant) {
         throw new appError_1.default('Vendor / Restaurant profile not found', 404);
     }
@@ -77,7 +77,7 @@ exports.vendorStep2BusinessDetails = (0, catchAsync_1.catchAsync)(async (req, re
                 isVerified: isBankVerified,
             }
             : undefined,
-    }, { new: true, runValidators: true });
+    }, { returnDocument: 'after', runValidators: true });
     res.status(200).json({
         status: 'success',
         data: {
@@ -95,7 +95,7 @@ exports.vendorStep3IdentityVerification = (0, catchAsync_1.catchAsync)(async (re
             }
             : undefined,
         cacRegistration,
-    }, { new: true, runValidators: true });
+    }, { returnDocument: 'after', runValidators: true });
     if (!restaurant) {
         throw new appError_1.default('Vendor / Restaurant profile not found', 404);
     }
@@ -110,7 +110,7 @@ exports.vendorStep4Compliance = (0, catchAsync_1.catchAsync)(async (req, res) =>
     const { restaurantId, complianceStatus } = req.body;
     const restaurant = await restaurant_model_1.default.findByIdAndUpdate(restaurantId, {
         complianceStatus: complianceStatus || 'approved',
-    }, { new: true, runValidators: true });
+    }, { returnDocument: 'after', runValidators: true });
     if (!restaurant) {
         throw new appError_1.default('Vendor / Restaurant profile not found', 404);
     }
@@ -133,7 +133,7 @@ exports.riderRegisterOnboarding = (0, catchAsync_1.catchAsync)(async (req, res) 
     const existingProfile = await riderOnboarding_model_1.default.findOne({ user: userId });
     let riderProfile;
     if (existingProfile) {
-        riderProfile = await riderOnboarding_model_1.default.findByIdAndUpdate(existingProfile._id, onboardingData, { new: true, runValidators: true });
+        riderProfile = await riderOnboarding_model_1.default.findByIdAndUpdate(existingProfile._id, onboardingData, { returnDocument: 'after', runValidators: true });
     }
     else {
         riderProfile = await riderOnboarding_model_1.default.create(onboardingData);

@@ -118,7 +118,7 @@ class UserController {
             if (Object.keys(unsetData).length > 0) {
                 updatePayload.$unset = unsetData;
             }
-            const user = await user_model_1.default.findByIdAndUpdate(req.user._id, updatePayload, { new: true, runValidators: true }).select('-password');
+            const user = await user_model_1.default.findByIdAndUpdate(req.user._id, updatePayload, { returnDocument: 'after', runValidators: true }).select('-password');
             if (!user) {
                 throw new appError_1.default('User not found', 404);
             }
@@ -135,7 +135,7 @@ class UserController {
             if (!fcmToken) {
                 throw new appError_1.default('FCM push token is required', 400);
             }
-            const user = await user_model_1.default.findByIdAndUpdate(req.user._id, { fcmToken }, { new: true, runValidators: true }).select('-password');
+            const user = await user_model_1.default.findByIdAndUpdate(req.user._id, { fcmToken }, { returnDocument: 'after', runValidators: true }).select('-password');
             res.status(200).json({
                 status: 'success',
                 data: { user },
@@ -146,7 +146,7 @@ class UserController {
          */
         this.toggleOnlineStatus = (0, catchAsync_1.catchAsync)(async (req, res) => {
             const { isOnline } = req.body;
-            const user = await user_model_1.default.findByIdAndUpdate(req.user._id, { isOnline: Boolean(isOnline) }, { new: true, runValidators: true }).select('-password');
+            const user = await user_model_1.default.findByIdAndUpdate(req.user._id, { isOnline: Boolean(isOnline) }, { returnDocument: 'after', runValidators: true }).select('-password');
             res.status(200).json({
                 status: 'success',
                 message: `Shift status set to ${isOnline ? 'Online' : 'Offline'}`,

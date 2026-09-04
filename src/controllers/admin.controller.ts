@@ -145,7 +145,7 @@ class AdminController {
     const user = await User.findByIdAndUpdate(
       id,
       { status },
-      { new: true, runValidators: true }
+      { returnDocument: 'after', runValidators: true }
     ).select('-password');
 
     if (!user) {
@@ -213,7 +213,7 @@ class AdminController {
     const restaurant = await Restaurant.findByIdAndUpdate(
       id,
       { status },
-      { new: true, runValidators: true }
+      { returnDocument: 'after', runValidators: true }
     );
 
     if (!restaurant) {
@@ -640,7 +640,7 @@ class AdminController {
     const order = await Order.findByIdAndUpdate(
       id,
       { status },
-      { new: true, runValidators: true }
+      { returnDocument: 'after', runValidators: true }
     )
     .populate('customer', 'name email phoneNumber')
     .populate('restaurant', 'name address location phoneContact')
@@ -744,7 +744,7 @@ class AdminController {
     const booking = await Booking.findByIdAndUpdate(
       req.params.id,
       { status },
-      { new: true, runValidators: true }
+      { returnDocument: 'after', runValidators: true }
     );
 
     if (!booking) {
@@ -814,7 +814,7 @@ class AdminController {
     const transaction = await Transaction.findByIdAndUpdate(
       req.params.id,
       { status },
-      { new: true, runValidators: true }
+      { returnDocument: 'after', runValidators: true }
     );
 
     if (!transaction) {
@@ -897,7 +897,7 @@ class AdminController {
     const menuItem = await FoodItem.findByIdAndUpdate(
       req.params.id,
       req.body,
-      { new: true, runValidators: true }
+      { returnDocument: 'after', runValidators: true }
     );
 
     if (!menuItem) {
@@ -973,7 +973,7 @@ class AdminController {
     const promo = await Promo.findByIdAndUpdate(
       req.params.id,
       { isActive },
-      { new: true, runValidators: true }
+      { returnDocument: 'after', runValidators: true }
     );
 
     if (!promo) {
@@ -1147,7 +1147,7 @@ class AdminController {
     const role = await RolePermission.findByIdAndUpdate(
       req.params.id,
       { permissions },
-      { new: true, runValidators: true }
+      { returnDocument: 'after', runValidators: true }
     );
 
     if (!role) {
@@ -1316,7 +1316,7 @@ class AdminController {
     const user = await User.findByIdAndUpdate(
       req.params.id,
       updateData,
-      { new: true, runValidators: true }
+      { returnDocument: 'after', runValidators: true }
     );
 
     if (!user) {
@@ -1473,7 +1473,7 @@ class AdminController {
     const settings = await Setting.findOneAndUpdate(
       {},
       { $set: update },
-      { new: true, upsert: true, runValidators: true }
+      { returnDocument: 'after', upsert: true, runValidators: true }
     );
 
     res.status(200).json({

@@ -126,7 +126,7 @@ class StaffController {
             if (!restaurant)
                 throw new appError_1.default('You must have a restaurant to update staff.', 400);
             const validatedData = updateStaffSchema.parse(req.body);
-            const staffMember = await user_model_1.default.findOneAndUpdate({ _id: id, restaurantId: restaurant._id, role: user_model_1.UserRole.STAFF }, validatedData, { new: true, runValidators: true }).select('name email role customRole status profileImage');
+            const staffMember = await user_model_1.default.findOneAndUpdate({ _id: id, restaurantId: restaurant._id, role: user_model_1.UserRole.STAFF }, validatedData, { returnDocument: 'after', runValidators: true }).select('name email role customRole status profileImage');
             if (!staffMember) {
                 throw new appError_1.default('Staff member not found or does not belong to your restaurant', 404);
             }

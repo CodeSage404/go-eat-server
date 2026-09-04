@@ -12,7 +12,7 @@ class MenuService {
   }
 
   async updateCategory(id: string, data: Partial<ICategory>): Promise<ICategory | null> {
-    return await Category.findByIdAndUpdate(id, data, { new: true, runValidators: true });
+    return await Category.findByIdAndUpdate(id, data, { returnDocument: 'after', runValidators: true });
   }
 
   async deleteCategory(id: string): Promise<ICategory | null> {
@@ -72,7 +72,7 @@ class MenuService {
   }
 
   async updateFoodItem(id: string, data: Partial<IFoodItem>): Promise<IFoodItem | null> {
-    return await FoodItem.findByIdAndUpdate(id, data, { new: true, runValidators: true });
+    return await FoodItem.findByIdAndUpdate(id, data, { returnDocument: 'after', runValidators: true });
   }
 
   async deleteFoodItem(id: string): Promise<IFoodItem | null> {

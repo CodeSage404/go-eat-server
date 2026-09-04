@@ -39,7 +39,7 @@ export const vendorStep1SelectOutlet = catchAsync(async (req: Request, res: Resp
   const restaurant = await Restaurant.findByIdAndUpdate(
     restaurantId,
     { outletType },
-    { new: true, runValidators: true }
+    { returnDocument: 'after', runValidators: true }
   );
 
   if (!restaurant) {
@@ -102,7 +102,7 @@ export const vendorStep2BusinessDetails = catchAsync(async (req: Request, res: R
           }
         : undefined,
     },
-    { new: true, runValidators: true }
+    { returnDocument: 'after', runValidators: true }
   );
 
   res.status(200).json({
@@ -127,7 +127,7 @@ export const vendorStep3IdentityVerification = catchAsync(async (req: Request, r
         : undefined,
       cacRegistration,
     },
-    { new: true, runValidators: true }
+    { returnDocument: 'after', runValidators: true }
   );
 
   if (!restaurant) {
@@ -150,7 +150,7 @@ export const vendorStep4Compliance = catchAsync(async (req: Request, res: Respon
     {
       complianceStatus: complianceStatus || 'approved',
     },
-    { new: true, runValidators: true }
+    { returnDocument: 'after', runValidators: true }
   );
 
   if (!restaurant) {
@@ -184,7 +184,7 @@ export const riderRegisterOnboarding = catchAsync(async (req: Request, res: Resp
     riderProfile = await RiderOnboarding.findByIdAndUpdate(
       existingProfile._id,
       onboardingData,
-      { new: true, runValidators: true }
+      { returnDocument: 'after', runValidators: true }
     );
   } else {
     riderProfile = await RiderOnboarding.create(onboardingData);

@@ -358,7 +358,7 @@ class OrderService {
      * Assign a rider to an order
      */
     async assignRider(orderId, riderId) {
-        const order = await order_model_1.default.findByIdAndUpdate(orderId, { rider: riderId, status: order_model_1.OrderStatus.COURIER_ASSIGNED }, { new: true }).populate('customer restaurant rider');
+        const order = await order_model_1.default.findByIdAndUpdate(orderId, { rider: riderId, status: order_model_1.OrderStatus.COURIER_ASSIGNED }, { returnDocument: 'after' }).populate('customer restaurant rider');
         if (order) {
             // Process courier pending earnings
             await settlement_service_1.default.processCourierAssigned(order, riderId);

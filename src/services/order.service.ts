@@ -408,7 +408,7 @@ class OrderService {
     const order = await Order.findByIdAndUpdate(
       orderId,
       { rider: riderId, status: OrderStatus.COURIER_ASSIGNED },
-      { new: true }
+      { returnDocument: 'after' }
     ).populate('customer restaurant rider');
 
     if (order) {

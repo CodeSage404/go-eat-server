@@ -42,7 +42,7 @@ router.use(protect);
  *       201:
  *         description: Order placed
  */
-router.post('/', restrictTo(UserRole.CUSTOMER), orderController.placeOrder);
+router.post('/', orderController.placeOrder);
 
 /**
  * @openapi

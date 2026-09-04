@@ -127,7 +127,7 @@ class UserController {
     const user = await User.findByIdAndUpdate(
       req.user!._id,
       updatePayload,
-      { new: true, runValidators: true }
+      { returnDocument: 'after', runValidators: true }
     ).select('-password');
 
     if (!user) {
@@ -152,7 +152,7 @@ class UserController {
     const user = await User.findByIdAndUpdate(
       req.user!._id,
       { fcmToken },
-      { new: true, runValidators: true }
+      { returnDocument: 'after', runValidators: true }
     ).select('-password');
 
     res.status(200).json({
@@ -169,7 +169,7 @@ class UserController {
     const user = await User.findByIdAndUpdate(
       req.user!._id,
       { isOnline: Boolean(isOnline) },
-      { new: true, runValidators: true }
+      { returnDocument: 'after', runValidators: true }
     ).select('-password');
 
     res.status(200).json({

@@ -41,7 +41,7 @@ export const updateCart = async (req: AuthRequest, res: Response) => {
         restaurant: restaurantId || formattedItems[0]?.restaurant,
         items: formattedItems
       },
-      { new: true, upsert: true }
+      { returnDocument: 'after', upsert: true }
     )
     .populate('items.menuItemId')
     .populate('items.restaurant')

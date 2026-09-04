@@ -101,7 +101,12 @@ exports.optionalAuth = (0, catchAsync_1.catchAsync)(async (req, res, next) => {
 });
 const restrictTo = (...roles) => {
     return (req, res, next) => {
-        if (!roles.includes(req.user?.role)) {
+        const userRole = req.user?.role;
+        // Admins always have unrestricted access
+        if (userRole === user_model_1.UserRole.ADMIN) {
+            return next();
+        }
+        if (!userRole || !roles.includes(userRole)) {
             return next(new appError_1.default('You do not have permission to perform this action', 403));
         }
         next();

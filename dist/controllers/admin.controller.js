@@ -144,7 +144,7 @@ class AdminController {
             if (!Object.values(user_model_1.UserStatus).includes(status)) {
                 throw new appError_1.default('Invalid status value', 400);
             }
-            const user = await user_model_1.default.findByIdAndUpdate(id, { status }, { new: true, runValidators: true }).select('-password');
+            const user = await user_model_1.default.findByIdAndUpdate(id, { status }, { returnDocument: 'after', runValidators: true }).select('-password');
             if (!user) {
                 throw new appError_1.default('User not found', 404);
             }
@@ -197,7 +197,7 @@ class AdminController {
             if (!Object.values(restaurant_model_1.RestaurantStatus).includes(status)) {
                 throw new appError_1.default('Invalid status value', 400);
             }
-            const restaurant = await restaurant_model_1.default.findByIdAndUpdate(id, { status }, { new: true, runValidators: true });
+            const restaurant = await restaurant_model_1.default.findByIdAndUpdate(id, { status }, { returnDocument: 'after', runValidators: true });
             if (!restaurant) {
                 throw new appError_1.default('Restaurant not found', 404);
             }
@@ -573,7 +573,7 @@ class AdminController {
         this.updateOrderStatus = (0, catchAsync_1.catchAsync)(async (req, res) => {
             const { id } = req.params;
             const { status } = req.body;
-            const order = await order_model_1.default.findByIdAndUpdate(id, { status }, { new: true, runValidators: true })
+            const order = await order_model_1.default.findByIdAndUpdate(id, { status }, { returnDocument: 'after', runValidators: true })
                 .populate('customer', 'name email phoneNumber')
                 .populate('restaurant', 'name address location phoneContact')
                 .populate('rider', 'name phoneNumber');
@@ -660,7 +660,7 @@ class AdminController {
             if (!['confirmed', 'cancelled'].includes(status)) {
                 throw new appError_1.default('Invalid booking status', 400);
             }
-            const booking = await booking_model_1.default.findByIdAndUpdate(req.params.id, { status }, { new: true, runValidators: true });
+            const booking = await booking_model_1.default.findByIdAndUpdate(req.params.id, { status }, { returnDocument: 'after', runValidators: true });
             if (!booking) {
                 throw new appError_1.default('Booking not found', 404);
             }
@@ -717,7 +717,7 @@ class AdminController {
             if (!status) {
                 throw new appError_1.default('Please provide a status', 400);
             }
-            const transaction = await transaction_model_1.default.findByIdAndUpdate(req.params.id, { status }, { new: true, runValidators: true });
+            const transaction = await transaction_model_1.default.findByIdAndUpdate(req.params.id, { status }, { returnDocument: 'after', runValidators: true });
             if (!transaction) {
                 throw new appError_1.default('Transaction not found', 404);
             }
@@ -786,7 +786,7 @@ class AdminController {
          * Update menu item (Admin)
          */
         this.updateMenuItem = (0, catchAsync_1.catchAsync)(async (req, res) => {
-            const menuItem = await foodItem_model_1.default.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
+            const menuItem = await foodItem_model_1.default.findByIdAndUpdate(req.params.id, req.body, { returnDocument: 'after', runValidators: true });
             if (!menuItem) {
                 throw new appError_1.default('Menu item not found', 404);
             }
@@ -848,7 +848,7 @@ class AdminController {
          */
         this.updatePromoStatus = (0, catchAsync_1.catchAsync)(async (req, res) => {
             const { isActive } = req.body;
-            const promo = await promo_model_1.default.findByIdAndUpdate(req.params.id, { isActive }, { new: true, runValidators: true });
+            const promo = await promo_model_1.default.findByIdAndUpdate(req.params.id, { isActive }, { returnDocument: 'after', runValidators: true });
             if (!promo) {
                 throw new appError_1.default('Promo not found', 404);
             }
@@ -989,7 +989,7 @@ class AdminController {
             if (!Array.isArray(permissions)) {
                 throw new appError_1.default('Permissions must be an array of strings', 400);
             }
-            const role = await role_model_1.default.findByIdAndUpdate(req.params.id, { permissions }, { new: true, runValidators: true });
+            const role = await role_model_1.default.findByIdAndUpdate(req.params.id, { permissions }, { returnDocument: 'after', runValidators: true });
             if (!role) {
                 throw new appError_1.default('Role config not found', 404);
             }
@@ -1127,7 +1127,7 @@ class AdminController {
             if (updateData.customRole) {
                 updateData.customRole = updateData.customRole.toLowerCase();
             }
-            const user = await user_model_1.default.findByIdAndUpdate(req.params.id, updateData, { new: true, runValidators: true });
+            const user = await user_model_1.default.findByIdAndUpdate(req.params.id, updateData, { returnDocument: 'after', runValidators: true });
             if (!user) {
                 throw new appError_1.default('User not found', 404);
             }
@@ -1259,7 +1259,7 @@ class AdminController {
                 if (req.body[key] !== undefined)
                     update[key] = req.body[key];
             });
-            const settings = await setting_model_1.default.findOneAndUpdate({}, { $set: update }, { new: true, upsert: true, runValidators: true });
+            const settings = await setting_model_1.default.findOneAndUpdate({}, { $set: update }, { returnDocument: 'after', upsert: true, runValidators: true });
             res.status(200).json({
                 status: 'success',
                 message: 'Platform settings updated successfully',

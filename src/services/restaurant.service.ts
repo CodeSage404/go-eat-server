@@ -98,14 +98,14 @@ class RestaurantService {
    * Update restaurant
    */
   async updateRestaurant(id: string, data: Partial<IRestaurant>): Promise<IRestaurant | null> {
-    return await Restaurant.findByIdAndUpdate(id, data, { new: true, runValidators: true });
+    return await Restaurant.findByIdAndUpdate(id, data, { returnDocument: 'after', runValidators: true });
   }
 
   /**
    * Delete (deactivate) restaurant
    */
   async deleteRestaurant(id: string): Promise<IRestaurant | null> {
-    return await Restaurant.findByIdAndUpdate(id, { status: RestaurantStatus.INACTIVE }, { new: true });
+    return await Restaurant.findByIdAndUpdate(id, { status: RestaurantStatus.INACTIVE }, { returnDocument: 'after' });
   }
 }
 

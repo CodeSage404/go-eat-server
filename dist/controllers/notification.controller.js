@@ -81,7 +81,7 @@ class NotificationController {
          *         description: Notification not found
          */
         this.markAsRead = (0, catchAsync_1.catchAsync)(async (req, res) => {
-            const notification = await userNotification_model_1.default.findOneAndUpdate({ _id: req.params.id, user: req.user._id }, { isRead: true }, { new: true });
+            const notification = await userNotification_model_1.default.findOneAndUpdate({ _id: req.params.id, user: req.user._id }, { isRead: true }, { returnDocument: 'after' });
             if (!notification) {
                 throw new appError_1.default('Notification not found', 404);
             }

@@ -59,7 +59,7 @@ class SupportController {
         adminResponse,
         status: status || TicketStatus.RESOLVED,
       },
-      { new: true }
+      { returnDocument: 'after' }
     );
 
     if (!ticket) throw new AppError('Ticket not found', 404);

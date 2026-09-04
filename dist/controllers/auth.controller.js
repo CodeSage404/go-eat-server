@@ -346,7 +346,7 @@ class AuthController {
             });
             const currentUser = req.user;
             const updatedUser = await user_model_1.default.findByIdAndUpdate(currentUser._id, filteredBody, {
-                new: true,
+                returnDocument: 'after',
                 runValidators: true,
             });
             res.status(200).json({
@@ -365,7 +365,7 @@ class AuthController {
             if (existingUser && existingUser.isVerified) {
                 throw new appError_1.default('Email is already registered by another account', 400);
             }
-            const updatedUser = await user_model_1.default.findByIdAndUpdate(currentUser._id, { name: name.trim(), email: lowerEmail }, { new: true, runValidators: true });
+            const updatedUser = await user_model_1.default.findByIdAndUpdate(currentUser._id, { name: name.trim(), email: lowerEmail }, { returnDocument: 'after', runValidators: true });
             if (!updatedUser) {
                 throw new appError_1.default('User profile update failed', 400);
             }
@@ -490,7 +490,7 @@ class AuthController {
                 isItaly: isItaly !== undefined ? isItaly : resolvedCountry === 'Italy',
                 isUk: isUk !== undefined ? isUk : resolvedCountry === 'UK',
             };
-            const updatedUser = await user_model_1.default.findByIdAndUpdate(currentUser._id, updatePayload, { new: true });
+            const updatedUser = await user_model_1.default.findByIdAndUpdate(currentUser._id, updatePayload, { returnDocument: 'after' });
             logger_1.default.info(`📍 Location persisted to DB for user ${currentUser._id}: ${address} (${lng}, ${lat}) [Country: ${resolvedCountry}]`);
             res.status(200).json({
                 status: 'success',

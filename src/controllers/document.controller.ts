@@ -72,7 +72,7 @@ export const updateDocumentStatus = catchAsync(async (req: Request, res: Respons
       verificationStatus,
       rejectionReason: verificationStatus === 'rejected' ? rejectionReason : undefined,
     },
-    { new: true, runValidators: true }
+    { returnDocument: 'after', runValidators: true }
   );
 
   if (!document) {

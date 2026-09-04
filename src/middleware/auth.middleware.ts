@@ -79,9 +79,14 @@ export const optionalAuth = catchAsync(async (req: AuthRequest, res: Response, n
   next();
 });
 
-export const restrictTo = (...roles: UserRole[]) => {
+export const restrictTo = (...roles: (UserRole | string)[]) => {
   return (req: AuthRequest, res: Response, next: NextFunction) => {
-    if (!roles.includes(req.user?.role as UserRole)) {
+    const userRole = req.user?.role;
+    // Admins always have unrestricted access
+    if (userRole === UserRole.ADMIN) {
+      return next();
+    }
+    if (!userRole || !roles.includes(userRole as UserRole)) {
       return next(new AppError('You do not have permission to perform this action', 403));
     }
     next();

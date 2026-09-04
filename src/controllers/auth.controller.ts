@@ -384,7 +384,7 @@ class AuthController {
 
     const currentUser = (req as any).user;
     const updatedUser = await User.findByIdAndUpdate(currentUser._id, filteredBody, {
-      new: true,
+      returnDocument: 'after',
       runValidators: true,
     });
 
@@ -412,7 +412,7 @@ class AuthController {
     const updatedUser = await User.findByIdAndUpdate(
       currentUser._id,
       { name: name.trim(), email: lowerEmail },
-      { new: true, runValidators: true }
+      { returnDocument: 'after', runValidators: true }
     );
 
     if (!updatedUser) {
@@ -570,7 +570,7 @@ class AuthController {
     const updatedUser = await User.findByIdAndUpdate(
       currentUser._id,
       updatePayload,
-      { new: true }
+      { returnDocument: 'after' }
     );
 
     logger.info(`📍 Location persisted to DB for user ${currentUser._id}: ${address} (${lng}, ${lat}) [Country: ${resolvedCountry}]`);

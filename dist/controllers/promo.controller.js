@@ -43,7 +43,7 @@ class PromoController {
             const restaurant = await restaurant_model_1.default.findOne({ owner: req.user._id });
             if (!restaurant)
                 throw new appError_1.default('No restaurant found for this vendor', 404);
-            const promo = await promo_model_1.default.findOneAndUpdate({ _id: id, restaurant: restaurant._id }, req.body, { new: true, runValidators: true });
+            const promo = await promo_model_1.default.findOneAndUpdate({ _id: id, restaurant: restaurant._id }, req.body, { returnDocument: 'after', runValidators: true });
             if (!promo)
                 throw new appError_1.default('Promo not found or not owned by vendor', 404);
             res.status(200).json({ status: 'success', data: { promo } });

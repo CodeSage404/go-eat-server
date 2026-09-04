@@ -14,7 +14,7 @@ class MenuService {
         return await category_model_1.default.find({ restaurant: restaurantId }).sort({ order: 1 });
     }
     async updateCategory(id, data) {
-        return await category_model_1.default.findByIdAndUpdate(id, data, { new: true, runValidators: true });
+        return await category_model_1.default.findByIdAndUpdate(id, data, { returnDocument: 'after', runValidators: true });
     }
     async deleteCategory(id) {
         // Note: In a real app, you might want to handle what happens to food items in this category
@@ -65,7 +65,7 @@ class MenuService {
         });
     }
     async updateFoodItem(id, data) {
-        return await foodItem_model_1.default.findByIdAndUpdate(id, data, { new: true, runValidators: true });
+        return await foodItem_model_1.default.findByIdAndUpdate(id, data, { returnDocument: 'after', runValidators: true });
     }
     async deleteFoodItem(id) {
         return await foodItem_model_1.default.findByIdAndDelete(id);

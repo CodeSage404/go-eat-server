@@ -45,7 +45,7 @@ class PromoController {
     const promo = await Promo.findOneAndUpdate(
       { _id: id, restaurant: restaurant._id },
       req.body,
-      { new: true, runValidators: true }
+      { returnDocument: 'after', runValidators: true }
     );
     if (!promo) throw new AppError('Promo not found or not owned by vendor', 404);
     

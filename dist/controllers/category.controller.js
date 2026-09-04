@@ -235,7 +235,7 @@ class CategoryController {
                 req.body.image = req.file.path;
             }
             const category = await category_model_1.default.findByIdAndUpdate(req.params.id, req.body, {
-                new: true,
+                returnDocument: 'after',
                 runValidators: true,
             });
             if (!category) {

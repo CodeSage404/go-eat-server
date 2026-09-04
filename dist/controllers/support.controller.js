@@ -87,7 +87,7 @@ class SupportController {
             const ticket = await ticket_model_1.default.findByIdAndUpdate(id, {
                 adminResponse,
                 status: status || ticket_model_1.TicketStatus.RESOLVED,
-            }, { new: true });
+            }, { returnDocument: 'after' });
             if (!ticket)
                 throw new appError_1.default('Ticket not found', 404);
             res.status(200).json({
