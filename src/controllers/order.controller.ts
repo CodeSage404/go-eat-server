@@ -26,6 +26,8 @@ const orderSchema = z.object({
     zipCode: z.string().optional().default('100001'),
     coordinates: z.tuple([z.number(), z.number()]).optional().default([3.3792, 6.5244]),
     address: z.string().optional(),
+    building: z.string().optional(),
+    landmark: z.string().optional(),
   }),
   paymentMethod: z.nativeEnum(PaymentMethod).optional().default(PaymentMethod.CARD),
   deliveryMode: z.string().optional(),
@@ -44,6 +46,8 @@ class OrderController {
       zipCode: rawAddress.zipCode || '100001',
       coordinates: rawAddress.coordinates || [3.3792, 6.5244],
       address: rawAddress.address || rawAddress.street || 'Default Street',
+      building: rawAddress.building || '',
+      landmark: rawAddress.landmark || '',
     };
 
     const normalizedItems = (body.items || []).map((item: any) => ({

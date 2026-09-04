@@ -283,6 +283,39 @@ class SettlementService {
     }
 
     order.refundAmount = refundAmount;
+
+    // Credit Customer In-App Wallet for immediate refund access
+    if (refundAmount > 0) {
+      try {
+        const customerId = (order.customer as any)?._id
+          ? (order.customer as any)._id.toString()
+          : order.customer.toString();
+
+        let customerWallet = await Wallet.findOne({ user: customerId });
+        if (!customerWallet) {
+          customerWallet = await Wallet.create({ user: customerId });
+        }
+
+        customerWallet.balance += refundAmount;
+        customerWallet.availableBalance += refundAmount;
+        await customerWallet.save();
+
+        await Transaction.create({
+          wallet: customerWallet._id,
+          amount: refundAmount,
+          type: TransactionType.REFUND,
+          status: TransactionStatus.COMPLETED,
+          description: `Refund for cancelled order #${order._id.toString().substring(0, 6).toUpperCase()}${reason ? `: ${reason}` : ''}`,
+          reference: order._id.toString(),
+        });
+
+        order.paymentStatus = 'refunded';
+        logger.info(`✅ Processed full refund of NGN ${refundAmount} to customer ${customerId} for order ${order._id}`);
+      } catch (refundErr) {
+        logger.error('❌ Error crediting customer wallet during cancellation refund:', refundErr);
+      }
+    }
+
     await order.save();
 
     return { refundAmount, courierCompensation };

@@ -192,6 +192,11 @@ class OrderService {
     const outletName = restaurantDoc?.name || 'Outlet';
     const prepTimeText = order.estimatedPrepTime ? `${order.estimatedPrepTime} mins` : '20 mins';
 
+    const effectiveCancelReason = cancelReason || order.cancelReason || '';
+    const refundNote = order.refundAmount && order.refundAmount > 0 
+      ? ` ₦${order.refundAmount.toLocaleString()} has been refunded to your Go-Eat Wallet.` 
+      : '';
+
     // Rich status-specific messages for the customer
     const customerMessages: Record<string, string> = {
       [OrderStatus.ACCEPTED]: `Your order #${shortId} from ${outletName} has been accepted and is being prepared.`,
@@ -200,7 +205,9 @@ class OrderService {
       [OrderStatus.READY_FOR_COLLECTION]: `Your order #${shortId} from ${outletName} is ready and available for pickup!`,
       [OrderStatus.OUT_FOR_DELIVERY]: `Your order #${shortId} has been picked up by the courier and is on the way to your address!`,
       [OrderStatus.DELIVERED]: `Your order #${shortId} from ${outletName} has been delivered. Enjoy your meal!`,
-      [OrderStatus.CANCELLED]: `Your order #${shortId} from ${outletName} has been cancelled.`,
+      [OrderStatus.CANCELLED]: effectiveCancelReason 
+        ? `Your order #${shortId} was cancelled by ${outletName}. Reason: "${effectiveCancelReason}".${refundNote}`
+        : `Your order #${shortId} from ${outletName} has been cancelled.${refundNote}`,
     };
 
     // Rich status-specific titles for customer in-app notifications
@@ -222,7 +229,9 @@ class OrderService {
       [OrderStatus.READY_FOR_COLLECTION]: `Order #${shortId} is marked as ready and available for courier pickup.`,
       [OrderStatus.OUT_FOR_DELIVERY]: `Order #${shortId} has been collected by the courier and is on its way to the customer.`,
       [OrderStatus.DELIVERED]: `Order #${shortId} delivered successfully! Earnings credited to your wallet.`,
-      [OrderStatus.CANCELLED]: `Order #${shortId} has been cancelled.`,
+      [OrderStatus.CANCELLED]: effectiveCancelReason
+        ? `Order #${shortId} cancelled. Reason: "${effectiveCancelReason}".`
+        : `Order #${shortId} has been cancelled.`,
     };
 
     // Notify Customer via Notification Service
@@ -230,7 +239,7 @@ class OrderService {
       customerId,
       customerTitles[status] || `Order Update 🛵`,
       customerMessages[status] || `Your order #${shortId} status is now ${status.replace('_', ' ')}.`,
-      { orderId: order._id.toString(), status, estimatedPrepTime: order.estimatedPrepTime, type: 'ORDER_UPDATE' },
+      { orderId: order._id.toString(), status, cancelReason: effectiveCancelReason, refundAmount: order.refundAmount, estimatedPrepTime: order.estimatedPrepTime, type: 'ORDER_UPDATE' },
       NotificationType.ORDER_UPDATE
     );
 
@@ -238,9 +247,20 @@ class OrderService {
     emitToUser(customerId, SOCKET_EVENTS.ORDER_STATUS_UPDATE, {
       orderId: order._id.toString(),
       status,
+      cancelReason: effectiveCancelReason,
+      refundAmount: order.refundAmount,
       estimatedPrepTime: order.estimatedPrepTime,
       estimatedDeliveryTime: order.estimatedDeliveryTime,
     });
+
+    // Also notify customer of real-time wallet refund if applicable
+    if (order.refundAmount && order.refundAmount > 0) {
+      emitToUser(customerId, 'walletBalanceUpdate', {
+        amount: order.refundAmount,
+        reason: 'order_refund',
+        orderId: order._id.toString(),
+      });
+    }
 
     if (status === OrderStatus.ACCEPTED || status === OrderStatus.PREPARING) {
       emitToUser(customerId, SOCKET_EVENTS.ORDER_PREPARING, {

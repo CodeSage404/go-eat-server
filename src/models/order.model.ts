@@ -57,13 +57,16 @@ export interface IOrder extends Document {
   orderType?: 'delivery' | 'pickup';
   deliveryAddress: {
     street: string;
+    building?: string;
+    landmark?: string;
+    address?: string;
     city: string;
     state: string;
     zipCode: string;
     coordinates: [number, number]; // [lng, lat]
   };
   paymentMethod: PaymentMethod;
-  paymentStatus: 'pending' | 'completed' | 'failed';
+  paymentStatus: 'pending' | 'completed' | 'failed' | 'refunded';
   paymentResult?: {
     id: string;
     status: string;
@@ -149,6 +152,9 @@ const orderSchema = new Schema<IOrder>(
     },
     deliveryAddress: {
       street: { type: String, required: true },
+      building: { type: String },
+      landmark: { type: String },
+      address: { type: String },
       city: { type: String, required: true },
       state: { type: String, required: true },
       zipCode: { type: String, required: true },
@@ -164,7 +170,7 @@ const orderSchema = new Schema<IOrder>(
     },
     paymentStatus: {
       type: String,
-      enum: ['pending', 'completed', 'failed'],
+      enum: ['pending', 'completed', 'failed', 'refunded'],
       default: 'pending',
     },
     paymentResult: {
