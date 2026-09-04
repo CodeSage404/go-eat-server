@@ -200,6 +200,40 @@ router.route('/profile')
     .put(user_controller_1.default.updateProfile);
 /**
  * @openapi
+ * /api/v1/users/update-me:
+ *   patch:
+ *     tags:
+ *       - Users
+ *     summary: Update courier/user profile details
+ *     description: Updates personal and vehicle details for the authenticated user profile.
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *               email:
+ *                 type: string
+ *               phoneNumber:
+ *                 type: string
+ *               vehicleType:
+ *                 type: string
+ *               vehicleNumber:
+ *                 type: string
+ *               profileImage:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Profile updated successfully.
+ */
+router.patch('/update-me', user_controller_1.default.updateProfile);
+/**
+ * @openapi
  * /api/v1/users/fcm-token:
  *   patch:
  *     tags:

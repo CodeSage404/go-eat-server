@@ -17,6 +17,7 @@ const orderSchema = zod_1.z.object({
         name: zod_1.z.string().optional().default('Food Item'),
         price: zod_1.z.number().optional().default(0),
         quantity: zod_1.z.number().min(1).optional().default(1),
+        image: zod_1.z.string().optional(),
         selectedAddons: zod_1.z.any().optional(),
     })),
     totalAmount: zod_1.z.number().optional().default(0),
@@ -28,6 +29,8 @@ const orderSchema = zod_1.z.object({
         zipCode: zod_1.z.string().optional().default('100001'),
         coordinates: zod_1.z.tuple([zod_1.z.number(), zod_1.z.number()]).optional().default([3.3792, 6.5244]),
         address: zod_1.z.string().optional(),
+        building: zod_1.z.string().optional(),
+        landmark: zod_1.z.string().optional(),
     }),
     paymentMethod: zod_1.z.nativeEnum(order_model_1.PaymentMethod).optional().default(order_model_1.PaymentMethod.CARD),
     deliveryMode: zod_1.z.string().optional(),
@@ -46,12 +49,15 @@ class OrderController {
                 zipCode: rawAddress.zipCode || '100001',
                 coordinates: rawAddress.coordinates || [3.3792, 6.5244],
                 address: rawAddress.address || rawAddress.street || 'Default Street',
+                building: rawAddress.building || '',
+                landmark: rawAddress.landmark || '',
             };
             const normalizedItems = (body.items || []).map((item) => ({
                 foodItem: item.foodItem || item._id,
                 name: item.name || 'Food Item',
                 price: Number(item.price) || 0,
                 quantity: Number(item.quantity) || 1,
+                image: item.image || item.foodItem?.image || '',
                 selectedAddons: item.selectedAddons || [],
             }));
             const normalizedBody = {

@@ -2,7 +2,7 @@ import { Router, Request, Response } from 'express';
 import { v2 as cloudinary } from 'cloudinary';
 import multer from 'multer';
 import { upload, saveFileLocally } from '../utils/upload';
-import { protect } from '../middleware/auth.middleware';
+import { optionalAuth } from '../middleware/auth.middleware';
 import { catchAsync } from '../utils/catchAsync';
 import AppError from '../utils/appError';
 
@@ -28,7 +28,7 @@ const memUpload = multer({
 
 const router = Router();
 
-router.use(protect);
+router.use(optionalAuth);
 
 /**
  * @openapi

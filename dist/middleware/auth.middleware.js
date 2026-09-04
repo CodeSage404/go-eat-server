@@ -36,7 +36,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.checkPermission = exports.restrictTo = exports.protect = void 0;
+exports.checkPermission = exports.restrictTo = exports.optionalAuth = exports.protect = void 0;
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const user_model_1 = __importStar(require("../models/user.model"));
 const restaurant_model_1 = __importDefault(require("../models/restaurant.model"));
@@ -75,6 +75,28 @@ exports.protect = (0, catchAsync_1.catchAsync)(async (req, res, next) => {
         }
     }
     req.user = currentUser;
+    next();
+});
+exports.optionalAuth = (0, catchAsync_1.catchAsync)(async (req, res, next) => {
+    let token;
+    if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
+        token = req.headers.authorization.split(' ')[1];
+    }
+    if (!token) {
+        return next();
+    }
+    const jwtSecret = process.env.JWT_SECRET;
+    if (!jwtSecret) {
+        return next();
+    }
+    try {
+        const decoded = jsonwebtoken_1.default.verify(token, jwtSecret);
+        const currentUser = await user_model_1.default.findById(decoded.id);
+        if (currentUser && currentUser.status !== 'suspended') {
+            req.user = currentUser;
+        }
+    }
+    catch { }
     next();
 });
 const restrictTo = (...roles) => {

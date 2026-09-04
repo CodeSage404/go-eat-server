@@ -89,6 +89,41 @@ router.post('/signup/user', rateLimiter_1.authLimiter, auth_controller_1.default
 router.post('/signup/courier', rateLimiter_1.authLimiter, auth_controller_1.default.signupCourier);
 /**
  * @openapi
+ * /api/v1/auth/rider/register:
+ *   post:
+ *     tags:
+ *       - Auth
+ *     summary: Register a new delivery courier (Rider)
+ *     description: Initiates courier onboarding registration with contact information, vehicle type, and credentials.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [phoneNumber, password, vehicleType]
+ *             properties:
+ *               phoneNumber:
+ *                 type: string
+ *               password:
+ *                 type: string
+ *               name:
+ *                 type: string
+ *               email:
+ *                 type: string
+ *               vehicleType:
+ *                 type: string
+ *               vehicleNumber:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Courier registration initiated, verification OTP sent.
+ *       400:
+ *         description: Invalid or duplicate courier details.
+ */
+router.post('/rider/register', rateLimiter_1.authLimiter, auth_controller_1.default.signupCourier);
+/**
+ * @openapi
  * /api/v1/auth/signup/vendor:
  *   post:
  *     tags:

@@ -193,12 +193,14 @@ class AuthController {
             // Reset OTP request rate limit upon successful verification
             await otp_util_1.default.resetRequestLimit(identifier);
             let user;
+            let token;
             // Check if there is a pending registration payload cached in Redis
             const pendingUserData = await otp_util_1.default.getPendingUser(identifier);
             if (pendingUserData) {
                 // NOW save the verified user document into MongoDB
                 const result = await auth_service_1.default.createVerifiedUser(pendingUserData);
                 user = result.user;
+                token = result.token;
                 await otp_util_1.default.deletePendingUser(identifier);
             }
             else {
@@ -208,6 +210,7 @@ class AuthController {
                 if (!user) {
                     throw new appError_1.default('User registration not found. Please sign up again.', 404);
                 }
+                token = auth_service_1.default.signToken(user._id);
             }
             // Send welcome email if user has an email address
             if (user.email) {
@@ -218,12 +221,14 @@ class AuthController {
                     logger_1.default.error(`Error sending welcome email to ${user.email}:`, err.message);
                 }
             }
-            // Return success message requiring user to log in to obtain a JWT token
+            // Return success response with token and verified user
             res.status(200).json({
                 status: 'success',
+                token,
+                data: { user },
                 message: email
-                    ? 'Email verified successfully. Please log in with your credentials to continue.'
-                    : 'Phone number verified successfully. Please log in with your credentials to continue.',
+                    ? 'Email verified successfully.'
+                    : 'Phone number verified successfully.',
             });
         });
         this.resendOTP = (0, catchAsync_1.catchAsync)(async (req, res) => {

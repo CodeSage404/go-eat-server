@@ -90,4 +90,38 @@ router.get('/banks', restrictTo(UserRole.RIDER, UserRole.VENDOR), walletControll
  */
 router.post('/request-payout', restrictTo(UserRole.RIDER, UserRole.VENDOR), walletController.requestWithdrawal);
 
+/**
+ * @openapi
+ * /api/v1/wallets/me/withdraw:
+ *   post:
+ *     tags:
+ *       - Wallets
+ *     summary: Request a withdrawal from courier or vendor available balance
+ *     description: Deducts requested funds from available balance and initiates payout processing. Enforces settlement hold rules and available balance checks.
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [amount]
+ *             properties:
+ *               amount:
+ *                 type: number
+ *                 example: 5000
+ *     responses:
+ *       200:
+ *         description: Withdrawal requested successfully
+ *       400:
+ *         description: Invalid amount or insufficient balance
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden, only riders or vendors can withdraw
+ */
+router.post('/me/withdraw', restrictTo(UserRole.RIDER, UserRole.VENDOR), walletController.requestWithdrawal);
+
 export default router;
+

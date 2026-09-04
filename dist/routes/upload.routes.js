@@ -30,7 +30,7 @@ const memUpload = (0, multer_1.default)({
     },
 });
 const router = (0, express_1.Router)();
-router.use(auth_middleware_1.protect);
+router.use(auth_middleware_1.optionalAuth);
 /**
  * @openapi
  * /api/v1/upload/image:

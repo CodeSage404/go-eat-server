@@ -89,6 +89,7 @@ const orderSchema = new mongoose_1.Schema({
             name: { type: String, required: true },
             price: { type: Number, required: true },
             quantity: { type: Number, required: true, min: 1 },
+            image: { type: String },
         },
     ],
     totalAmount: {
@@ -130,6 +131,9 @@ const orderSchema = new mongoose_1.Schema({
     },
     deliveryAddress: {
         street: { type: String, required: true },
+        building: { type: String },
+        landmark: { type: String },
+        address: { type: String },
         city: { type: String, required: true },
         state: { type: String, required: true },
         zipCode: { type: String, required: true },
@@ -145,7 +149,7 @@ const orderSchema = new mongoose_1.Schema({
     },
     paymentStatus: {
         type: String,
-        enum: ['pending', 'completed', 'failed'],
+        enum: ['pending', 'completed', 'failed', 'refunded'],
         default: 'pending',
     },
     paymentResult: {

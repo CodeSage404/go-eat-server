@@ -204,6 +204,7 @@ class AuthController {
     await otpUtil.resetRequestLimit(identifier);
 
     let user;
+    let token: string | undefined;
 
     // Check if there is a pending registration payload cached in Redis
     const pendingUserData = await otpUtil.getPendingUser(identifier);
@@ -212,6 +213,7 @@ class AuthController {
       // NOW save the verified user document into MongoDB
       const result = await authService.createVerifiedUser(pendingUserData);
       user = result.user;
+      token = result.token;
       await otpUtil.deletePendingUser(identifier);
     } else {
       // Update existing DB user if already present
@@ -225,6 +227,7 @@ class AuthController {
       if (!user) {
         throw new AppError('User registration not found. Please sign up again.', 404);
       }
+      token = authService.signToken(user._id as unknown as string);
     }
 
     // Send welcome email if user has an email address
@@ -241,12 +244,14 @@ class AuthController {
       }
     }
 
-    // Return success message requiring user to log in to obtain a JWT token
+    // Return success response with token and verified user
     res.status(200).json({
       status: 'success',
+      token,
+      data: { user },
       message: email 
-        ? 'Email verified successfully. Please log in with your credentials to continue.' 
-        : 'Phone number verified successfully. Please log in with your credentials to continue.',
+        ? 'Email verified successfully.' 
+        : 'Phone number verified successfully.',
     });
   });
 

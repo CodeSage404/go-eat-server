@@ -53,6 +53,32 @@ export const protect = catchAsync(async (req: AuthRequest, res: Response, next: 
   next();
 });
 
+export const optionalAuth = catchAsync(async (req: AuthRequest, res: Response, next: NextFunction) => {
+  let token;
+  if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
+    token = req.headers.authorization.split(' ')[1];
+  }
+
+  if (!token) {
+    return next();
+  }
+
+  const jwtSecret = process.env.JWT_SECRET;
+  if (!jwtSecret) {
+    return next();
+  }
+
+  try {
+    const decoded: any = jwt.verify(token, jwtSecret);
+    const currentUser = await User.findById(decoded.id);
+    if (currentUser && currentUser.status !== 'suspended') {
+      req.user = currentUser;
+    }
+  } catch {}
+
+  next();
+});
+
 export const restrictTo = (...roles: UserRole[]) => {
   return (req: AuthRequest, res: Response, next: NextFunction) => {
     if (!roles.includes(req.user?.role as UserRole)) {

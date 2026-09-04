@@ -187,6 +187,10 @@ class OrderService {
         const shortId = order._id.toString().substring(0, 6).toUpperCase();
         const outletName = restaurantDoc?.name || 'Outlet';
         const prepTimeText = order.estimatedPrepTime ? `${order.estimatedPrepTime} mins` : '20 mins';
+        const effectiveCancelReason = cancelReason || order.cancelReason || '';
+        const refundNote = order.refundAmount && order.refundAmount > 0
+            ? ` ₦${order.refundAmount.toLocaleString()} has been refunded to your Go-Eat Wallet.`
+            : '';
         // Rich status-specific messages for the customer
         const customerMessages = {
             [order_model_1.OrderStatus.ACCEPTED]: `Your order #${shortId} from ${outletName} has been accepted and is being prepared.`,
@@ -195,7 +199,9 @@ class OrderService {
             [order_model_1.OrderStatus.READY_FOR_COLLECTION]: `Your order #${shortId} from ${outletName} is ready and available for pickup!`,
             [order_model_1.OrderStatus.OUT_FOR_DELIVERY]: `Your order #${shortId} has been picked up by the courier and is on the way to your address!`,
             [order_model_1.OrderStatus.DELIVERED]: `Your order #${shortId} from ${outletName} has been delivered. Enjoy your meal!`,
-            [order_model_1.OrderStatus.CANCELLED]: `Your order #${shortId} from ${outletName} has been cancelled.`,
+            [order_model_1.OrderStatus.CANCELLED]: effectiveCancelReason
+                ? `Your order #${shortId} was cancelled by ${outletName}. Reason: "${effectiveCancelReason}".${refundNote}`
+                : `Your order #${shortId} from ${outletName} has been cancelled.${refundNote}`,
         };
         // Rich status-specific titles for customer in-app notifications
         const customerTitles = {
@@ -215,17 +221,29 @@ class OrderService {
             [order_model_1.OrderStatus.READY_FOR_COLLECTION]: `Order #${shortId} is marked as ready and available for courier pickup.`,
             [order_model_1.OrderStatus.OUT_FOR_DELIVERY]: `Order #${shortId} has been collected by the courier and is on its way to the customer.`,
             [order_model_1.OrderStatus.DELIVERED]: `Order #${shortId} delivered successfully! Earnings credited to your wallet.`,
-            [order_model_1.OrderStatus.CANCELLED]: `Order #${shortId} has been cancelled.`,
+            [order_model_1.OrderStatus.CANCELLED]: effectiveCancelReason
+                ? `Order #${shortId} cancelled. Reason: "${effectiveCancelReason}".`
+                : `Order #${shortId} has been cancelled.`,
         };
         // Notify Customer via Notification Service
-        await notification_service_1.default.sendNotification(customerId, customerTitles[status] || `Order Update 🛵`, customerMessages[status] || `Your order #${shortId} status is now ${status.replace('_', ' ')}.`, { orderId: order._id.toString(), status, estimatedPrepTime: order.estimatedPrepTime, type: 'ORDER_UPDATE' }, userNotification_model_1.NotificationType.ORDER_UPDATE);
+        await notification_service_1.default.sendNotification(customerId, customerTitles[status] || `Order Update 🛵`, customerMessages[status] || `Your order #${shortId} status is now ${status.replace('_', ' ')}.`, { orderId: order._id.toString(), status, cancelReason: effectiveCancelReason, refundAmount: order.refundAmount, estimatedPrepTime: order.estimatedPrepTime, type: 'ORDER_UPDATE' }, userNotification_model_1.NotificationType.ORDER_UPDATE);
         // Emit Real-Time Socket Event to Customer
         (0, io_1.emitToUser)(customerId, constants_1.SOCKET_EVENTS.ORDER_STATUS_UPDATE, {
             orderId: order._id.toString(),
             status,
+            cancelReason: effectiveCancelReason,
+            refundAmount: order.refundAmount,
             estimatedPrepTime: order.estimatedPrepTime,
             estimatedDeliveryTime: order.estimatedDeliveryTime,
         });
+        // Also notify customer of real-time wallet refund if applicable
+        if (order.refundAmount && order.refundAmount > 0) {
+            (0, io_1.emitToUser)(customerId, 'walletBalanceUpdate', {
+                amount: order.refundAmount,
+                reason: 'order_refund',
+                orderId: order._id.toString(),
+            });
+        }
         if (status === order_model_1.OrderStatus.ACCEPTED || status === order_model_1.OrderStatus.PREPARING) {
             (0, io_1.emitToUser)(customerId, constants_1.SOCKET_EVENTS.ORDER_PREPARING, {
                 orderId: order._id.toString(),
@@ -369,7 +387,10 @@ class OrderService {
         return await order_model_1.default.findById(targetId).populate('customer restaurant rider items.foodItem');
     }
     async getRestaurantOrders(restaurantId) {
-        return await order_model_1.default.find({ restaurant: restaurantId }).sort({ createdAt: -1 });
+        return await order_model_1.default.find({ restaurant: restaurantId })
+            .populate('customer', 'name phoneNumber email')
+            .populate('items.foodItem', 'name price image')
+            .sort({ createdAt: -1 });
     }
     async getRiderOrders(riderId) {
         return await order_model_1.default.find({ rider: riderId }).sort({ createdAt: -1 });
