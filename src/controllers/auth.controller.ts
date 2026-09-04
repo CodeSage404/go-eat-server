@@ -6,7 +6,7 @@ import User, { UserRole, UserStatus } from '../models/user.model';
 import otpUtil from '../utils/otp.util';
 import emailUtil from '../services/email.service';
 import logger from '../utils/logger';
-import { startWhatsAppVerification, checkWhatsAppVerification } from '../utils/twilioVerify.util';
+import { startWhatsAppVerification, checkWhatsAppVerification, formatPhoneNumber } from '../utils/twilioVerify.util';
 
 class AuthController {
   private async initiateVerification(identifier: string, type: 'email' | 'phone'): Promise<{ channel: string; remaining: number }> {
@@ -59,8 +59,16 @@ class AuthController {
       throw new AppError('Verification identifier missing', 400);
     }
 
-    // Cache pending registration in Redis for 10 minutes
+    // Cache pending registration in Redis for 10 minutes (stored under raw identifier and all phone variations)
     await otpUtil.storePendingUser(identifier, cleanData, 600);
+    if (cleanData.phoneNumber) {
+      const e164 = formatPhoneNumber(cleanData.phoneNumber);
+      const local = cleanData.phoneNumber.startsWith('+234')
+        ? '0' + cleanData.phoneNumber.slice(4)
+        : cleanData.phoneNumber;
+      await otpUtil.storePendingUser(e164, cleanData, 600);
+      await otpUtil.storePendingUser(local, cleanData, 600);
+    }
 
     // Send OTP (If email/phone sending fails, error is thrown BEFORE DB creation)
     const verifyByPhone = !!cleanData.phoneNumber;
@@ -110,6 +118,14 @@ class AuthController {
     }
 
     await otpUtil.storePendingUser(identifier, cleanData, 600);
+    if (cleanData.phoneNumber) {
+      const e164 = formatPhoneNumber(cleanData.phoneNumber);
+      const local = cleanData.phoneNumber.startsWith('+234')
+        ? '0' + cleanData.phoneNumber.slice(4)
+        : cleanData.phoneNumber;
+      await otpUtil.storePendingUser(e164, cleanData, 600);
+      await otpUtil.storePendingUser(local, cleanData, 600);
+    }
 
     const verifyByPhone = !!cleanData.phoneNumber;
     let dispatchResult: { channel: string; remaining: number } | undefined;
@@ -158,6 +174,14 @@ class AuthController {
     }
 
     await otpUtil.storePendingUser(identifier, cleanData, 600);
+    if (cleanData.phoneNumber) {
+      const e164 = formatPhoneNumber(cleanData.phoneNumber);
+      const local = cleanData.phoneNumber.startsWith('+234')
+        ? '0' + cleanData.phoneNumber.slice(4)
+        : cleanData.phoneNumber;
+      await otpUtil.storePendingUser(e164, cleanData, 600);
+      await otpUtil.storePendingUser(local, cleanData, 600);
+    }
 
     const verifyByPhone = !!cleanData.phoneNumber;
     let dispatchResult: { channel: string; remaining: number } | undefined;
@@ -206,8 +230,13 @@ class AuthController {
     let user;
     let token: string | undefined;
 
-    // Check if there is a pending registration payload cached in Redis
-    const pendingUserData = await otpUtil.getPendingUser(identifier);
+    // Check if there is a pending registration payload cached in Redis across all phone variations
+    let pendingUserData = await otpUtil.getPendingUser(identifier);
+    if (!pendingUserData && phoneNumber) {
+      const e164 = formatPhoneNumber(phoneNumber);
+      const local = phoneNumber.startsWith('+234') ? '0' + phoneNumber.slice(4) : phoneNumber;
+      pendingUserData = (await otpUtil.getPendingUser(e164)) || (await otpUtil.getPendingUser(local));
+    }
 
     if (pendingUserData) {
       // NOW save the verified user document into MongoDB
@@ -215,13 +244,26 @@ class AuthController {
       user = result.user;
       token = result.token;
       await otpUtil.deletePendingUser(identifier);
+      if (phoneNumber) {
+        await otpUtil.deletePendingUser(formatPhoneNumber(phoneNumber));
+        const local = phoneNumber.startsWith('+234') ? '0' + phoneNumber.slice(4) : phoneNumber;
+        await otpUtil.deletePendingUser(local);
+      }
     } else {
       // Update existing DB user if already present
-      const query = email ? { email: email.toLowerCase() } : { phoneNumber };
+      const query = email
+        ? { email: email.toLowerCase() }
+        : {
+            $or: [
+              { phoneNumber },
+              { phoneNumber: formatPhoneNumber(phoneNumber) },
+              { phoneNumber: phoneNumber.startsWith('+234') ? '0' + phoneNumber.slice(4) : phoneNumber },
+            ],
+          };
       user = await User.findOneAndUpdate(
         query,
         { isVerified: true },
-        { new: true }
+        { returnDocument: 'after' }
       );
 
       if (!user) {

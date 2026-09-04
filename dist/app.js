@@ -64,6 +64,8 @@ class App {
         (0, db_1.default)();
     }
     config() {
+        // Trust reverse proxy headers (e.g. Render, Cloudflare, load balancers)
+        this.app.set('trust proxy', 1);
         this.app.use(express_1.default.json({ limit: '2mb' }));
         this.app.use(express_1.default.urlencoded({ extended: true, limit: '2mb' }));
         this.app.use(sanitize_middleware_1.default);

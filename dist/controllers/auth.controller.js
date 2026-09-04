@@ -67,8 +67,16 @@ class AuthController {
             if (!identifier) {
                 throw new appError_1.default('Verification identifier missing', 400);
             }
-            // Cache pending registration in Redis for 10 minutes
+            // Cache pending registration in Redis for 10 minutes (stored under raw identifier and all phone variations)
             await otp_util_1.default.storePendingUser(identifier, cleanData, 600);
+            if (cleanData.phoneNumber) {
+                const e164 = (0, twilioVerify_util_1.formatPhoneNumber)(cleanData.phoneNumber);
+                const local = cleanData.phoneNumber.startsWith('+234')
+                    ? '0' + cleanData.phoneNumber.slice(4)
+                    : cleanData.phoneNumber;
+                await otp_util_1.default.storePendingUser(e164, cleanData, 600);
+                await otp_util_1.default.storePendingUser(local, cleanData, 600);
+            }
             // Send OTP (If email/phone sending fails, error is thrown BEFORE DB creation)
             const verifyByPhone = !!cleanData.phoneNumber;
             let dispatchResult;
@@ -112,6 +120,14 @@ class AuthController {
                 throw new appError_1.default('Verification identifier missing', 400);
             }
             await otp_util_1.default.storePendingUser(identifier, cleanData, 600);
+            if (cleanData.phoneNumber) {
+                const e164 = (0, twilioVerify_util_1.formatPhoneNumber)(cleanData.phoneNumber);
+                const local = cleanData.phoneNumber.startsWith('+234')
+                    ? '0' + cleanData.phoneNumber.slice(4)
+                    : cleanData.phoneNumber;
+                await otp_util_1.default.storePendingUser(e164, cleanData, 600);
+                await otp_util_1.default.storePendingUser(local, cleanData, 600);
+            }
             const verifyByPhone = !!cleanData.phoneNumber;
             let dispatchResult;
             if (verifyByPhone) {
@@ -154,6 +170,14 @@ class AuthController {
                 throw new appError_1.default('Verification identifier missing', 400);
             }
             await otp_util_1.default.storePendingUser(identifier, cleanData, 600);
+            if (cleanData.phoneNumber) {
+                const e164 = (0, twilioVerify_util_1.formatPhoneNumber)(cleanData.phoneNumber);
+                const local = cleanData.phoneNumber.startsWith('+234')
+                    ? '0' + cleanData.phoneNumber.slice(4)
+                    : cleanData.phoneNumber;
+                await otp_util_1.default.storePendingUser(e164, cleanData, 600);
+                await otp_util_1.default.storePendingUser(local, cleanData, 600);
+            }
             const verifyByPhone = !!cleanData.phoneNumber;
             let dispatchResult;
             if (verifyByPhone) {
@@ -194,19 +218,37 @@ class AuthController {
             await otp_util_1.default.resetRequestLimit(identifier);
             let user;
             let token;
-            // Check if there is a pending registration payload cached in Redis
-            const pendingUserData = await otp_util_1.default.getPendingUser(identifier);
+            // Check if there is a pending registration payload cached in Redis across all phone variations
+            let pendingUserData = await otp_util_1.default.getPendingUser(identifier);
+            if (!pendingUserData && phoneNumber) {
+                const e164 = (0, twilioVerify_util_1.formatPhoneNumber)(phoneNumber);
+                const local = phoneNumber.startsWith('+234') ? '0' + phoneNumber.slice(4) : phoneNumber;
+                pendingUserData = (await otp_util_1.default.getPendingUser(e164)) || (await otp_util_1.default.getPendingUser(local));
+            }
             if (pendingUserData) {
                 // NOW save the verified user document into MongoDB
                 const result = await auth_service_1.default.createVerifiedUser(pendingUserData);
                 user = result.user;
                 token = result.token;
                 await otp_util_1.default.deletePendingUser(identifier);
+                if (phoneNumber) {
+                    await otp_util_1.default.deletePendingUser((0, twilioVerify_util_1.formatPhoneNumber)(phoneNumber));
+                    const local = phoneNumber.startsWith('+234') ? '0' + phoneNumber.slice(4) : phoneNumber;
+                    await otp_util_1.default.deletePendingUser(local);
+                }
             }
             else {
                 // Update existing DB user if already present
-                const query = email ? { email: email.toLowerCase() } : { phoneNumber };
-                user = await user_model_1.default.findOneAndUpdate(query, { isVerified: true }, { new: true });
+                const query = email
+                    ? { email: email.toLowerCase() }
+                    : {
+                        $or: [
+                            { phoneNumber },
+                            { phoneNumber: (0, twilioVerify_util_1.formatPhoneNumber)(phoneNumber) },
+                            { phoneNumber: phoneNumber.startsWith('+234') ? '0' + phoneNumber.slice(4) : phoneNumber },
+                        ],
+                    };
+                user = await user_model_1.default.findOneAndUpdate(query, { isVerified: true }, { returnDocument: 'after' });
                 if (!user) {
                     throw new appError_1.default('User registration not found. Please sign up again.', 404);
                 }

@@ -71,6 +71,8 @@ class App {
   }
 
   private config(): void {
+    // Trust reverse proxy headers (e.g. Render, Cloudflare, load balancers)
+    this.app.set('trust proxy', 1);
     this.app.use(express.json({ limit: '2mb' }));
     this.app.use(express.urlencoded({ extended: true, limit: '2mb' }));
     this.app.use(mongoSanitizeMiddleware);

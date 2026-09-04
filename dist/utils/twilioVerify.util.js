@@ -49,9 +49,11 @@ exports.formatPhoneNumber = formatPhoneNumber;
 const startWhatsAppVerification = async (to) => {
     const formattedTo = (0, exports.formatPhoneNumber)(to);
     const otp = otp_util_1.default.generateOTP();
-    // Store fresh 6-digit OTP in Redis/Memory for both phone formats
+    // Store fresh 6-digit OTP in Redis/Memory for all phone variations (E.164, local 0-prefix, and raw input)
     await otp_util_1.default.storeOTP(formattedTo, otp);
     await otp_util_1.default.storeOTP(to, otp);
+    const localNum = to.startsWith('+234') ? '0' + to.slice(4) : (to.startsWith('0') ? to : '0' + to);
+    await otp_util_1.default.storeOTP(localNum, otp);
     if (client) {
         const fromWhatsApp = rawFromNumber.startsWith('whatsapp:') ? rawFromNumber : `whatsapp:${rawFromNumber}`;
         const toWhatsApp = `whatsapp:${formattedTo}`;
@@ -103,15 +105,23 @@ const startWhatsAppVerification = async (to) => {
 };
 exports.startWhatsAppVerification = startWhatsAppVerification;
 /**
- * Checks verification code using Redis OTP store or Twilio Verify API.
+ * Checks verification code using Redis OTP store across all phone formats or Twilio Verify API.
  */
 const checkWhatsAppVerification = async (to, code) => {
-    const formattedTo = (0, exports.formatPhoneNumber)(to);
+    const cleanPhone = to.trim();
     const cleanCode = code.trim();
-    // 1. Primary check: Dynamic Redis / Memory OTP store
-    const isRedisValid = (await otp_util_1.default.verifyOTP(formattedTo, cleanCode)) || (await otp_util_1.default.verifyOTP(to, cleanCode));
+    const formattedE164 = (0, exports.formatPhoneNumber)(cleanPhone);
+    const localFormat = cleanPhone.startsWith('+234')
+        ? '0' + cleanPhone.slice(4)
+        : (cleanPhone.startsWith('0') ? cleanPhone : '0' + cleanPhone);
+    const rawDigits = cleanPhone.replace(/\D/g, '');
+    // 1. Primary check: Dynamic Redis / Memory OTP store across all format variants
+    const isRedisValid = (await otp_util_1.default.verifyOTP(formattedE164, cleanCode)) ||
+        (await otp_util_1.default.verifyOTP(localFormat, cleanCode)) ||
+        (await otp_util_1.default.verifyOTP(cleanPhone, cleanCode)) ||
+        (await otp_util_1.default.verifyOTP(rawDigits, cleanCode));
     if (isRedisValid) {
-        logger_1.default.info(`✅ Phone number verification successful via Redis OTP for ${formattedTo}`);
+        logger_1.default.info(`✅ Phone number verification successful via Redis OTP for ${formattedE164}`);
         return true;
     }
     // 2. Fallback check: Twilio Verify API if configured
@@ -120,17 +130,17 @@ const checkWhatsAppVerification = async (to, code) => {
             const check = await client.verify.v2
                 .services(serviceSid)
                 .verificationChecks.create({
-                to: formattedTo,
+                to: formattedE164,
                 code: cleanCode,
             });
             const isApproved = check.status === 'approved';
             if (isApproved) {
-                logger_1.default.info(`✅ Verification successful via Twilio Verify for ${formattedTo}`);
+                logger_1.default.info(`✅ Verification successful via Twilio Verify for ${formattedE164}`);
                 return true;
             }
         }
         catch (error) {
-            logger_1.default.warn(`Verification check note for ${formattedTo}: ${error.message}`);
+            logger_1.default.warn(`Verification check note for ${formattedE164}: ${error.message}`);
         }
     }
     return false;
