@@ -535,6 +535,24 @@ class OrderService {
         // Emit Real-time Socket to Vendor
         emitToUser(vendorOwnerId, SOCKET_EVENTS.RIDER_ASSIGNED, order.rider);
       }
+
+      // 3. Send Push & In-app Notification to Rider
+      await notificationService.sendNotification(
+        riderId,
+        `Delivery Accepted! 🚀`,
+        `You've accepted order #${shortId}. Head to ${restaurantName} to collect the order.`,
+        {
+          orderId: order._id.toString(),
+          status: OrderStatus.COURIER_ASSIGNED,
+          type: 'RIDER_ASSIGNED',
+          restaurantName,
+          orderShortId: shortId,
+        },
+        NotificationType.ORDER_UPDATE
+      );
+
+      // Emit Real-time Socket to Rider
+      emitToUser(riderId, 'DELIVERY_ACCEPTED_CONFIRMATION', order);
     }
 
     return order;
