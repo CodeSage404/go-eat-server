@@ -3,6 +3,8 @@ import { catchAsync } from '../utils/catchAsync';
 import AppError from '../utils/appError';
 import mapsService from '../services/maps.service';
 import { getStates, searchNigeriaLocations } from '../utils/nigeriaLocations';
+import { AuthRequest } from '../middleware/auth.middleware';
+import User from '../models/user.model';
 
 class LocationController {
   /**
@@ -327,6 +329,68 @@ class LocationController {
         isNigeria,
         isItaly,
         isUk,
+      },
+    });
+  });
+
+  /**
+   * Updates authenticated user's (rider, driver, or customer) live GPS coordinates and online status
+   */
+  public updateLocation = catchAsync(async (req: AuthRequest, res: Response) => {
+    if (!req.user) {
+      throw new AppError('You are not logged in! Please log in to get access.', 401);
+    }
+
+    const { coordinates, heading, speed } = req.body;
+    if (!coordinates || !Array.isArray(coordinates) || coordinates.length < 2) {
+      throw new AppError('Valid [longitude, latitude] coordinates are required', 400);
+    }
+
+    const [lng, lat] = coordinates.map(Number);
+    if (isNaN(lng) || isNaN(lat)) {
+      throw new AppError('Invalid coordinates format', 400);
+    }
+
+    await User.findByIdAndUpdate(req.user._id, {
+      location: {
+        type: 'Point',
+        coordinates: [lng, lat],
+      },
+      isOnline: true,
+    });
+
+    res.status(200).json({
+      status: 'success',
+      message: 'Location updated successfully',
+      data: {
+        coordinates: [lng, lat],
+        heading,
+        speed,
+      },
+    });
+  });
+
+  /**
+   * Calculates route distance and driving duration between origin and destination coordinates
+   */
+  public getDistance = catchAsync(async (req: Request, res: Response) => {
+    const { origin, destination } = req.body;
+    if (!origin || !destination || !Array.isArray(origin) || !Array.isArray(destination)) {
+      throw new AppError('Origin and destination [longitude, latitude] coordinates are required', 400);
+    }
+
+    const result = await mapsService.getDistanceAndTime(
+      [Number(origin[0]), Number(origin[1])],
+      [Number(destination[0]), Number(destination[1])]
+    );
+
+    res.status(200).json({
+      status: 'success',
+      data: {
+        distanceText: (result as any).distance || '0 km',
+        durationText: (result as any).duration || '0 mins',
+        distanceValue: (result as any).distanceValue || 0,
+        durationValue: (result as any).durationValue || 0,
       },
     });
   });

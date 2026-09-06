@@ -5,6 +5,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
 const location_controller_1 = __importDefault(require("../controllers/location.controller"));
+const auth_middleware_1 = require("../middleware/auth.middleware");
 const router = (0, express_1.Router)();
 /**
  * @openapi
@@ -158,4 +159,128 @@ router.get('/detect', location_controller_1.default.detectLocation);
  *                       example: false
  */
 router.get('/detect-ip-country', location_controller_1.default.detectIpCountry);
+/**
+ * @openapi
+ * /api/v1/location/update-location:
+ *   post:
+ *     tags:
+ *       - Location
+ *     summary: Update Authenticated User GPS Location
+ *     description: Updates the live geographic coordinates and online status of the authenticated rider, driver, or customer.
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - coordinates
+ *             properties:
+ *               coordinates:
+ *                 type: array
+ *                 items:
+ *                   type: number
+ *                 description: Coordinates in GeoJSON format [longitude, latitude]
+ *                 example: [3.3792, 6.5244]
+ *               heading:
+ *                 type: number
+ *                 description: Compass heading in degrees
+ *                 example: 90
+ *               speed:
+ *                 type: number
+ *                 description: Movement speed in meters per second
+ *                 example: 4.5
+ *     responses:
+ *       200:
+ *         description: Location updated successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: success
+ *                 message:
+ *                   type: string
+ *                   example: Location updated successfully
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     coordinates:
+ *                       type: array
+ *                       items:
+ *                         type: number
+ *                     heading:
+ *                       type: number
+ *                     speed:
+ *                       type: number
+ *       400:
+ *         description: Missing or invalid coordinates format.
+ *       401:
+ *         description: Unauthorized. Missing or invalid Bearer token.
+ */
+router.post('/update-location', auth_middleware_1.protect, location_controller_1.default.updateLocation);
+/**
+ * @openapi
+ * /api/v1/location/distance:
+ *   post:
+ *     tags:
+ *       - Location
+ *     summary: Calculate Route Distance and Duration
+ *     description: Calculates driving distance and estimated time between origin and destination coordinates using Google Maps Distance Matrix.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - origin
+ *               - destination
+ *             properties:
+ *               origin:
+ *                 type: array
+ *                 items:
+ *                   type: number
+ *                 description: Origin coordinates [longitude, latitude]
+ *                 example: [3.3792, 6.5244]
+ *               destination:
+ *                 type: array
+ *                 items:
+ *                   type: number
+ *                 description: Destination coordinates [longitude, latitude]
+ *                 example: [3.3850, 6.5300]
+ *     responses:
+ *       200:
+ *         description: Route distance and duration calculated successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: success
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     distanceText:
+ *                       type: string
+ *                       example: "2.5 km"
+ *                     durationText:
+ *                       type: string
+ *                       example: "8 mins"
+ *                     distanceValue:
+ *                       type: number
+ *                       example: 2500
+ *                     durationValue:
+ *                       type: number
+ *                       example: 480
+ *       400:
+ *         description: Missing or invalid origin/destination coordinates.
+ */
+router.post('/distance', location_controller_1.default.getDistance);
 exports.default = router;

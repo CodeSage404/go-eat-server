@@ -7,6 +7,7 @@ const catchAsync_1 = require("../utils/catchAsync");
 const appError_1 = __importDefault(require("../utils/appError"));
 const maps_service_1 = __importDefault(require("../services/maps.service"));
 const nigeriaLocations_1 = require("../utils/nigeriaLocations");
+const user_model_1 = __importDefault(require("../models/user.model"));
 class LocationController {
     constructor() {
         /**
@@ -310,6 +311,57 @@ class LocationController {
                     isNigeria,
                     isItaly,
                     isUk,
+                },
+            });
+        });
+        /**
+         * Updates authenticated user's (rider, driver, or customer) live GPS coordinates and online status
+         */
+        this.updateLocation = (0, catchAsync_1.catchAsync)(async (req, res) => {
+            if (!req.user) {
+                throw new appError_1.default('You are not logged in! Please log in to get access.', 401);
+            }
+            const { coordinates, heading, speed } = req.body;
+            if (!coordinates || !Array.isArray(coordinates) || coordinates.length < 2) {
+                throw new appError_1.default('Valid [longitude, latitude] coordinates are required', 400);
+            }
+            const [lng, lat] = coordinates.map(Number);
+            if (isNaN(lng) || isNaN(lat)) {
+                throw new appError_1.default('Invalid coordinates format', 400);
+            }
+            await user_model_1.default.findByIdAndUpdate(req.user._id, {
+                location: {
+                    type: 'Point',
+                    coordinates: [lng, lat],
+                },
+                isOnline: true,
+            });
+            res.status(200).json({
+                status: 'success',
+                message: 'Location updated successfully',
+                data: {
+                    coordinates: [lng, lat],
+                    heading,
+                    speed,
+                },
+            });
+        });
+        /**
+         * Calculates route distance and driving duration between origin and destination coordinates
+         */
+        this.getDistance = (0, catchAsync_1.catchAsync)(async (req, res) => {
+            const { origin, destination } = req.body;
+            if (!origin || !destination || !Array.isArray(origin) || !Array.isArray(destination)) {
+                throw new appError_1.default('Origin and destination [longitude, latitude] coordinates are required', 400);
+            }
+            const result = await maps_service_1.default.getDistanceAndTime([Number(origin[0]), Number(origin[1])], [Number(destination[0]), Number(destination[1])]);
+            res.status(200).json({
+                status: 'success',
+                data: {
+                    distanceText: result.distance || '0 km',
+                    durationText: result.duration || '0 mins',
+                    distanceValue: result.distanceValue || 0,
+                    durationValue: result.durationValue || 0,
                 },
             });
         });

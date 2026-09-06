@@ -294,7 +294,7 @@ class OrderService {
         return order;
     }
     /**
-     * Find and notify nearby riders about a ready order
+     * Find and notify nearby riders about a ready order using geographic proximity matching
      */
     async notifyNearbyRiders(order) {
         try {
@@ -302,12 +302,53 @@ class OrderService {
                 .populate('restaurant', 'name address location images phoneContact rating')
                 .populate('customer', 'name phoneNumber email profileImage')
                 .populate('items.foodItem', 'name price image');
-            // Find riders who are online
-            const riders = await user_model_1.default.find({
-                role: user_model_1.UserRole.RIDER,
-                isOnline: true,
-            });
-            riders.forEach((rider) => {
+            const restaurantCoords = populatedOrder?.restaurant?.location?.coordinates;
+            let targetRiders = [];
+            // Proximity Dispatch (Radius: 10km max distance)
+            if (restaurantCoords && restaurantCoords.length >= 2) {
+                const [restLng, restLat] = restaurantCoords;
+                try {
+                    targetRiders = await user_model_1.default.find({
+                        role: user_model_1.UserRole.RIDER,
+                        isOnline: true,
+                        status: user_model_1.UserStatus.ACTIVE,
+                        location: {
+                            $near: {
+                                $geometry: {
+                                    type: 'Point',
+                                    coordinates: [Number(restLng), Number(restLat)],
+                                },
+                                $maxDistance: 10000, // 10,000 meters = 10km
+                            },
+                        },
+                    });
+                }
+                catch (geoErr) {
+                    logger_1.default.warn('Geospatial $near query error, falling back to Haversine calculation:', geoErr);
+                }
+            }
+            // Fallback: If no riders matched via $near (or coordinates not yet indexed), filter online riders using Haversine
+            if (!targetRiders || targetRiders.length === 0) {
+                const allOnlineRiders = await user_model_1.default.find({
+                    role: user_model_1.UserRole.RIDER,
+                    isOnline: true,
+                });
+                if (restaurantCoords && restaurantCoords.length >= 2) {
+                    const [restLng, restLat] = restaurantCoords;
+                    targetRiders = allOnlineRiders.filter((r) => {
+                        const coords = r.location?.coordinates;
+                        if (!coords || coords.length < 2)
+                            return true; // Include couriers without cached coordinates
+                        const distKm = this.calculateHaversineDistanceKm(restLat, restLng, coords[1], coords[0]);
+                        return distKm <= 12; // 12km max delivery radius
+                    });
+                }
+                else {
+                    targetRiders = allOnlineRiders;
+                }
+            }
+            logger_1.default.info(`📡 Proximity Dispatch: Alerting ${targetRiders.length} rider(s) within outlet radius for order #${order._id}`);
+            targetRiders.forEach((rider) => {
                 notification_service_1.default.notifyRiderAvailableOrder(rider._id.toString(), order._id.toString());
                 (0, io_1.emitToUser)(rider._id.toString(), 'NEW_DELIVERY_REQUEST', populatedOrder || order);
             });
@@ -315,6 +356,18 @@ class OrderService {
         catch (err) {
             logger_1.default.error('Error notifying riders about available order:', err);
         }
+    }
+    calculateHaversineDistanceKm(lat1, lon1, lat2, lon2) {
+        const R = 6371;
+        const dLat = (lat2 - lat1) * (Math.PI / 180);
+        const dLon = (lon2 - lon1) * (Math.PI / 180);
+        const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+            Math.cos(lat1 * (Math.PI / 180)) *
+                Math.cos(lat2 * (Math.PI / 180)) *
+                Math.sin(dLon / 2) *
+                Math.sin(dLon / 2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        return R * c;
     }
     /**
      * Schedule late preparation alert notification to the vendor
@@ -335,10 +388,10 @@ class OrderService {
         }, delayMs);
     }
     /**
-     * Get available delivery jobs for couriers
+     * Get available delivery jobs for couriers, with optional proximity sorting
      */
-    async getAvailableDeliveryJobs() {
-        return await order_model_1.default.find({
+    async getAvailableDeliveryJobs(riderLat, riderLng) {
+        const orders = await order_model_1.default.find({
             status: {
                 $in: [
                     order_model_1.OrderStatus.ACCEPTED,
@@ -353,20 +406,56 @@ class OrderService {
             .populate('customer', 'name phoneNumber email profileImage')
             .populate('items.foodItem', 'name price image')
             .sort({ createdAt: -1 });
+        // If rider coordinates provided, sort jobs by closest distance first
+        if (riderLat && riderLng && orders.length > 0) {
+            return orders.sort((a, b) => {
+                const coordsA = a.restaurant?.location?.coordinates;
+                const coordsB = b.restaurant?.location?.coordinates;
+                const distA = coordsA?.length >= 2 ? this.calculateHaversineDistanceKm(riderLat, riderLng, coordsA[1], coordsA[0]) : 9999;
+                const distB = coordsB?.length >= 2 ? this.calculateHaversineDistanceKm(riderLat, riderLng, coordsB[1], coordsB[0]) : 9999;
+                return distA - distB;
+            });
+        }
+        return orders;
     }
     /**
-     * Assign a rider to an order
+     * Assign a rider to an order and dispatch push notifications to customer and outlet
      */
     async assignRider(orderId, riderId) {
         const order = await order_model_1.default.findByIdAndUpdate(orderId, { rider: riderId, status: order_model_1.OrderStatus.COURIER_ASSIGNED }, { returnDocument: 'after' }).populate('customer restaurant rider');
         if (order) {
             // Process courier pending earnings
             await settlement_service_1.default.processCourierAssigned(order, riderId);
-            // Notify Customer and Restaurant
-            (0, io_1.emitToUser)(order.customer._id.toString(), constants_1.SOCKET_EVENTS.RIDER_ASSIGNED, order.rider);
-            const restaurant = await restaurant_model_1.default.findById(order.restaurant);
-            if (restaurant) {
-                (0, io_1.emitToUser)(restaurant.owner.toString(), constants_1.SOCKET_EVENTS.RIDER_ASSIGNED, order.rider);
+            const riderUser = order.rider?._id ? order.rider : await user_model_1.default.findById(riderId);
+            const riderName = riderUser?.name || 'A delivery rider';
+            const shortId = order._id.toString().substring(0, 6).toUpperCase();
+            const restaurantDoc = order.restaurant?._id ? order.restaurant : await restaurant_model_1.default.findById(order.restaurant);
+            const restaurantName = restaurantDoc?.name || 'the restaurant';
+            // 1. Send Push & In-app Notification to Customer
+            const customerId = order.customer?._id
+                ? order.customer._id.toString()
+                : order.customer.toString();
+            await notification_service_1.default.sendNotification(customerId, `Courier Assigned 🛵`, `${riderName} has accepted your order #${shortId} and is on their way to ${restaurantName}!`, {
+                orderId: order._id.toString(),
+                status: order_model_1.OrderStatus.COURIER_ASSIGNED,
+                type: 'RIDER_ASSIGNED',
+                rider: order.rider,
+            }, userNotification_model_1.NotificationType.ORDER_UPDATE);
+            // Emit Real-time Socket to Customer
+            (0, io_1.emitToUser)(customerId, constants_1.SOCKET_EVENTS.RIDER_ASSIGNED, order.rider);
+            // 2. Send Push & In-app Notification to Restaurant Outlet
+            if (restaurantDoc && restaurantDoc.owner) {
+                const vendorOwnerId = restaurantDoc.owner?._id
+                    ? restaurantDoc.owner._id.toString()
+                    : restaurantDoc.owner.toString();
+                await notification_service_1.default.sendNotification(vendorOwnerId, `Courier Assigned 🛵`, `${riderName} has accepted delivery for order #${shortId} and is en route for pickup.`, {
+                    orderId: order._id.toString(),
+                    status: order_model_1.OrderStatus.COURIER_ASSIGNED,
+                    type: 'RIDER_ASSIGNED',
+                    rider: order.rider,
+                }, userNotification_model_1.NotificationType.ORDER_UPDATE);
+                // Emit Real-time Socket to Vendor
+                (0, io_1.emitToUser)(vendorOwnerId, constants_1.SOCKET_EVENTS.RIDER_ASSIGNED, order.rider);
             }
         }
         return order;

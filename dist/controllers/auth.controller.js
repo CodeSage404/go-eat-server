@@ -77,24 +77,14 @@ class AuthController {
                 await otp_util_1.default.storePendingUser(e164, cleanData, 600);
                 await otp_util_1.default.storePendingUser(local, cleanData, 600);
             }
-            // Send OTP (If email/phone sending fails, error is thrown BEFORE DB creation)
-            const verifyByPhone = !!cleanData.phoneNumber;
-            let dispatchResult;
-            if (verifyByPhone) {
-                dispatchResult = await this.initiateVerification(cleanData.phoneNumber, 'phone');
-            }
-            else if (cleanData.email) {
-                dispatchResult = await this.initiateVerification(cleanData.email, 'email');
-            }
-            const channelText = dispatchResult?.channel === 'whatsapp'
-                ? 'WhatsApp'
-                : (dispatchResult?.channel === 'sms' ? 'SMS' : (dispatchResult?.channel === 'email' ? 'email' : 'device'));
+            // Dispatch verification OTP via both email and phone
+            const dispatchResult = await this.initiateVerification(cleanData.email, cleanData.phoneNumber);
             res.status(200).json({
                 status: 'success',
-                message: `Signup details saved. A fresh verification code has been sent via ${channelText}.`,
+                message: `Signup details saved. A fresh verification code has been sent via ${dispatchResult.channel}.`,
                 data: {
-                    channel: dispatchResult?.channel,
-                    remainingAttempts: dispatchResult?.remaining,
+                    channel: dispatchResult.channel,
+                    remainingAttempts: dispatchResult.remaining,
                 },
             });
         });
@@ -128,23 +118,13 @@ class AuthController {
                 await otp_util_1.default.storePendingUser(e164, cleanData, 600);
                 await otp_util_1.default.storePendingUser(local, cleanData, 600);
             }
-            const verifyByPhone = !!cleanData.phoneNumber;
-            let dispatchResult;
-            if (verifyByPhone) {
-                dispatchResult = await this.initiateVerification(cleanData.phoneNumber, 'phone');
-            }
-            else if (cleanData.email) {
-                dispatchResult = await this.initiateVerification(cleanData.email, 'email');
-            }
-            const channelText = dispatchResult?.channel === 'whatsapp'
-                ? 'WhatsApp'
-                : (dispatchResult?.channel === 'sms' ? 'SMS' : (dispatchResult?.channel === 'email' ? 'email' : 'device'));
+            const dispatchResult = await this.initiateVerification(cleanData.email, cleanData.phoneNumber);
             res.status(200).json({
                 status: 'success',
-                message: `Courier signup details saved. A fresh verification code has been sent via ${channelText}.`,
+                message: `Courier signup details saved. A fresh verification code has been sent via ${dispatchResult.channel}.`,
                 data: {
-                    channel: dispatchResult?.channel,
-                    remainingAttempts: dispatchResult?.remaining,
+                    channel: dispatchResult.channel,
+                    remainingAttempts: dispatchResult.remaining,
                 },
             });
         });
@@ -178,23 +158,13 @@ class AuthController {
                 await otp_util_1.default.storePendingUser(e164, cleanData, 600);
                 await otp_util_1.default.storePendingUser(local, cleanData, 600);
             }
-            const verifyByPhone = !!cleanData.phoneNumber;
-            let dispatchResult;
-            if (verifyByPhone) {
-                dispatchResult = await this.initiateVerification(cleanData.phoneNumber, 'phone');
-            }
-            else if (cleanData.email) {
-                dispatchResult = await this.initiateVerification(cleanData.email, 'email');
-            }
-            const channelText = dispatchResult?.channel === 'whatsapp'
-                ? 'WhatsApp'
-                : (dispatchResult?.channel === 'sms' ? 'SMS' : (dispatchResult?.channel === 'email' ? 'email' : 'device'));
+            const dispatchResult = await this.initiateVerification(cleanData.email, cleanData.phoneNumber);
             res.status(200).json({
                 status: 'success',
-                message: `Vendor signup details saved. A fresh verification code has been sent via ${channelText}.`,
+                message: `Vendor signup details saved. A fresh verification code has been sent via ${dispatchResult.channel}.`,
                 data: {
-                    channel: dispatchResult?.channel,
-                    remainingAttempts: dispatchResult?.remaining,
+                    channel: dispatchResult.channel,
+                    remainingAttempts: dispatchResult.remaining,
                 },
             });
         });
@@ -279,22 +249,13 @@ class AuthController {
             if (!identifier) {
                 throw new appError_1.default('Please provide an email or phone number to resend OTP', 400);
             }
-            let dispatchResult;
-            if (phoneNumber) {
-                dispatchResult = await this.initiateVerification(phoneNumber, 'phone');
-            }
-            else if (email) {
-                dispatchResult = await this.initiateVerification(email, 'email');
-            }
-            const channelText = dispatchResult?.channel === 'whatsapp'
-                ? 'WhatsApp'
-                : (dispatchResult?.channel === 'sms' ? 'SMS' : (dispatchResult?.channel === 'email' ? 'email' : 'device'));
+            const dispatchResult = await this.initiateVerification(email, phoneNumber);
             res.status(200).json({
                 status: 'success',
-                message: `A fresh verification code has been sent via ${channelText}. (${dispatchResult?.remaining || 0} resend attempts remaining).`,
+                message: `A fresh verification code has been sent via ${dispatchResult.channel}. (${dispatchResult.remaining} resend attempts remaining).`,
                 data: {
-                    channel: dispatchResult?.channel,
-                    remainingAttempts: dispatchResult?.remaining,
+                    channel: dispatchResult.channel,
+                    remainingAttempts: dispatchResult.remaining,
                 },
             });
         });
@@ -499,28 +460,62 @@ class AuthController {
             });
         });
     }
-    async initiateVerification(identifier, type) {
+    async initiateVerification(email, phoneNumber) {
+        const primaryId = email || phoneNumber || '';
+        if (!primaryId) {
+            throw new appError_1.default('Verification identifier missing', 400);
+        }
         // Check and enforce OTP request rate limit (Max 6 attempts per identifier per 30 minutes)
-        const { allowed, count, remaining } = await otp_util_1.default.checkAndIncrementRequestLimit(identifier, 6, 1800);
+        const { allowed, count, remaining } = await otp_util_1.default.checkAndIncrementRequestLimit(primaryId, 6, 1800);
         if (!allowed) {
             throw new appError_1.default('You have exceeded the maximum limit of 6 OTP requests for this account. Please wait 30 minutes before requesting another code or sign up using an alternative email address.', 429);
         }
-        if (type === 'email') {
-            const otp = otp_util_1.default.generateOTP();
-            await otp_util_1.default.storeOTP(identifier, otp);
+        // 1. Generate ONE single, shared 6-digit OTP code
+        const otp = otp_util_1.default.generateOTP();
+        const deliveredChannels = [];
+        // 2. If email is provided, store in Redis and dispatch via Brevo/SMTP immediately
+        if (email) {
+            const cleanEmail = email.toLowerCase().trim();
+            await otp_util_1.default.storeOTP(cleanEmail, otp);
             try {
-                await email_service_1.default.sendOTP(identifier, otp);
-                return { channel: 'email', remaining };
+                await email_service_1.default.sendOTP(cleanEmail, otp);
+                deliveredChannels.push('email');
+                logger_1.default.info(`📧 Verification OTP (${otp}) dispatched via email to ${cleanEmail}`);
             }
             catch (err) {
-                throw new appError_1.default('Unable to send verification email. Please verify your email address or try again.', 400);
+                logger_1.default.warn(`⚠️ Failed to send verification email to ${cleanEmail}:`, err.message);
             }
         }
-        else {
-            const formattedPhone = identifier.startsWith('+') ? identifier : `+234${identifier.replace(/^0/, '')}`;
-            const result = await (0, twilioVerify_util_1.startWhatsAppVerification)(formattedPhone);
-            return { channel: result.channel, remaining };
+        // 3. If phone is provided, store across all phone formats in Redis and dispatch via Twilio (WhatsApp & SMS)
+        if (phoneNumber) {
+            const formattedPhone = (0, twilioVerify_util_1.formatPhoneNumber)(phoneNumber);
+            try {
+                const phoneResult = await (0, twilioVerify_util_1.startWhatsAppVerification)(formattedPhone, otp);
+                if (phoneResult.channel !== 'redis') {
+                    deliveredChannels.push(phoneResult.channel);
+                }
+            }
+            catch (err) {
+                logger_1.default.warn(`⚠️ Phone verification note for ${formattedPhone}:`, err.message);
+            }
         }
+        let channelText = 'email and phone';
+        if (deliveredChannels.includes('email') && (deliveredChannels.includes('whatsapp') || deliveredChannels.includes('sms'))) {
+            channelText = 'email and phone';
+        }
+        else if (deliveredChannels.includes('email')) {
+            channelText = 'email';
+        }
+        else if (deliveredChannels.includes('whatsapp')) {
+            channelText = 'WhatsApp';
+        }
+        else if (deliveredChannels.includes('sms')) {
+            channelText = 'SMS';
+        }
+        else {
+            channelText = email ? 'email' : 'phone';
+        }
+        return { channel: channelText, remaining };
     }
 }
 exports.default = new AuthController();

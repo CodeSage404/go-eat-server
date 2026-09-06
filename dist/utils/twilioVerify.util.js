@@ -8,7 +8,6 @@ exports.checkWhatsAppVerification = exports.startWhatsAppVerification = exports.
 const twilio_1 = __importDefault(require("twilio"));
 const logger_1 = __importDefault(require("./logger"));
 const otp_util_1 = __importDefault(require("./otp.util"));
-const appError_1 = __importDefault(require("./appError"));
 const accountSid = process.env.TWILIO_ACCOUNT_SID;
 const authToken = process.env.TWILIO_AUTH_TOKEN;
 const rawFromNumber = process.env.TWILIO_PHONE_NUMBER || '+15557765384';
@@ -46,9 +45,9 @@ exports.formatPhoneNumber = formatPhoneNumber;
  * 2. Falls back to SMS if WhatsApp delivery encounters an issue
  * 3. Throws a clear error if both fail, advising the user to sign up via email
  */
-const startWhatsAppVerification = async (to) => {
+const startWhatsAppVerification = async (to, existingOtp) => {
     const formattedTo = (0, exports.formatPhoneNumber)(to);
-    const otp = otp_util_1.default.generateOTP();
+    const otp = existingOtp || otp_util_1.default.generateOTP();
     // Store fresh 6-digit OTP in Redis/Memory for all phone variations (E.164, local 0-prefix, and raw input)
     await otp_util_1.default.storeOTP(formattedTo, otp);
     await otp_util_1.default.storeOTP(to, otp);
@@ -57,8 +56,11 @@ const startWhatsAppVerification = async (to) => {
     if (client) {
         const fromWhatsApp = rawFromNumber.startsWith('whatsapp:') ? rawFromNumber : `whatsapp:${rawFromNumber}`;
         const toWhatsApp = `whatsapp:${formattedTo}`;
+        const cleanFromPhone = rawFromNumber.replace('whatsapp:', '');
         const messageBody = `Your Go-Eat verification code is: ${otp}. Valid for 10 minutes. Do not share this code with anyone.`;
-        // 1. Primary Attempt: Direct WhatsApp Message
+        let whatsappSuccess = false;
+        let smsSuccess = false;
+        // 1. Attempt WhatsApp message via Twilio
         try {
             const msg = await client.messages.create({
                 from: fromWhatsApp,
@@ -66,37 +68,26 @@ const startWhatsAppVerification = async (to) => {
                 body: messageBody,
             });
             logger_1.default.info(`📱 WhatsApp OTP dispatched via Twilio. SID: ${msg.sid} to ${toWhatsApp}`);
-            return { channel: 'whatsapp', otp };
+            whatsappSuccess = true;
         }
         catch (whatsappError) {
-            logger_1.default.warn(`⚠️ WhatsApp delivery failed for ${toWhatsApp}: ${whatsappError.message}. Initiating SMS fallback...`);
-            // 2. Secondary Attempt: Fallback to SMS
-            try {
-                // Try Twilio Messages SMS or Verify Service SMS
-                if (serviceSid && !serviceSid.startsWith('your_')) {
-                    const smsVerification = await client.verify.v2
-                        .services(serviceSid)
-                        .verifications.create({
-                        channel: 'sms',
-                        to: formattedTo,
-                    });
-                    logger_1.default.info(`📱 SMS fallback verification initiated via Twilio Verify. SID: ${smsVerification.sid} to ${formattedTo}`);
-                }
-                else {
-                    const smsMsg = await client.messages.create({
-                        from: rawFromNumber.replace('whatsapp:', ''),
-                        to: formattedTo,
-                        body: messageBody,
-                    });
-                    logger_1.default.info(`📱 SMS fallback dispatched via Twilio Messages. SID: ${smsMsg.sid} to ${formattedTo}`);
-                }
-                return { channel: 'sms', otp };
-            }
-            catch (smsError) {
-                logger_1.default.error(`❌ Both WhatsApp and SMS verification failed for ${formattedTo}:`, smsError.message);
-                throw new appError_1.default('Unable to deliver verification code via WhatsApp or SMS to this phone number. Please verify your phone number or sign up using your email address instead.', 400);
-            }
+            logger_1.default.warn(`⚠️ WhatsApp delivery note for ${toWhatsApp}: ${whatsappError.message}`);
         }
+        // 2. Attempt SMS message via Twilio
+        try {
+            const smsMsg = await client.messages.create({
+                from: cleanFromPhone,
+                to: formattedTo,
+                body: messageBody,
+            });
+            logger_1.default.info(`📱 SMS fallback dispatched via Twilio. SID: ${smsMsg.sid} to ${formattedTo}`);
+            smsSuccess = true;
+        }
+        catch (smsError) {
+            logger_1.default.warn(`⚠️ SMS dispatch note for ${formattedTo}: ${smsError.message}`);
+        }
+        const channel = whatsappSuccess ? 'whatsapp' : (smsSuccess ? 'sms' : 'redis');
+        return { channel, otp };
     }
     else {
         logger_1.default.info(`📱 Dynamic 6-digit OTP generated and stored in Redis for ${formattedTo}: ${otp}`);
