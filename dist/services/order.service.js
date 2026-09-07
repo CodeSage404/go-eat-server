@@ -306,12 +306,12 @@ class OrderService {
                 .populate('customer', 'name phoneNumber email profileImage')
                 .populate('items.foodItem', 'name price image');
             const restaurantCoords = populatedOrder?.restaurant?.location?.coordinates;
-            let targetRiders = [];
+            let candidateRiders = [];
             // Proximity Dispatch (Radius: 10km max distance)
             if (restaurantCoords && restaurantCoords.length >= 2) {
                 const [restLng, restLat] = restaurantCoords;
                 try {
-                    targetRiders = await user_model_1.default.find({
+                    candidateRiders = await user_model_1.default.find({
                         role: user_model_1.UserRole.RIDER,
                         isOnline: true,
                         status: user_model_1.UserStatus.ACTIVE,
@@ -330,15 +330,16 @@ class OrderService {
                     logger_1.default.warn('Geospatial $near query error, falling back to Haversine calculation:', geoErr);
                 }
             }
-            // Fallback: If no riders matched via $near (or coordinates not yet indexed), filter online riders using Haversine
-            if (!targetRiders || targetRiders.length === 0) {
+            // Fallback: If no riders matched via $near, retrieve online active riders and compute distance
+            if (!candidateRiders || candidateRiders.length === 0) {
                 const allOnlineRiders = await user_model_1.default.find({
                     role: user_model_1.UserRole.RIDER,
                     isOnline: true,
+                    status: user_model_1.UserStatus.ACTIVE,
                 });
                 if (restaurantCoords && restaurantCoords.length >= 2) {
                     const [restLng, restLat] = restaurantCoords;
-                    targetRiders = allOnlineRiders.filter((r) => {
+                    candidateRiders = allOnlineRiders.filter((r) => {
                         const coords = r.location?.coordinates;
                         if (!coords || coords.length < 2)
                             return true; // Include couriers without cached coordinates
@@ -347,14 +348,57 @@ class OrderService {
                     });
                 }
                 else {
-                    targetRiders = allOnlineRiders;
+                    candidateRiders = allOnlineRiders;
                 }
             }
-            logger_1.default.info(`📡 Proximity Dispatch: Alerting ${targetRiders.length} rider(s) within outlet radius for order #${order._id}`);
-            targetRiders.forEach((rider) => {
-                notification_service_1.default.notifyRiderAvailableOrder(rider._id.toString(), order._id.toString());
-                (0, io_1.emitToUser)(rider._id.toString(), 'NEW_DELIVERY_REQUEST', populatedOrder || order);
+            if (!candidateRiders || candidateRiders.length === 0) {
+                logger_1.default.info(`📡 Proximity Dispatch: No online riders found near order #${order._id}`);
+                return;
+            }
+            // Calculate distance for each candidate rider to the restaurant
+            const [restLng, restLat] = restaurantCoords && restaurantCoords.length >= 2
+                ? restaurantCoords
+                : [3.3792, 6.5244];
+            const ridersWithDistance = candidateRiders.map((rider) => {
+                const coords = rider.location?.coordinates;
+                const distKm = coords && coords.length >= 2
+                    ? this.calculateHaversineDistanceKm(restLat, restLng, coords[1], coords[0])
+                    : 999;
+                return { rider, distKm };
             });
+            // Check which riders currently have an active delivery in progress
+            const candidateRiderIds = candidateRiders.map((r) => r._id);
+            const activeDeliveries = await order_model_1.default.find({
+                rider: { $in: candidateRiderIds },
+                status: {
+                    $in: [
+                        order_model_1.OrderStatus.COURIER_ASSIGNED,
+                        order_model_1.OrderStatus.COURIER_COLLECTED,
+                        order_model_1.OrderStatus.OUT_FOR_DELIVERY,
+                    ],
+                },
+            });
+            const busyRiderIds = new Set(activeDeliveries
+                .filter((o) => Boolean(o.rider))
+                .map((o) => (o.rider?._id ? o.rider._id.toString() : o.rider.toString())));
+            // Separate into available (not on an active delivery) vs busy
+            const availableRiders = ridersWithDistance
+                .filter((item) => !busyRiderIds.has(item.rider._id.toString()))
+                .sort((a, b) => a.distKm - b.distKm);
+            const busyRiders = ridersWithDistance
+                .filter((item) => busyRiderIds.has(item.rider._id.toString()))
+                .sort((a, b) => a.distKm - b.distKm);
+            // Prioritize the closest available rider. If none available, route to closest busy rider
+            const selected = availableRiders.length > 0 ? availableRiders[0] : busyRiders[0];
+            if (selected) {
+                const targetRider = selected.rider;
+                const isBusy = busyRiderIds.has(targetRider._id.toString());
+                logger_1.default.info(`📡 Proximity Dispatch: Order #${order._id} assigned to closest ${isBusy ? 'busy' : 'available'} courier ${targetRider._id} (${selected.distKm.toFixed(2)}km)`);
+                // Send Push & In-app Notification
+                await notification_service_1.default.notifyRiderAvailableOrder(targetRider._id.toString(), order._id.toString());
+                // Emit Real-time Socket Event for instantaneous offer modal popup
+                (0, io_1.emitToUser)(targetRider._id.toString(), 'NEW_DELIVERY_REQUEST', populatedOrder || order);
+            }
         }
         catch (err) {
             logger_1.default.error('Error notifying riders about available order:', err);
@@ -425,7 +469,36 @@ class OrderService {
      * Assign a rider to an order and dispatch push notifications to customer and outlet
      */
     async assignRider(orderId, riderId) {
-        const order = await order_model_1.default.findByIdAndUpdate(orderId, { rider: riderId, status: order_model_1.OrderStatus.COURIER_ASSIGNED }, { returnDocument: 'after' }).populate('customer restaurant rider');
+        // 1. Enforce single active delivery rule: A rider cannot go on more than one delivery at a time
+        const existingActiveOrder = await order_model_1.default.findOne({
+            rider: riderId,
+            status: {
+                $in: [
+                    order_model_1.OrderStatus.COURIER_ASSIGNED,
+                    order_model_1.OrderStatus.COURIER_COLLECTED,
+                    order_model_1.OrderStatus.OUT_FOR_DELIVERY,
+                ],
+            },
+        });
+        if (existingActiveOrder) {
+            throw new appError_1.default('You already have an ongoing delivery in progress. Please complete your current delivery before accepting another.', 400);
+        }
+        // 2. Atomic assignment: only accept if order is unassigned
+        const order = await order_model_1.default.findOneAndUpdate({
+            _id: orderId,
+            rider: null,
+            status: {
+                $in: [
+                    order_model_1.OrderStatus.ACCEPTED,
+                    order_model_1.OrderStatus.PREPARING,
+                    order_model_1.OrderStatus.READY,
+                    order_model_1.OrderStatus.READY_FOR_COLLECTION,
+                ],
+            },
+        }, { rider: riderId, status: order_model_1.OrderStatus.COURIER_ASSIGNED }, { returnDocument: 'after' }).populate('customer restaurant rider');
+        if (!order) {
+            throw new appError_1.default('This delivery is no longer available or has already been accepted by another courier.', 400);
+        }
         if (order) {
             // Process courier pending earnings
             await settlement_service_1.default.processCourierAssigned(order, riderId);
