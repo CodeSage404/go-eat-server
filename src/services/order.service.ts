@@ -132,7 +132,10 @@ class OrderService {
         throw new AppError(`Outlets cannot set order status to ${status}`, 400);
       }
     } else if (role === 'rider') {
-      if (!order.rider || (order.rider as any)._id?.toString() !== userId && order.rider.toString() !== userId) {
+      const assignedRiderId = (order.rider as any)?._id
+        ? (order.rider as any)._id.toString()
+        : order.rider?.toString();
+      if (!assignedRiderId || assignedRiderId !== userId.toString()) {
         throw new AppError('You are not the assigned courier for this order', 403);
       }
 

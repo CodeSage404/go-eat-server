@@ -134,7 +134,10 @@ class OrderService {
             }
         }
         else if (role === 'rider') {
-            if (!order.rider || order.rider._id?.toString() !== userId && order.rider.toString() !== userId) {
+            const assignedRiderId = order.rider?._id
+                ? order.rider._id.toString()
+                : order.rider?.toString();
+            if (!assignedRiderId || assignedRiderId !== userId.toString()) {
                 throw new appError_1.default('You are not the assigned courier for this order', 403);
             }
             const allowedRiderStatuses = [order_model_1.OrderStatus.OUT_FOR_DELIVERY, order_model_1.OrderStatus.COURIER_COLLECTED, order_model_1.OrderStatus.DELIVERED, order_model_1.OrderStatus.CANCELLED];
