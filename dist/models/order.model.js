@@ -120,6 +120,30 @@ const orderSchema = new mongoose_1.Schema({
         type: Number,
         default: 0,
     },
+    serviceFee: {
+        type: Number,
+        default: 0,
+    },
+    distanceKm: {
+        type: Number,
+        default: 0,
+    },
+    batchGroupId: {
+        type: String,
+        index: true,
+    },
+    isBatchedDelivery: {
+        type: Boolean,
+        default: false,
+    },
+    batchSequence: {
+        type: Number,
+        default: 1,
+    },
+    splitDelivery: {
+        type: Boolean,
+        default: false,
+    },
     tipAmount: {
         type: Number,
         default: 0,
@@ -169,6 +193,18 @@ const orderSchema = new mongoose_1.Schema({
     },
     estimatedDeliveryTime: {
         type: Date,
+    },
+    deliveryMode: {
+        type: String,
+        default: 'Standard',
+    },
+    deliveryTime: {
+        type: String,
+        default: 'ASAP',
+    },
+    deliveryNotes: {
+        type: String,
+        trim: true,
     },
     deliveryInstructions: {
         type: String,

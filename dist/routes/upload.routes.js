@@ -29,7 +29,19 @@ const memUpload = (0, multer_1.default)({
         cb(new Error('Only images (jpg, jpeg, png, webp) are allowed!'));
     },
 });
+const express_rate_limit_1 = __importDefault(require("express-rate-limit"));
+const uploadLimiter = (0, express_rate_limit_1.default)({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 30, // limit each IP to 30 uploads per window
+    message: {
+        status: 'fail',
+        message: 'Too many upload requests from this IP, please try again after 15 minutes.',
+    },
+    standardHeaders: true,
+    legacyHeaders: false,
+});
 const router = (0, express_1.Router)();
+router.use(uploadLimiter);
 router.use(auth_middleware_1.optionalAuth);
 /**
  * @openapi

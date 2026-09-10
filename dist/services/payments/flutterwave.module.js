@@ -24,7 +24,13 @@ class FlutterwaveModule {
      * Initialize Flutterwave Transaction
      */
     async initializePayment(params) {
-        if (this.secretKey.includes('placeholder') || process.env.USE_MOCK_PAYMENT === 'true') {
+        if (!this.secretKey || this.secretKey.includes('placeholder')) {
+            if (process.env.NODE_ENV === 'production') {
+                throw new appError_1.default('Flutterwave payment gateway is not properly configured.', 500);
+            }
+            if (process.env.USE_MOCK_PAYMENT !== 'true') {
+                throw new appError_1.default('Flutterwave secret key is missing or invalid in server environment.', 500);
+            }
             logger_1.default.info(`[Flutterwave Dev/Mock] Generating simulated authorization URL for ${params.reference}`);
             return {
                 authorizationUrl: `https://checkout.flutterwave.com/v3/hosted/pay/test_checkout?reference=${params.reference}&amount=${params.amount}`,
@@ -72,13 +78,19 @@ class FlutterwaveModule {
      * Verify Flutterwave Transaction by Reference (tx_ref)
      */
     async verifyPayment(reference) {
-        if (this.secretKey.includes('placeholder') || process.env.USE_MOCK_PAYMENT === 'true') {
-            logger_1.default.info(`[Flutterwave Dev/Mock] Simulating successful verification for ${reference}`);
+        if (!this.secretKey || this.secretKey.includes('placeholder')) {
+            if (process.env.NODE_ENV === 'production') {
+                throw new appError_1.default('Flutterwave payment gateway is not properly configured.', 500);
+            }
+            if (process.env.USE_MOCK_PAYMENT !== 'true') {
+                throw new appError_1.default('Flutterwave secret key is missing or invalid in server environment.', 500);
+            }
+            logger_1.default.info(`[Flutterwave Dev/Mock] Simulating verification for ${reference}`);
             return {
                 id: reference,
                 status: 'successful',
                 tx_ref: reference,
-                amount: 5000,
+                amount: 0,
                 meta: { orderId: reference.split('_')[1] },
                 customer: { email: 'dev@goeatalone.com' },
             };

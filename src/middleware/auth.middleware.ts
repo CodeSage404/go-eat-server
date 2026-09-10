@@ -25,7 +25,15 @@ export const protect = catchAsync(async (req: AuthRequest, res: Response, next: 
     return next(new AppError('Server authentication configuration error.', 500));
   }
 
-  const decoded: any = jwt.verify(token, jwtSecret);
+  let decoded: any;
+  try {
+    decoded = jwt.verify(token, jwtSecret);
+  } catch (err: any) {
+    if (err.name === 'TokenExpiredError') {
+      return next(new AppError('Your session has expired! Please log in again.', 401));
+    }
+    return next(new AppError('Invalid token. Please log in again.', 401));
+  }
 
   const currentUser = await User.findById(decoded.id);
   if (!currentUser) {

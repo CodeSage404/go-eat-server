@@ -26,8 +26,22 @@ const memUpload = multer({
   },
 });
 
+import rateLimit from 'express-rate-limit';
+
+const uploadLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 30, // limit each IP to 30 uploads per window
+  message: {
+    status: 'fail',
+    message: 'Too many upload requests from this IP, please try again after 15 minutes.',
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
 const router = Router();
 
+router.use(uploadLimiter);
 router.use(optionalAuth);
 
 /**

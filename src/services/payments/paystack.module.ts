@@ -56,7 +56,13 @@ export class PaystackModule {
   async initializePayment(params: PaymentInitializeParams): Promise<PaymentInitializeResult> {
     const amountInKobo = Math.round(params.amount * 100);
 
-    if (this.secretKey.includes('placeholder') || process.env.USE_MOCK_PAYMENT === 'true') {
+    if (!this.secretKey || this.secretKey.includes('placeholder')) {
+      if (process.env.NODE_ENV === 'production') {
+        throw new AppError('Paystack payment gateway is not properly configured.', 500);
+      }
+      if (process.env.USE_MOCK_PAYMENT !== 'true') {
+        throw new AppError('Paystack secret key is missing or invalid in server environment.', 500);
+      }
       logger.info(`[Paystack Dev/Mock] Generating simulated authorization URL for ${params.reference}`);
       return {
         authorizationUrl: `https://checkout.paystack.com/test_checkout?reference=${params.reference}&amount=${params.amount}`,
@@ -118,13 +124,19 @@ export class PaystackModule {
    * Verify Paystack Transaction by Reference
    */
   async verifyPayment(reference: string): Promise<any> {
-    if (this.secretKey.includes('placeholder') || process.env.USE_MOCK_PAYMENT === 'true') {
-      logger.info(`[Paystack Dev/Mock] Simulating successful verification for ${reference}`);
+    if (!this.secretKey || this.secretKey.includes('placeholder')) {
+      if (process.env.NODE_ENV === 'production') {
+        throw new AppError('Paystack payment gateway is not properly configured.', 500);
+      }
+      if (process.env.USE_MOCK_PAYMENT !== 'true') {
+        throw new AppError('Paystack secret key is missing or invalid in server environment.', 500);
+      }
+      logger.info(`[Paystack Dev/Mock] Simulating verification for ${reference}`);
       return {
         id: reference,
         status: 'success',
         reference,
-        amount: 500000,
+        amount: 0,
         metadata: { orderId: reference.split('_')[1] },
         customer: { email: 'dev@goeatalone.com' },
       };

@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { catchAsync } from '../utils/catchAsync';
 import AppError from '../utils/appError';
 import DocumentModel, { VerificationStatusType } from '../models/document.model';
+import Restaurant from '../models/restaurant.model';
 
 export const uploadDocument = catchAsync(async (req: Request, res: Response) => {
   const {
@@ -16,6 +17,20 @@ export const uploadDocument = catchAsync(async (req: Request, res: Response) => 
 
   if (!documentName || !documentType || !ownerType || !ownerId || !fileUrl) {
     throw new AppError('Please provide all required document fields', 400);
+  }
+
+  const user = (req as any).user;
+  if (user && user.role !== 'admin') {
+    if (ownerType === 'user' || ownerType === 'rider') {
+      if (user._id.toString() !== ownerId) {
+        throw new AppError('You do not have permission to upload documents for this user', 403);
+      }
+    } else if (ownerType === 'restaurant') {
+      const restaurant = await Restaurant.findById(ownerId);
+      if (!restaurant || restaurant.owner.toString() !== user._id.toString()) {
+        throw new AppError('You do not have permission to upload documents for this restaurant', 403);
+      }
+    }
   }
 
   const newDoc = await DocumentModel.create({
@@ -40,6 +55,20 @@ export const uploadDocument = catchAsync(async (req: Request, res: Response) => 
 
 export const getOwnerDocuments = catchAsync(async (req: Request, res: Response) => {
   const { ownerType, ownerId } = req.params;
+  const user = (req as any).user;
+
+  if (user && user.role !== 'admin') {
+    if (ownerType === 'user' || ownerType === 'rider') {
+      if (user._id.toString() !== ownerId) {
+        throw new AppError('You do not have permission to view these documents', 403);
+      }
+    } else if (ownerType === 'restaurant') {
+      const restaurant = await Restaurant.findById(ownerId);
+      if (!restaurant || restaurant.owner.toString() !== user._id.toString()) {
+        throw new AppError('You do not have permission to view these documents', 403);
+      }
+    }
+  }
 
   const documents = await DocumentModel.find({
     ownerType: ownerType as any,

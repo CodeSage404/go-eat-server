@@ -44,6 +44,13 @@ const settingSchema = new mongoose_1.Schema({
     minOrderAmount: { type: Number, default: 500 },
     deliveryBaseFee: { type: Number, default: 500 },
     deliveryFeePerKm: { type: Number, default: 100 },
+    serviceFee: { type: Number, default: 170 },
+    smallOrderFee: { type: Number, default: 150 },
+    smallOrderFeeThreshold: { type: Number, default: 1000 },
+    batchPickupThresholdKm: { type: Number, default: 3.0 },
+    multiOutletExtraStopFee: { type: Number, default: 300 },
+    riderBasePayout: { type: Number, default: 400 },
+    riderPerKmPayout: { type: Number, default: 80 },
     defaultPaymentProvider: { type: String, enum: ['paystack', 'flutterwave', 'stripe'], default: 'paystack' },
     countryPaymentProviders: {
         type: [

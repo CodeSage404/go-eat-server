@@ -55,7 +55,16 @@ exports.protect = (0, catchAsync_1.catchAsync)(async (req, res, next) => {
     if (!jwtSecret) {
         return next(new appError_1.default('Server authentication configuration error.', 500));
     }
-    const decoded = jsonwebtoken_1.default.verify(token, jwtSecret);
+    let decoded;
+    try {
+        decoded = jsonwebtoken_1.default.verify(token, jwtSecret);
+    }
+    catch (err) {
+        if (err.name === 'TokenExpiredError') {
+            return next(new appError_1.default('Your session has expired! Please log in again.', 401));
+        }
+        return next(new appError_1.default('Invalid token. Please log in again.', 401));
+    }
     const currentUser = await user_model_1.default.findById(decoded.id);
     if (!currentUser) {
         return next(new appError_1.default('The user belonging to this token no longer exists.', 401));

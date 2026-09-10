@@ -40,6 +40,8 @@ const crypto_1 = __importDefault(require("crypto"));
 const mongoose_1 = __importDefault(require("mongoose"));
 const order_model_1 = __importStar(require("../models/order.model"));
 const restaurant_model_1 = __importDefault(require("../models/restaurant.model"));
+const foodItem_model_1 = __importDefault(require("../models/foodItem.model"));
+const setting_model_1 = __importDefault(require("../models/setting.model"));
 const user_model_1 = __importStar(require("../models/user.model"));
 const io_1 = require("../io");
 const notification_service_1 = __importDefault(require("./notification.service"));
@@ -59,11 +61,94 @@ class OrderService {
         if (!restaurant) {
             throw new appError_1.default('Restaurant not found', 404);
         }
-        // Calculate estimated delivery time using Google Maps (Production Logic)
-        const travelData = await maps_service_1.default.getDistanceAndTime(restaurant.location?.coordinates || [3.3792, 6.5244], data.deliveryAddress?.coordinates || [3.3792, 6.5244]);
-        // Buffer for food preparation (e.g., 20 mins)
+        const isPickup = data.orderType === 'pickup';
+        // 1. Resolve and Validate Coordinates
+        const restCoords = restaurant.location?.coordinates;
+        if (!restCoords || restCoords.length < 2) {
+            throw new appError_1.default('Restaurant location coordinates are not configured.', 400);
+        }
+        let customerCoords = data.deliveryAddress?.coordinates;
+        const isInvalidCoords = !customerCoords || customerCoords.length < 2 || (customerCoords[0] === 0 && customerCoords[1] === 0);
+        if (isInvalidCoords && !isPickup) {
+            // Attempt server-side geocoding from text address if coordinates are missing
+            const addressString = data.deliveryAddress?.address || data.deliveryAddress?.street || '';
+            if (addressString.trim()) {
+                const geocoded = await maps_service_1.default.geocodeAddress(addressString);
+                if (geocoded && geocoded.length >= 2) {
+                    customerCoords = [geocoded[0], geocoded[1]];
+                    if (data.deliveryAddress) {
+                        data.deliveryAddress.coordinates = customerCoords;
+                    }
+                }
+            }
+        }
+        if (!isPickup && (!customerCoords || customerCoords.length < 2 || (customerCoords[0] === 0 && customerCoords[1] === 0))) {
+            throw new appError_1.default('Valid delivery location coordinates are required. Please select your address on the map.', 400);
+        }
+        // 2. Fetch platform settings for fees & thresholds
+        const setting = await setting_model_1.default.findOne();
+        const maxRadius = restaurant.deliveryRadius || setting?.maxDeliveryDistance || 15;
+        const baseFee = setting?.deliveryBaseFee ?? 500;
+        const feePerKm = setting?.deliveryFeePerKm ?? 100;
+        const serviceFee = setting?.serviceFee ?? 170;
+        // 3. Server-side validation of items & price recalculation against FoodItem collection
+        if (!data.items || data.items.length === 0) {
+            throw new appError_1.default('Order must contain at least one item', 400);
+        }
+        const itemIds = data.items.map(item => item.foodItem);
+        const dbFoodItems = await foodItem_model_1.default.find({ _id: { $in: itemIds } });
+        const foodMap = new Map(dbFoodItems.map(f => [f._id.toString(), f]));
+        let computedFoodSubtotal = 0;
+        const validatedItems = [];
+        for (const item of data.items) {
+            const foodIdStr = item.foodItem?._id ? item.foodItem._id.toString() : item.foodItem?.toString();
+            const food = foodMap.get(foodIdStr);
+            if (!food) {
+                throw new appError_1.default(`Food item not found or unavailable: ${item.name || foodIdStr}`, 404);
+            }
+            if (food.restaurant.toString() !== restaurant._id.toString()) {
+                throw new appError_1.default(`Item "${food.name}" does not belong to ${restaurant.name}`, 400);
+            }
+            if (!food.isAvailable) {
+                throw new appError_1.default(`Item "${food.name}" is currently sold out or unavailable`, 400);
+            }
+            const qty = Math.max(1, Number(item.quantity) || 1);
+            const verifiedPrice = Number(food.price);
+            computedFoodSubtotal += verifiedPrice * qty;
+            validatedItems.push({
+                foodItem: food._id,
+                name: food.name,
+                price: verifiedPrice,
+                quantity: qty,
+                image: food.image || item.image || '',
+            });
+        }
+        data.items = validatedItems;
+        data.grossAmount = computedFoodSubtotal;
+        let finalDistKm = 0;
         const prepTimeInSeconds = 20 * 60;
-        const totalTimeInSeconds = (travelData.durationValue || 0) + prepTimeInSeconds;
+        let totalTimeInSeconds = prepTimeInSeconds;
+        if (!isPickup && customerCoords) {
+            // Calculate travel distance and duration
+            const travelData = await maps_service_1.default.getDistanceAndTime([restCoords[0], restCoords[1]], [customerCoords[0], customerCoords[1]]);
+            const haversineDistKm = this.calculateHaversineDistanceKm(restCoords[1], restCoords[0], customerCoords[1], customerCoords[0]);
+            const travelDistKm = travelData.distanceValue ? (travelData.distanceValue / 1000) : haversineDistKm;
+            finalDistKm = Number((travelDistKm || haversineDistKm).toFixed(2));
+            // Guard: Check if delivery exceeds restaurant delivery radius
+            if (finalDistKm > maxRadius) {
+                throw new appError_1.default(`Delivery address is outside the maximum delivery radius for ${restaurant.name} (${finalDistKm.toFixed(1)} km > ${maxRadius} km max). Please select an outlet closer to your location.`, 400);
+            }
+            totalTimeInSeconds = (travelData.durationValue || Math.round(finalDistKm * 3 * 60)) + prepTimeInSeconds;
+            // Dynamic distance-based delivery fee calculation (enforced server-side)
+            data.deliveryFee = Math.round(baseFee + (finalDistKm * feePerKm));
+            data.distanceKm = finalDistKm;
+        }
+        else {
+            data.deliveryFee = 0;
+            data.distanceKm = 0;
+        }
+        data.serviceFee = serviceFee;
+        data.totalAmount = computedFoodSubtotal + (data.deliveryFee || 0) + (data.serviceFee || 0) + (Number(data.tipAmount) || 0);
         data.estimatedDeliveryTime = new Date(Date.now() + totalTimeInSeconds * 1000);
         // Auto-generate unique 4-digit Delivery Verification PIN if not provided
         if (!data.deliveryPin) {
@@ -453,9 +538,17 @@ class OrderService {
             .populate('customer', 'name phoneNumber email profileImage')
             .populate('items.foodItem', 'name price image')
             .sort({ createdAt: -1 });
-        // If rider coordinates provided, sort jobs by closest distance first
+        // If rider coordinates provided, filter to nearby jobs (max 25km pickup radius) and sort closest first
         if (riderLat && riderLng && orders.length > 0) {
-            return orders.sort((a, b) => {
+            const MAX_PICKUP_SEARCH_RADIUS_KM = 25;
+            const nearbyOrders = orders.filter((o) => {
+                const coords = o.restaurant?.location?.coordinates;
+                if (!coords || coords.length < 2)
+                    return true;
+                const dist = this.calculateHaversineDistanceKm(riderLat, riderLng, coords[1], coords[0]);
+                return dist <= MAX_PICKUP_SEARCH_RADIUS_KM;
+            });
+            return nearbyOrders.sort((a, b) => {
                 const coordsA = a.restaurant?.location?.coordinates;
                 const coordsB = b.restaurant?.location?.coordinates;
                 const distA = coordsA?.length >= 2 ? this.calculateHaversineDistanceKm(riderLat, riderLng, coordsA[1], coordsA[0]) : 9999;
@@ -498,6 +591,33 @@ class OrderService {
         }, { rider: riderId, status: order_model_1.OrderStatus.COURIER_ASSIGNED }, { returnDocument: 'after' }).populate('customer restaurant rider');
         if (!order) {
             throw new appError_1.default('This delivery is no longer available or has already been accepted by another courier.', 400);
+        }
+        // Double-check race condition: if concurrent assignment happened across multiple requests, rollback
+        const riderActiveDeliveries = await order_model_1.default.find({
+            rider: riderId,
+            status: {
+                $in: [
+                    order_model_1.OrderStatus.COURIER_ASSIGNED,
+                    order_model_1.OrderStatus.COURIER_COLLECTED,
+                    order_model_1.OrderStatus.OUT_FOR_DELIVERY,
+                ],
+            },
+        });
+        const activeBatchKeys = new Set(riderActiveDeliveries.map(o => o.batchGroupId || o._id.toString()));
+        if (activeBatchKeys.size > 1) {
+            await order_model_1.default.findByIdAndUpdate(orderId, {
+                $unset: { rider: 1 },
+                status: order_model_1.OrderStatus.READY_FOR_COLLECTION,
+            });
+            throw new appError_1.default('You already have an ongoing delivery in progress. Please complete your current delivery before accepting another.', 400);
+        }
+        // 3. Batched Pickup Assignment: if this order is part of a batched multi-outlet group, link sibling orders to the same courier
+        if (order.batchGroupId && order.isBatchedDelivery) {
+            await order_model_1.default.updateMany({
+                batchGroupId: order.batchGroupId,
+                rider: null,
+                _id: { $ne: order._id },
+            }, { rider: riderId, status: order_model_1.OrderStatus.COURIER_ASSIGNED });
         }
         if (order) {
             // Process courier pending earnings
@@ -650,6 +770,200 @@ class OrderService {
         // Transition order status to DELIVERED through existing pipeline (notifies customer & triggers settlements)
         const updatedOrder = await this.updateOrderStatus(orderId, order_model_1.OrderStatus.DELIVERED, userId, role);
         return updatedOrder || order;
+    }
+    /**
+     * Calculate real-time fee quote for single or multi-outlet carts
+     */
+    async quoteCheckoutFees(params) {
+        const { outlets, deliveryCoordinates, deliveryAddressText, isPickup } = params;
+        const setting = await setting_model_1.default.findOne();
+        const baseFee = setting?.deliveryBaseFee ?? 500;
+        const feePerKm = setting?.deliveryFeePerKm ?? 100;
+        const serviceFee = setting?.serviceFee ?? 170;
+        const smallOrderFee = setting?.smallOrderFee ?? 150;
+        const smallOrderThreshold = setting?.smallOrderFeeThreshold ?? 1000;
+        const batchThresholdKm = setting?.batchPickupThresholdKm ?? 3.0;
+        const multiOutletExtraStopFee = setting?.multiOutletExtraStopFee ?? 300;
+        const maxGlobalRadius = setting?.maxDeliveryDistance ?? 15;
+        if (isPickup) {
+            return {
+                isPickup: true,
+                deliveryFee: 0,
+                serviceFee: 0,
+                smallOrderFee: 0,
+                totalFees: 0,
+                routingMode: 'PICKUP',
+                outlets: outlets.map((o) => ({ ...o, deliveryFee: 0, distanceKm: 0, withinRadius: true })),
+            };
+        }
+        let customerCoords = deliveryCoordinates;
+        if ((!customerCoords || customerCoords.length < 2 || (customerCoords[0] === 0 && customerCoords[1] === 0)) && deliveryAddressText) {
+            const geocoded = await maps_service_1.default.geocodeAddress(deliveryAddressText);
+            if (geocoded && geocoded.length >= 2)
+                customerCoords = [geocoded[0], geocoded[1]];
+        }
+        if (!customerCoords || customerCoords.length < 2 || (customerCoords[0] === 0 && customerCoords[1] === 0)) {
+            throw new appError_1.default('Valid delivery coordinates or address are required to calculate delivery fees.', 400);
+        }
+        // Fetch details for all outlets
+        const restaurantDocs = await restaurant_model_1.default.find({ _id: { $in: outlets.map((o) => o.restaurantId) } });
+        const restaurantMap = new Map(restaurantDocs.map((r) => [r._id.toString(), r]));
+        const outletQuotes = [];
+        let totalSubtotal = 0;
+        for (const outletItem of outlets) {
+            totalSubtotal += (outletItem.subtotal || 0);
+            const restDoc = restaurantMap.get(outletItem.restaurantId);
+            if (!restDoc) {
+                throw new appError_1.default(`Restaurant not found: ${outletItem.restaurantId}`, 404);
+            }
+            const restCoords = restDoc.location?.coordinates;
+            if (!restCoords || restCoords.length < 2) {
+                throw new appError_1.default(`Location coordinates not configured for ${restDoc.name}`, 400);
+            }
+            const haversineDistKm = this.calculateHaversineDistanceKm(restCoords[1], restCoords[0], customerCoords[1], customerCoords[0]);
+            const maxRadius = restDoc.deliveryRadius || maxGlobalRadius;
+            const withinRadius = haversineDistKm <= maxRadius;
+            const singleTripFee = Math.round(baseFee + (haversineDistKm * feePerKm));
+            outletQuotes.push({
+                restaurantId: outletItem.restaurantId,
+                restaurantName: restDoc.name,
+                coordinates: restCoords,
+                distanceKm: Number(haversineDistKm.toFixed(2)),
+                deliveryRadius: maxRadius,
+                withinRadius,
+                singleTripFee,
+                subtotal: outletItem.subtotal,
+            });
+        }
+        // Check if any outlet is outside delivery radius
+        const outOfBounds = outletQuotes.find((o) => !o.withinRadius);
+        if (outOfBounds) {
+            throw new appError_1.default(`${outOfBounds.restaurantName} is outside your delivery radius (${outOfBounds.distanceKm} km > ${outOfBounds.deliveryRadius} km max). Please select items from an outlet closer to you.`, 400);
+        }
+        // Single outlet vs Multi-outlet routing determination
+        let routingMode = 'SINGLE_OUTLET';
+        let totalDeliveryFee = 0;
+        let outletDistanceKm = 0;
+        if (outletQuotes.length === 1) {
+            routingMode = 'SINGLE_OUTLET';
+            totalDeliveryFee = outletQuotes[0].singleTripFee;
+        }
+        else {
+            // Pairwise distance between Outlet A and Outlet B
+            const restA = outletQuotes[0];
+            const restB = outletQuotes[1];
+            outletDistanceKm = Number(this.calculateHaversineDistanceKm(restA.coordinates[1], restA.coordinates[0], restB.coordinates[1], restB.coordinates[0]).toFixed(2));
+            if (outletDistanceKm <= batchThresholdKm) {
+                // Approach 1: Single Rider (Batched Pickup)
+                routingMode = 'BATCHED_PICKUP';
+                const totalBatchedDist = outletDistanceKm + Math.max(restA.distanceKm, restB.distanceKm);
+                totalDeliveryFee = Math.round(baseFee + (totalBatchedDist * feePerKm) + multiOutletExtraStopFee);
+            }
+            else {
+                // Approach 2: Split Delivery (Multiple Riders)
+                routingMode = 'SPLIT_DELIVERY';
+                totalDeliveryFee = outletQuotes.reduce((sum, o) => sum + o.singleTripFee, 0);
+            }
+        }
+        const appliedSmallOrderFee = totalSubtotal < smallOrderThreshold ? smallOrderFee : 0;
+        const totalFees = totalDeliveryFee + serviceFee + appliedSmallOrderFee;
+        return {
+            isPickup: false,
+            routingMode,
+            outletDistanceKm,
+            batchThresholdKm,
+            totalDeliveryFee,
+            serviceFee,
+            smallOrderFee: appliedSmallOrderFee,
+            totalFees,
+            estimatedTotal: totalSubtotal + totalFees,
+            outlets: outletQuotes,
+        };
+    }
+    /**
+     * Process a multi-outlet cart checkout with Batched Pickup or Split Delivery routing
+     */
+    async processMultiOutletCheckout(payload) {
+        const { customerId, subOrders, deliveryAddress, paymentMethod, deliveryMode, deliveryTime, deliveryNotes, tipAmount, orderType } = payload;
+        if (!subOrders || subOrders.length === 0) {
+            throw new appError_1.default('No sub-orders provided for checkout', 400);
+        }
+        // If single outlet, place normal order
+        if (subOrders.length === 1) {
+            const singleOrder = await this.placeOrder({
+                customer: customerId,
+                restaurant: subOrders[0].restaurant,
+                items: subOrders[0].items,
+                totalAmount: subOrders[0].totalAmount,
+                deliveryAddress,
+                paymentMethod,
+                deliveryMode,
+                deliveryTime,
+                deliveryNotes,
+                tipAmount: tipAmount || 0,
+                orderType: orderType || 'delivery',
+            });
+            return {
+                routingMode: 'SINGLE_OUTLET',
+                orders: [singleOrder],
+                totalCharged: singleOrder.totalAmount,
+                totalDeliveryFee: singleOrder.deliveryFee || 0,
+            };
+        }
+        // Multi-outlet checkout: Quote fees and determine routing mode
+        const quote = await this.quoteCheckoutFees({
+            outlets: subOrders.map((o) => ({
+                restaurantId: o.restaurant,
+                subtotal: o.totalAmount,
+                itemCount: o.items.length,
+            })),
+            deliveryCoordinates: deliveryAddress?.coordinates,
+            deliveryAddressText: deliveryAddress?.address || deliveryAddress?.street,
+            isPickup: orderType === 'pickup',
+        });
+        const batchGroupId = 'BATCH_' + crypto_1.default.randomBytes(6).toString('hex').toUpperCase();
+        const isBatched = quote.routingMode === 'BATCHED_PICKUP';
+        const createdOrders = [];
+        // Distribute delivery fee among sub-orders:
+        // If batched, assign full fee to first sub-order and 0 to subsequent
+        for (let i = 0; i < subOrders.length; i++) {
+            const sub = subOrders[i];
+            const assignedDeliveryFee = isBatched
+                ? (i === 0 ? (quote.totalDeliveryFee || 0) : 0)
+                : (quote.outlets[i]?.singleTripFee || 0);
+            const assignedTip = i === 0 ? (tipAmount || 0) : 0;
+            const assignedServiceFee = i === 0 ? quote.serviceFee : 0;
+            const orderData = {
+                customer: customerId,
+                restaurant: sub.restaurant,
+                items: sub.items,
+                totalAmount: sub.totalAmount + assignedDeliveryFee + assignedTip + assignedServiceFee,
+                deliveryFee: assignedDeliveryFee,
+                serviceFee: assignedServiceFee,
+                tipAmount: assignedTip,
+                distanceKm: quote.outlets[i]?.distanceKm || 0,
+                batchGroupId,
+                isBatchedDelivery: isBatched,
+                batchSequence: i + 1,
+                splitDelivery: !isBatched,
+                deliveryAddress,
+                paymentMethod,
+                deliveryMode,
+                deliveryTime,
+                deliveryNotes,
+                orderType: orderType || 'delivery',
+            };
+            const created = await this.placeOrder(orderData);
+            createdOrders.push(created);
+        }
+        const totalCharged = createdOrders.reduce((sum, o) => sum + (o.totalAmount || 0), 0);
+        return {
+            batchGroupId,
+            routingMode: quote.routingMode,
+            orders: createdOrders,
+            totalCharged,
+            totalDeliveryFee: quote.totalDeliveryFee || 0,
+        };
     }
 }
 exports.default = new OrderService();

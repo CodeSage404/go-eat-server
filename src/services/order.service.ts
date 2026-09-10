@@ -2,6 +2,7 @@ import crypto from 'crypto';
 import mongoose from 'mongoose';
 import Order, { IOrder, OrderStatus } from '../models/order.model';
 import Restaurant from '../models/restaurant.model';
+import FoodItem from '../models/foodItem.model';
 import Setting from '../models/setting.model';
 import User, { UserRole, UserStatus } from '../models/user.model';
 import { emitToUser } from '../io';
@@ -62,6 +63,50 @@ class OrderService {
     const feePerKm = setting?.deliveryFeePerKm ?? 100;
     const serviceFee = setting?.serviceFee ?? 170;
 
+    // 3. Server-side validation of items & price recalculation against FoodItem collection
+    if (!data.items || data.items.length === 0) {
+      throw new AppError('Order must contain at least one item', 400);
+    }
+
+    const itemIds = data.items.map(item => item.foodItem);
+    const dbFoodItems = await FoodItem.find({ _id: { $in: itemIds } });
+    const foodMap = new Map(dbFoodItems.map(f => [f._id.toString(), f]));
+
+    let computedFoodSubtotal = 0;
+    const validatedItems: any[] = [];
+
+    for (const item of data.items) {
+      const foodIdStr = (item.foodItem as any)?._id ? (item.foodItem as any)._id.toString() : item.foodItem?.toString();
+      const food = foodMap.get(foodIdStr);
+
+      if (!food) {
+        throw new AppError(`Food item not found or unavailable: ${item.name || foodIdStr}`, 404);
+      }
+
+      if (food.restaurant.toString() !== restaurant._id.toString()) {
+        throw new AppError(`Item "${food.name}" does not belong to ${restaurant.name}`, 400);
+      }
+
+      if (!food.isAvailable) {
+        throw new AppError(`Item "${food.name}" is currently sold out or unavailable`, 400);
+      }
+
+      const qty = Math.max(1, Number(item.quantity) || 1);
+      const verifiedPrice = Number(food.price);
+      computedFoodSubtotal += verifiedPrice * qty;
+
+      validatedItems.push({
+        foodItem: food._id,
+        name: food.name,
+        price: verifiedPrice,
+        quantity: qty,
+        image: food.image || item.image || '',
+      });
+    }
+
+    data.items = validatedItems;
+    data.grossAmount = computedFoodSubtotal;
+
     let finalDistKm = 0;
     const prepTimeInSeconds = 20 * 60;
     let totalTimeInSeconds = prepTimeInSeconds;
@@ -91,10 +136,8 @@ class OrderService {
 
       totalTimeInSeconds = (travelData.durationValue || Math.round(finalDistKm * 3 * 60)) + prepTimeInSeconds;
 
-      // 3. Dynamic distance-based delivery fee calculation
-      if (data.deliveryFee === undefined || data.deliveryFee === null || data.deliveryFee <= 0) {
-        data.deliveryFee = Math.round(baseFee + (finalDistKm * feePerKm));
-      }
+      // Dynamic distance-based delivery fee calculation (enforced server-side)
+      data.deliveryFee = Math.round(baseFee + (finalDistKm * feePerKm));
       data.distanceKm = finalDistKm;
     } else {
       data.deliveryFee = 0;
@@ -102,6 +145,7 @@ class OrderService {
     }
 
     data.serviceFee = serviceFee;
+    data.totalAmount = computedFoodSubtotal + (data.deliveryFee || 0) + (data.serviceFee || 0) + (Number(data.tipAmount) || 0);
     data.estimatedDeliveryTime = new Date(Date.now() + totalTimeInSeconds * 1000);
 
     // Auto-generate unique 4-digit Delivery Verification PIN if not provided
@@ -649,6 +693,30 @@ class OrderService {
     if (!order) {
       throw new AppError(
         'This delivery is no longer available or has already been accepted by another courier.',
+        400
+      );
+    }
+
+    // Double-check race condition: if concurrent assignment happened across multiple requests, rollback
+    const riderActiveDeliveries = await Order.find({
+      rider: riderId,
+      status: {
+        $in: [
+          OrderStatus.COURIER_ASSIGNED,
+          OrderStatus.COURIER_COLLECTED,
+          OrderStatus.OUT_FOR_DELIVERY,
+        ],
+      },
+    });
+
+    const activeBatchKeys = new Set(riderActiveDeliveries.map(o => o.batchGroupId || o._id.toString()));
+    if (activeBatchKeys.size > 1) {
+      await Order.findByIdAndUpdate(orderId, {
+        $unset: { rider: 1 },
+        status: OrderStatus.READY_FOR_COLLECTION,
+      });
+      throw new AppError(
+        'You already have an ongoing delivery in progress. Please complete your current delivery before accepting another.',
         400
       );
     }

@@ -1251,7 +1251,9 @@ class AdminController {
             const allowed = [
                 'appName', 'supportEmail', 'commissionRate', 'maxDeliveryDistance',
                 'maintenanceMode', 'enableNotifications', 'minOrderAmount',
-                'deliveryBaseFee', 'deliveryFeePerKm', 'defaultPaymentProvider',
+                'deliveryBaseFee', 'deliveryFeePerKm', 'serviceFee', 'smallOrderFee',
+                'smallOrderFeeThreshold', 'batchPickupThresholdKm', 'multiOutletExtraStopFee',
+                'riderBasePayout', 'riderPerKmPayout', 'defaultPaymentProvider',
                 'countryPaymentProviders'
             ];
             const update = {};

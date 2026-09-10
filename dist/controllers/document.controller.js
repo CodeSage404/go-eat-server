@@ -7,10 +7,25 @@ exports.checkExpiryDates = exports.updateDocumentStatus = exports.getOwnerDocume
 const catchAsync_1 = require("../utils/catchAsync");
 const appError_1 = __importDefault(require("../utils/appError"));
 const document_model_1 = __importDefault(require("../models/document.model"));
+const restaurant_model_1 = __importDefault(require("../models/restaurant.model"));
 exports.uploadDocument = (0, catchAsync_1.catchAsync)(async (req, res) => {
     const { documentName, documentType, expiryDate, issueDate, ownerType, ownerId, fileUrl, } = req.body;
     if (!documentName || !documentType || !ownerType || !ownerId || !fileUrl) {
         throw new appError_1.default('Please provide all required document fields', 400);
+    }
+    const user = req.user;
+    if (user && user.role !== 'admin') {
+        if (ownerType === 'user' || ownerType === 'rider') {
+            if (user._id.toString() !== ownerId) {
+                throw new appError_1.default('You do not have permission to upload documents for this user', 403);
+            }
+        }
+        else if (ownerType === 'restaurant') {
+            const restaurant = await restaurant_model_1.default.findById(ownerId);
+            if (!restaurant || restaurant.owner.toString() !== user._id.toString()) {
+                throw new appError_1.default('You do not have permission to upload documents for this restaurant', 403);
+            }
+        }
     }
     const newDoc = await document_model_1.default.create({
         documentName,
@@ -32,6 +47,20 @@ exports.uploadDocument = (0, catchAsync_1.catchAsync)(async (req, res) => {
 });
 exports.getOwnerDocuments = (0, catchAsync_1.catchAsync)(async (req, res) => {
     const { ownerType, ownerId } = req.params;
+    const user = req.user;
+    if (user && user.role !== 'admin') {
+        if (ownerType === 'user' || ownerType === 'rider') {
+            if (user._id.toString() !== ownerId) {
+                throw new appError_1.default('You do not have permission to view these documents', 403);
+            }
+        }
+        else if (ownerType === 'restaurant') {
+            const restaurant = await restaurant_model_1.default.findById(ownerId);
+            if (!restaurant || restaurant.owner.toString() !== user._id.toString()) {
+                throw new appError_1.default('You do not have permission to view these documents', 403);
+            }
+        }
+    }
     const documents = await document_model_1.default.find({
         ownerType: ownerType,
         ownerId: ownerId,

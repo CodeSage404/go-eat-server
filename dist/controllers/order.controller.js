@@ -9,6 +9,7 @@ const catchAsync_1 = require("../utils/catchAsync");
 const appError_1 = __importDefault(require("../utils/appError"));
 const order_model_1 = require("../models/order.model");
 const restaurant_model_1 = __importDefault(require("../models/restaurant.model"));
+const setting_model_1 = __importDefault(require("../models/setting.model"));
 const email_service_1 = __importDefault(require("../services/email.service"));
 const orderSchema = zod_1.z.object({
     restaurant: zod_1.z.string(),
@@ -23,11 +24,11 @@ const orderSchema = zod_1.z.object({
     totalAmount: zod_1.z.number().optional().default(0),
     deliveryFee: zod_1.z.number().optional().default(0),
     deliveryAddress: zod_1.z.object({
-        street: zod_1.z.string().optional().default('Default Street'),
-        city: zod_1.z.string().optional().default('Lagos'),
-        state: zod_1.z.string().optional().default('Lagos'),
-        zipCode: zod_1.z.string().optional().default('100001'),
-        coordinates: zod_1.z.tuple([zod_1.z.number(), zod_1.z.number()]).optional().default([3.3792, 6.5244]),
+        street: zod_1.z.string().optional(),
+        city: zod_1.z.string().optional(),
+        state: zod_1.z.string().optional(),
+        zipCode: zod_1.z.string().optional(),
+        coordinates: zod_1.z.tuple([zod_1.z.number(), zod_1.z.number()]).optional(),
         address: zod_1.z.string().optional(),
         building: zod_1.z.string().optional(),
         landmark: zod_1.z.string().optional(),
@@ -43,12 +44,12 @@ class OrderController {
             const body = req.body || {};
             const rawAddress = body.deliveryAddress || {};
             const normalizedAddress = {
-                street: rawAddress.street || rawAddress.address || 'Default Street',
-                city: rawAddress.city || 'Lagos',
-                state: rawAddress.state || 'Lagos',
-                zipCode: rawAddress.zipCode || '100001',
-                coordinates: rawAddress.coordinates || [3.3792, 6.5244],
-                address: rawAddress.address || rawAddress.street || 'Default Street',
+                street: rawAddress.street || rawAddress.address || 'Address',
+                city: rawAddress.city || '',
+                state: rawAddress.state || '',
+                zipCode: rawAddress.zipCode || '',
+                coordinates: rawAddress.coordinates,
+                address: rawAddress.address || rawAddress.street || '',
                 building: rawAddress.building || '',
                 landmark: rawAddress.landmark || '',
             };
@@ -92,7 +93,7 @@ class OrderController {
                         customerName: req.user.name,
                         total: order.totalAmount,
                         items: order.items
-                    }).catch(err => console.error('Failed to send order email:', err));
+                    }).catch((err) => console.error('Failed to send order email:', err));
                 }
                 const restaurant = await restaurant_model_1.default.findById(order.restaurant).populate('owner');
                 const vendorEmail = restaurant?.businessEmail || restaurant?.owner?.email;
@@ -103,7 +104,7 @@ class OrderController {
                         customerName: req.user.name || 'Customer',
                         total: order.totalAmount,
                         items: order.items,
-                    }, 'partners').catch(err => console.error('Failed to send vendor order email:', err));
+                    }, 'partners').catch((err) => console.error('Failed to send vendor order email:', err));
                 }
             }
             res.status(201).json({
@@ -210,6 +211,69 @@ class OrderController {
                 status: 'success',
                 message: 'Delivery verified successfully',
                 data: { order },
+            });
+        });
+        /**
+         * Calculate dynamic checkout fees (delivery fee, service fee, small order fee)
+         */
+        this.quoteFees = (0, catchAsync_1.catchAsync)(async (req, res) => {
+            const { outlets, deliveryCoordinates, deliveryAddressText, isPickup } = req.body;
+            if (!outlets || !Array.isArray(outlets) || outlets.length === 0) {
+                throw new appError_1.default('Outlets array is required for fee quotation', 400);
+            }
+            const quote = await order_service_1.default.quoteCheckoutFees({
+                outlets,
+                deliveryCoordinates,
+                deliveryAddressText,
+                isPickup: Boolean(isPickup),
+            });
+            res.status(200).json({
+                status: 'success',
+                data: quote,
+            });
+        });
+        /**
+         * Place multi-outlet checkout order(s) (Batched Pickup vs Split Delivery)
+         */
+        this.placeMultiOutletOrder = (0, catchAsync_1.catchAsync)(async (req, res) => {
+            const body = req.body || {};
+            const { subOrders, deliveryAddress, paymentMethod, deliveryMode, deliveryTime, deliveryNotes, tipAmount, orderType } = body;
+            if (!subOrders || !Array.isArray(subOrders) || subOrders.length === 0) {
+                throw new appError_1.default('subOrders array is required for multi-outlet checkout', 400);
+            }
+            const result = await order_service_1.default.processMultiOutletCheckout({
+                customerId: req.user._id,
+                subOrders,
+                deliveryAddress,
+                paymentMethod: paymentMethod || order_model_1.PaymentMethod.CARD,
+                deliveryMode,
+                deliveryTime,
+                deliveryNotes,
+                tipAmount: Number(tipAmount) || 0,
+                orderType,
+            });
+            res.status(201).json({
+                status: 'success',
+                data: result,
+            });
+        });
+        /**
+         * Get public platform fee configuration (delivery base fee, rate per km, service fee)
+         */
+        this.getPublicFees = (0, catchAsync_1.catchAsync)(async (req, res) => {
+            const setting = await setting_model_1.default.findOne();
+            res.status(200).json({
+                status: 'success',
+                data: {
+                    deliveryBaseFee: setting?.deliveryBaseFee ?? 500,
+                    deliveryFeePerKm: setting?.deliveryFeePerKm ?? 100,
+                    serviceFee: setting?.serviceFee ?? 170,
+                    smallOrderFee: setting?.smallOrderFee ?? 150,
+                    smallOrderFeeThreshold: setting?.smallOrderFeeThreshold ?? 1000,
+                    batchPickupThresholdKm: setting?.batchPickupThresholdKm ?? 3.0,
+                    multiOutletExtraStopFee: setting?.multiOutletExtraStopFee ?? 300,
+                    maxDeliveryDistance: setting?.maxDeliveryDistance ?? 15,
+                },
             });
         });
     }

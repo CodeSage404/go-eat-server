@@ -185,6 +185,19 @@ class App {
                     message: `Invalid input: ${errors.join('. ')}`
                 });
             }
+            // Handle JWT Token Errors
+            if (err.name === 'JsonWebTokenError') {
+                return res.status(401).json({
+                    status: 'fail',
+                    message: 'Invalid token. Please log in again.'
+                });
+            }
+            if (err.name === 'TokenExpiredError') {
+                return res.status(401).json({
+                    status: 'fail',
+                    message: 'Your session has expired! Please log in again.'
+                });
+            }
             const statusCode = err.statusCode || 500;
             const status = err.status || 'error';
             res.status(statusCode).json({

@@ -24,7 +24,13 @@ class PaystackModule {
      */
     async initializePayment(params) {
         const amountInKobo = Math.round(params.amount * 100);
-        if (this.secretKey.includes('placeholder') || process.env.USE_MOCK_PAYMENT === 'true') {
+        if (!this.secretKey || this.secretKey.includes('placeholder')) {
+            if (process.env.NODE_ENV === 'production') {
+                throw new appError_1.default('Paystack payment gateway is not properly configured.', 500);
+            }
+            if (process.env.USE_MOCK_PAYMENT !== 'true') {
+                throw new appError_1.default('Paystack secret key is missing or invalid in server environment.', 500);
+            }
             logger_1.default.info(`[Paystack Dev/Mock] Generating simulated authorization URL for ${params.reference}`);
             return {
                 authorizationUrl: `https://checkout.paystack.com/test_checkout?reference=${params.reference}&amount=${params.amount}`,
@@ -73,13 +79,19 @@ class PaystackModule {
      * Verify Paystack Transaction by Reference
      */
     async verifyPayment(reference) {
-        if (this.secretKey.includes('placeholder') || process.env.USE_MOCK_PAYMENT === 'true') {
-            logger_1.default.info(`[Paystack Dev/Mock] Simulating successful verification for ${reference}`);
+        if (!this.secretKey || this.secretKey.includes('placeholder')) {
+            if (process.env.NODE_ENV === 'production') {
+                throw new appError_1.default('Paystack payment gateway is not properly configured.', 500);
+            }
+            if (process.env.USE_MOCK_PAYMENT !== 'true') {
+                throw new appError_1.default('Paystack secret key is missing or invalid in server environment.', 500);
+            }
+            logger_1.default.info(`[Paystack Dev/Mock] Simulating verification for ${reference}`);
             return {
                 id: reference,
                 status: 'success',
                 reference,
-                amount: 500000,
+                amount: 0,
                 metadata: { orderId: reference.split('_')[1] },
                 customer: { email: 'dev@goeatalone.com' },
             };

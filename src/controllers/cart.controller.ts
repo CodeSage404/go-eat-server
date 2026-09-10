@@ -10,12 +10,12 @@ export const getCart = async (req: AuthRequest, res: Response) => {
       .populate('restaurant');
       
     if (!cart) {
-      return res.status(200).json({ success: true, data: null });
+      return res.status(200).json({ status: 'success', success: true, data: null });
     }
     
-    res.status(200).json({ success: true, data: cart });
+    res.status(200).json({ status: 'success', success: true, data: cart });
   } catch (error: any) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ status: 'error', success: false, message: error.message });
   }
 };
 
@@ -25,7 +25,7 @@ export const updateCart = async (req: AuthRequest, res: Response) => {
     
     if (!items || items.length === 0) {
       await Cart.findOneAndDelete({ user: req.user?._id });
-      return res.status(200).json({ success: true, data: null });
+      return res.status(200).json({ status: 'success', success: true, data: null });
     }
 
     const formattedItems = (items || []).map((item: any) => ({
@@ -47,17 +47,17 @@ export const updateCart = async (req: AuthRequest, res: Response) => {
     .populate('items.restaurant')
     .populate('restaurant');
     
-    res.status(200).json({ success: true, data: cart });
+    res.status(200).json({ status: 'success', success: true, data: cart });
   } catch (error: any) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ status: 'error', success: false, message: error.message });
   }
 };
 
 export const clearCart = async (req: AuthRequest, res: Response) => {
   try {
     await Cart.findOneAndDelete({ user: req.user?._id });
-    res.status(200).json({ success: true, data: null });
+    res.status(200).json({ status: 'success', success: true, data: null });
   } catch (error: any) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ status: 'error', success: false, message: error.message });
   }
 };
