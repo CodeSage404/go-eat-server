@@ -5,6 +5,7 @@ import { catchAsync } from '../utils/catchAsync';
 import AppError from '../utils/appError';
 import { OrderStatus, PaymentMethod } from '../models/order.model';
 import Restaurant from '../models/restaurant.model';
+import Setting from '../models/setting.model';
 import emailService from '../services/email.service';
 
 const orderSchema = z.object({
@@ -20,11 +21,11 @@ const orderSchema = z.object({
   totalAmount: z.number().optional().default(0),
   deliveryFee: z.number().optional().default(0),
   deliveryAddress: z.object({
-    street: z.string().optional().default('Default Street'),
-    city: z.string().optional().default('Lagos'),
-    state: z.string().optional().default('Lagos'),
-    zipCode: z.string().optional().default('100001'),
-    coordinates: z.tuple([z.number(), z.number()]).optional().default([3.3792, 6.5244]),
+    street: z.string().optional(),
+    city: z.string().optional(),
+    state: z.string().optional(),
+    zipCode: z.string().optional(),
+    coordinates: z.tuple([z.number(), z.number()]).optional(),
     address: z.string().optional(),
     building: z.string().optional(),
     landmark: z.string().optional(),
@@ -40,12 +41,12 @@ class OrderController {
     const body = req.body || {};
     const rawAddress = body.deliveryAddress || {};
     const normalizedAddress = {
-      street: rawAddress.street || rawAddress.address || 'Default Street',
-      city: rawAddress.city || 'Lagos',
-      state: rawAddress.state || 'Lagos',
-      zipCode: rawAddress.zipCode || '100001',
-      coordinates: rawAddress.coordinates || [3.3792, 6.5244],
-      address: rawAddress.address || rawAddress.street || 'Default Street',
+      street: rawAddress.street || rawAddress.address || 'Address',
+      city: rawAddress.city || '',
+      state: rawAddress.state || '',
+      zipCode: rawAddress.zipCode || '',
+      coordinates: rawAddress.coordinates,
+      address: rawAddress.address || rawAddress.street || '',
       building: rawAddress.building || '',
       landmark: rawAddress.landmark || '',
     };
@@ -101,7 +102,7 @@ class OrderController {
             total: order.totalAmount,
             items: order.items 
           }
-        ).catch(err => console.error('Failed to send order email:', err));
+        ).catch((err: any) => console.error('Failed to send order email:', err));
       }
 
       const restaurant = await Restaurant.findById(order.restaurant).populate<{ owner: { email: string; name: string } }>('owner');
@@ -120,7 +121,7 @@ class OrderController {
             items: order.items,
           },
           'partners'
-        ).catch(err => console.error('Failed to send vendor order email:', err));
+        ).catch((err: any) => console.error('Failed to send vendor order email:', err));
       }
     }
 
@@ -258,6 +259,77 @@ class OrderController {
       status: 'success',
       message: 'Delivery verified successfully',
       data: { order },
+    });
+  });
+
+  /**
+   * Calculate dynamic checkout fees (delivery fee, service fee, small order fee)
+   */
+  public quoteFees = catchAsync(async (req: Request, res: Response) => {
+    const { outlets, deliveryCoordinates, deliveryAddressText, isPickup } = req.body;
+    if (!outlets || !Array.isArray(outlets) || outlets.length === 0) {
+      throw new AppError('Outlets array is required for fee quotation', 400);
+    }
+
+    const quote = await orderService.quoteCheckoutFees({
+      outlets,
+      deliveryCoordinates,
+      deliveryAddressText,
+      isPickup: Boolean(isPickup),
+    });
+
+    res.status(200).json({
+      status: 'success',
+      data: quote,
+    });
+  });
+
+  /**
+   * Place multi-outlet checkout order(s) (Batched Pickup vs Split Delivery)
+   */
+  public placeMultiOutletOrder = catchAsync(async (req: any, res: Response) => {
+    const body = req.body || {};
+    const { subOrders, deliveryAddress, paymentMethod, deliveryMode, deliveryTime, deliveryNotes, tipAmount, orderType } = body;
+
+    if (!subOrders || !Array.isArray(subOrders) || subOrders.length === 0) {
+      throw new AppError('subOrders array is required for multi-outlet checkout', 400);
+    }
+
+    const result = await orderService.processMultiOutletCheckout({
+      customerId: req.user._id,
+      subOrders,
+      deliveryAddress,
+      paymentMethod: paymentMethod || PaymentMethod.CARD,
+      deliveryMode,
+      deliveryTime,
+      deliveryNotes,
+      tipAmount: Number(tipAmount) || 0,
+      orderType,
+    });
+
+    res.status(201).json({
+      status: 'success',
+      data: result,
+    });
+  });
+
+  /**
+   * Get public platform fee configuration (delivery base fee, rate per km, service fee)
+   */
+  public getPublicFees = catchAsync(async (req: Request, res: Response) => {
+    const setting = await Setting.findOne();
+    res.status(200).json({
+      status: 'success',
+      data: {
+        deliveryBaseFee: setting?.deliveryBaseFee ?? 500,
+        deliveryFeePerKm: setting?.deliveryFeePerKm ?? 100,
+        serviceFee: setting?.serviceFee ?? 170,
+        smallOrderFee: setting?.smallOrderFee ?? 150,
+        smallOrderFeeThreshold: setting?.smallOrderFeeThreshold ?? 1000,
+        batchPickupThresholdKm: setting?.batchPickupThresholdKm ?? 3.0,
+        multiOutletExtraStopFee: setting?.multiOutletExtraStopFee ?? 300,
+        maxDeliveryDistance: setting?.maxDeliveryDistance ?? 15,
+      },
     });
   });
 }

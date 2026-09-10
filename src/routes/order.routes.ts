@@ -6,6 +6,106 @@ import { pinVerificationLimiter } from '../middleware/rateLimiter';
 
 const router = Router();
 
+// Public Order Fee & Quoting Routes
+/**
+ * @openapi
+ * /api/v1/orders/fees:
+ *   get:
+ *     tags:
+ *       - Orders
+ *     summary: Get public platform fee configuration
+ *     description: Retrieve base delivery fee, per-km delivery rate, service fee, and small order thresholds set by admin.
+ *     responses:
+ *       200:
+ *         description: Platform fee parameters returned successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: success
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     deliveryBaseFee:
+ *                       type: number
+ *                       example: 500
+ *                     deliveryFeePerKm:
+ *                       type: number
+ *                       example: 100
+ *                     serviceFee:
+ *                       type: number
+ *                       example: 170
+ *                     smallOrderFee:
+ *                       type: number
+ *                       example: 150
+ *                     smallOrderFeeThreshold:
+ *                       type: number
+ *                       example: 1000
+ *                     batchPickupThresholdKm:
+ *                       type: number
+ *                       example: 3.0
+ *                     multiOutletExtraStopFee:
+ *                       type: number
+ *                       example: 300
+ *                     maxDeliveryDistance:
+ *                       type: number
+ *                       example: 15
+ */
+router.get('/fees', orderController.getPublicFees);
+
+/**
+ * @openapi
+ * /api/v1/orders/quote-fee:
+ *   post:
+ *     tags:
+ *       - Orders
+ *     summary: Quote checkout fees and determine multi-outlet routing mode
+ *     description: Calculate real-time delivery fee, service fee, and evaluate single vs. batched vs. split courier routing based on outlet locations and customer delivery coordinates.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [outlets]
+ *             properties:
+ *               outlets:
+ *                 type: array
+ *                 items:
+ *                   type: object
+ *                   required: [restaurantId, subtotal]
+ *                   properties:
+ *                     restaurantId:
+ *                       type: string
+ *                       example: 64f1a2b3c4d5e6f7a8b9c0d1
+ *                     subtotal:
+ *                       type: number
+ *                       example: 3500
+ *                     itemCount:
+ *                       type: number
+ *                       example: 2
+ *               deliveryCoordinates:
+ *                 type: array
+ *                 items:
+ *                   type: number
+ *                 example: [3.3792, 6.5244]
+ *               deliveryAddressText:
+ *                 type: string
+ *                 example: 12 Marina Street, Lagos Island
+ *               isPickup:
+ *                 type: boolean
+ *                 example: false
+ *     responses:
+ *       200:
+ *         description: Fee quote and routing mode returned successfully.
+ *       400:
+ *         description: Invalid coordinates or address outside delivery radius.
+ */
+router.post('/quote-fee', orderController.quoteFees);
+
 router.use(protect);
 
 // Customer routes
@@ -43,6 +143,59 @@ router.use(protect);
  *         description: Order placed
  */
 router.post('/', orderController.placeOrder);
+
+/**
+ * @openapi
+ * /api/v1/orders/checkout-multi:
+ *   post:
+ *     tags:
+ *       - Orders
+ *     summary: Place multi-outlet checkout orders (Batched Pickup or Split Delivery)
+ *     description: Create multiple sub-orders across different restaurants within a single checkout, automatically routed as a single-rider batched pickup or parallel split deliveries based on distance.
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [subOrders, deliveryAddress]
+ *             properties:
+ *               subOrders:
+ *                 type: array
+ *                 items:
+ *                   type: object
+ *                   required: [restaurant, items, totalAmount]
+ *                   properties:
+ *                     restaurant:
+ *                       type: string
+ *                     items:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                     totalAmount:
+ *                       type: number
+ *               deliveryAddress:
+ *                 type: object
+ *                 required: [coordinates, street]
+ *                 properties:
+ *                   street:
+ *                     type: string
+ *                   coordinates:
+ *                     type: array
+ *                     items:
+ *                       type: number
+ *               paymentMethod:
+ *                 type: string
+ *                 enum: [card, cash]
+ *     responses:
+ *       201:
+ *         description: Multi-outlet order successfully placed and routed.
+ *       400:
+ *         description: Validation error or outlet outside delivery radius.
+ */
+router.post('/checkout-multi', orderController.placeMultiOutletOrder);
 
 /**
  * @openapi

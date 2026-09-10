@@ -1,4 +1,5 @@
 import { Response } from 'express';
+import mongoose from 'mongoose';
 import UserNotification from '../models/userNotification.model';
 import { catchAsync } from '../utils/catchAsync';
 import AppError from '../utils/appError';
@@ -121,6 +122,198 @@ class NotificationController {
     res.status(200).json({
       status: 'success',
       message: 'All notifications marked as read',
+    });
+  });
+
+  /**
+   * @openapi
+   * /api/v1/notifications/{id}:
+   *   delete:
+   *     tags:
+   *       - Notifications
+   *     summary: Delete a single notification
+   *     description: Deletes an in-app notification by ID. Only the notification owner (customer, partner/vendor, or rider) can delete their own notifications.
+   *     security:
+   *       - bearerAuth: []
+   *     parameters:
+   *       - in: path
+   *         name: id
+   *         required: true
+   *         schema:
+   *           type: string
+   *         description: The notification ID
+   *     responses:
+   *       200:
+   *         description: Notification deleted successfully
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 status:
+   *                   type: string
+   *                   example: success
+   *                 message:
+   *                   type: string
+   *                   example: Notification deleted successfully
+   *                 data:
+   *                   type: "null"
+   *       400:
+   *         description: Invalid notification ID format
+   *       401:
+   *         description: Unauthorized - Authentication required
+   *       404:
+   *         description: Notification not found
+   *       500:
+   *         description: Internal server error
+   */
+  public deleteNotification = catchAsync(async (req: AuthRequest, res: Response) => {
+    const id = (Array.isArray(req.params.id) ? req.params.id[0] : req.params.id) as string;
+
+    if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+      throw new AppError('Invalid notification ID format', 400);
+    }
+
+    const notification = await UserNotification.findOneAndDelete({
+      _id: id,
+      user: req.user!._id,
+    });
+
+    if (!notification) {
+      throw new AppError('Notification not found', 404);
+    }
+
+    res.status(200).json({
+      status: 'success',
+      message: 'Notification deleted successfully',
+      data: null,
+    });
+  });
+
+  /**
+   * @openapi
+   * /api/v1/notifications/clear-all:
+   *   delete:
+   *     tags:
+   *       - Notifications
+   *     summary: Delete all notifications for the authenticated user
+   *     description: Permanently removes all in-app notifications for the logged-in user, partner, or rider.
+   *     security:
+   *       - bearerAuth: []
+   *     responses:
+   *       200:
+   *         description: All notifications cleared successfully
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 status:
+   *                   type: string
+   *                   example: success
+   *                 message:
+   *                   type: string
+   *                   example: All notifications cleared successfully
+   *                 data:
+   *                   type: object
+   *                   properties:
+   *                     deletedCount:
+   *                       type: integer
+   *                       example: 12
+   *       401:
+   *         description: Unauthorized - Authentication required
+   *       500:
+   *         description: Internal server error
+   */
+  public clearAllNotifications = catchAsync(async (req: AuthRequest, res: Response) => {
+    const result = await UserNotification.deleteMany({
+      user: req.user!._id,
+    });
+
+    res.status(200).json({
+      status: 'success',
+      message: 'All notifications cleared successfully',
+      data: {
+        deletedCount: result.deletedCount,
+      },
+    });
+  });
+
+  /**
+   * @openapi
+   * /api/v1/notifications/bulk-delete:
+   *   post:
+   *     tags:
+   *       - Notifications
+   *     summary: Delete multiple notifications by ID
+   *     description: Deletes a list of in-app notifications specified by their IDs. Only notifications owned by the authenticated user are deleted.
+   *     security:
+   *       - bearerAuth: []
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             required:
+   *               - ids
+   *             properties:
+   *               ids:
+   *                 type: array
+   *                 items:
+   *                   type: string
+   *                 description: Array of notification IDs to delete
+   *                 example: ["65f123456789abcdef012345", "65f123456789abcdef012346"]
+   *     responses:
+   *       200:
+   *         description: Notifications deleted successfully
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 status:
+   *                   type: string
+   *                   example: success
+   *                 message:
+   *                   type: string
+   *                   example: Notifications deleted successfully
+   *                 data:
+   *                   type: object
+   *                   properties:
+   *                     deletedCount:
+   *                       type: integer
+   *                       example: 2
+   *       400:
+   *         description: Invalid request body or empty IDs array
+   *       401:
+   *         description: Unauthorized - Authentication required
+   *       500:
+   *         description: Internal server error
+   */
+  public deleteBulkNotifications = catchAsync(async (req: AuthRequest, res: Response) => {
+    const { ids } = req.body;
+
+    if (!Array.isArray(ids) || ids.length === 0) {
+      throw new AppError('Please provide an array of notification IDs to delete', 400);
+    }
+
+    const validIds = ids.filter((id: string) => mongoose.Types.ObjectId.isValid(id));
+    if (validIds.length === 0) {
+      throw new AppError('No valid notification IDs provided', 400);
+    }
+
+    const result = await UserNotification.deleteMany({
+      _id: { $in: validIds },
+      user: req.user!._id,
+    });
+
+    res.status(200).json({
+      status: 'success',
+      message: 'Notifications deleted successfully',
+      data: {
+        deletedCount: result.deletedCount,
+      },
     });
   });
 

@@ -53,6 +53,12 @@ export interface IOrder extends Document {
   outletNetSettlement?: number; // e.g. 8500
   courierEarnings?: number;
   deliveryFee: number;
+  serviceFee?: number;
+  distanceKm?: number;
+  batchGroupId?: string;
+  isBatchedDelivery?: boolean;
+  batchSequence?: number;
+  splitDelivery?: boolean;
   tipAmount?: number;
   orderType?: 'delivery' | 'pickup';
   deliveryAddress: {
@@ -76,6 +82,9 @@ export interface IOrder extends Document {
   status: OrderStatus;
   estimatedPrepTime?: number; // In minutes
   estimatedDeliveryTime?: Date;
+  deliveryMode?: string;
+  deliveryTime?: string;
+  deliveryNotes?: string;
   deliveryInstructions?: string;
   deliveryPin?: string;
   deliveryPinVerified?: boolean;
@@ -141,6 +150,30 @@ const orderSchema = new Schema<IOrder>(
       type: Number,
       default: 0,
     },
+    serviceFee: {
+      type: Number,
+      default: 0,
+    },
+    distanceKm: {
+      type: Number,
+      default: 0,
+    },
+    batchGroupId: {
+      type: String,
+      index: true,
+    },
+    isBatchedDelivery: {
+      type: Boolean,
+      default: false,
+    },
+    batchSequence: {
+      type: Number,
+      default: 1,
+    },
+    splitDelivery: {
+      type: Boolean,
+      default: false,
+    },
     tipAmount: {
       type: Number,
       default: 0,
@@ -190,6 +223,18 @@ const orderSchema = new Schema<IOrder>(
     },
     estimatedDeliveryTime: {
       type: Date,
+    },
+    deliveryMode: {
+      type: String,
+      default: 'Standard',
+    },
+    deliveryTime: {
+      type: String,
+      default: 'ASAP',
+    },
+    deliveryNotes: {
+      type: String,
+      trim: true,
     },
     deliveryInstructions: {
       type: String,
