@@ -4573,3 +4573,35 @@
 2026-09-02 00:10:08 [info]: 	🔑 Fresh OTP (262022) stored in memory for +2349121059853
 2026-09-02 00:10:08 [info]: 	🔑 Fresh OTP (262022) stored in memory for 09121059853
 2026-09-02 00:10:10 [info]: 	📱 WhatsApp OTP dispatched via Twilio. SID: SM1383b7e34d84c0ba4edb8f68aed1d7fe to whatsapp:+2349121059853
+2026-09-10 10:32:04 [info]: 	⚡ Email dispatched via Brevo HTTPS API to nwafor.synthdatasolutions@gmail.com (MessageID: <202609100932.44724350815@smtp-relay.mailin.fr>)
+2026-09-10 10:32:05 [info]: 	⚡ Email dispatched via Brevo HTTPS API to nwafor.synthdatasolutions@gmail.com (MessageID: <202609100932.77339210758@smtp-relay.mailin.fr>)
+2026-09-10 10:42:56 [info]: 	🔥 Firebase Admin initialized
+2026-09-10 10:42:58 [error]: ValidationError: UserNotification validation failed: orderId: Cast to ObjectId failed for value "TEST_ORDER_123" (type string) at path "orderId", type: `NEW_ORDER` is not a valid enum value for path `type`.
+    at Document.invalidate (C:\Users\Immanuel\Desktop\EMStack\Go-Eat\server\node_modules\mongoose\lib\document.js:3444:32)
+    at model.$set (C:\Users\Immanuel\Desktop\EMStack\Go-Eat\server\node_modules\mongoose\lib\document.js:1530:12)
+    at model.$set (C:\Users\Immanuel\Desktop\EMStack\Go-Eat\server\node_modules\mongoose\lib\document.js:1170:16)
+    at model.Document (C:\Users\Immanuel\Desktop\EMStack\Go-Eat\server\node_modules\mongoose\lib\document.js:181:12)
+    at model.Model (C:\Users\Immanuel\Desktop\EMStack\Go-Eat\server\node_modules\mongoose\lib\model.js:137:12)
+    at new model (C:\Users\Immanuel\Desktop\EMStack\Go-Eat\server\node_modules\mongoose\lib\model.js:4861:15)
+    at model.create (C:\Users\Immanuel\Desktop\EMStack\Go-Eat\server\node_modules\mongoose\lib\model.js:2744:16)
+    at NotificationService.sendNotification (C:\Users\Immanuel\Desktop\EMStack\Go-Eat\server\dist\services\notification.service.js:69:73)
+    at run ([eval]:11:29)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+2026-09-10 10:43:08 [error]: 	❌ Error sending push notification:
+2026-09-10 23:52:57 [info]: 	🔥 Firebase Admin initialized
+2026-09-10 23:53:04 [error]: 	❌ Error sending push notification:
+2026-09-11 00:06:26 [info]: 	🔥 Firebase Admin initialized
+2026-09-11 00:06:35 [error]: 	❌ Error sending push notification: [messaging/invalid-payload] data must only contain string values
+2026-09-11 00:09:31 [info]: 	🔥 Firebase Admin initialized
+2026-09-11 00:09:47 [error]: ValidationError: UserNotification validation failed: orderId: Cast to ObjectId failed for value "none" (type string) at path "orderId"
+    at model.Document.invalidate (C:\Users\Immanuel\Desktop\EMStack\Go-Eat\server\node_modules\mongoose\lib\document.js:3444:32)
+    at model.$set (C:\Users\Immanuel\Desktop\EMStack\Go-Eat\server\node_modules\mongoose\lib\document.js:1530:12)
+    at model.$set (C:\Users\Immanuel\Desktop\EMStack\Go-Eat\server\node_modules\mongoose\lib\document.js:1170:16)
+    at model.Document (C:\Users\Immanuel\Desktop\EMStack\Go-Eat\server\node_modules\mongoose\lib\document.js:181:12)
+    at model.Model (C:\Users\Immanuel\Desktop\EMStack\Go-Eat\server\node_modules\mongoose\lib\model.js:137:12)
+    at new model (C:\Users\Immanuel\Desktop\EMStack\Go-Eat\server\node_modules\mongoose\lib\model.js:4861:15)
+    at model.create (C:\Users\Immanuel\Desktop\EMStack\Go-Eat\server\node_modules\mongoose\lib\model.js:2744:16)
+    at NotificationService.sendNotification (C:\Users\Immanuel\Desktop\EMStack\Go-Eat\server\src\services\notification.service.ts:37:51)
+    at main (C:\Users\Immanuel\Desktop\EMStack\Go-Eat\server\scripts\send-test-push.ts:38:31)
+    at processTicksAndRejections (node:internal/process/task_queues:103:5)
+2026-09-11 00:09:56 [error]: 	❌ Error sending push notification: [messaging/mismatched-credential] SenderId mismatch

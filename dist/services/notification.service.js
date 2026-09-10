@@ -71,7 +71,7 @@ class NotificationService {
                 title,
                 body,
                 type,
-                orderId: data.orderId || undefined,
+                orderId: (data.orderId && mongoose_1.default.Types.ObjectId.isValid(data.orderId)) ? new mongoose_1.default.Types.ObjectId(data.orderId) : undefined,
                 data,
             });
             // 2. Send via Socket.io (Real-time in-app) — include the full doc so the client can render it
@@ -129,11 +129,13 @@ class NotificationService {
                     logger_1.default.info(`📲 Expo push notification sent to user ${userId} (${user.email || user.phoneNumber}):`, expoResult);
                 }
                 else if (firebase_admin_1.default.apps?.length) {
-                    // Ensure all data values are strings for FCM specifications
+                    // Ensure all data values are strictly strings for FCM specifications
                     const stringifiedData = { click_action: 'FLUTTER_NOTIFICATION_CLICK' };
                     if (data && typeof data === 'object') {
                         for (const [k, v] of Object.entries(data)) {
-                            stringifiedData[k] = typeof v === 'string' ? v : JSON.stringify(v);
+                            if (v !== undefined && v !== null) {
+                                stringifiedData[k] = typeof v === 'string' ? v : (typeof v === 'object' ? JSON.stringify(v) : String(v));
+                            }
                         }
                     }
                     // Send via Native Firebase FCM
@@ -155,7 +157,7 @@ class NotificationService {
             }
         }
         catch (error) {
-            logger_1.default.error('❌ Error sending push notification:', error.message || error);
+            logger_1.default.error(`❌ Error sending push notification: [${error?.code || 'UNKNOWN'}] ${error?.message || error}`);
         }
     }
     /**
