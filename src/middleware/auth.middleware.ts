@@ -58,6 +58,13 @@ export const protect = catchAsync(async (req: AuthRequest, res: Response, next: 
   }
 
   req.user = currentUser;
+
+  // Real-time activity tracking (throttled to 15 min intervals to optimize DB writes)
+  const now = Date.now();
+  if (!currentUser.lastActiveAt || now - currentUser.lastActiveAt.getTime() > 15 * 60 * 1000) {
+    User.findByIdAndUpdate(currentUser._id, { lastActiveAt: new Date(now) }).catch(() => {});
+  }
+
   next();
 });
 

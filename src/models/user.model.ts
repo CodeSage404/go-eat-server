@@ -58,6 +58,26 @@ export interface IUser extends Document {
   adminRegion?: string;
   hasChangedPassword?: boolean;
   passwordChangedAt?: Date;
+  lastLoginAt?: Date;
+  lastActiveAt?: Date;
+  lastLoginDevice?: {
+    deviceId?: string;
+    deviceName?: string;
+    platform?: string;
+    userAgent?: string;
+    ipAddress?: string;
+    loggedInAt: Date;
+  };
+  knownDevices?: Array<{
+    deviceId?: string;
+    deviceName?: string;
+    platform?: string;
+    userAgent?: string;
+    ipAddress?: string;
+    firstSeenAt: Date;
+    lastSeenAt: Date;
+  }>;
+  lastInactivityAlertAt?: Date;
   createdAt: Date;
   updatedAt: Date;
   comparePassword(password: string): Promise<boolean>;
@@ -220,6 +240,34 @@ const userSchema = new Schema<IUser>(
     passwordChangedAt: {
       type: Date,
     },
+    lastLoginAt: {
+      type: Date,
+    },
+    lastActiveAt: {
+      type: Date,
+    },
+    lastLoginDevice: {
+      deviceId: { type: String, trim: true },
+      deviceName: { type: String, trim: true },
+      platform: { type: String, trim: true },
+      userAgent: { type: String, trim: true },
+      ipAddress: { type: String, trim: true },
+      loggedInAt: { type: Date },
+    },
+    knownDevices: [
+      {
+        deviceId: { type: String, trim: true },
+        deviceName: { type: String, trim: true },
+        platform: { type: String, trim: true },
+        userAgent: { type: String, trim: true },
+        ipAddress: { type: String, trim: true },
+        firstSeenAt: { type: Date, default: Date.now },
+        lastSeenAt: { type: Date, default: Date.now },
+      },
+    ],
+    lastInactivityAlertAt: {
+      type: Date,
+    },
   },
   {
     timestamps: true,
@@ -267,6 +315,8 @@ userSchema.index({ country: 1 });
 userSchema.index({ isNigeria: 1 });
 userSchema.index({ isItaly: 1 });
 userSchema.index({ isUk: 1 });
+userSchema.index({ lastActiveAt: 1 });
+userSchema.index({ lastInactivityAlertAt: 1 });
 
 const User = mongoose.model<IUser>('User', userSchema);
 

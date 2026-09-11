@@ -4,6 +4,8 @@ import AppError from '../utils/appError';
 import logger from '../utils/logger';
 import { OAuth2Client } from 'google-auth-library';
 import appleSignin from 'apple-signin-auth';
+import emailService from './email.service';
+import activityService, { DeviceInfo } from './activity.service';
 
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
@@ -93,7 +95,12 @@ class AuthService {
     return this.createVerifiedUser(userData);
   }
 
-  public async login(identifier: string, password: string): Promise<{ user: IUser; token: string }> {
+  public async login(
+    identifier: string,
+    password: string,
+    expectedRole?: UserRole | string,
+    deviceInfo?: DeviceInfo
+  ): Promise<{ user: IUser; token: string }> {
     if (!identifier || !password) {
       throw new AppError('Please provide email/phone and password', 400);
     }
@@ -144,11 +151,95 @@ class AuthService {
       throw new AppError('Incorrect email/phone or password', 401);
     }
 
-    const token = this.signToken(user._id as unknown as string);
+    // 🔒 Role Enforcement: Prevent cross-role account access (e.g. Vendor logging into Customer app)
+    if (expectedRole) {
+      const normalizedExpected = expectedRole.toLowerCase();
+      const userRole = user.role.toLowerCase();
 
+      let isAllowed = false;
+      if (normalizedExpected === UserRole.CUSTOMER) {
+        isAllowed = (userRole === UserRole.CUSTOMER);
+      } else if (normalizedExpected === UserRole.VENDOR) {
+        isAllowed = (userRole === UserRole.VENDOR || userRole === UserRole.STAFF || userRole === UserRole.ADMIN);
+      } else if (normalizedExpected === UserRole.RIDER) {
+        isAllowed = (userRole === UserRole.RIDER);
+      } else if (normalizedExpected === UserRole.ADMIN) {
+        isAllowed = (userRole === UserRole.ADMIN);
+      } else {
+        isAllowed = (userRole === normalizedExpected);
+      }
+
+      if (!isAllowed) {
+        const portalName = userRole === UserRole.VENDOR
+          ? 'Go-Eat Partner / Vendor'
+          : userRole === UserRole.RIDER
+          ? 'Go-Eat Delivery'
+          : userRole === UserRole.ADMIN
+          ? 'Go-Eat Admin'
+          : 'Go-Eat Customer';
+
+        throw new AppError(
+          `Access denied. This account is registered as a ${userRole}. Please log in using the ${portalName} application.`,
+          403
+        );
+      }
+    }
+
+    // 🛡️ Device Login Tracking & Security Alert
+    const now = new Date();
+    const cleanDevice = deviceInfo || {};
+
+    if (user.email && activityService.isNewDevice(user, cleanDevice)) {
+      const deviceLabel = cleanDevice.deviceName || cleanDevice.platform || cleanDevice.userAgent || 'New Device';
+      emailService.sendNewDeviceLoginAlert(user.email, {
+        name: user.name || 'User',
+        email: user.email,
+        deviceName: deviceLabel,
+        ipAddress: cleanDevice.ipAddress || 'Undisclosed',
+        timestamp: now.toUTCString(),
+      }).catch((err: any) => logger.error(`Failed to dispatch new device login email to ${user.email}:`, err?.message || err));
+    }
+
+    // Record login metadata and real-time activity
+    user.lastLoginAt = now;
+    user.lastActiveAt = now;
+    user.lastLoginDevice = {
+      deviceId: cleanDevice.deviceId,
+      deviceName: cleanDevice.deviceName || cleanDevice.platform || 'Device',
+      platform: cleanDevice.platform,
+      userAgent: cleanDevice.userAgent,
+      ipAddress: cleanDevice.ipAddress,
+      loggedInAt: now,
+    };
+
+    const known = user.knownDevices || [];
+    const existingIndex = known.findIndex(d => {
+      if (cleanDevice.deviceId && d.deviceId) return d.deviceId === cleanDevice.deviceId;
+      if (cleanDevice.userAgent && d.userAgent) return d.userAgent === cleanDevice.userAgent;
+      return false;
+    });
+
+    if (existingIndex >= 0) {
+      known[existingIndex].lastSeenAt = now;
+      if (cleanDevice.ipAddress) known[existingIndex].ipAddress = cleanDevice.ipAddress;
+    } else {
+      known.push({
+        deviceId: cleanDevice.deviceId,
+        deviceName: cleanDevice.deviceName || cleanDevice.platform || 'Device',
+        platform: cleanDevice.platform,
+        userAgent: cleanDevice.userAgent,
+        ipAddress: cleanDevice.ipAddress,
+        firstSeenAt: now,
+        lastSeenAt: now,
+      });
+    }
+    user.knownDevices = known;
+    await user.save({ validateBeforeSave: false });
+
+    const token = this.signToken(user._id as unknown as string);
     user.password = undefined;
 
-    logger.info(`👤 User logged in: ${user.phoneNumber || user.email}`);
+    logger.info(`👤 User logged in: ${user.phoneNumber || user.email} [${user.role}] from ${cleanDevice.deviceName || 'Device'}`);
     return { user, token };
   }
 
@@ -197,8 +288,26 @@ class AuthService {
     let user = await User.findOne({ email });
 
     if (user) {
+      // 🔒 Role Enforcement on Social Login
+      if (role && user.role !== role) {
+        const portalName = user.role === UserRole.VENDOR
+          ? 'Go-Eat Partner / Vendor'
+          : user.role === UserRole.RIDER
+          ? 'Go-Eat Delivery'
+          : user.role === UserRole.ADMIN
+          ? 'Go-Eat Admin'
+          : 'Go-Eat Customer';
+
+        throw new AppError(
+          `Access denied. This account is registered as a ${user.role}. Please log in using the ${portalName} application.`,
+          403
+        );
+      }
+
       if (type === 'google' && !user.googleId) user.googleId = socialId;
       if (type === 'apple' && !user.appleId) user.appleId = socialId;
+      user.lastLoginAt = new Date();
+      user.lastActiveAt = new Date();
       await user.save();
     } else {
       user = await User.create({
@@ -208,12 +317,15 @@ class AuthService {
         googleId: type === 'google' ? socialId : undefined,
         appleId: type === 'apple' ? socialId : undefined,
         isVerified: true,
+        lastLoginAt: new Date(),
+        lastActiveAt: new Date(),
       });
     }
 
     const jwtToken = this.signToken(user._id as unknown as string);
     return { user, token: jwtToken };
   }
+
 }
 
 export default new AuthService();

@@ -12,7 +12,9 @@ export type EmailTemplateType =
   | 'VENDOR_ORDER_RECEIVED'
   | 'ORDER_PREPARING'
   | 'PASSWORD_RESET'
-  | 'WELCOME_USER';
+  | 'WELCOME_USER'
+  | 'NEW_DEVICE_LOGIN'
+  | 'INACTIVITY_REENGAGEMENT';
 
 class EmailService {
   /**
@@ -203,6 +205,40 @@ class EmailService {
   ): Promise<void> {
     const htmlContent = renderTemplate(template, data);
     await this.sendEmail(to, subject, htmlContent, senderType);
+  }
+
+  /**
+   * Sends a security alert notification when a new device logs into an account
+   */
+  public async sendNewDeviceLoginAlert(
+    email: string,
+    data: {
+      name: string;
+      email: string;
+      deviceName: string;
+      ipAddress: string;
+      timestamp: string;
+      location?: string;
+    }
+  ): Promise<void> {
+    const htmlContent = renderTemplate('NEW_DEVICE_LOGIN', data);
+    this.sendEmail(email, 'Security Alert: New device login on your Go-Eat account', htmlContent, 'secure')
+      .catch(err => logger.error(`Background new device alert email failed to ${email}:`, err?.message || err));
+  }
+
+  /**
+   * Sends a 7-day inactivity re-engagement notification
+   */
+  public async sendInactivityReengagement(
+    email: string,
+    data: {
+      name: string;
+      actionUrl?: string;
+    }
+  ): Promise<void> {
+    const htmlContent = renderTemplate('INACTIVITY_REENGAGEMENT', data);
+    this.sendEmail(email, 'We miss you at Go-Eat! 🍽️ Craving something delicious?', htmlContent, 'default')
+      .catch(err => logger.error(`Background inactivity email failed to ${email}:`, err?.message || err));
   }
 }
 

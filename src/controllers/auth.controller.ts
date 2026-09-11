@@ -327,10 +327,24 @@ class AuthController {
   });
 
   public login = catchAsync(async (req: Request, res: Response) => {
-    const { email, phoneNumber, password } = req.body;
+    const { email, phoneNumber, password, role, expectedRole, deviceId, deviceName, platform } = req.body;
     const identifier = email || phoneNumber;
 
-    const { user, token } = await authService.login(identifier, password);
+    const userAgent = (req.headers['user-agent'] as string) || '';
+    const rawIp = (req.headers['x-forwarded-for'] as string) || req.ip || req.socket.remoteAddress || '';
+    const ipAddress = typeof rawIp === 'string' ? rawIp.split(',')[0].trim() : '';
+
+    const deviceInfo = {
+      deviceId: deviceId || (req.headers['x-device-id'] as string),
+      deviceName: deviceName || (req.headers['x-device-name'] as string),
+      platform: platform || (req.headers['x-platform'] as string),
+      userAgent,
+      ipAddress,
+    };
+
+    const targetRole = expectedRole || role || (req.headers['x-expected-role'] as string);
+
+    const { user, token } = await authService.login(identifier, password, targetRole, deviceInfo);
 
     res.status(200).json({
       status: 'success',

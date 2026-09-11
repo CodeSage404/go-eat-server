@@ -37,6 +37,8 @@ import onboardingRoutes from './routes/onboarding.routes';
 import documentRoutes from './routes/document.routes';
 import staffRoutes from './routes/staff.routes';
 import notificationRoutes from './routes/notification.routes';
+import activityRoutes from './routes/activity.routes';
+import activityService from './services/activity.service';
 import { startKeepAlivePing } from './utils/keepAlive';
 
 import swaggerUi from 'swagger-ui-express';
@@ -64,6 +66,7 @@ class App {
     this.routes();
     this.sockets();
     this.handleErrors();
+    activityService.startInactivityCron();
   }
 
   private database(): void {
@@ -132,6 +135,7 @@ class App {
     this.app.use('/api/v1/documents', documentRoutes);
     this.app.use('/api/v1/staff', staffRoutes);
     this.app.use('/api/v1/notifications', notificationRoutes);
+    this.app.use('/api/v1/activity', activityRoutes);
 
     // Documentation Routes
     this.app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
