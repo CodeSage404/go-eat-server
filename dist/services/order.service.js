@@ -67,21 +67,29 @@ class OrderService {
         if (!restCoords || restCoords.length < 2) {
             throw new appError_1.default('Restaurant location coordinates are not configured.', 400);
         }
-        let customerCoords = data.deliveryAddress?.coordinates;
+        const rawAddress = data.deliveryAddress || {};
+        let customerCoords = rawAddress.coordinates;
         const isInvalidCoords = !customerCoords || customerCoords.length < 2 || (customerCoords[0] === 0 && customerCoords[1] === 0);
         if (isInvalidCoords && !isPickup) {
             // Attempt server-side geocoding from text address if coordinates are missing
-            const addressString = data.deliveryAddress?.address || data.deliveryAddress?.street || '';
+            const addressString = rawAddress.address || rawAddress.street || '';
             if (addressString.trim()) {
                 const geocoded = await maps_service_1.default.geocodeAddress(addressString);
                 if (geocoded && geocoded.length >= 2) {
                     customerCoords = [geocoded[0], geocoded[1]];
-                    if (data.deliveryAddress) {
-                        data.deliveryAddress.coordinates = customerCoords;
-                    }
                 }
             }
         }
+        data.deliveryAddress = {
+            street: rawAddress.street || rawAddress.address || (isPickup ? 'Self-Pickup' : 'Default Delivery Location'),
+            building: rawAddress.building || '',
+            landmark: rawAddress.landmark || '',
+            address: rawAddress.address || rawAddress.street || (isPickup ? 'Self-Pickup' : 'Default Delivery Location'),
+            city: rawAddress.city || '',
+            state: rawAddress.state || '',
+            zipCode: rawAddress.zipCode || '',
+            coordinates: customerCoords && customerCoords.length >= 2 ? customerCoords : [0, 0],
+        };
         if (!isPickup && (!customerCoords || customerCoords.length < 2 || (customerCoords[0] === 0 && customerCoords[1] === 0))) {
             throw new appError_1.default('Valid delivery location coordinates are required. Please select your address on the map.', 400);
         }
@@ -95,7 +103,7 @@ class OrderService {
         if (!data.items || data.items.length === 0) {
             throw new appError_1.default('Order must contain at least one item', 400);
         }
-        const itemIds = data.items.map(item => item.foodItem);
+        const itemIds = data.items.map(item => item.foodItem?._id || item.foodItem);
         const dbFoodItems = await foodItem_model_1.default.find({ _id: { $in: itemIds } });
         const foodMap = new Map(dbFoodItems.map(f => [f._id.toString(), f]));
         let computedFoodSubtotal = 0;
@@ -106,7 +114,9 @@ class OrderService {
             if (!food) {
                 throw new appError_1.default(`Food item not found or unavailable: ${item.name || foodIdStr}`, 404);
             }
-            if (food.restaurant.toString() !== restaurant._id.toString()) {
+            const foodRestId = food.restaurant?._id ? food.restaurant._id.toString() : food.restaurant?.toString();
+            const targetRestId = restaurant._id.toString();
+            if (foodRestId !== targetRestId) {
                 throw new appError_1.default(`Item "${food.name}" does not belong to ${restaurant.name}`, 400);
             }
             if (!food.isAvailable) {
@@ -114,13 +124,16 @@ class OrderService {
             }
             const qty = Math.max(1, Number(item.quantity) || 1);
             const verifiedPrice = Number(food.price);
-            computedFoodSubtotal += verifiedPrice * qty;
+            const addonsTotal = (item.selectedAddons || []).reduce((acc, addon) => acc + (Number(addon.price) || 0), 0);
+            const verifiedUnitPrice = verifiedPrice + addonsTotal;
+            computedFoodSubtotal += verifiedUnitPrice * qty;
             validatedItems.push({
                 foodItem: food._id,
                 name: food.name,
-                price: verifiedPrice,
+                price: verifiedUnitPrice,
                 quantity: qty,
                 image: food.image || item.image || '',
+                selectedAddons: item.selectedAddons || [],
             });
         }
         data.items = validatedItems;
@@ -163,14 +176,17 @@ class OrderService {
         const isCashOrder = order.paymentMethod?.toLowerCase() === 'cash';
         if (isCashOrder) {
             // Notify Restaurant (Vendor) via Push, Socket, and In-app
-            await notification_service_1.default.notifyNewOrder(restaurant.owner.toString(), order._id.toString());
+            if (restaurant && restaurant.owner) {
+                await notification_service_1.default.notifyNewOrder(restaurant.owner.toString(), order._id.toString());
+            }
             // Notify Customer via Push, Socket, and In-app
             if (order.customer) {
-                await notification_service_1.default.sendNotification(order.customer.toString(), `Order Placed! 🍽️`, `Your order #${shortId} from ${restaurant.name} has been placed successfully and sent to the outlet!`, { orderId: order._id.toString(), status: 'pending', type: 'ORDER_UPDATE' }, userNotification_model_1.NotificationType.ORDER_UPDATE);
+                const custId = order.customer?._id ? order.customer._id.toString() : order.customer.toString();
+                await notification_service_1.default.sendNotification(custId, `Order Placed! 🍽️`, `Your order #${shortId} from ${restaurant.name} has been placed successfully and sent to the outlet!`, { orderId: order._id.toString(), status: 'pending', type: 'ORDER_UPDATE' }, userNotification_model_1.NotificationType.ORDER_UPDATE);
                 // Send Itemized Receipt Email to Customer
                 try {
                     await order.populate('items.foodItem');
-                    const customerUser = await user_model_1.default.findById(order.customer);
+                    const customerUser = await user_model_1.default.findById(custId);
                     if (customerUser && customerUser.email && !customerUser.email.includes('customer@goeat.com')) {
                         email_service_1.default.sendTemplateEmail(customerUser.email, 'ORDER_CONFIRMED', `Order Receipt: #${shortId} from ${restaurant.name}`, {
                             orderId: order._id,
@@ -199,9 +215,9 @@ class OrderService {
         if (role === 'vendor') {
             const restaurantId = order.restaurant?._id
                 ? order.restaurant._id.toString()
-                : order.restaurant.toString();
-            const restaurant = await restaurant_model_1.default.findById(restaurantId);
-            if (!restaurant || restaurant.owner.toString() !== userId.toString()) {
+                : order.restaurant ? order.restaurant.toString() : '';
+            const restaurant = restaurantId ? await restaurant_model_1.default.findById(restaurantId) : null;
+            if (!restaurant || (restaurant.owner && restaurant.owner.toString() !== userId.toString())) {
                 throw new appError_1.default("You do not have permission to manage this outlet's orders", 403);
             }
             const allowedVendorStatuses = [
@@ -221,7 +237,7 @@ class OrderService {
         else if (role === 'rider') {
             const assignedRiderId = order.rider?._id
                 ? order.rider._id.toString()
-                : order.rider?.toString();
+                : order.rider ? order.rider.toString() : null;
             if (!assignedRiderId || assignedRiderId !== userId.toString()) {
                 throw new appError_1.default('You are not the assigned courier for this order', 403);
             }
@@ -233,8 +249,8 @@ class OrderService {
         else if (role === 'customer') {
             const customerId = order.customer?._id
                 ? order.customer._id.toString()
-                : order.customer.toString();
-            if (customerId !== userId.toString()) {
+                : order.customer ? order.customer.toString() : null;
+            if (!customerId || customerId !== userId.toString()) {
                 throw new appError_1.default('You are not authorized to manage this order', 403);
             }
             const allowedCustomerStatuses = [order_model_1.OrderStatus.CANCELLED, order_model_1.OrderStatus.CANCELLED_BY_CUSTOMER, order_model_1.OrderStatus.REJECTED];
@@ -263,10 +279,10 @@ class OrderService {
         // Extract IDs safely from potentially populated fields
         const customerId = order.customer?._id
             ? order.customer._id.toString()
-            : order.customer.toString();
+            : order.customer ? order.customer.toString() : null;
         const restaurantDoc = order.restaurant?._id
             ? order.restaurant
-            : await restaurant_model_1.default.findById(order.restaurant.toString());
+            : order.restaurant ? await restaurant_model_1.default.findById(order.restaurant.toString()) : null;
         const vendorUserId = restaurantDoc?.owner?._id
             ? restaurantDoc.owner._id.toString()
             : restaurantDoc?.owner
@@ -314,44 +330,46 @@ class OrderService {
                 : `Order #${shortId} has been cancelled.`,
         };
         // Notify Customer via Notification Service
-        await notification_service_1.default.sendNotification(customerId, customerTitles[status] || `Order Update 🛵`, customerMessages[status] || `Your order #${shortId} status is now ${status.replace('_', ' ')}.`, { orderId: order._id.toString(), status, cancelReason: effectiveCancelReason, refundAmount: order.refundAmount, estimatedPrepTime: order.estimatedPrepTime, type: 'ORDER_UPDATE' }, userNotification_model_1.NotificationType.ORDER_UPDATE);
-        // Emit Real-Time Socket Event to Customer
-        (0, io_1.emitToUser)(customerId, constants_1.SOCKET_EVENTS.ORDER_STATUS_UPDATE, {
-            orderId: order._id.toString(),
-            status,
-            cancelReason: effectiveCancelReason,
-            refundAmount: order.refundAmount,
-            estimatedPrepTime: order.estimatedPrepTime,
-            estimatedDeliveryTime: order.estimatedDeliveryTime,
-        });
-        // Also notify customer of real-time wallet refund if applicable
-        if (order.refundAmount && order.refundAmount > 0) {
-            (0, io_1.emitToUser)(customerId, 'walletBalanceUpdate', {
-                amount: order.refundAmount,
-                reason: 'order_refund',
+        if (customerId) {
+            await notification_service_1.default.sendNotification(customerId, customerTitles[status] || `Order Update 🛵`, customerMessages[status] || `Your order #${shortId} status is now ${status.replace('_', ' ')}.`, { orderId: order._id.toString(), status, cancelReason: effectiveCancelReason, refundAmount: order.refundAmount, estimatedPrepTime: order.estimatedPrepTime, type: 'ORDER_UPDATE' }, userNotification_model_1.NotificationType.ORDER_UPDATE);
+            // Emit Real-Time Socket Event to Customer
+            (0, io_1.emitToUser)(customerId, constants_1.SOCKET_EVENTS.ORDER_STATUS_UPDATE, {
                 orderId: order._id.toString(),
-            });
-        }
-        if (status === order_model_1.OrderStatus.ACCEPTED || status === order_model_1.OrderStatus.PREPARING) {
-            (0, io_1.emitToUser)(customerId, constants_1.SOCKET_EVENTS.ORDER_PREPARING, {
-                orderId: order._id.toString(),
-                status: 'preparing',
+                status,
+                cancelReason: effectiveCancelReason,
+                refundAmount: order.refundAmount,
                 estimatedPrepTime: order.estimatedPrepTime,
                 estimatedDeliveryTime: order.estimatedDeliveryTime,
             });
-            // Send Email to Customer informing them order is accepted & being prepared
-            const customerUser = order.customer?.email ? order.customer : await user_model_1.default.findById(customerId);
-            if (customerUser && customerUser.email && !customerUser.email.includes('customer@goeat.com')) {
-                email_service_1.default.sendTemplateEmail(customerUser.email, 'ORDER_PREPARING', `Order Accepted & Being Prepared! 🧑‍🍳`, {
-                    orderId: order._id,
-                    customerName: customerUser.name || 'Customer',
-                    estimatedPrepTime: order.estimatedPrepTime || 20,
-                }).catch((err) => logger_1.default.error('Failed to send order preparing email:', err));
+            // Also notify customer of real-time wallet refund if applicable
+            if (order.refundAmount && order.refundAmount > 0) {
+                (0, io_1.emitToUser)(customerId, 'walletBalanceUpdate', {
+                    amount: order.refundAmount,
+                    reason: 'order_refund',
+                    orderId: order._id.toString(),
+                });
             }
-        }
-        else if (status === order_model_1.OrderStatus.OUT_FOR_DELIVERY && order.deliveryPin) {
-            // Send separate dedicated PIN reminder notification
-            notification_service_1.default.notifyOrderDeliveryPin(customerId, order._id.toString(), order.deliveryPin).catch((err) => logger_1.default.warn('Failed to send delivery PIN push notification:', err.message));
+            if (status === order_model_1.OrderStatus.ACCEPTED || status === order_model_1.OrderStatus.PREPARING) {
+                (0, io_1.emitToUser)(customerId, constants_1.SOCKET_EVENTS.ORDER_PREPARING, {
+                    orderId: order._id.toString(),
+                    status: 'preparing',
+                    estimatedPrepTime: order.estimatedPrepTime,
+                    estimatedDeliveryTime: order.estimatedDeliveryTime,
+                });
+                // Send Email to Customer informing them order is accepted & being prepared
+                const customerUser = order.customer?.email ? order.customer : await user_model_1.default.findById(customerId);
+                if (customerUser && customerUser.email && !customerUser.email.includes('customer@goeat.com')) {
+                    email_service_1.default.sendTemplateEmail(customerUser.email, 'ORDER_PREPARING', `Order Accepted & Being Prepared! 🧑‍🍳`, {
+                        orderId: order._id,
+                        customerName: customerUser.name || 'Customer',
+                        estimatedPrepTime: order.estimatedPrepTime || 20,
+                    }).catch((err) => logger_1.default.error('Failed to send order preparing email:', err));
+                }
+            }
+            else if (status === order_model_1.OrderStatus.OUT_FOR_DELIVERY && order.deliveryPin) {
+                // Send separate dedicated PIN reminder notification
+                notification_service_1.default.notifyOrderDeliveryPin(customerId, order._id.toString(), order.deliveryPin).catch((err) => logger_1.default.warn('Failed to send delivery PIN push notification:', err.message));
+            }
         }
         // Notify Vendor/Outlet
         if (vendorUserId) {
@@ -630,28 +648,32 @@ class OrderService {
             // 1. Send Push & In-app Notification to Customer
             const customerId = order.customer?._id
                 ? order.customer._id.toString()
-                : order.customer.toString();
-            await notification_service_1.default.sendNotification(customerId, `Courier Assigned 🛵`, `${riderName} has accepted your order #${shortId} and is on their way to ${restaurantName}!`, {
-                orderId: order._id.toString(),
-                status: order_model_1.OrderStatus.COURIER_ASSIGNED,
-                type: 'RIDER_ASSIGNED',
-                rider: order.rider,
-            }, userNotification_model_1.NotificationType.ORDER_UPDATE);
-            // Emit Real-time Socket to Customer
-            (0, io_1.emitToUser)(customerId, constants_1.SOCKET_EVENTS.RIDER_ASSIGNED, order.rider);
-            // 2. Send Push & In-app Notification to Restaurant Outlet
-            if (restaurantDoc && restaurantDoc.owner) {
-                const vendorOwnerId = restaurantDoc.owner?._id
-                    ? restaurantDoc.owner._id.toString()
-                    : restaurantDoc.owner.toString();
-                await notification_service_1.default.sendNotification(vendorOwnerId, `Courier Assigned 🛵`, `${riderName} has accepted delivery for order #${shortId} and is en route for pickup.`, {
+                : order.customer?.toString?.();
+            if (customerId) {
+                await notification_service_1.default.sendNotification(customerId, `Courier Assigned 🛵`, `${riderName} has accepted your order #${shortId} and is on their way to ${restaurantName}!`, {
                     orderId: order._id.toString(),
                     status: order_model_1.OrderStatus.COURIER_ASSIGNED,
                     type: 'RIDER_ASSIGNED',
                     rider: order.rider,
                 }, userNotification_model_1.NotificationType.ORDER_UPDATE);
-                // Emit Real-time Socket to Vendor
-                (0, io_1.emitToUser)(vendorOwnerId, constants_1.SOCKET_EVENTS.RIDER_ASSIGNED, order.rider);
+                // Emit Real-time Socket to Customer
+                (0, io_1.emitToUser)(customerId, constants_1.SOCKET_EVENTS.RIDER_ASSIGNED, order.rider);
+            }
+            // 2. Send Push & In-app Notification to Restaurant Outlet
+            if (restaurantDoc && restaurantDoc.owner) {
+                const vendorOwnerId = restaurantDoc.owner?._id
+                    ? restaurantDoc.owner._id.toString()
+                    : restaurantDoc.owner?.toString?.();
+                if (vendorOwnerId) {
+                    await notification_service_1.default.sendNotification(vendorOwnerId, `Courier Assigned 🛵`, `${riderName} has accepted delivery for order #${shortId} and is en route for pickup.`, {
+                        orderId: order._id.toString(),
+                        status: order_model_1.OrderStatus.COURIER_ASSIGNED,
+                        type: 'RIDER_ASSIGNED',
+                        rider: order.rider,
+                    }, userNotification_model_1.NotificationType.ORDER_UPDATE);
+                    // Emit Real-time Socket to Vendor
+                    (0, io_1.emitToUser)(vendorOwnerId, constants_1.SOCKET_EVENTS.RIDER_ASSIGNED, order.rider);
+                }
             }
             // 3. Send Push & In-app Notification to Rider
             await notification_service_1.default.sendNotification(riderId, `Delivery Accepted! 🚀`, `You've accepted order #${shortId}. Head to ${restaurantName} to collect the order.`, {
@@ -718,14 +740,14 @@ class OrderService {
         // Role check: Only assigned rider, outlet owner, or admin can verify delivery
         const isSuperAdmin = role === 'admin' || role === 'superadmin';
         const isAssignedRider = order.rider &&
-            (order.rider._id?.toString() === userId || order.rider.toString() === userId);
+            (order.rider._id?.toString() === userId || (order.rider?.toString?.() === userId));
         let isOutletOwner = false;
-        if (role === 'vendor') {
+        if (role === 'vendor' && order.restaurant) {
             const restaurantId = order.restaurant?._id
                 ? order.restaurant._id.toString()
-                : order.restaurant.toString();
-            const restaurant = await restaurant_model_1.default.findById(restaurantId);
-            if (restaurant && restaurant.owner.toString() === userId) {
+                : order.restaurant?.toString?.();
+            const restaurant = restaurantId ? await restaurant_model_1.default.findById(restaurantId) : null;
+            if (restaurant && restaurant.owner && restaurant.owner.toString() === userId) {
                 isOutletOwner = true;
             }
         }

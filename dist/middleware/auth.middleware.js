@@ -84,6 +84,11 @@ exports.protect = (0, catchAsync_1.catchAsync)(async (req, res, next) => {
         }
     }
     req.user = currentUser;
+    // Real-time activity tracking (throttled to 15 min intervals to optimize DB writes)
+    const now = Date.now();
+    if (!currentUser.lastActiveAt || now - currentUser.lastActiveAt.getTime() > 15 * 60 * 1000) {
+        user_model_1.default.findByIdAndUpdate(currentUser._id, { lastActiveAt: new Date(now) }).catch(() => { });
+    }
     next();
 });
 exports.optionalAuth = (0, catchAsync_1.catchAsync)(async (req, res, next) => {

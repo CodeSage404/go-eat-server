@@ -42,6 +42,8 @@ const appError_1 = __importDefault(require("../utils/appError"));
 const logger_1 = __importDefault(require("../utils/logger"));
 const google_auth_library_1 = require("google-auth-library");
 const apple_signin_auth_1 = __importDefault(require("apple-signin-auth"));
+const email_service_1 = __importDefault(require("./email.service"));
+const activity_service_1 = __importDefault(require("./activity.service"));
 const googleClient = new google_auth_library_1.OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 class AuthService {
     signToken(id) {
@@ -120,7 +122,7 @@ class AuthService {
     async register(userData) {
         return this.createVerifiedUser(userData);
     }
-    async login(identifier, password) {
+    async login(identifier, password, expectedRole, deviceInfo) {
         if (!identifier || !password) {
             throw new appError_1.default('Please provide email/phone and password', 400);
         }
@@ -166,9 +168,90 @@ class AuthService {
         if (!user || !(await user.comparePassword(password))) {
             throw new appError_1.default('Incorrect email/phone or password', 401);
         }
+        // 🔒 Role Enforcement: Prevent cross-role account access (e.g. Vendor logging into Customer app)
+        if (expectedRole) {
+            const normalizedExpected = expectedRole.toLowerCase();
+            const userRole = user.role.toLowerCase();
+            let isAllowed = false;
+            if (normalizedExpected === user_model_1.UserRole.CUSTOMER) {
+                isAllowed = (userRole === user_model_1.UserRole.CUSTOMER);
+            }
+            else if (normalizedExpected === user_model_1.UserRole.VENDOR) {
+                isAllowed = (userRole === user_model_1.UserRole.VENDOR || userRole === user_model_1.UserRole.STAFF || userRole === user_model_1.UserRole.ADMIN);
+            }
+            else if (normalizedExpected === user_model_1.UserRole.RIDER) {
+                isAllowed = (userRole === user_model_1.UserRole.RIDER);
+            }
+            else if (normalizedExpected === user_model_1.UserRole.ADMIN) {
+                isAllowed = (userRole === user_model_1.UserRole.ADMIN);
+            }
+            else {
+                isAllowed = (userRole === normalizedExpected);
+            }
+            if (!isAllowed) {
+                const portalName = userRole === user_model_1.UserRole.VENDOR
+                    ? 'Go-Eat Partner / Vendor'
+                    : userRole === user_model_1.UserRole.RIDER
+                        ? 'Go-Eat Delivery'
+                        : userRole === user_model_1.UserRole.ADMIN
+                            ? 'Go-Eat Admin'
+                            : 'Go-Eat Customer';
+                throw new appError_1.default(`Access denied. This account is registered as a ${userRole}. Please log in using the ${portalName} application.`, 403);
+            }
+        }
+        // 🛡️ Device Login Tracking & Security Alert
+        const now = new Date();
+        const cleanDevice = deviceInfo || {};
+        if (user.email && activity_service_1.default.isNewDevice(user, cleanDevice)) {
+            const deviceLabel = cleanDevice.deviceName || cleanDevice.platform || cleanDevice.userAgent || 'New Device';
+            email_service_1.default.sendNewDeviceLoginAlert(user.email, {
+                name: user.name || 'User',
+                email: user.email,
+                deviceName: deviceLabel,
+                ipAddress: cleanDevice.ipAddress || 'Undisclosed',
+                timestamp: now.toUTCString(),
+            }).catch((err) => logger_1.default.error(`Failed to dispatch new device login email to ${user.email}:`, err?.message || err));
+        }
+        // Record login metadata and real-time activity
+        user.lastLoginAt = now;
+        user.lastActiveAt = now;
+        user.lastLoginDevice = {
+            deviceId: cleanDevice.deviceId,
+            deviceName: cleanDevice.deviceName || cleanDevice.platform || 'Device',
+            platform: cleanDevice.platform,
+            userAgent: cleanDevice.userAgent,
+            ipAddress: cleanDevice.ipAddress,
+            loggedInAt: now,
+        };
+        const known = user.knownDevices || [];
+        const existingIndex = known.findIndex(d => {
+            if (cleanDevice.deviceId && d.deviceId)
+                return d.deviceId === cleanDevice.deviceId;
+            if (cleanDevice.userAgent && d.userAgent)
+                return d.userAgent === cleanDevice.userAgent;
+            return false;
+        });
+        if (existingIndex >= 0) {
+            known[existingIndex].lastSeenAt = now;
+            if (cleanDevice.ipAddress)
+                known[existingIndex].ipAddress = cleanDevice.ipAddress;
+        }
+        else {
+            known.push({
+                deviceId: cleanDevice.deviceId,
+                deviceName: cleanDevice.deviceName || cleanDevice.platform || 'Device',
+                platform: cleanDevice.platform,
+                userAgent: cleanDevice.userAgent,
+                ipAddress: cleanDevice.ipAddress,
+                firstSeenAt: now,
+                lastSeenAt: now,
+            });
+        }
+        user.knownDevices = known;
+        await user.save({ validateBeforeSave: false });
         const token = this.signToken(user._id);
         user.password = undefined;
-        logger_1.default.info(`👤 User logged in: ${user.phoneNumber || user.email}`);
+        logger_1.default.info(`👤 User logged in: ${user.phoneNumber || user.email} [${user.role}] from ${cleanDevice.deviceName || 'Device'}`);
         return { user, token };
     }
     async socialLogin(type, token, role = user_model_1.UserRole.CUSTOMER) {
@@ -217,10 +300,23 @@ class AuthService {
         }
         let user = await user_model_1.default.findOne({ email });
         if (user) {
+            // 🔒 Role Enforcement on Social Login
+            if (role && user.role !== role) {
+                const portalName = user.role === user_model_1.UserRole.VENDOR
+                    ? 'Go-Eat Partner / Vendor'
+                    : user.role === user_model_1.UserRole.RIDER
+                        ? 'Go-Eat Delivery'
+                        : user.role === user_model_1.UserRole.ADMIN
+                            ? 'Go-Eat Admin'
+                            : 'Go-Eat Customer';
+                throw new appError_1.default(`Access denied. This account is registered as a ${user.role}. Please log in using the ${portalName} application.`, 403);
+            }
             if (type === 'google' && !user.googleId)
                 user.googleId = socialId;
             if (type === 'apple' && !user.appleId)
                 user.appleId = socialId;
+            user.lastLoginAt = new Date();
+            user.lastActiveAt = new Date();
             await user.save();
         }
         else {
@@ -231,6 +327,8 @@ class AuthService {
                 googleId: type === 'google' ? socialId : undefined,
                 appleId: type === 'apple' ? socialId : undefined,
                 isVerified: true,
+                lastLoginAt: new Date(),
+                lastActiveAt: new Date(),
             });
         }
         const jwtToken = this.signToken(user._id);

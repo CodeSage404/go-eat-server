@@ -83,7 +83,10 @@ export class PaymentService {
     if (!orders || orders.length === 0) throw new AppError('Order(s) not found', 404);
 
     const order = orders[0];
-    if (order.customer.toString() !== userId) {
+    const orderCustomerId = (order.customer as any)?._id
+      ? (order.customer as any)._id.toString()
+      : order.customer?.toString?.();
+    if (orderCustomerId && orderCustomerId !== userId) {
       throw new AppError('Unauthorized access to this order', 403);
     }
 
@@ -147,7 +150,8 @@ export class PaymentService {
     } else {
       // Default: Paystack
       const Restaurant = require('../models/restaurant.model').default;
-      const restaurantObj = await Restaurant.findById(order.restaurant);
+      const restaurantId = (order.restaurant as any)?._id || order.restaurant;
+      const restaurantObj = restaurantId ? await Restaurant.findById(restaurantId) : null;
       const subaccount = restaurantObj?.paystackSubaccountCode;
       
       let transactionCharge: number | undefined;
@@ -240,7 +244,8 @@ export class PaymentService {
 
           // Split logic per order
           try {
-            const restaurant = await Restaurant.findById(order.restaurant);
+            const restaurantId = (order.restaurant as any)?._id || order.restaurant;
+            const restaurant = restaurantId ? await Restaurant.findById(restaurantId) : null;
             const setting = await Setting.findOne();
             const commissionRate = setting?.commissionRate || 10;
             
@@ -248,7 +253,7 @@ export class PaymentService {
             const adminCut = (subtotal * commissionRate) / 100;
             const vendorCut = subtotal - adminCut;
             
-            if (restaurant && vendorCut > 0) {
+            if (restaurant && restaurant.owner && vendorCut > 0) {
               let vendorWallet = await Wallet.findOne({ user: restaurant.owner });
               if (!vendorWallet) {
                 vendorWallet = await Wallet.create({ user: restaurant.owner, balance: 0 });
@@ -273,14 +278,18 @@ export class PaymentService {
 
           // Send notifications upon verified payment
           try {
-            const restaurant = await Restaurant.findById(order.restaurant);
+            const restaurantId = (order.restaurant as any)?._id || order.restaurant;
+            const restaurant = restaurantId ? await Restaurant.findById(restaurantId) : null;
             const shortId = order._id.toString().slice(-6).toUpperCase();
-            if (restaurant) {
+            if (restaurant && restaurant.owner) {
               await notificationService.notifyNewOrder(restaurant.owner.toString(), order._id.toString());
             }
-            if (order.customer) {
+            const customerId = (order.customer as any)?._id
+              ? (order.customer as any)._id.toString()
+              : order.customer?.toString?.();
+            if (customerId) {
               await notificationService.sendNotification(
-                order.customer.toString(),
+                customerId,
                 `Order Placed! 🍽️`,
                 `Your payment was verified! Order #${shortId} from ${restaurant?.name || 'the outlet'} has been placed successfully and sent to the kitchen!`,
                 { orderId: order._id.toString(), status: 'pending', type: 'ORDER_UPDATE' },
@@ -294,7 +303,8 @@ export class PaymentService {
           // Send Email Receipt to Customer & Order Notification to Vendor upon successful payment
           try {
             await order.populate('items.foodItem');
-            const user = await User.findById(order.customer);
+            const customerUserId = (order.customer as any)?._id || order.customer;
+            const user = customerUserId ? await User.findById(customerUserId) : null;
             if (user && user.email && !user.email.includes('customer@goeat.com')) {
               await emailService.sendTemplateEmail(
                 user.email,
@@ -309,7 +319,8 @@ export class PaymentService {
               );
             }
 
-            const restaurant: any = await Restaurant.findById(order.restaurant).populate('owner');
+            const restaurantId = (order.restaurant as any)?._id || order.restaurant;
+            const restaurant: any = restaurantId ? await Restaurant.findById(restaurantId).populate('owner') : null;
             const vendorEmail = restaurant?.businessEmail || restaurant?.owner?.email;
 
             if (vendorEmail) {

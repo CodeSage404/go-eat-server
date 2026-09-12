@@ -260,9 +260,20 @@ class AuthController {
             });
         });
         this.login = (0, catchAsync_1.catchAsync)(async (req, res) => {
-            const { email, phoneNumber, password } = req.body;
+            const { email, phoneNumber, password, role, expectedRole, deviceId, deviceName, platform } = req.body;
             const identifier = email || phoneNumber;
-            const { user, token } = await auth_service_1.default.login(identifier, password);
+            const userAgent = req.headers['user-agent'] || '';
+            const rawIp = req.headers['x-forwarded-for'] || req.ip || req.socket.remoteAddress || '';
+            const ipAddress = typeof rawIp === 'string' ? rawIp.split(',')[0].trim() : '';
+            const deviceInfo = {
+                deviceId: deviceId || req.headers['x-device-id'],
+                deviceName: deviceName || req.headers['x-device-name'],
+                platform: platform || req.headers['x-platform'],
+                userAgent,
+                ipAddress,
+            };
+            const targetRole = expectedRole || role || req.headers['x-expected-role'];
+            const { user, token } = await auth_service_1.default.login(identifier, password, targetRole, deviceInfo);
             res.status(200).json({
                 status: 'success',
                 token,

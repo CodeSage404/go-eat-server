@@ -118,7 +118,10 @@ class PaymentService {
         if (!orders || orders.length === 0)
             throw new appError_1.default('Order(s) not found', 404);
         const order = orders[0];
-        if (order.customer.toString() !== userId) {
+        const orderCustomerId = order.customer?._id
+            ? order.customer._id.toString()
+            : order.customer?.toString?.();
+        if (orderCustomerId && orderCustomerId !== userId) {
             throw new appError_1.default('Unauthorized access to this order', 403);
         }
         const user = await user_model_1.default.findById(userId);
@@ -176,7 +179,8 @@ class PaymentService {
         else {
             // Default: Paystack
             const Restaurant = require('../models/restaurant.model').default;
-            const restaurantObj = await Restaurant.findById(order.restaurant);
+            const restaurantId = order.restaurant?._id || order.restaurant;
+            const restaurantObj = restaurantId ? await Restaurant.findById(restaurantId) : null;
             const subaccount = restaurantObj?.paystackSubaccountCode;
             let transactionCharge;
             if (subaccount) {
@@ -263,13 +267,14 @@ class PaymentService {
                     await order.save();
                     // Split logic per order
                     try {
-                        const restaurant = await restaurant_model_1.default.findById(order.restaurant);
+                        const restaurantId = order.restaurant?._id || order.restaurant;
+                        const restaurant = restaurantId ? await restaurant_model_1.default.findById(restaurantId) : null;
                         const setting = await setting_model_1.default.findOne();
                         const commissionRate = setting?.commissionRate || 10;
                         const subtotal = order.totalAmount - (order.deliveryFee || 0);
                         const adminCut = (subtotal * commissionRate) / 100;
                         const vendorCut = subtotal - adminCut;
-                        if (restaurant && vendorCut > 0) {
+                        if (restaurant && restaurant.owner && vendorCut > 0) {
                             let vendorWallet = await wallet_model_1.default.findOne({ user: restaurant.owner });
                             if (!vendorWallet) {
                                 vendorWallet = await wallet_model_1.default.create({ user: restaurant.owner, balance: 0 });
@@ -294,13 +299,17 @@ class PaymentService {
                     }
                     // Send notifications upon verified payment
                     try {
-                        const restaurant = await restaurant_model_1.default.findById(order.restaurant);
+                        const restaurantId = order.restaurant?._id || order.restaurant;
+                        const restaurant = restaurantId ? await restaurant_model_1.default.findById(restaurantId) : null;
                         const shortId = order._id.toString().slice(-6).toUpperCase();
-                        if (restaurant) {
+                        if (restaurant && restaurant.owner) {
                             await notification_service_1.default.notifyNewOrder(restaurant.owner.toString(), order._id.toString());
                         }
-                        if (order.customer) {
-                            await notification_service_1.default.sendNotification(order.customer.toString(), `Order Placed! 🍽️`, `Your payment was verified! Order #${shortId} from ${restaurant?.name || 'the outlet'} has been placed successfully and sent to the kitchen!`, { orderId: order._id.toString(), status: 'pending', type: 'ORDER_UPDATE' }, userNotification_model_1.NotificationType.ORDER_UPDATE);
+                        const customerId = order.customer?._id
+                            ? order.customer._id.toString()
+                            : order.customer?.toString?.();
+                        if (customerId) {
+                            await notification_service_1.default.sendNotification(customerId, `Order Placed! 🍽️`, `Your payment was verified! Order #${shortId} from ${restaurant?.name || 'the outlet'} has been placed successfully and sent to the kitchen!`, { orderId: order._id.toString(), status: 'pending', type: 'ORDER_UPDATE' }, userNotification_model_1.NotificationType.ORDER_UPDATE);
                         }
                     }
                     catch (notifyErr) {
@@ -309,7 +318,8 @@ class PaymentService {
                     // Send Email Receipt to Customer & Order Notification to Vendor upon successful payment
                     try {
                         await order.populate('items.foodItem');
-                        const user = await user_model_1.default.findById(order.customer);
+                        const customerUserId = order.customer?._id || order.customer;
+                        const user = customerUserId ? await user_model_1.default.findById(customerUserId) : null;
                         if (user && user.email && !user.email.includes('customer@goeat.com')) {
                             await email_service_1.default.sendTemplateEmail(user.email, 'ORDER_CONFIRMED', `Order Confirmed: #${order._id.toString().slice(-6).toUpperCase()}`, {
                                 orderId: order._id,
@@ -318,7 +328,8 @@ class PaymentService {
                                 items: order.items
                             });
                         }
-                        const restaurant = await restaurant_model_1.default.findById(order.restaurant).populate('owner');
+                        const restaurantId = order.restaurant?._id || order.restaurant;
+                        const restaurant = restaurantId ? await restaurant_model_1.default.findById(restaurantId).populate('owner') : null;
                         const vendorEmail = restaurant?.businessEmail || restaurant?.owner?.email;
                         if (vendorEmail) {
                             await email_service_1.default.sendTemplateEmail(vendorEmail, 'VENDOR_ORDER_RECEIVED', `New Order Received: #${order._id.toString().slice(-6).toUpperCase()}`, {

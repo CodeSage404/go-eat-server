@@ -237,11 +237,26 @@ router.post('/resend-otp', rateLimiter_1.otpLimiter, auth_controller_1.default.r
  *               password:
  *                 type: string
  *                 example: password123
+ *               role:
+ *                 type: string
+ *                 enum: [customer, vendor, rider, admin]
+ *                 description: Expected user role to prevent cross-portal access
+ *                 example: customer
+ *               deviceId:
+ *                 type: string
+ *                 description: Unique client device ID for security verification
+ *                 example: "dev-a8b2-44c1"
+ *               deviceName:
+ *                 type: string
+ *                 description: Name or platform of device (e.g. iPhone 15, Pixel 8)
+ *                 example: "iPhone 15 Pro"
  *     responses:
  *       200:
  *         description: Login successful
  *       401:
- *         description: Unauthorized
+ *         description: Incorrect credentials
+ *       403:
+ *         description: Forbidden - Role mismatch (e.g. Vendor trying to access Customer app)
  */
 router.post('/login', rateLimiter_1.authLimiter, auth_controller_1.default.login);
 /**

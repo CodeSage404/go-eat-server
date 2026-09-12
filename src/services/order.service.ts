@@ -35,22 +35,31 @@ class OrderService {
       throw new AppError('Restaurant location coordinates are not configured.', 400);
     }
 
-    let customerCoords = data.deliveryAddress?.coordinates;
+    const rawAddress = data.deliveryAddress || {};
+    let customerCoords = rawAddress.coordinates;
     const isInvalidCoords = !customerCoords || customerCoords.length < 2 || (customerCoords[0] === 0 && customerCoords[1] === 0);
 
     if (isInvalidCoords && !isPickup) {
       // Attempt server-side geocoding from text address if coordinates are missing
-      const addressString = data.deliveryAddress?.address || data.deliveryAddress?.street || '';
+      const addressString = rawAddress.address || rawAddress.street || '';
       if (addressString.trim()) {
         const geocoded = await mapsService.geocodeAddress(addressString);
         if (geocoded && geocoded.length >= 2) {
           customerCoords = [geocoded[0], geocoded[1]];
-          if (data.deliveryAddress) {
-            data.deliveryAddress.coordinates = customerCoords;
-          }
         }
       }
     }
+
+    data.deliveryAddress = {
+      street: rawAddress.street || rawAddress.address || (isPickup ? 'Self-Pickup' : 'Default Delivery Location'),
+      building: rawAddress.building || '',
+      landmark: rawAddress.landmark || '',
+      address: rawAddress.address || rawAddress.street || (isPickup ? 'Self-Pickup' : 'Default Delivery Location'),
+      city: rawAddress.city || '',
+      state: rawAddress.state || '',
+      zipCode: rawAddress.zipCode || '',
+      coordinates: customerCoords && customerCoords.length >= 2 ? customerCoords : [0, 0],
+    };
 
     if (!isPickup && (!customerCoords || customerCoords.length < 2 || (customerCoords[0] === 0 && customerCoords[1] === 0))) {
       throw new AppError('Valid delivery location coordinates are required. Please select your address on the map.', 400);
@@ -68,7 +77,7 @@ class OrderService {
       throw new AppError('Order must contain at least one item', 400);
     }
 
-    const itemIds = data.items.map(item => item.foodItem);
+    const itemIds = data.items.map(item => (item.foodItem as any)?._id || item.foodItem);
     const dbFoodItems = await FoodItem.find({ _id: { $in: itemIds } });
     const foodMap = new Map(dbFoodItems.map(f => [f._id.toString(), f]));
 
@@ -83,7 +92,9 @@ class OrderService {
         throw new AppError(`Food item not found or unavailable: ${item.name || foodIdStr}`, 404);
       }
 
-      if (food.restaurant.toString() !== restaurant._id.toString()) {
+      const foodRestId = (food.restaurant as any)?._id ? (food.restaurant as any)._id.toString() : food.restaurant?.toString();
+      const targetRestId = restaurant._id.toString();
+      if (foodRestId !== targetRestId) {
         throw new AppError(`Item "${food.name}" does not belong to ${restaurant.name}`, 400);
       }
 
@@ -93,14 +104,17 @@ class OrderService {
 
       const qty = Math.max(1, Number(item.quantity) || 1);
       const verifiedPrice = Number(food.price);
-      computedFoodSubtotal += verifiedPrice * qty;
+      const addonsTotal = (item.selectedAddons || []).reduce((acc: number, addon: any) => acc + (Number(addon.price) || 0), 0);
+      const verifiedUnitPrice = verifiedPrice + addonsTotal;
+      computedFoodSubtotal += verifiedUnitPrice * qty;
 
       validatedItems.push({
         foodItem: food._id,
         name: food.name,
-        price: verifiedPrice,
+        price: verifiedUnitPrice,
         quantity: qty,
         image: food.image || item.image || '',
+        selectedAddons: item.selectedAddons || [],
       });
     }
 
@@ -165,12 +179,15 @@ class OrderService {
 
     if (isCashOrder) {
       // Notify Restaurant (Vendor) via Push, Socket, and In-app
-      await notificationService.notifyNewOrder(restaurant.owner.toString(), order._id.toString());
+      if (restaurant && restaurant.owner) {
+        await notificationService.notifyNewOrder(restaurant.owner.toString(), order._id.toString());
+      }
 
       // Notify Customer via Push, Socket, and In-app
       if (order.customer) {
+        const custId = (order.customer as any)?._id ? (order.customer as any)._id.toString() : order.customer.toString();
         await notificationService.sendNotification(
-          order.customer.toString(),
+          custId,
           `Order Placed! 🍽️`,
           `Your order #${shortId} from ${restaurant.name} has been placed successfully and sent to the outlet!`,
           { orderId: order._id.toString(), status: 'pending', type: 'ORDER_UPDATE' },
@@ -180,7 +197,7 @@ class OrderService {
         // Send Itemized Receipt Email to Customer
         try {
           await order.populate('items.foodItem');
-          const customerUser = await User.findById(order.customer);
+          const customerUser = await User.findById(custId);
           if (customerUser && customerUser.email && !customerUser.email.includes('customer@goeat.com')) {
             emailService.sendTemplateEmail(
               customerUser.email,
@@ -223,10 +240,10 @@ class OrderService {
     if (role === 'vendor') {
       const restaurantId = (order.restaurant as any)?._id
         ? (order.restaurant as any)._id.toString()
-        : order.restaurant.toString();
+        : order.restaurant ? order.restaurant.toString() : '';
 
-      const restaurant = await Restaurant.findById(restaurantId);
-      if (!restaurant || restaurant.owner.toString() !== userId.toString()) {
+      const restaurant = restaurantId ? await Restaurant.findById(restaurantId) : null;
+      if (!restaurant || (restaurant.owner && restaurant.owner.toString() !== userId.toString())) {
         throw new AppError("You do not have permission to manage this outlet's orders", 403);
       }
 
@@ -246,7 +263,7 @@ class OrderService {
     } else if (role === 'rider') {
       const assignedRiderId = (order.rider as any)?._id
         ? (order.rider as any)._id.toString()
-        : order.rider?.toString();
+        : order.rider ? order.rider.toString() : null;
       if (!assignedRiderId || assignedRiderId !== userId.toString()) {
         throw new AppError('You are not the assigned courier for this order', 403);
       }
@@ -258,9 +275,9 @@ class OrderService {
     } else if (role === 'customer') {
       const customerId = (order.customer as any)?._id
         ? (order.customer as any)._id.toString()
-        : order.customer.toString();
+        : order.customer ? order.customer.toString() : null;
 
-      if (customerId !== userId.toString()) {
+      if (!customerId || customerId !== userId.toString()) {
         throw new AppError('You are not authorized to manage this order', 403);
       }
 
@@ -291,11 +308,11 @@ class OrderService {
     // Extract IDs safely from potentially populated fields
     const customerId = (order.customer as any)?._id
       ? (order.customer as any)._id.toString()
-      : order.customer.toString();
+      : order.customer ? order.customer.toString() : null;
 
     const restaurantDoc = (order.restaurant as any)?._id
       ? (order.restaurant as any)
-      : await Restaurant.findById(order.restaurant.toString());
+      : order.restaurant ? await Restaurant.findById(order.restaurant.toString()) : null;
 
     const vendorUserId = (restaurantDoc?.owner as any)?._id
       ? (restaurantDoc.owner as any)._id.toString()
@@ -350,62 +367,64 @@ class OrderService {
     };
 
     // Notify Customer via Notification Service
-    await notificationService.sendNotification(
-      customerId,
-      customerTitles[status] || `Order Update 🛵`,
-      customerMessages[status] || `Your order #${shortId} status is now ${status.replace('_', ' ')}.`,
-      { orderId: order._id.toString(), status, cancelReason: effectiveCancelReason, refundAmount: order.refundAmount, estimatedPrepTime: order.estimatedPrepTime, type: 'ORDER_UPDATE' },
-      NotificationType.ORDER_UPDATE
-    );
+    if (customerId) {
+      await notificationService.sendNotification(
+        customerId,
+        customerTitles[status] || `Order Update 🛵`,
+        customerMessages[status] || `Your order #${shortId} status is now ${status.replace('_', ' ')}.`,
+        { orderId: order._id.toString(), status, cancelReason: effectiveCancelReason, refundAmount: order.refundAmount, estimatedPrepTime: order.estimatedPrepTime, type: 'ORDER_UPDATE' },
+        NotificationType.ORDER_UPDATE
+      );
 
-    // Emit Real-Time Socket Event to Customer
-    emitToUser(customerId, SOCKET_EVENTS.ORDER_STATUS_UPDATE, {
-      orderId: order._id.toString(),
-      status,
-      cancelReason: effectiveCancelReason,
-      refundAmount: order.refundAmount,
-      estimatedPrepTime: order.estimatedPrepTime,
-      estimatedDeliveryTime: order.estimatedDeliveryTime,
-    });
-
-    // Also notify customer of real-time wallet refund if applicable
-    if (order.refundAmount && order.refundAmount > 0) {
-      emitToUser(customerId, 'walletBalanceUpdate', {
-        amount: order.refundAmount,
-        reason: 'order_refund',
+      // Emit Real-Time Socket Event to Customer
+      emitToUser(customerId, SOCKET_EVENTS.ORDER_STATUS_UPDATE, {
         orderId: order._id.toString(),
-      });
-    }
-
-    if (status === OrderStatus.ACCEPTED || status === OrderStatus.PREPARING) {
-      emitToUser(customerId, SOCKET_EVENTS.ORDER_PREPARING, {
-        orderId: order._id.toString(),
-        status: 'preparing',
+        status,
+        cancelReason: effectiveCancelReason,
+        refundAmount: order.refundAmount,
         estimatedPrepTime: order.estimatedPrepTime,
         estimatedDeliveryTime: order.estimatedDeliveryTime,
       });
 
-      // Send Email to Customer informing them order is accepted & being prepared
-      const customerUser = (order.customer as any)?.email ? (order.customer as any) : await User.findById(customerId);
-      if (customerUser && customerUser.email && !customerUser.email.includes('customer@goeat.com')) {
-        emailService.sendTemplateEmail(
-          customerUser.email,
-          'ORDER_PREPARING',
-          `Order Accepted & Being Prepared! 🧑‍🍳`,
-          {
-            orderId: order._id,
-            customerName: customerUser.name || 'Customer',
-            estimatedPrepTime: order.estimatedPrepTime || 20,
-          }
-        ).catch((err: any) => logger.error('Failed to send order preparing email:', err));
+      // Also notify customer of real-time wallet refund if applicable
+      if (order.refundAmount && order.refundAmount > 0) {
+        emitToUser(customerId, 'walletBalanceUpdate', {
+          amount: order.refundAmount,
+          reason: 'order_refund',
+          orderId: order._id.toString(),
+        });
       }
-    } else if (status === OrderStatus.OUT_FOR_DELIVERY && order.deliveryPin) {
-      // Send separate dedicated PIN reminder notification
-      notificationService.notifyOrderDeliveryPin(
-        customerId,
-        order._id.toString(),
-        order.deliveryPin
-      ).catch((err: any) => logger.warn('Failed to send delivery PIN push notification:', err.message));
+
+      if (status === OrderStatus.ACCEPTED || status === OrderStatus.PREPARING) {
+        emitToUser(customerId, SOCKET_EVENTS.ORDER_PREPARING, {
+          orderId: order._id.toString(),
+          status: 'preparing',
+          estimatedPrepTime: order.estimatedPrepTime,
+          estimatedDeliveryTime: order.estimatedDeliveryTime,
+        });
+
+        // Send Email to Customer informing them order is accepted & being prepared
+        const customerUser = (order.customer as any)?.email ? (order.customer as any) : await User.findById(customerId);
+        if (customerUser && customerUser.email && !customerUser.email.includes('customer@goeat.com')) {
+          emailService.sendTemplateEmail(
+            customerUser.email,
+            'ORDER_PREPARING',
+            `Order Accepted & Being Prepared! 🧑‍🍳`,
+            {
+              orderId: order._id,
+              customerName: customerUser.name || 'Customer',
+              estimatedPrepTime: order.estimatedPrepTime || 20,
+            }
+          ).catch((err: any) => logger.error('Failed to send order preparing email:', err));
+        }
+      } else if (status === OrderStatus.OUT_FOR_DELIVERY && order.deliveryPin) {
+        // Send separate dedicated PIN reminder notification
+        notificationService.notifyOrderDeliveryPin(
+          customerId,
+          order._id.toString(),
+          order.deliveryPin
+        ).catch((err: any) => logger.warn('Failed to send delivery PIN push notification:', err.message));
+      }
     }
 
     // Notify Vendor/Outlet
@@ -746,34 +765,13 @@ class OrderService {
       // 1. Send Push & In-app Notification to Customer
       const customerId = (order.customer as any)?._id
         ? (order.customer as any)._id.toString()
-        : order.customer.toString();
+        : order.customer?.toString?.();
 
-      await notificationService.sendNotification(
-        customerId,
-        `Courier Assigned 🛵`,
-        `${riderName} has accepted your order #${shortId} and is on their way to ${restaurantName}!`,
-        {
-          orderId: order._id.toString(),
-          status: OrderStatus.COURIER_ASSIGNED,
-          type: 'RIDER_ASSIGNED',
-          rider: order.rider,
-        },
-        NotificationType.ORDER_UPDATE
-      );
-
-      // Emit Real-time Socket to Customer
-      emitToUser(customerId, SOCKET_EVENTS.RIDER_ASSIGNED, order.rider);
-
-      // 2. Send Push & In-app Notification to Restaurant Outlet
-      if (restaurantDoc && restaurantDoc.owner) {
-        const vendorOwnerId = (restaurantDoc.owner as any)?._id
-          ? (restaurantDoc.owner as any)._id.toString()
-          : restaurantDoc.owner.toString();
-
+      if (customerId) {
         await notificationService.sendNotification(
-          vendorOwnerId,
+          customerId,
           `Courier Assigned 🛵`,
-          `${riderName} has accepted delivery for order #${shortId} and is en route for pickup.`,
+          `${riderName} has accepted your order #${shortId} and is on their way to ${restaurantName}!`,
           {
             orderId: order._id.toString(),
             status: OrderStatus.COURIER_ASSIGNED,
@@ -783,8 +781,33 @@ class OrderService {
           NotificationType.ORDER_UPDATE
         );
 
-        // Emit Real-time Socket to Vendor
-        emitToUser(vendorOwnerId, SOCKET_EVENTS.RIDER_ASSIGNED, order.rider);
+        // Emit Real-time Socket to Customer
+        emitToUser(customerId, SOCKET_EVENTS.RIDER_ASSIGNED, order.rider);
+      }
+
+      // 2. Send Push & In-app Notification to Restaurant Outlet
+      if (restaurantDoc && restaurantDoc.owner) {
+        const vendorOwnerId = (restaurantDoc.owner as any)?._id
+          ? (restaurantDoc.owner as any)._id.toString()
+          : restaurantDoc.owner?.toString?.();
+
+        if (vendorOwnerId) {
+          await notificationService.sendNotification(
+            vendorOwnerId,
+            `Courier Assigned 🛵`,
+            `${riderName} has accepted delivery for order #${shortId} and is en route for pickup.`,
+            {
+              orderId: order._id.toString(),
+              status: OrderStatus.COURIER_ASSIGNED,
+              type: 'RIDER_ASSIGNED',
+              rider: order.rider,
+            },
+            NotificationType.ORDER_UPDATE
+          );
+
+          // Emit Real-time Socket to Vendor
+          emitToUser(vendorOwnerId, SOCKET_EVENTS.RIDER_ASSIGNED, order.rider);
+        }
       }
 
       // 3. Send Push & In-app Notification to Rider
@@ -873,15 +896,15 @@ class OrderService {
     const isSuperAdmin = role === 'admin' || role === 'superadmin';
     const isAssignedRider =
       order.rider &&
-      ((order.rider as any)._id?.toString() === userId || order.rider.toString() === userId);
+      ((order.rider as any)._id?.toString() === userId || (order.rider?.toString?.() === userId));
 
     let isOutletOwner = false;
-    if (role === 'vendor') {
+    if (role === 'vendor' && order.restaurant) {
       const restaurantId = (order.restaurant as any)?._id
         ? (order.restaurant as any)._id.toString()
-        : order.restaurant.toString();
-      const restaurant = await Restaurant.findById(restaurantId);
-      if (restaurant && restaurant.owner.toString() === userId) {
+        : order.restaurant?.toString?.();
+      const restaurant = restaurantId ? await Restaurant.findById(restaurantId) : null;
+      if (restaurant && restaurant.owner && restaurant.owner.toString() === userId) {
         isOutletOwner = true;
       }
     }

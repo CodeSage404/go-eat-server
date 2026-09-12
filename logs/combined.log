@@ -4605,3 +4605,5 @@
     at main (C:\Users\Immanuel\Desktop\EMStack\Go-Eat\server\scripts\send-test-push.ts:38:31)
     at processTicksAndRejections (node:internal/process/task_queues:103:5)
 2026-09-11 00:09:56 [error]: 	❌ Error sending push notification: [messaging/mismatched-credential] SenderId mismatch
+2026-09-12 02:00:14 [info]: 	🔥 Firebase Admin initialized
+2026-09-12 02:00:44 [error]: 	❌ Error sending push notification: [messaging/registration-token-not-registered] NotRegistered

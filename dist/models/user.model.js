@@ -209,6 +209,34 @@ const userSchema = new mongoose_1.Schema({
     passwordChangedAt: {
         type: Date,
     },
+    lastLoginAt: {
+        type: Date,
+    },
+    lastActiveAt: {
+        type: Date,
+    },
+    lastLoginDevice: {
+        deviceId: { type: String, trim: true },
+        deviceName: { type: String, trim: true },
+        platform: { type: String, trim: true },
+        userAgent: { type: String, trim: true },
+        ipAddress: { type: String, trim: true },
+        loggedInAt: { type: Date },
+    },
+    knownDevices: [
+        {
+            deviceId: { type: String, trim: true },
+            deviceName: { type: String, trim: true },
+            platform: { type: String, trim: true },
+            userAgent: { type: String, trim: true },
+            ipAddress: { type: String, trim: true },
+            firstSeenAt: { type: Date, default: Date.now },
+            lastSeenAt: { type: Date, default: Date.now },
+        },
+    ],
+    lastInactivityAlertAt: {
+        type: Date,
+    },
 }, {
     timestamps: true,
 });
@@ -249,5 +277,7 @@ userSchema.index({ country: 1 });
 userSchema.index({ isNigeria: 1 });
 userSchema.index({ isItaly: 1 });
 userSchema.index({ isUk: 1 });
+userSchema.index({ lastActiveAt: 1 });
+userSchema.index({ lastInactivityAlertAt: 1 });
 const User = mongoose_1.default.model('User', userSchema);
 exports.default = User;

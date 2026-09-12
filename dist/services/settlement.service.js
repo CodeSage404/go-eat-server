@@ -73,7 +73,8 @@ class SettlementService {
             order.outletNetSettlement = breakdown.outletNetSettlement;
             order.courierEarnings = breakdown.courierEarnings;
             await order.save();
-            const restaurant = await restaurant_model_1.default.findById(order.restaurant);
+            const restaurantId = order.restaurant?._id || order.restaurant;
+            const restaurant = restaurantId ? await restaurant_model_1.default.findById(restaurantId) : null;
             if (restaurant && restaurant.owner) {
                 let wallet = await wallet_model_1.default.findOne({ user: restaurant.owner });
                 if (!wallet) {
@@ -124,7 +125,8 @@ class SettlementService {
                 return;
             }
             const breakdown = this.calculateOutletSettlement(order);
-            const restaurant = await restaurant_model_1.default.findById(order.restaurant);
+            const restaurantId = order.restaurant?._id || order.restaurant;
+            const restaurant = restaurantId ? await restaurant_model_1.default.findById(restaurantId) : null;
             // 1. Process Outlet Settlement
             if (restaurant && restaurant.owner) {
                 let wallet = await wallet_model_1.default.findOne({ user: restaurant.owner });
@@ -150,7 +152,7 @@ class SettlementService {
             if (order.rider) {
                 const riderId = order.rider?._id
                     ? order.rider._id.toString()
-                    : order.rider.toString();
+                    : order.rider?.toString?.() || String(order.rider);
                 let wallet = await wallet_model_1.default.findOne({ user: riderId });
                 if (!wallet) {
                     wallet = await wallet_model_1.default.create({ user: riderId });
@@ -200,7 +202,8 @@ class SettlementService {
             refundAmount = order.totalAmount; // Full refund to customer from outlet failure
             order.status = order_model_1.OrderStatus.CANCELLED_BY_OUTLET;
             // Reverse pending balance for outlet if accepted
-            const restaurant = await restaurant_model_1.default.findById(order.restaurant);
+            const restaurantId = order.restaurant?._id || order.restaurant;
+            const restaurant = restaurantId ? await restaurant_model_1.default.findById(restaurantId) : null;
             if (restaurant && restaurant.owner) {
                 const wallet = await wallet_model_1.default.findOne({ user: restaurant.owner });
                 if (wallet && breakdown.outletNetSettlement > 0) {
@@ -213,7 +216,7 @@ class SettlementService {
                 courierCompensation = Math.round((order.deliveryFee || 0) * 0.8); // 80% compensation for dispatched courier
                 const riderId = order.rider?._id
                     ? order.rider._id.toString()
-                    : order.rider.toString();
+                    : order.rider?.toString?.() || String(order.rider);
                 let riderWallet = await wallet_model_1.default.findOne({ user: riderId });
                 if (!riderWallet)
                     riderWallet = await wallet_model_1.default.create({ user: riderId });
@@ -235,7 +238,8 @@ class SettlementService {
             order.status = order_model_1.OrderStatus.CANCELLED_BY_CUSTOMER;
             if (effectiveStatus === order_model_1.OrderStatus.ACCEPTED) {
                 refundAmount = order.totalAmount; // Full refund if prep hasn't materially commenced
-                const restaurant = await restaurant_model_1.default.findById(order.restaurant);
+                const restaurantId = order.restaurant?._id || order.restaurant;
+                const restaurant = restaurantId ? await restaurant_model_1.default.findById(restaurantId) : null;
                 if (restaurant && restaurant.owner) {
                     const wallet = await wallet_model_1.default.findOne({ user: restaurant.owner });
                     if (wallet && breakdown.outletNetSettlement > 0) {
@@ -249,7 +253,8 @@ class SettlementService {
                 effectiveStatus === order_model_1.OrderStatus.READY_FOR_COLLECTION) {
                 // Preparation started: Customer receives partial refund; outlet cost protected
                 refundAmount = Math.round(order.totalAmount * 0.5); // 50% partial refund
-                const restaurant = await restaurant_model_1.default.findById(order.restaurant);
+                const restaurantId = order.restaurant?._id || order.restaurant;
+                const restaurant = restaurantId ? await restaurant_model_1.default.findById(restaurantId) : null;
                 if (restaurant && restaurant.owner) {
                     let wallet = await wallet_model_1.default.findOne({ user: restaurant.owner });
                     if (wallet) {
@@ -269,7 +274,7 @@ class SettlementService {
         if (order.rider && courierCompensation === 0) {
             const riderId = order.rider?._id
                 ? order.rider._id.toString()
-                : order.rider.toString();
+                : order.rider?.toString?.() || String(order.rider);
             const riderWallet = await wallet_model_1.default.findOne({ user: riderId });
             if (riderWallet && breakdown.courierEarnings > 0) {
                 riderWallet.pendingBalance = Math.max(0, riderWallet.pendingBalance - breakdown.courierEarnings);
@@ -278,11 +283,11 @@ class SettlementService {
         }
         order.refundAmount = refundAmount;
         // Credit Customer In-App Wallet for immediate refund access
-        if (refundAmount > 0) {
+        if (refundAmount > 0 && order.customer) {
             try {
                 const customerId = order.customer?._id
                     ? order.customer._id.toString()
-                    : order.customer.toString();
+                    : order.customer?.toString?.() || String(order.customer);
                 let customerWallet = await wallet_model_1.default.findOne({ user: customerId });
                 if (!customerWallet) {
                     customerWallet = await wallet_model_1.default.create({ user: customerId });

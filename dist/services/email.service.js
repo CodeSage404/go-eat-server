@@ -175,5 +175,21 @@ class EmailService {
         const htmlContent = (0, templateEngine_1.renderTemplate)(template, data);
         await this.sendEmail(to, subject, htmlContent, senderType);
     }
+    /**
+     * Sends a security alert notification when a new device logs into an account
+     */
+    async sendNewDeviceLoginAlert(email, data) {
+        const htmlContent = (0, templateEngine_1.renderTemplate)('NEW_DEVICE_LOGIN', data);
+        this.sendEmail(email, 'Security Alert: New device login on your Go-Eat account', htmlContent, 'secure')
+            .catch(err => logger_1.default.error(`Background new device alert email failed to ${email}:`, err?.message || err));
+    }
+    /**
+     * Sends a 7-day inactivity re-engagement notification
+     */
+    async sendInactivityReengagement(email, data) {
+        const htmlContent = (0, templateEngine_1.renderTemplate)('INACTIVITY_REENGAGEMENT', data);
+        this.sendEmail(email, 'We miss you at Go-Eat! 🍽️ Craving something delicious?', htmlContent, 'default')
+            .catch(err => logger_1.default.error(`Background inactivity email failed to ${email}:`, err?.message || err));
+    }
 }
 exports.default = new EmailService();

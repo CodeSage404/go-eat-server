@@ -40,6 +40,8 @@ const onboarding_routes_1 = __importDefault(require("./routes/onboarding.routes"
 const document_routes_1 = __importDefault(require("./routes/document.routes"));
 const staff_routes_1 = __importDefault(require("./routes/staff.routes"));
 const notification_routes_1 = __importDefault(require("./routes/notification.routes"));
+const activity_routes_1 = __importDefault(require("./routes/activity.routes"));
+const activity_service_1 = __importDefault(require("./services/activity.service"));
 const keepAlive_1 = require("./utils/keepAlive");
 const swagger_ui_express_1 = __importDefault(require("swagger-ui-express"));
 const swagger_1 = require("./config/swagger");
@@ -59,6 +61,7 @@ class App {
         this.routes();
         this.sockets();
         this.handleErrors();
+        activity_service_1.default.startInactivityCron();
     }
     database() {
         (0, db_1.default)();
@@ -121,6 +124,7 @@ class App {
         this.app.use('/api/v1/documents', document_routes_1.default);
         this.app.use('/api/v1/staff', staff_routes_1.default);
         this.app.use('/api/v1/notifications', notification_routes_1.default);
+        this.app.use('/api/v1/activity', activity_routes_1.default);
         // Documentation Routes
         this.app.use('/api-docs', swagger_ui_express_1.default.serve, swagger_ui_express_1.default.setup(swagger_1.swaggerSpec));
         this.app.get('/redoc', (req, res) => {
