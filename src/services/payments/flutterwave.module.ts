@@ -89,13 +89,6 @@ export class FlutterwaveModule {
         reference: params.reference,
       };
     } catch (error: any) {
-      if (process.env.NODE_ENV !== 'production') {
-        logger.warn(`[Flutterwave Dev Fallback] API error (${error.message}). Falling back to simulated checkout URL for dev testing.`);
-        return {
-          authorizationUrl: `https://checkout.flutterwave.com/v3/hosted/pay/test_checkout?reference=${params.reference}&amount=${params.amount}`,
-          reference: params.reference,
-        };
-      }
       logger.error('Flutterwave initializePayment error:', error.response?.data || error.message);
       throw new AppError(
         error.response?.data?.message || 'Flutterwave payment initialization failed',
@@ -109,21 +102,7 @@ export class FlutterwaveModule {
    */
   async verifyPayment(reference: string): Promise<any> {
     if (!this.secretKey || this.secretKey.includes('placeholder')) {
-      if (process.env.NODE_ENV === 'production') {
-        throw new AppError('Flutterwave payment gateway is not properly configured.', 500);
-      }
-      if (process.env.USE_MOCK_PAYMENT !== 'true') {
-        throw new AppError('Flutterwave secret key is missing or invalid in server environment.', 500);
-      }
-      logger.info(`[Flutterwave Dev/Mock] Simulating verification for ${reference}`);
-      return {
-        id: reference,
-        status: 'successful',
-        tx_ref: reference,
-        amount: 0,
-        meta: { orderId: reference.split('_')[1] },
-        customer: { email: 'dev@goeatalone.com' },
-      };
+      throw new AppError('Flutterwave payment gateway is not properly configured.', 500);
     }
 
     try {
@@ -134,17 +113,6 @@ export class FlutterwaveModule {
 
       return response.data.data;
     } catch (error: any) {
-      if (process.env.NODE_ENV !== 'production') {
-        logger.warn(`[Flutterwave Dev Fallback] Verification error (${error.message}). Simulating successful verification for dev testing.`);
-        return {
-          id: reference,
-          status: 'successful',
-          tx_ref: reference,
-          amount: 5000,
-          meta: { orderId: reference.split('_')[1] },
-          customer: { email: 'dev@goeatalone.com' },
-        };
-      }
       logger.error(`Flutterwave verifyPayment error for ref ${reference}:`, error.response?.data || error.message);
       throw new AppError(
         error.response?.data?.message || 'Flutterwave verification failed',

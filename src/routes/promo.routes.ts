@@ -1,9 +1,59 @@
 import { Router } from 'express';
 import promoController from '../controllers/promo.controller';
+import promoBannerController from '../controllers/promoBanner.controller';
 import { protect, restrictTo } from '../middleware/auth.middleware';
 import { UserRole } from '../models/user.model';
 
 const router = Router();
+
+/**
+ * @openapi
+ * /api/v1/promos/banner:
+ *   get:
+ *     tags:
+ *       - Promotions
+ *     summary: Get the active home screen promotional banner
+ *     description: Returns the active promotional banner configuration if enabled by the administrator.
+ *     responses:
+ *       200:
+ *         description: Active promo banner returned successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: success
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     banner:
+ *                       type: object
+ *                       nullable: true
+ *                       properties:
+ *                         _id:
+ *                           type: string
+ *                         isActive:
+ *                           type: boolean
+ *                         headline:
+ *                           type: string
+ *                         subtitle:
+ *                           type: string
+ *                         ctaText:
+ *                           type: string
+ *                         ctaLink:
+ *                           type: string
+ *                         voucherText:
+ *                           type: string
+ *                         imageUrl:
+ *                           type: string
+ *                         backgroundColor:
+ *                           type: string
+ *                         backgroundColorDark:
+ *                           type: string
+ */
+router.get('/banner', promoBannerController.getActiveBanner);
 
 router.use(protect);
 

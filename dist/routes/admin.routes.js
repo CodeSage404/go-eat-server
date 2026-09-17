@@ -5,6 +5,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
 const admin_controller_1 = __importDefault(require("../controllers/admin.controller"));
+const promoBanner_controller_1 = __importDefault(require("../controllers/promoBanner.controller"));
 const upload_1 = require("../utils/upload");
 const auth_middleware_1 = require("../middleware/auth.middleware");
 const user_model_1 = require("../models/user.model");
@@ -1048,6 +1049,55 @@ router.patch('/promos/:id/status', (0, auth_middleware_1.checkPermission)('promo
  *         description: Promo deleted
  */
 router.delete('/promos/:id', (0, auth_middleware_1.checkPermission)('promo.manage'), admin_controller_1.default.deletePromo);
+/**
+ * @openapi
+ * /api/v1/admin/promos/banner:
+ *   get:
+ *     tags:
+ *       - Admin Promos
+ *     summary: Get home screen promo banner configuration
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Promo banner configuration returned
+ *   put:
+ *     tags:
+ *       - Admin Promos
+ *     summary: Update home screen promo banner configuration & toggle active status
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               isActive:
+ *                 type: boolean
+ *               headline:
+ *                 type: string
+ *               subtitle:
+ *                 type: string
+ *               ctaText:
+ *                 type: string
+ *               ctaLink:
+ *                 type: string
+ *               voucherText:
+ *                 type: string
+ *               imageUrl:
+ *                 type: string
+ *               backgroundColor:
+ *                 type: string
+ *               backgroundColorDark:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Promo banner configuration updated
+ */
+router.get('/promos/banner', (0, auth_middleware_1.checkPermission)('promo.manage'), promoBanner_controller_1.default.getAdminBanner);
+router.put('/promos/banner', (0, auth_middleware_1.checkPermission)('promo.manage'), promoBanner_controller_1.default.updateBanner);
 /**
  * @openapi
  * /api/v1/admin/notifications:

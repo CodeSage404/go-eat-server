@@ -191,6 +191,7 @@ export class PaymentService {
    */
   async verifyPayment(reference: string, provider: PaymentProvider = 'paystack'): Promise<any> {
     let orderId: string | undefined;
+    let metaOrderIds: string | undefined;
     let paymentResult: any;
 
     if (provider.toLowerCase() === 'flutterwave') {
@@ -199,6 +200,7 @@ export class PaymentService {
         throw new AppError('Flutterwave payment was not successful', 400);
       }
       orderId = data.meta?.orderId || reference.split('_')[1];
+      metaOrderIds = data.meta?.orderIds;
       paymentResult = {
         id: data.id ? String(data.id) : reference,
         status: 'success',
@@ -212,6 +214,7 @@ export class PaymentService {
         throw new AppError('Stripe payment was not successful', 400);
       }
       orderId = data.metadata?.orderId || reference.split('_')[1];
+      metaOrderIds = data.metadata?.orderIds;
       paymentResult = {
         id: data.id ? String(data.id) : reference,
         status: 'success',
@@ -224,7 +227,7 @@ export class PaymentService {
         throw new AppError('Paystack payment was not successful', 400);
       }
       orderId = data.metadata?.orderId || reference.split('_')[1];
-      const metaOrderIds = data.metadata?.orderIds || '';
+      metaOrderIds = data.metadata?.orderIds || '';
       paymentResult = {
         id: data.id ? String(data.id) : reference,
         status: 'success',
@@ -232,125 +235,131 @@ export class PaymentService {
         email_address: data.customer?.email,
         provider: 'paystack',
       };
+    }
 
-      const orderIdList = metaOrderIds ? metaOrderIds.split(',').map((s: string) => s.trim()) : [orderId];
-      const orders = await Order.find({ _id: { $in: orderIdList } });
+    const orderIdList = metaOrderIds
+      ? metaOrderIds.split(',').map((s: string) => s.trim()).filter(Boolean)
+      : (orderId ? [orderId.trim()] : []);
 
-      for (const order of orders) {
-        if (order.paymentStatus !== 'completed') {
-          order.paymentStatus = 'completed';
-          order.paymentResult = paymentResult;
-          await order.save();
+    const orders = await Order.find({ _id: { $in: orderIdList } });
 
-          // Split logic per order
-          try {
-            const restaurantId = (order.restaurant as any)?._id || order.restaurant;
-            const restaurant = restaurantId ? await Restaurant.findById(restaurantId) : null;
-            const setting = await Setting.findOne();
-            const commissionRate = setting?.commissionRate || 10;
+    for (const order of orders) {
+      if (order.paymentStatus !== 'completed') {
+        order.paymentStatus = 'completed';
+        order.paymentResult = paymentResult;
+        if (order.status === OrderStatus.PAYMENT_PENDING) {
+          order.status = OrderStatus.PENDING;
+        }
+        await order.save();
+
+        // Split logic per order
+        try {
+          const restaurantId = (order.restaurant as any)?._id || order.restaurant;
+          const restaurant = restaurantId ? await Restaurant.findById(restaurantId) : null;
+          const setting = await Setting.findOne();
+          const commissionRate = setting?.commissionRate || 10;
+          
+          const subtotal = order.totalAmount - (order.deliveryFee || 0);
+          const adminCut = (subtotal * commissionRate) / 100;
+          const vendorCut = subtotal - adminCut;
+          
+          if (restaurant && restaurant.owner && vendorCut > 0) {
+            let vendorWallet = await Wallet.findOne({ user: restaurant.owner });
+            if (!vendorWallet) {
+              vendorWallet = await Wallet.create({ user: restaurant.owner, balance: 0 });
+            }
             
-            const subtotal = order.totalAmount - (order.deliveryFee || 0);
-            const adminCut = (subtotal * commissionRate) / 100;
-            const vendorCut = subtotal - adminCut;
-            
-            if (restaurant && restaurant.owner && vendorCut > 0) {
-              let vendorWallet = await Wallet.findOne({ user: restaurant.owner });
-              if (!vendorWallet) {
-                vendorWallet = await Wallet.create({ user: restaurant.owner, balance: 0 });
-              }
-              
-              if (restaurant.paystackSubaccountCode && provider === 'paystack') {
-                logger.info(`Vendor ${restaurant.owner} automatically paid via Paystack Subaccount.`);
-              } else {
-                vendorWallet.balance += vendorCut;
-                await vendorWallet.save();
+            if (restaurant.paystackSubaccountCode && provider === 'paystack') {
+              logger.info(`Vendor ${restaurant.owner} automatically paid via Paystack Subaccount.`);
+            } else {
+              vendorWallet.balance += vendorCut;
+              await vendorWallet.save();
 
-                try {
-                  await this.payoutRestaurant(restaurant.owner.toString(), vendorCut, provider);
-                } catch (payoutErr: any) {
-                  logger.warn(`Automatic vendor payout delayed for order ${order._id}: ${payoutErr.message}`);
-                }
+              try {
+                await this.payoutRestaurant(restaurant.owner.toString(), vendorCut, provider);
+              } catch (payoutErr: any) {
+                logger.warn(`Automatic vendor payout delayed for order ${order._id}: ${payoutErr.message}`);
               }
             }
-          } catch (splitErr: any) {
-            logger.error(`Error processing vendor split for order ${order._id}:`, splitErr.message);
+          }
+        } catch (splitErr: any) {
+          logger.error(`Error processing vendor split for order ${order._id}:`, splitErr.message);
+        }
+
+        // Send notifications upon verified payment
+        try {
+          const restaurantId = (order.restaurant as any)?._id || order.restaurant;
+          const restaurant = restaurantId ? await Restaurant.findById(restaurantId) : null;
+          const shortId = order._id.toString().slice(-6).toUpperCase();
+          if (restaurant && restaurant.owner) {
+            await notificationService.notifyNewOrder(restaurant.owner.toString(), order._id.toString());
+          }
+          const customerId = (order.customer as any)?._id
+            ? (order.customer as any)._id.toString()
+            : order.customer?.toString?.();
+          if (customerId) {
+            await notificationService.sendNotification(
+              customerId,
+              `Order Placed! 🍽️`,
+              `Your payment was verified! Order #${shortId} from ${restaurant?.name || 'the outlet'} has been placed successfully and sent to the kitchen!`,
+              { orderId: order._id.toString(), status: 'pending', type: 'ORDER_UPDATE' },
+              NotificationType.ORDER_UPDATE
+            );
+          }
+        } catch (notifyErr: any) {
+          logger.warn('Failed to send order notifications:', notifyErr.message);
+        }
+
+        // Send Email Confirmation to Customer
+        try {
+          const populatedOrder = await Order.findById(order._id).populate('customer restaurant items.foodItem');
+          const customerUser = populatedOrder?.customer as any;
+          const restaurantDoc = populatedOrder?.restaurant as any;
+          const shortId = order._id.toString().slice(-6).toUpperCase();
+
+          if (customerUser && customerUser.email && !customerUser.email.includes('customer@goeat.com')) {
+            emailService.sendTemplateEmail(
+              customerUser.email,
+              'ORDER_CONFIRMED',
+              `Order Confirmed: #${shortId} from ${restaurantDoc?.name || 'Go-Eat Partner'}`,
+              {
+                orderId: order._id,
+                customerName: customerUser.name || 'Customer',
+                total: order.totalAmount,
+                items: order.items,
+              }
+            ).catch((err: any) => logger.warn('Failed to send customer order email:', err.message));
           }
 
-          // Send notifications upon verified payment
-          try {
-            const restaurantId = (order.restaurant as any)?._id || order.restaurant;
-            const restaurant = restaurantId ? await Restaurant.findById(restaurantId) : null;
-            const shortId = order._id.toString().slice(-6).toUpperCase();
-            if (restaurant && restaurant.owner) {
-              await notificationService.notifyNewOrder(restaurant.owner.toString(), order._id.toString());
-            }
-            const customerId = (order.customer as any)?._id
-              ? (order.customer as any)._id.toString()
-              : order.customer?.toString?.();
-            if (customerId) {
-              await notificationService.sendNotification(
-                customerId,
-                `Order Placed! 🍽️`,
-                `Your payment was verified! Order #${shortId} from ${restaurant?.name || 'the outlet'} has been placed successfully and sent to the kitchen!`,
-                { orderId: order._id.toString(), status: 'pending', type: 'ORDER_UPDATE' },
-                NotificationType.ORDER_UPDATE
-              );
-            }
-          } catch (notifyErr: any) {
-            logger.warn('Failed to send order notifications:', notifyErr.message);
+          // Send Email to Vendor
+          const vendorEmail = restaurantDoc?.businessEmail || (restaurantDoc?.owner as any)?.email;
+          if (vendorEmail) {
+            emailService.sendTemplateEmail(
+              vendorEmail,
+              'VENDOR_ORDER_RECEIVED',
+              `New Order Received: #${shortId}`,
+              {
+                orderId: order._id,
+                outletName: restaurantDoc?.name || 'Partner',
+                customerName: customerUser?.name || 'Customer',
+                total: order.totalAmount,
+                items: order.items,
+              },
+              'partners'
+            ).catch((err: any) => logger.warn('Failed to send vendor order email:', err.message));
           }
-
-          // Send Email Receipt to Customer & Order Notification to Vendor upon successful payment
-          try {
-            await order.populate('items.foodItem');
-            const customerUserId = (order.customer as any)?._id || order.customer;
-            const user = customerUserId ? await User.findById(customerUserId) : null;
-            if (user && user.email && !user.email.includes('customer@goeat.com')) {
-              await emailService.sendTemplateEmail(
-                user.email,
-                'ORDER_CONFIRMED',
-                `Order Confirmed: #${order._id.toString().slice(-6).toUpperCase()}`,
-                { 
-                  orderId: order._id, 
-                  customerName: user.name, 
-                  total: order.totalAmount,
-                  items: order.items 
-                }
-              );
-            }
-
-            const restaurantId = (order.restaurant as any)?._id || order.restaurant;
-            const restaurant: any = restaurantId ? await Restaurant.findById(restaurantId).populate('owner') : null;
-            const vendorEmail = restaurant?.businessEmail || restaurant?.owner?.email;
-
-            if (vendorEmail) {
-              await emailService.sendTemplateEmail(
-                vendorEmail,
-                'VENDOR_ORDER_RECEIVED',
-                `New Order Received: #${order._id.toString().slice(-6).toUpperCase()}`,
-                {
-                  orderId: order._id,
-                  outletName: restaurant?.name || 'Partner',
-                  customerName: user?.name || 'Customer',
-                  total: order.totalAmount,
-                  items: order.items,
-                },
-                'partners'
-              );
-            }
-          } catch (emailErr: any) {
-            logger.warn('Failed to send order email:', emailErr.message);
-          }
+        } catch (emailErr: any) {
+          logger.warn('Failed to send order email:', emailErr.message);
         }
       }
-
-      const primaryOrder = orders[0];
-      return {
-        orderId: primaryOrder ? primaryOrder._id : orderId,
-        status: primaryOrder ? primaryOrder.status : 'completed',
-        paymentResult,
-      };
     }
+
+    const primaryOrder = orders[0];
+    return {
+      orderId: primaryOrder ? primaryOrder._id : orderId,
+      status: primaryOrder ? primaryOrder.status : 'completed',
+      paymentResult,
+    };
   }
 
   /**

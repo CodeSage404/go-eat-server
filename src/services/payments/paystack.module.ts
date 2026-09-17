@@ -104,14 +104,6 @@ export class PaystackModule {
         reference: data.reference,
       };
     } catch (error: any) {
-      if (process.env.NODE_ENV !== 'production') {
-        logger.warn(`[Paystack Dev Fallback] API error (${error.message}). Falling back to simulated checkout URL for dev testing.`);
-        return {
-          authorizationUrl: `https://checkout.paystack.com/test_checkout?reference=${params.reference}&amount=${params.amount}`,
-          accessCode: `tst_access_${Date.now()}`,
-          reference: params.reference,
-        };
-      }
       logger.error('Paystack initializePayment error:', error.response?.data || error.message);
       throw new AppError(
         error.response?.data?.message || 'Paystack payment initialization failed',
@@ -125,21 +117,7 @@ export class PaystackModule {
    */
   async verifyPayment(reference: string): Promise<any> {
     if (!this.secretKey || this.secretKey.includes('placeholder')) {
-      if (process.env.NODE_ENV === 'production') {
-        throw new AppError('Paystack payment gateway is not properly configured.', 500);
-      }
-      if (process.env.USE_MOCK_PAYMENT !== 'true') {
-        throw new AppError('Paystack secret key is missing or invalid in server environment.', 500);
-      }
-      logger.info(`[Paystack Dev/Mock] Simulating verification for ${reference}`);
-      return {
-        id: reference,
-        status: 'success',
-        reference,
-        amount: 0,
-        metadata: { orderId: reference.split('_')[1] },
-        customer: { email: 'dev@goeatalone.com' },
-      };
+      throw new AppError('Paystack payment gateway is not properly configured.', 500);
     }
 
     try {
@@ -150,17 +128,6 @@ export class PaystackModule {
 
       return response.data.data;
     } catch (error: any) {
-      if (process.env.NODE_ENV !== 'production') {
-        logger.warn(`[Paystack Dev Fallback] Verification error (${error.message}). Simulating successful verification for dev testing.`);
-        return {
-          id: reference,
-          status: 'success',
-          reference,
-          amount: 500000,
-          metadata: { orderId: reference.split('_')[1] },
-          customer: { email: 'dev@goeatalone.com' },
-        };
-      }
       logger.error(`Paystack verifyPayment error for ref ${reference}:`, error.response?.data || error.message);
       throw new AppError(
         error.response?.data?.message || 'Paystack verification failed',

@@ -1,6 +1,6 @@
 import crypto from 'crypto';
 import mongoose from 'mongoose';
-import Order, { IOrder, OrderStatus } from '../models/order.model';
+import Order, { IOrder, OrderStatus, PaymentMethod } from '../models/order.model';
 import Restaurant from '../models/restaurant.model';
 import FoodItem from '../models/foodItem.model';
 import Setting from '../models/setting.model';
@@ -168,6 +168,17 @@ class OrderService {
     }
     data.deliveryPinVerified = false;
 
+    // Ensure proper initial order & payment status:
+    // Cash orders enter PENDING immediately.
+    // Card/online orders enter PAYMENT_PENDING until verified by the payment gateway.
+    const isCashOrder = String(data.paymentMethod || '').toLowerCase() === 'cash';
+    if (!data.status) {
+      data.status = isCashOrder ? OrderStatus.PENDING : OrderStatus.PAYMENT_PENDING;
+    }
+    if (!data.paymentStatus) {
+      data.paymentStatus = 'pending';
+    }
+
     // Create the order
     const order = await Order.create(data);
 
@@ -175,8 +186,6 @@ class OrderService {
 
     // For CASH orders, send notifications and receipts immediately.
     // For CARD / online payment orders, notifications and receipts are deferred until payment verification in payment.service.ts.
-    const isCashOrder = order.paymentMethod?.toLowerCase() === 'cash';
-
     if (isCashOrder) {
       // Notify Restaurant (Vendor) via Push, Socket, and In-app
       if (restaurant && restaurant.owner) {
@@ -287,6 +296,25 @@ class OrderService {
       }
     } else if (role !== 'admin') {
       throw new AppError('Unauthorized to update order status', 403);
+    }
+
+    // Strict Payment Guard: Block any non-cash order from advancing if payment is not completed
+    const isCash = String(order.paymentMethod || '').toLowerCase() === 'cash';
+    if (!isCash && order.paymentStatus !== 'completed') {
+      const isCancellation = [
+        OrderStatus.CANCELLED,
+        OrderStatus.CANCELLED_BY_CUSTOMER,
+        OrderStatus.CANCELLED_BY_OUTLET,
+        OrderStatus.CANCELLED_BY_GOEAT,
+        OrderStatus.REJECTED,
+      ].includes(status);
+
+      if (!isCancellation) {
+        throw new AppError(
+          'Cannot accept or update status of an unpaid order. Payment must be completed before food preparation or dispatch.',
+          400
+        );
+      }
     }
 
     // Capture pre-mutation status for cancellation matrix processing
@@ -640,6 +668,10 @@ class OrderService {
         ],
       },
       rider: null,
+      $or: [
+        { paymentStatus: 'completed' },
+        { paymentMethod: PaymentMethod.CASH },
+      ],
     })
       .populate('restaurant', 'name address location images phoneContact rating')
       .populate('customer', 'name phoneNumber email profileImage')
@@ -849,7 +881,14 @@ class OrderService {
   }
 
   async getRestaurantOrders(restaurantId: string): Promise<IOrder[]> {
-    return await Order.find({ restaurant: restaurantId })
+    return await Order.find({
+      restaurant: restaurantId,
+      $or: [
+        { paymentStatus: 'completed' },
+        { paymentMethod: PaymentMethod.CASH },
+      ],
+      status: { $ne: OrderStatus.PAYMENT_PENDING },
+    })
       .populate('customer', 'name phoneNumber email')
       .populate('items.foodItem', 'name price image')
       .sort({ createdAt: -1 });

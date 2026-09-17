@@ -63,14 +63,6 @@ class PaystackModule {
             };
         }
         catch (error) {
-            if (process.env.NODE_ENV !== 'production') {
-                logger_1.default.warn(`[Paystack Dev Fallback] API error (${error.message}). Falling back to simulated checkout URL for dev testing.`);
-                return {
-                    authorizationUrl: `https://checkout.paystack.com/test_checkout?reference=${params.reference}&amount=${params.amount}`,
-                    accessCode: `tst_access_${Date.now()}`,
-                    reference: params.reference,
-                };
-            }
             logger_1.default.error('Paystack initializePayment error:', error.response?.data || error.message);
             throw new appError_1.default(error.response?.data?.message || 'Paystack payment initialization failed', error.response?.status || 500);
         }
@@ -80,38 +72,13 @@ class PaystackModule {
      */
     async verifyPayment(reference) {
         if (!this.secretKey || this.secretKey.includes('placeholder')) {
-            if (process.env.NODE_ENV === 'production') {
-                throw new appError_1.default('Paystack payment gateway is not properly configured.', 500);
-            }
-            if (process.env.USE_MOCK_PAYMENT !== 'true') {
-                throw new appError_1.default('Paystack secret key is missing or invalid in server environment.', 500);
-            }
-            logger_1.default.info(`[Paystack Dev/Mock] Simulating verification for ${reference}`);
-            return {
-                id: reference,
-                status: 'success',
-                reference,
-                amount: 0,
-                metadata: { orderId: reference.split('_')[1] },
-                customer: { email: 'dev@goeatalone.com' },
-            };
+            throw new appError_1.default('Paystack payment gateway is not properly configured.', 500);
         }
         try {
             const response = await axios_1.default.get(`${this.baseUrl}/transaction/verify/${encodeURIComponent(reference)}`, { headers: this.getHeaders() });
             return response.data.data;
         }
         catch (error) {
-            if (process.env.NODE_ENV !== 'production') {
-                logger_1.default.warn(`[Paystack Dev Fallback] Verification error (${error.message}). Simulating successful verification for dev testing.`);
-                return {
-                    id: reference,
-                    status: 'success',
-                    reference,
-                    amount: 500000,
-                    metadata: { orderId: reference.split('_')[1] },
-                    customer: { email: 'dev@goeatalone.com' },
-                };
-            }
             logger_1.default.error(`Paystack verifyPayment error for ref ${reference}:`, error.response?.data || error.message);
             throw new appError_1.default(error.response?.data?.message || 'Paystack verification failed', error.response?.status || 500);
         }

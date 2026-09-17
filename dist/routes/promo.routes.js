@@ -5,9 +5,58 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
 const promo_controller_1 = __importDefault(require("../controllers/promo.controller"));
+const promoBanner_controller_1 = __importDefault(require("../controllers/promoBanner.controller"));
 const auth_middleware_1 = require("../middleware/auth.middleware");
 const user_model_1 = require("../models/user.model");
 const router = (0, express_1.Router)();
+/**
+ * @openapi
+ * /api/v1/promos/banner:
+ *   get:
+ *     tags:
+ *       - Promotions
+ *     summary: Get the active home screen promotional banner
+ *     description: Returns the active promotional banner configuration if enabled by the administrator.
+ *     responses:
+ *       200:
+ *         description: Active promo banner returned successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: success
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     banner:
+ *                       type: object
+ *                       nullable: true
+ *                       properties:
+ *                         _id:
+ *                           type: string
+ *                         isActive:
+ *                           type: boolean
+ *                         headline:
+ *                           type: string
+ *                         subtitle:
+ *                           type: string
+ *                         ctaText:
+ *                           type: string
+ *                         ctaLink:
+ *                           type: string
+ *                         voucherText:
+ *                           type: string
+ *                         imageUrl:
+ *                           type: string
+ *                         backgroundColor:
+ *                           type: string
+ *                         backgroundColorDark:
+ *                           type: string
+ */
+router.get('/banner', promoBanner_controller_1.default.getActiveBanner);
 router.use(auth_middleware_1.protect);
 /**
  * @openapi

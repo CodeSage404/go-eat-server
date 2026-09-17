@@ -168,12 +168,21 @@ class OrderService {
             data.deliveryPin = Math.floor(1000 + Math.random() * 9000).toString();
         }
         data.deliveryPinVerified = false;
+        // Ensure proper initial order & payment status:
+        // Cash orders enter PENDING immediately.
+        // Card/online orders enter PAYMENT_PENDING until verified by the payment gateway.
+        const isCashOrder = String(data.paymentMethod || '').toLowerCase() === 'cash';
+        if (!data.status) {
+            data.status = isCashOrder ? order_model_1.OrderStatus.PENDING : order_model_1.OrderStatus.PAYMENT_PENDING;
+        }
+        if (!data.paymentStatus) {
+            data.paymentStatus = 'pending';
+        }
         // Create the order
         const order = await order_model_1.default.create(data);
         const shortId = order._id.toString().slice(-6).toUpperCase();
         // For CASH orders, send notifications and receipts immediately.
         // For CARD / online payment orders, notifications and receipts are deferred until payment verification in payment.service.ts.
-        const isCashOrder = order.paymentMethod?.toLowerCase() === 'cash';
         if (isCashOrder) {
             // Notify Restaurant (Vendor) via Push, Socket, and In-app
             if (restaurant && restaurant.owner) {
@@ -260,6 +269,20 @@ class OrderService {
         }
         else if (role !== 'admin') {
             throw new appError_1.default('Unauthorized to update order status', 403);
+        }
+        // Strict Payment Guard: Block any non-cash order from advancing if payment is not completed
+        const isCash = String(order.paymentMethod || '').toLowerCase() === 'cash';
+        if (!isCash && order.paymentStatus !== 'completed') {
+            const isCancellation = [
+                order_model_1.OrderStatus.CANCELLED,
+                order_model_1.OrderStatus.CANCELLED_BY_CUSTOMER,
+                order_model_1.OrderStatus.CANCELLED_BY_OUTLET,
+                order_model_1.OrderStatus.CANCELLED_BY_GOEAT,
+                order_model_1.OrderStatus.REJECTED,
+            ].includes(status);
+            if (!isCancellation) {
+                throw new appError_1.default('Cannot accept or update status of an unpaid order. Payment must be completed before food preparation or dispatch.', 400);
+            }
         }
         // Capture pre-mutation status for cancellation matrix processing
         const previousStatus = order.status;
@@ -551,6 +574,10 @@ class OrderService {
                 ],
             },
             rider: null,
+            $or: [
+                { paymentStatus: 'completed' },
+                { paymentMethod: order_model_1.PaymentMethod.CASH },
+            ],
         })
             .populate('restaurant', 'name address location images phoneContact rating')
             .populate('customer', 'name phoneNumber email profileImage')
@@ -704,7 +731,14 @@ class OrderService {
         return await order_model_1.default.findById(targetId).populate('customer restaurant rider items.foodItem');
     }
     async getRestaurantOrders(restaurantId) {
-        return await order_model_1.default.find({ restaurant: restaurantId })
+        return await order_model_1.default.find({
+            restaurant: restaurantId,
+            $or: [
+                { paymentStatus: 'completed' },
+                { paymentMethod: order_model_1.PaymentMethod.CASH },
+            ],
+            status: { $ne: order_model_1.OrderStatus.PAYMENT_PENDING },
+        })
             .populate('customer', 'name phoneNumber email')
             .populate('items.foodItem', 'name price image')
             .sort({ createdAt: -1 });

@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import adminController from '../controllers/admin.controller';
+import promoBannerController from '../controllers/promoBanner.controller';
 import { upload } from '../utils/upload';
 import { protect, restrictTo, checkPermission } from '../middleware/auth.middleware';
 import { UserRole } from '../models/user.model';
@@ -1090,6 +1091,56 @@ router.patch('/promos/:id/status', checkPermission('promo.manage'), adminControl
  *         description: Promo deleted
  */
 router.delete('/promos/:id', checkPermission('promo.manage'), adminController.deletePromo);
+
+/**
+ * @openapi
+ * /api/v1/admin/promos/banner:
+ *   get:
+ *     tags:
+ *       - Admin Promos
+ *     summary: Get home screen promo banner configuration
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Promo banner configuration returned
+ *   put:
+ *     tags:
+ *       - Admin Promos
+ *     summary: Update home screen promo banner configuration & toggle active status
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               isActive:
+ *                 type: boolean
+ *               headline:
+ *                 type: string
+ *               subtitle:
+ *                 type: string
+ *               ctaText:
+ *                 type: string
+ *               ctaLink:
+ *                 type: string
+ *               voucherText:
+ *                 type: string
+ *               imageUrl:
+ *                 type: string
+ *               backgroundColor:
+ *                 type: string
+ *               backgroundColorDark:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Promo banner configuration updated
+ */
+router.get('/promos/banner', checkPermission('promo.manage'), promoBannerController.getAdminBanner);
+router.put('/promos/banner', checkPermission('promo.manage'), promoBannerController.updateBanner);
 
 /**
  * @openapi

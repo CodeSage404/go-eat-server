@@ -63,13 +63,6 @@ class FlutterwaveModule {
             };
         }
         catch (error) {
-            if (process.env.NODE_ENV !== 'production') {
-                logger_1.default.warn(`[Flutterwave Dev Fallback] API error (${error.message}). Falling back to simulated checkout URL for dev testing.`);
-                return {
-                    authorizationUrl: `https://checkout.flutterwave.com/v3/hosted/pay/test_checkout?reference=${params.reference}&amount=${params.amount}`,
-                    reference: params.reference,
-                };
-            }
             logger_1.default.error('Flutterwave initializePayment error:', error.response?.data || error.message);
             throw new appError_1.default(error.response?.data?.message || 'Flutterwave payment initialization failed', error.response?.status || 500);
         }
@@ -79,38 +72,13 @@ class FlutterwaveModule {
      */
     async verifyPayment(reference) {
         if (!this.secretKey || this.secretKey.includes('placeholder')) {
-            if (process.env.NODE_ENV === 'production') {
-                throw new appError_1.default('Flutterwave payment gateway is not properly configured.', 500);
-            }
-            if (process.env.USE_MOCK_PAYMENT !== 'true') {
-                throw new appError_1.default('Flutterwave secret key is missing or invalid in server environment.', 500);
-            }
-            logger_1.default.info(`[Flutterwave Dev/Mock] Simulating verification for ${reference}`);
-            return {
-                id: reference,
-                status: 'successful',
-                tx_ref: reference,
-                amount: 0,
-                meta: { orderId: reference.split('_')[1] },
-                customer: { email: 'dev@goeatalone.com' },
-            };
+            throw new appError_1.default('Flutterwave payment gateway is not properly configured.', 500);
         }
         try {
             const response = await axios_1.default.get(`${this.baseUrl}/transactions/verify_by_reference?tx_ref=${encodeURIComponent(reference)}`, { headers: this.getHeaders() });
             return response.data.data;
         }
         catch (error) {
-            if (process.env.NODE_ENV !== 'production') {
-                logger_1.default.warn(`[Flutterwave Dev Fallback] Verification error (${error.message}). Simulating successful verification for dev testing.`);
-                return {
-                    id: reference,
-                    status: 'successful',
-                    tx_ref: reference,
-                    amount: 5000,
-                    meta: { orderId: reference.split('_')[1] },
-                    customer: { email: 'dev@goeatalone.com' },
-                };
-            }
             logger_1.default.error(`Flutterwave verifyPayment error for ref ${reference}:`, error.response?.data || error.message);
             throw new appError_1.default(error.response?.data?.message || 'Flutterwave verification failed', error.response?.status || 500);
         }
