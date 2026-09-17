@@ -39,6 +39,21 @@ const promoBannerSchema = new mongoose_1.Schema({
         type: Boolean,
         default: true,
     },
+    topSpotsTitle: {
+        type: String,
+        default: 'Neighborhood Favorites',
+        trim: true,
+    },
+    offersTitle: {
+        type: String,
+        default: 'Tasty Offers',
+        trim: true,
+    },
+    offersSubtitle: {
+        type: String,
+        default: 'Tailored to your taste buds',
+        trim: true,
+    },
     headline: {
         type: String,
         default: 'Save ₦3,000',

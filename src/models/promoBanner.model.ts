@@ -10,6 +10,9 @@ export interface IPromoBanner extends Document {
   imageUrl?: string;
   backgroundColor?: string;
   backgroundColorDark?: string;
+  topSpotsTitle?: string;
+  offersTitle?: string;
+  offersSubtitle?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -19,6 +22,21 @@ const promoBannerSchema = new Schema<IPromoBanner>(
     isActive: {
       type: Boolean,
       default: true,
+    },
+    topSpotsTitle: {
+      type: String,
+      default: 'Neighborhood Favorites',
+      trim: true,
+    },
+    offersTitle: {
+      type: String,
+      default: 'Tasty Offers',
+      trim: true,
+    },
+    offersSubtitle: {
+      type: String,
+      default: 'Tailored to your taste buds',
+      trim: true,
     },
     headline: {
       type: String,

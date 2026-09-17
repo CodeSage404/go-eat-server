@@ -80,6 +80,12 @@ const vendorUpdateRestaurantSchema = zod_1.z.object({
         open: zod_1.z.string().optional(),
         close: zod_1.z.string().optional(),
     })).optional(),
+    hasPromo: zod_1.z.boolean().optional(),
+    acceptsPromos: zod_1.z.boolean().optional(),
+    promoText: zod_1.z.string().optional(),
+    allowStampCards: zod_1.z.boolean().optional(),
+    allowFreeGift: zod_1.z.boolean().optional(),
+    promos: zod_1.z.array(zod_1.z.any()).optional(),
 });
 class RestaurantController {
     constructor() {

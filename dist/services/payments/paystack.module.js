@@ -25,18 +25,7 @@ class PaystackModule {
     async initializePayment(params) {
         const amountInKobo = Math.round(params.amount * 100);
         if (!this.secretKey || this.secretKey.includes('placeholder')) {
-            if (process.env.NODE_ENV === 'production') {
-                throw new appError_1.default('Paystack payment gateway is not properly configured.', 500);
-            }
-            if (process.env.USE_MOCK_PAYMENT !== 'true') {
-                throw new appError_1.default('Paystack secret key is missing or invalid in server environment.', 500);
-            }
-            logger_1.default.info(`[Paystack Dev/Mock] Generating simulated authorization URL for ${params.reference}`);
-            return {
-                authorizationUrl: `https://checkout.paystack.com/test_checkout?reference=${params.reference}&amount=${params.amount}`,
-                accessCode: `tst_access_${Date.now()}`,
-                reference: params.reference,
-            };
+            throw new appError_1.default('Paystack payment gateway is not properly configured.', 500);
         }
         try {
             const payload = {
@@ -185,11 +174,8 @@ class PaystackModule {
      * Resolve Account Number to verify account name
      */
     async resolveAccountNumber(accountNumber, bankCode) {
-        if (this.secretKey.includes('placeholder') || process.env.USE_MOCK_PAYMENT === 'true') {
-            return {
-                accountNumber,
-                accountName: 'GO-EAT VERIFIED VENDOR OUTLET',
-            };
+        if (!this.secretKey || this.secretKey.includes('placeholder')) {
+            throw new appError_1.default('Paystack payment gateway is not properly configured.', 500);
         }
         try {
             const response = await axios_1.default.get(`${this.baseUrl}/bank/resolve?account_number=${accountNumber}&bank_code=${bankCode}`, { headers: this.getHeaders() });
@@ -199,14 +185,8 @@ class PaystackModule {
             };
         }
         catch (error) {
-            if (process.env.NODE_ENV !== 'production') {
-                return {
-                    accountNumber,
-                    accountName: 'VERIFIED RESTAURANT HOLDINGS',
-                };
-            }
             logger_1.default.error('Paystack resolveAccountNumber error:', error.response?.data || error.message);
-            throw new appError_1.default(error.response?.data?.message || 'Could not resolve account name. Please check account number and bank.', error.response?.status || 400);
+            throw new appError_1.default(error.response?.data?.message || 'Failed to resolve bank account number with Paystack', error.response?.status || 400);
         }
     }
 }

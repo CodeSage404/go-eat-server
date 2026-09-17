@@ -110,7 +110,7 @@ class WalletController {
                 wallet: wallet._id,
                 amount,
                 type: transaction_model_1.TransactionType.WITHDRAWAL,
-                status: transaction_model_1.TransactionStatus.COMPLETED, // Mocking instant processing for now
+                status: transaction_model_1.TransactionStatus.PENDING,
                 description: 'Payout to verified bank account',
             });
             // Notify user via In-App, Real-Time Socket, and Push Notification

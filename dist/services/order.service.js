@@ -717,7 +717,7 @@ class OrderService {
     }
     async getCustomerOrders(customerId) {
         return await order_model_1.default.find({ customer: customerId })
-            .populate('restaurant', 'name address image isSelfPickup hasDelivery location')
+            .populate('restaurant', 'name address images image rating estimatedDeliveryTime isSponsored isSelfPickup hasDelivery location cuisine')
             .populate('items.foodItem', 'name price image')
             .sort({ createdAt: -1 });
     }
