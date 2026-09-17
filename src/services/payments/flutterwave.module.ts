@@ -45,17 +45,7 @@ export class FlutterwaveModule {
    */
   async initializePayment(params: FlutterwaveInitializeParams): Promise<FlutterwaveInitializeResult> {
     if (!this.secretKey || this.secretKey.includes('placeholder')) {
-      if (process.env.NODE_ENV === 'production') {
-        throw new AppError('Flutterwave payment gateway is not properly configured.', 500);
-      }
-      if (process.env.USE_MOCK_PAYMENT !== 'true') {
-        throw new AppError('Flutterwave secret key is missing or invalid in server environment.', 500);
-      }
-      logger.info(`[Flutterwave Dev/Mock] Generating simulated authorization URL for ${params.reference}`);
-      return {
-        authorizationUrl: `https://checkout.flutterwave.com/v3/hosted/pay/test_checkout?reference=${params.reference}&amount=${params.amount}`,
-        reference: params.reference,
-      };
+      throw new AppError('Flutterwave payment gateway is not properly configured.', 500);
     }
 
     try {

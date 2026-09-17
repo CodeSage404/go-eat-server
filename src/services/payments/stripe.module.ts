@@ -1,5 +1,6 @@
 import axios from 'axios';
 import logger from '../../utils/logger';
+import AppError from '../../utils/appError';
 
 export interface StripeInitializeParams {
   email: string;
@@ -38,13 +39,8 @@ class StripeModule {
     const amountInCents = Math.round(params.amount * 100);
     const email = params.email && params.email.trim() !== '' ? params.email : 'customer@goeat.com';
 
-    if (this.secretKey.includes('placeholder') || process.env.USE_MOCK_PAYMENT === 'true') {
-      logger.info(`[Stripe Dev/Mock] Generating simulated authorization URL for ${params.reference}`);
-      return {
-        authorizationUrl: `https://checkout.stripe.com/test_checkout?reference=${params.reference}&amount=${params.amount}`,
-        reference: params.reference,
-        sessionId: `cs_test_${Date.now()}`,
-      };
+    if (!this.secretKey || this.secretKey.includes('placeholder')) {
+      throw new AppError('Stripe payment gateway is not properly configured.', 500);
     }
 
     try {
@@ -72,7 +68,7 @@ class StripeModule {
     } catch (error: any) {
       const errorMessage = error.response?.data?.error?.message || error.message || 'Stripe error';
       logger.error(`Stripe initializePayment error: ${errorMessage}`);
-      throw new Error(errorMessage);
+      throw new AppError(errorMessage, error.response?.status || 500);
     }
   }
 
@@ -80,15 +76,8 @@ class StripeModule {
    * Verify Payment Status from Stripe
    */
   async verifyPayment(reference: string): Promise<any> {
-    if (this.secretKey.includes('placeholder') || process.env.USE_MOCK_PAYMENT === 'true') {
-      logger.info(`[Stripe Dev/Mock] Verifying simulated transaction for ${reference}`);
-      return {
-        id: `stripe_${reference}`,
-        status: 'success',
-        metadata: {
-          orderId: reference.split('_')[1],
-        },
-      };
+    if (!this.secretKey || this.secretKey.includes('placeholder')) {
+      throw new AppError('Stripe payment gateway is not properly configured.', 500);
     }
 
     try {
@@ -98,12 +87,16 @@ class StripeModule {
 
       const session = response.data.data && response.data.data[0];
       if (!session) {
-        throw new Error('Transaction not found on Stripe');
+        throw new AppError('Transaction not found on Stripe', 404);
+      }
+
+      if (session.payment_status !== 'paid') {
+        throw new AppError(`Stripe payment was not successful (status: ${session.payment_status})`, 400);
       }
 
       return {
         id: session.id,
-        status: session.payment_status === 'paid' ? 'success' : session.payment_status,
+        status: 'success',
         metadata: {
           orderId: session.client_reference_id ? session.client_reference_id.split('_')[1] : undefined,
         },
@@ -111,7 +104,7 @@ class StripeModule {
     } catch (error: any) {
       const errorMessage = error.response?.data?.error?.message || error.message || 'Stripe error';
       logger.error(`Stripe verifyPayment error: ${errorMessage}`);
-      throw new Error(errorMessage);
+      throw new AppError(errorMessage, error.response?.status || 500);
     }
   }
 }

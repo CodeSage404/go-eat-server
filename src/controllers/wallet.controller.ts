@@ -83,7 +83,7 @@ class WalletController {
       wallet: wallet._id,
       amount,
       type: TransactionType.WITHDRAWAL,
-      status: TransactionStatus.COMPLETED, // Mocking instant processing for now
+      status: TransactionStatus.PENDING,
       description: 'Payout to verified bank account',
     });
 

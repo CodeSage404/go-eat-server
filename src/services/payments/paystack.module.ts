@@ -57,18 +57,7 @@ export class PaystackModule {
     const amountInKobo = Math.round(params.amount * 100);
 
     if (!this.secretKey || this.secretKey.includes('placeholder')) {
-      if (process.env.NODE_ENV === 'production') {
-        throw new AppError('Paystack payment gateway is not properly configured.', 500);
-      }
-      if (process.env.USE_MOCK_PAYMENT !== 'true') {
-        throw new AppError('Paystack secret key is missing or invalid in server environment.', 500);
-      }
-      logger.info(`[Paystack Dev/Mock] Generating simulated authorization URL for ${params.reference}`);
-      return {
-        authorizationUrl: `https://checkout.paystack.com/test_checkout?reference=${params.reference}&amount=${params.amount}`,
-        accessCode: `tst_access_${Date.now()}`,
-        reference: params.reference,
-      };
+      throw new AppError('Paystack payment gateway is not properly configured.', 500);
     }
 
     try {
@@ -269,11 +258,8 @@ export class PaystackModule {
    * Resolve Account Number to verify account name
    */
   async resolveAccountNumber(accountNumber: string, bankCode: string): Promise<{ accountNumber: string; accountName: string }> {
-    if (this.secretKey.includes('placeholder') || process.env.USE_MOCK_PAYMENT === 'true') {
-      return {
-        accountNumber,
-        accountName: 'GO-EAT VERIFIED VENDOR OUTLET',
-      };
+    if (!this.secretKey || this.secretKey.includes('placeholder')) {
+      throw new AppError('Paystack payment gateway is not properly configured.', 500);
     }
 
     try {
@@ -286,15 +272,9 @@ export class PaystackModule {
         accountName: response.data.data.account_name,
       };
     } catch (error: any) {
-      if (process.env.NODE_ENV !== 'production') {
-        return {
-          accountNumber,
-          accountName: 'VERIFIED RESTAURANT HOLDINGS',
-        };
-      }
       logger.error('Paystack resolveAccountNumber error:', error.response?.data || error.message);
       throw new AppError(
-        error.response?.data?.message || 'Could not resolve account name. Please check account number and bank.',
+        error.response?.data?.message || 'Failed to resolve bank account number with Paystack',
         error.response?.status || 400
       );
     }
