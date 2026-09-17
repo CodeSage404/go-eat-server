@@ -31,9 +31,20 @@ const connectDB = async () => {
             const restaurantsCollection = conn.connection.collection('restaurants');
             await restaurantsCollection.updateMany({ $or: [{ hasPromo: { $exists: false } }, { acceptsPromos: { $exists: false } }] }, { $set: { hasPromo: false, acceptsPromos: false, allowStampCards: false, promoText: '' } });
             logger_1.default.info('✅ Verified & migrated promo fields across all restaurant documents.');
+            // Automatically ensure all restaurant documents have country fields
+            await restaurantsCollection.updateMany({ $or: [{ country: { $exists: false } }, { country: null }, { country: '' }] }, {
+                $set: {
+                    country: 'Nigeria',
+                    countryCode: 'NG',
+                    'address.country': 'Nigeria',
+                    'address.countryCode': 'NG',
+                    isNigeria: true,
+                }
+            });
+            logger_1.default.info('✅ Verified & migrated country fields across all restaurant documents.');
         }
         catch (migErr) {
-            logger_1.default.warn('Could not migrate restaurant promo fields (collection may not exist yet):', migErr.message);
+            logger_1.default.warn('Could not migrate restaurant fields (collection may not exist yet):', migErr.message);
         }
     }
     catch (error) {

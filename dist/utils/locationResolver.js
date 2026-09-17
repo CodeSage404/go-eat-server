@@ -112,6 +112,9 @@ function buildCountryFilter(country, countryCode) {
         orConditions.push({ countryCode: { $regex: /^NG$/i } });
         orConditions.push({ 'address.countryCode': { $regex: /^NG$/i } });
         orConditions.push({ isNigeria: true });
+        orConditions.push({ country: { $exists: false } });
+        orConditions.push({ country: null });
+        orConditions.push({ country: '' });
     }
     else {
         if (country) {

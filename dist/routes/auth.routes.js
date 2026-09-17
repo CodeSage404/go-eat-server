@@ -403,6 +403,67 @@ router.post('/social', (req, res, next) => {
  *         description: Social login successful.
  */
 router.post('/apple', auth_controller_1.default.appleLogin);
+/**
+ * @openapi
+ * /api/v1/auth/apple/start:
+ *   get:
+ *     tags:
+ *       - Auth
+ *     summary: Initiate Apple OAuth Web Flow (for Android and Web)
+ *     description: Redirects user to Apple's OAuth 2.0 authorization endpoint to authenticate with Apple ID.
+ *     parameters:
+ *       - in: query
+ *         name: role
+ *         schema:
+ *           type: string
+ *           enum: [customer, vendor, rider]
+ *           default: customer
+ *         description: Role of the authenticating user
+ *       - in: query
+ *         name: redirect_uri
+ *         schema:
+ *           type: string
+ *         description: App deep link callback scheme (e.g. go-eat://apple-auth)
+ *     responses:
+ *       302:
+ *         description: Redirects to Apple ID login page
+ */
+router.get('/apple/start', auth_controller_1.default.appleAuthStart);
+/**
+ * @openapi
+ * /api/v1/auth/apple/callback:
+ *   post:
+ *     tags:
+ *       - Auth
+ *     summary: Apple OAuth Web Callback
+ *     description: Receives Apple's form_post payload containing id_token, code, and user profile data, then redirects to the mobile app deep link.
+ *     requestBody:
+ *       required: false
+ *       content:
+ *         application/x-www-form-urlencoded:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               id_token:
+ *                 type: string
+ *                 description: Apple ID Token
+ *               code:
+ *                 type: string
+ *                 description: Apple Authorization Code
+ *               state:
+ *                 type: string
+ *                 description: Encoded state string
+ *               user:
+ *                 type: string
+ *                 description: JSON string of user object containing name and email
+ *     responses:
+ *       200:
+ *         description: Returns HTML that redirects to the app deep link scheme
+ *       302:
+ *         description: Redirects to the mobile app deep link scheme
+ */
+router.post('/apple/callback', auth_controller_1.default.appleCallback);
+router.get('/apple/callback', auth_controller_1.default.appleCallback);
 // Protected Profile Routes
 const auth_middleware_1 = require("../middleware/auth.middleware");
 router.use(auth_middleware_1.protect);

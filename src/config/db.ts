@@ -33,8 +33,23 @@ const connectDB = async (): Promise<void> => {
         { $set: { hasPromo: false, acceptsPromos: false, allowStampCards: false, promoText: '' } }
       );
       logger.info('✅ Verified & migrated promo fields across all restaurant documents.');
+
+      // Automatically ensure all restaurant documents have country fields
+      await restaurantsCollection.updateMany(
+        { $or: [{ country: { $exists: false } }, { country: null }, { country: '' }] },
+        {
+          $set: {
+            country: 'Nigeria',
+            countryCode: 'NG',
+            'address.country': 'Nigeria',
+            'address.countryCode': 'NG',
+            isNigeria: true,
+          }
+        }
+      );
+      logger.info('✅ Verified & migrated country fields across all restaurant documents.');
     } catch (migErr: any) {
-      logger.warn('Could not migrate restaurant promo fields (collection may not exist yet):', migErr.message);
+      logger.warn('Could not migrate restaurant fields (collection may not exist yet):', migErr.message);
     }
   } catch (error) {
     logger.error('❌ MongoDB Connection Error:', error);

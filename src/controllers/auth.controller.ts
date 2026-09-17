@@ -379,6 +379,85 @@ class AuthController {
     });
   });
 
+  public appleAuthStart = catchAsync(async (req: Request, res: Response) => {
+    const role = (req.query.role as string) || UserRole.CUSTOMER;
+    const clientRedirectUri = (req.query.redirect_uri as string) || (role === UserRole.VENDOR ? 'go-eat-partners://apple-auth' : 'go-eat://apple-auth');
+    
+    const clientId = process.env.APPLE_SERVICES_ID || process.env.APPLE_CLIENT_ID?.split(',')[0] || 'com.emmanuelnwafor.goeat';
+    const serverCallbackUrl = `${process.env.RENDER_EXTERNAL_URL || 'https://go-eat-server-z96s.onrender.com'}/api/v1/auth/apple/callback`;
+    
+    const stateObj = { role, clientRedirectUri };
+    const state = Buffer.from(JSON.stringify(stateObj)).toString('base64url');
+
+    const appleAuthUrl = `https://appleid.apple.com/auth/authorize?client_id=${encodeURIComponent(clientId)}&redirect_uri=${encodeURIComponent(serverCallbackUrl)}&response_type=code%20id_token&scope=name%20email&response_mode=form_post&state=${encodeURIComponent(state)}`;
+
+    res.redirect(appleAuthUrl);
+  });
+
+  public appleCallback = catchAsync(async (req: Request, res: Response) => {
+    const payload = req.method === 'POST' ? req.body : req.query;
+    const { id_token, user: userJson, state, error } = payload;
+
+    let role = UserRole.CUSTOMER;
+    let clientRedirectUri = 'go-eat://apple-auth';
+
+    if (state) {
+      try {
+        const decodedState = JSON.parse(Buffer.from(String(state), 'base64url').toString('utf8'));
+        if (decodedState.role) role = decodedState.role;
+        if (decodedState.clientRedirectUri) clientRedirectUri = decodedState.clientRedirectUri;
+      } catch (e) {
+        logger.warn('Failed to parse Apple state parameter:', e);
+      }
+    }
+
+    if (error) {
+      const errUrl = `${clientRedirectUri}?error=${encodeURIComponent(String(error))}`;
+      return res.send(`<html><head><script>window.location.href = "${errUrl}";</script></head><body>Redirecting back to app...</body></html>`);
+    }
+
+    if (!id_token) {
+      const noTokenUrl = `${clientRedirectUri}?error=${encodeURIComponent('No ID token returned by Apple')}`;
+      return res.send(`<html><head><script>window.location.href = "${noTokenUrl}";</script></head><body>Redirecting back to app...</body></html>`);
+    }
+
+    let fullName: string | undefined = undefined;
+    if (userJson) {
+      try {
+        const parsedUser = typeof userJson === 'string' ? JSON.parse(userJson) : userJson;
+        if (parsedUser.name) {
+          const { firstName, lastName } = parsedUser.name;
+          fullName = `${firstName || ''} ${lastName || ''}`.trim() || undefined;
+        }
+      } catch {}
+    }
+
+    const result = await authService.socialLogin('apple', id_token, role, fullName);
+
+    const targetUrl = `${clientRedirectUri}?token=${encodeURIComponent(result.token)}&user=${encodeURIComponent(JSON.stringify(result.user))}`;
+
+    // Return an HTML auto-redirect so Android Chrome CustomTabs seamlessly passes control back to the deep link scheme
+    res.send(`<!DOCTYPE html>
+<html>
+  <head>
+    <title>Authenticating with Apple...</title>
+    <script>
+      window.location.href = "${targetUrl}";
+      setTimeout(function() {
+        window.location.href = "${targetUrl}";
+      }, 400);
+    </script>
+  </head>
+  <body style="font-family: sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; background: #0F3D26; color: white;">
+    <div style="text-align: center; padding: 20px;">
+      <h2>Authenticated Successfully</h2>
+      <p>Returning you to Go-Eat...</p>
+      <a href="${targetUrl}" style="color: #FFC529; text-decoration: underline; font-weight: bold; font-size: 16px;">Tap here if not redirected automatically</a>
+    </div>
+  </body>
+</html>`);
+  });
+
   public getMe = catchAsync(async (req: Request, res: Response) => {
     res.status(200).json({
       status: 'success',

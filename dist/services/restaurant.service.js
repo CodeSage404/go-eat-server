@@ -34,6 +34,7 @@ var __importStar = (this && this.__importStar) || (function () {
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
 const restaurant_model_1 = __importStar(require("../models/restaurant.model"));
+const locationResolver_1 = require("../utils/locationResolver");
 class RestaurantService {
     /**
      * Create a new restaurant
@@ -48,18 +49,10 @@ class RestaurantService {
         const query = { status: restaurant_model_1.RestaurantStatus.ACTIVE };
         // Country / Location filter
         if (filters.country || filters.countryCode) {
-            const orList = [];
-            if (filters.country) {
-                orList.push({ country: { $regex: new RegExp(`^${filters.country}$`, 'i') } });
-                orList.push({ 'address.country': { $regex: new RegExp(`^${filters.country}$`, 'i') } });
-            }
-            if (filters.countryCode) {
-                orList.push({ countryCode: { $regex: new RegExp(`^${filters.countryCode}$`, 'i') } });
-                orList.push({ 'address.countryCode': { $regex: new RegExp(`^${filters.countryCode}$`, 'i') } });
-            }
-            if (orList.length > 0) {
+            const countryFilter = (0, locationResolver_1.buildCountryFilter)(filters.country, filters.countryCode);
+            if (countryFilter.$or && countryFilter.$or.length > 0) {
                 query.$and = query.$and || [];
-                query.$and.push({ $or: orList });
+                query.$and.push(countryFilter);
             }
         }
         // Cuisine filter
@@ -103,17 +96,9 @@ class RestaurantService {
     async findNearbyRestaurants(lng, lat, maxDistanceInMeters = 5000, countryFilters) {
         const geoQuery = { status: restaurant_model_1.RestaurantStatus.ACTIVE };
         if (countryFilters?.country || countryFilters?.countryCode) {
-            const orList = [];
-            if (countryFilters.country) {
-                orList.push({ country: { $regex: new RegExp(`^${countryFilters.country}$`, 'i') } });
-                orList.push({ 'address.country': { $regex: new RegExp(`^${countryFilters.country}$`, 'i') } });
-            }
-            if (countryFilters.countryCode) {
-                orList.push({ countryCode: { $regex: new RegExp(`^${countryFilters.countryCode}$`, 'i') } });
-                orList.push({ 'address.countryCode': { $regex: new RegExp(`^${countryFilters.countryCode}$`, 'i') } });
-            }
-            if (orList.length > 0) {
-                geoQuery.$or = orList;
+            const countryFilter = (0, locationResolver_1.buildCountryFilter)(countryFilters.country, countryFilters.countryCode);
+            if (countryFilter.$or && countryFilter.$or.length > 0) {
+                geoQuery.$or = countryFilter.$or;
             }
         }
         const results = await restaurant_model_1.default.aggregate([

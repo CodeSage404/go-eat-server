@@ -41,7 +41,7 @@ const user_model_1 = __importStar(require("../models/user.model"));
 const appError_1 = __importDefault(require("../utils/appError"));
 const logger_1 = __importDefault(require("../utils/logger"));
 const google_auth_library_1 = require("google-auth-library");
-const apple_signin_auth_1 = __importDefault(require("apple-signin-auth"));
+const apple_service_1 = require("./apple.service");
 const email_service_1 = __importDefault(require("./email.service"));
 const activity_service_1 = __importDefault(require("./activity.service"));
 const googleClient = new google_auth_library_1.OAuth2Client(process.env.GOOGLE_CLIENT_ID);
@@ -254,7 +254,7 @@ class AuthService {
         logger_1.default.info(`👤 User logged in: ${user.phoneNumber || user.email} [${user.role}] from ${cleanDevice.deviceName || 'Device'}`);
         return { user, token };
     }
-    async socialLogin(type, token, role = user_model_1.UserRole.CUSTOMER) {
+    async socialLogin(type, token, role = user_model_1.UserRole.CUSTOMER, providedName) {
         let email;
         let socialId;
         let name;
@@ -268,7 +268,7 @@ class AuthService {
                 if (payload) {
                     email = payload.email;
                     socialId = payload.sub;
-                    name = payload.name;
+                    name = payload.name || providedName || email.split('@')[0];
                 }
                 else {
                     throw new Error('No payload');
@@ -283,7 +283,7 @@ class AuthService {
                 if (userInfo && userInfo.email) {
                     email = userInfo.email;
                     socialId = userInfo.sub || userInfo.id;
-                    name = userInfo.name || email.split('@')[0];
+                    name = userInfo.name || providedName || email.split('@')[0];
                 }
                 else {
                     throw new appError_1.default('Invalid Google authentication token', 400);
@@ -291,12 +291,10 @@ class AuthService {
             }
         }
         else {
-            const { sub: appleSub, email: appleEmail } = await apple_signin_auth_1.default.verifyIdToken(token, {
-                audience: process.env.APPLE_CLIENT_ID,
-            });
-            email = appleEmail;
-            socialId = appleSub;
-            name = email.split('@')[0]; // Apple doesn't always provide name
+            const applePayload = await apple_service_1.appleService.verifyIdToken(token);
+            email = applePayload.email;
+            socialId = applePayload.sub;
+            name = providedName?.trim() || (email ? email.split('@')[0] : 'Apple User');
         }
         let user = await user_model_1.default.findOne({ email });
         if (user) {

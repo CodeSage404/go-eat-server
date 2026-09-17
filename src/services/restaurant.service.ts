@@ -1,5 +1,6 @@
 import Restaurant, { IRestaurant, RestaurantStatus } from '../models/restaurant.model';
 import mongoose from 'mongoose';
+import { buildCountryFilter } from '../utils/locationResolver';
 
 class RestaurantService {
   /**
@@ -17,18 +18,10 @@ class RestaurantService {
 
     // Country / Location filter
     if (filters.country || filters.countryCode) {
-      const orList: any[] = [];
-      if (filters.country) {
-        orList.push({ country: { $regex: new RegExp(`^${filters.country}$`, 'i') } });
-        orList.push({ 'address.country': { $regex: new RegExp(`^${filters.country}$`, 'i') } });
-      }
-      if (filters.countryCode) {
-        orList.push({ countryCode: { $regex: new RegExp(`^${filters.countryCode}$`, 'i') } });
-        orList.push({ 'address.countryCode': { $regex: new RegExp(`^${filters.countryCode}$`, 'i') } });
-      }
-      if (orList.length > 0) {
+      const countryFilter = buildCountryFilter(filters.country, filters.countryCode);
+      if (countryFilter.$or && countryFilter.$or.length > 0) {
         query.$and = query.$and || [];
-        query.$and.push({ $or: orList });
+        query.$and.push(countryFilter);
       }
     }
 
@@ -80,17 +73,9 @@ class RestaurantService {
   ): Promise<any[]> {
     const geoQuery: any = { status: RestaurantStatus.ACTIVE };
     if (countryFilters?.country || countryFilters?.countryCode) {
-      const orList: any[] = [];
-      if (countryFilters.country) {
-        orList.push({ country: { $regex: new RegExp(`^${countryFilters.country}$`, 'i') } });
-        orList.push({ 'address.country': { $regex: new RegExp(`^${countryFilters.country}$`, 'i') } });
-      }
-      if (countryFilters.countryCode) {
-        orList.push({ countryCode: { $regex: new RegExp(`^${countryFilters.countryCode}$`, 'i') } });
-        orList.push({ 'address.countryCode': { $regex: new RegExp(`^${countryFilters.countryCode}$`, 'i') } });
-      }
-      if (orList.length > 0) {
-        geoQuery.$or = orList;
+      const countryFilter = buildCountryFilter(countryFilters.country, countryFilters.countryCode);
+      if (countryFilter.$or && countryFilter.$or.length > 0) {
+        geoQuery.$or = countryFilter.$or;
       }
     }
 

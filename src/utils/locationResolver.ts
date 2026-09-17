@@ -133,6 +133,9 @@ export function buildCountryFilter(country?: string, countryCode?: string): Reco
     orConditions.push({ countryCode: { $regex: /^NG$/i } });
     orConditions.push({ 'address.countryCode': { $regex: /^NG$/i } });
     orConditions.push({ isNigeria: true });
+    orConditions.push({ country: { $exists: false } });
+    orConditions.push({ country: null });
+    orConditions.push({ country: '' });
   } else {
     if (country) {
       orConditions.push({ country: { $regex: new RegExp(`^${country}$`, 'i') } });
