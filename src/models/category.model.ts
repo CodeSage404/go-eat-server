@@ -10,6 +10,8 @@ export interface ICategory extends Document {
   order: number;
   isGlobal?: boolean;
   isActive?: boolean;
+  country?: string;
+  countryCode?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -55,6 +57,14 @@ const categorySchema = new Schema<ICategory>(
       type: Boolean,
       default: true,
     },
+    country: {
+      type: String,
+      index: true,
+    },
+    countryCode: {
+      type: String,
+      index: true,
+    },
   },
   {
     timestamps: true,
@@ -63,6 +73,8 @@ const categorySchema = new Schema<ICategory>(
 
 // Index for fast search
 categorySchema.index({ name: 1, isGlobal: 1 });
+categorySchema.index({ country: 1 });
+categorySchema.index({ countryCode: 1 });
 
 const Category = mongoose.model<ICategory>('Category', categorySchema);
 

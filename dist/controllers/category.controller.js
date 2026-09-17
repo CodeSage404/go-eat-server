@@ -42,6 +42,7 @@ const appError_1 = __importDefault(require("../utils/appError"));
 const category_model_1 = __importDefault(require("../models/category.model"));
 const foodItem_model_1 = __importDefault(require("../models/foodItem.model"));
 const restaurant_model_1 = __importStar(require("../models/restaurant.model"));
+const locationResolver_1 = require("../utils/locationResolver");
 class CategoryController {
     constructor() {
         /**
@@ -49,7 +50,32 @@ class CategoryController {
          * Automatically deduplicates any duplicate categories existing in the DB.
          */
         this.getAllCategories = (0, catchAsync_1.catchAsync)(async (req, res) => {
-            let categories = await category_model_1.default.find().sort({ order: 1, name: 1 });
+            const { country, countryCode } = (0, locationResolver_1.resolveRequestLocation)(req);
+            // If country/countryCode provided, filter categories relevant to that country
+            let filter = {};
+            if (country || countryCode) {
+                const countryFilter = (0, locationResolver_1.buildCountryFilter)(country, countryCode);
+                const activeRestaurants = await restaurant_model_1.default.find({
+                    status: restaurant_model_1.RestaurantStatus.ACTIVE,
+                    ...countryFilter,
+                }).select('_id');
+                const activeRestIds = activeRestaurants.map(r => r._id);
+                const orConditions = [
+                    { isGlobal: true, country: { $exists: false } },
+                    { isGlobal: true, country: null },
+                ];
+                if (country) {
+                    orConditions.push({ country: { $regex: new RegExp(`^${country}$`, 'i') } });
+                }
+                if (countryCode) {
+                    orConditions.push({ countryCode: { $regex: new RegExp(`^${countryCode}$`, 'i') } });
+                }
+                if (activeRestIds.length > 0) {
+                    orConditions.push({ restaurant: { $in: activeRestIds } });
+                }
+                filter.$or = orConditions;
+            }
+            let categories = await category_model_1.default.find(filter).sort({ order: 1, name: 1 });
             // Check and remove any duplicate categories (case-insensitive per scope)
             const seen = new Map();
             const toDeleteIds = [];
@@ -121,11 +147,21 @@ class CategoryController {
                 },
             });
             const categoryIds = matchingCategories.map((c) => c._id);
-            const foodItems = await foodItem_model_1.default.find({
+            const { country, countryCode } = (0, locationResolver_1.resolveRequestLocation)(req);
+            const countryFilter = (0, locationResolver_1.buildCountryFilter)(country, countryCode);
+            // Filter active restaurants in this country/location
+            const activeRestFilter = { status: restaurant_model_1.RestaurantStatus.ACTIVE, ...countryFilter };
+            const activeRestaurantsInCountry = await restaurant_model_1.default.find(activeRestFilter).select('_id');
+            const activeRestIds = activeRestaurantsInCountry.map((r) => r._id);
+            const foodItemQuery = {
                 category: { $in: categoryIds },
                 isAvailable: true,
-            })
-                .populate('restaurant', 'name description images rating estimatedDeliveryTime deliveryFee address')
+            };
+            if (country || countryCode) {
+                foodItemQuery.restaurant = { $in: activeRestIds };
+            }
+            const foodItems = await foodItem_model_1.default.find(foodItemQuery)
+                .populate('restaurant', 'name description images rating estimatedDeliveryTime deliveryFee address country countryCode')
                 .populate('category', 'name image');
             const restaurantIds = new Set();
             const restaurantsList = [];
@@ -141,7 +177,7 @@ class CategoryController {
                 }
             }
             const cuisineRestaurants = await restaurant_model_1.default.find({
-                status: restaurant_model_1.RestaurantStatus.ACTIVE,
+                ...activeRestFilter,
                 cuisine: { $regex: new RegExp(categoryName, 'i') },
             });
             for (const rest of cuisineRestaurants) {

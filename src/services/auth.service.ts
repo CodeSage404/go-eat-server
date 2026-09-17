@@ -3,7 +3,7 @@ import User, { IUser, UserRole, UserStatus } from '../models/user.model';
 import AppError from '../utils/appError';
 import logger from '../utils/logger';
 import { OAuth2Client } from 'google-auth-library';
-import appleSignin from 'apple-signin-auth';
+import { appleService } from './apple.service';
 import emailService from './email.service';
 import activityService, { DeviceInfo } from './activity.service';
 
@@ -243,7 +243,12 @@ class AuthService {
     return { user, token };
   }
 
-  public async socialLogin(type: 'google' | 'apple', token: string, role: UserRole = UserRole.CUSTOMER): Promise<{ user: IUser; token: string }> {
+  public async socialLogin(
+    type: 'google' | 'apple',
+    token: string,
+    role: UserRole = UserRole.CUSTOMER,
+    providedName?: string
+  ): Promise<{ user: IUser; token: string }> {
     let email: string;
     let socialId: string;
     let name: string;
@@ -258,7 +263,7 @@ class AuthService {
         if (payload) {
           email = payload.email!;
           socialId = payload.sub;
-          name = payload.name!;
+          name = payload.name || providedName || email.split('@')[0];
         } else {
           throw new Error('No payload');
         }
@@ -271,18 +276,16 @@ class AuthService {
         if (userInfo && userInfo.email) {
           email = userInfo.email;
           socialId = userInfo.sub || userInfo.id;
-          name = userInfo.name || email.split('@')[0];
+          name = userInfo.name || providedName || email.split('@')[0];
         } else {
           throw new AppError('Invalid Google authentication token', 400);
         }
       }
     } else {
-      const { sub: appleSub, email: appleEmail } = await appleSignin.verifyIdToken(token, {
-        audience: process.env.APPLE_CLIENT_ID,
-      });
-      email = appleEmail!;
-      socialId = appleSub;
-      name = email.split('@')[0]; // Apple doesn't always provide name
+      const applePayload = await appleService.verifyIdToken(token);
+      email = applePayload.email!;
+      socialId = applePayload.sub;
+      name = providedName?.trim() || (email ? email.split('@')[0] : 'Apple User');
     }
 
     let user = await User.findOne({ email });

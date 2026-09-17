@@ -8,6 +8,7 @@ const restaurant_service_1 = __importDefault(require("../services/restaurant.ser
 const catchAsync_1 = require("../utils/catchAsync");
 const appError_1 = __importDefault(require("../utils/appError"));
 const restaurant_model_1 = __importDefault(require("../models/restaurant.model"));
+const locationResolver_1 = require("../utils/locationResolver");
 const daySchedule = zod_1.z.object({
     isOpen: zod_1.z.boolean(),
     open: zod_1.z.string(),
@@ -103,11 +104,12 @@ class RestaurantController {
          * Get all active restaurants with optional filters
          */
         this.getAllRestaurants = (0, catchAsync_1.catchAsync)(async (req, res) => {
-            const { cuisine, search, lat, lng, dist, isTopSpot, tags, sort } = req.query;
+            const { cuisine, search, dist, isTopSpot, tags, sort } = req.query;
+            const { country, countryCode, lat, lng } = (0, locationResolver_1.resolveRequestLocation)(req);
             let restaurants;
-            if (lat && lng) {
-                // Find nearby if lat/lng are provided
-                restaurants = await restaurant_service_1.default.findNearbyRestaurants(parseFloat(lng), parseFloat(lat), dist ? parseInt(dist) : 5000);
+            if (lat !== undefined && lng !== undefined) {
+                // Find nearby if lat/lng are provided, filtered by country/countryCode if detected
+                restaurants = await restaurant_service_1.default.findNearbyRestaurants(lng, lat, dist ? parseInt(dist) : 10000, { country, countryCode });
             }
             else {
                 restaurants = await restaurant_service_1.default.getAllRestaurants({
@@ -115,7 +117,9 @@ class RestaurantController {
                     search,
                     isTopSpot: isTopSpot === 'true',
                     tags: tags ? (Array.isArray(tags) ? tags : [tags]) : undefined,
-                    sort: sort
+                    sort: sort,
+                    country,
+                    countryCode
                 });
             }
             res.status(200).json({

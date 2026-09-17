@@ -13,8 +13,28 @@ const router = Router();
  *     tags:
  *       - Restaurants
  *     summary: Get all restaurants
- *     description: Retrieve a list of restaurants with optional filters for cuisine and location.
+ *     description: Retrieve a list of restaurants filtered strictly by active location or country.
  *     parameters:
+ *       - in: query
+ *         name: country
+ *         schema:
+ *           type: string
+ *         description: Country name filter (e.g. United Kingdom, Nigeria, Italy)
+ *       - in: query
+ *         name: countryCode
+ *         schema:
+ *           type: string
+ *         description: 2-letter ISO country code (e.g. GB, NG, IT)
+ *       - in: header
+ *         name: x-country
+ *         schema:
+ *           type: string
+ *         description: Client current country header
+ *       - in: header
+ *         name: x-country-code
+ *         schema:
+ *           type: string
+ *         description: Client current 2-letter country code header
  *       - in: query
  *         name: cuisine
  *         schema:

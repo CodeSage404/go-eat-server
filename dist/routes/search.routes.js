@@ -13,13 +13,33 @@ const router = (0, express_1.Router)();
  *     tags:
  *       - Search
  *     summary: Global Unified Search
- *     description: Search for restaurants, specific meals (e.g. Jollof), or cuisines. Supports geospatial proximity.
+ *     description: Search for restaurants, specific meals, or cuisines strictly filtered by active location or country.
  *     parameters:
  *       - in: query
  *         name: q
  *         schema:
  *           type: string
  *         description: Search keyword (Restaurant name or Food name)
+ *       - in: query
+ *         name: country
+ *         schema:
+ *           type: string
+ *         description: Country name filter (e.g. United Kingdom, Nigeria, Italy)
+ *       - in: query
+ *         name: countryCode
+ *         schema:
+ *           type: string
+ *         description: 2-letter ISO country code (e.g. GB, NG, IT)
+ *       - in: header
+ *         name: x-country
+ *         schema:
+ *           type: string
+ *         description: Client current country header
+ *       - in: header
+ *         name: x-country-code
+ *         schema:
+ *           type: string
+ *         description: Client current 2-letter country code header
  *       - in: query
  *         name: lat
  *         schema:
@@ -46,7 +66,26 @@ router.get('/', search_controller_1.default.globalSearch);
  *   get:
  *     tags:
  *       - Search
- *     summary: List popular Nigerian Cuisines
+ *     summary: List popular Cuisines by location
+ *     parameters:
+ *       - in: query
+ *         name: country
+ *         schema:
+ *           type: string
+ *         description: Country name filter
+ *       - in: query
+ *         name: countryCode
+ *         schema:
+ *           type: string
+ *         description: 2-letter ISO country code
+ *       - in: header
+ *         name: x-country
+ *         schema:
+ *           type: string
+ *       - in: header
+ *         name: x-country-code
+ *         schema:
+ *           type: string
  *     responses:
  *       200:
  *         description: List of common cuisine types for filtering.
@@ -58,7 +97,26 @@ router.get('/cuisines', search_controller_1.default.getPopularCuisines);
  *   get:
  *     tags:
  *       - Search
- *     summary: List top trending searches
+ *     summary: List top trending searches by location
+ *     parameters:
+ *       - in: query
+ *         name: country
+ *         schema:
+ *           type: string
+ *         description: Country name filter
+ *       - in: query
+ *         name: countryCode
+ *         schema:
+ *           type: string
+ *         description: 2-letter ISO country code
+ *       - in: header
+ *         name: x-country
+ *         schema:
+ *           type: string
+ *       - in: header
+ *         name: x-country-code
+ *         schema:
+ *           type: string
  *     responses:
  *       200:
  *         description: List of top searches

@@ -74,10 +74,20 @@ const categorySchema = new mongoose_1.Schema({
         type: Boolean,
         default: true,
     },
+    country: {
+        type: String,
+        index: true,
+    },
+    countryCode: {
+        type: String,
+        index: true,
+    },
 }, {
     timestamps: true,
 });
 // Index for fast search
 categorySchema.index({ name: 1, isGlobal: 1 });
+categorySchema.index({ country: 1 });
+categorySchema.index({ countryCode: 1 });
 const Category = mongoose_1.default.model('Category', categorySchema);
 exports.default = Category;

@@ -5,6 +5,7 @@ import AppError from '../utils/appError';
 import Category from '../models/category.model';
 import FoodItem from '../models/foodItem.model';
 import Restaurant, { RestaurantStatus } from '../models/restaurant.model';
+import { resolveRequestLocation, buildCountryFilter } from '../utils/locationResolver';
 
 class CategoryController {
   /**
@@ -12,7 +13,36 @@ class CategoryController {
    * Automatically deduplicates any duplicate categories existing in the DB.
    */
   public getAllCategories = catchAsync(async (req: Request, res: Response) => {
-    let categories = await Category.find().sort({ order: 1, name: 1 });
+    const { country, countryCode } = resolveRequestLocation(req);
+
+    // If country/countryCode provided, filter categories relevant to that country
+    let filter: any = {};
+    if (country || countryCode) {
+      const countryFilter = buildCountryFilter(country, countryCode);
+      const activeRestaurants = await Restaurant.find({
+        status: RestaurantStatus.ACTIVE,
+        ...countryFilter,
+      }).select('_id');
+      const activeRestIds = activeRestaurants.map(r => r._id);
+
+      const orConditions: any[] = [
+        { isGlobal: true, country: { $exists: false } },
+        { isGlobal: true, country: null },
+      ];
+      if (country) {
+        orConditions.push({ country: { $regex: new RegExp(`^${country}$`, 'i') } });
+      }
+      if (countryCode) {
+        orConditions.push({ countryCode: { $regex: new RegExp(`^${countryCode}$`, 'i') } });
+      }
+      if (activeRestIds.length > 0) {
+        orConditions.push({ restaurant: { $in: activeRestIds } });
+      }
+
+      filter.$or = orConditions;
+    }
+
+    let categories = await Category.find(filter).sort({ order: 1, name: 1 });
 
     // Check and remove any duplicate categories (case-insensitive per scope)
     const seen = new Map<string, any>();
@@ -103,13 +133,27 @@ class CategoryController {
     });
     const categoryIds = matchingCategories.map((c) => c._id);
 
-    const foodItems = await FoodItem.find({
+    const { country, countryCode } = resolveRequestLocation(req);
+    const countryFilter = buildCountryFilter(country, countryCode);
+
+    // Filter active restaurants in this country/location
+    const activeRestFilter: any = { status: RestaurantStatus.ACTIVE, ...countryFilter };
+    const activeRestaurantsInCountry = await Restaurant.find(activeRestFilter).select('_id');
+    const activeRestIds = activeRestaurantsInCountry.map((r) => r._id);
+
+    const foodItemQuery: any = {
       category: { $in: categoryIds },
       isAvailable: true,
-    })
+    };
+
+    if (country || countryCode) {
+      foodItemQuery.restaurant = { $in: activeRestIds };
+    }
+
+    const foodItems = await FoodItem.find(foodItemQuery)
       .populate(
         'restaurant',
-        'name description images rating estimatedDeliveryTime deliveryFee address'
+        'name description images rating estimatedDeliveryTime deliveryFee address country countryCode'
       )
       .populate('category', 'name image');
 
@@ -130,7 +174,7 @@ class CategoryController {
     }
 
     const cuisineRestaurants = await Restaurant.find({
-      status: RestaurantStatus.ACTIVE,
+      ...activeRestFilter,
       cuisine: { $regex: new RegExp(categoryName, 'i') },
     });
 

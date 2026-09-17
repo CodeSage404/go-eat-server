@@ -9,8 +9,28 @@ const router = Router();
  *   get:
  *     tags:
  *       - Food Items
- *     summary: Get all food items across restaurants or filtered by category/restaurant
+ *     summary: Get all food items across restaurants or filtered by category/restaurant/country
  *     parameters:
+ *       - in: query
+ *         name: country
+ *         schema:
+ *           type: string
+ *         description: Country name filter (e.g. United Kingdom, Nigeria, Italy)
+ *       - in: query
+ *         name: countryCode
+ *         schema:
+ *           type: string
+ *         description: 2-letter ISO country code (e.g. GB, NG, IT)
+ *       - in: header
+ *         name: x-country
+ *         schema:
+ *           type: string
+ *         description: Client current country header
+ *       - in: header
+ *         name: x-country-code
+ *         schema:
+ *           type: string
+ *         description: Client current 2-letter country code header
  *       - in: query
  *         name: category
  *         schema:

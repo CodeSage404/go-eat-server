@@ -367,10 +367,10 @@ class AuthController {
   });
 
   public appleLogin = catchAsync(async (req: Request, res: Response) => {
-    const { token, role } = req.body;
+    const { token, role, name } = req.body;
     if (!token) throw new AppError('Apple token is required', 400);
 
-    const result = await authService.socialLogin('apple', token, role || UserRole.CUSTOMER);
+    const result = await authService.socialLogin('apple', token, role || UserRole.CUSTOMER, name);
 
     res.status(200).json({
       status: 'success',

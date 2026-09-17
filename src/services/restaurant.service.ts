@@ -15,6 +15,23 @@ class RestaurantService {
   async getAllRestaurants(filters: any = {}): Promise<IRestaurant[]> {
     const query: any = { status: RestaurantStatus.ACTIVE };
 
+    // Country / Location filter
+    if (filters.country || filters.countryCode) {
+      const orList: any[] = [];
+      if (filters.country) {
+        orList.push({ country: { $regex: new RegExp(`^${filters.country}$`, 'i') } });
+        orList.push({ 'address.country': { $regex: new RegExp(`^${filters.country}$`, 'i') } });
+      }
+      if (filters.countryCode) {
+        orList.push({ countryCode: { $regex: new RegExp(`^${filters.countryCode}$`, 'i') } });
+        orList.push({ 'address.countryCode': { $regex: new RegExp(`^${filters.countryCode}$`, 'i') } });
+      }
+      if (orList.length > 0) {
+        query.$and = query.$and || [];
+        query.$and.push({ $or: orList });
+      }
+    }
+
     // Cuisine filter
     if (filters.cuisine) {
       query.cuisine = { $in: Array.isArray(filters.cuisine) ? filters.cuisine : [filters.cuisine] };
@@ -55,14 +72,35 @@ class RestaurantService {
   /**
    * Find nearby restaurants using GeoJSON
    */
-  async findNearbyRestaurants(lng: number, lat: number, maxDistanceInMeters: number = 5000): Promise<any[]> {
+  async findNearbyRestaurants(
+    lng: number,
+    lat: number,
+    maxDistanceInMeters: number = 5000,
+    countryFilters?: { country?: string; countryCode?: string }
+  ): Promise<any[]> {
+    const geoQuery: any = { status: RestaurantStatus.ACTIVE };
+    if (countryFilters?.country || countryFilters?.countryCode) {
+      const orList: any[] = [];
+      if (countryFilters.country) {
+        orList.push({ country: { $regex: new RegExp(`^${countryFilters.country}$`, 'i') } });
+        orList.push({ 'address.country': { $regex: new RegExp(`^${countryFilters.country}$`, 'i') } });
+      }
+      if (countryFilters.countryCode) {
+        orList.push({ countryCode: { $regex: new RegExp(`^${countryFilters.countryCode}$`, 'i') } });
+        orList.push({ 'address.countryCode': { $regex: new RegExp(`^${countryFilters.countryCode}$`, 'i') } });
+      }
+      if (orList.length > 0) {
+        geoQuery.$or = orList;
+      }
+    }
+
     const results = await Restaurant.aggregate([
       {
         $geoNear: {
           near: { type: 'Point', coordinates: [lng, lat] },
           distanceField: 'calculatedDistance', // Distance in meters
           maxDistance: maxDistanceInMeters,
-          query: { status: RestaurantStatus.ACTIVE },
+          query: geoQuery,
           spherical: true
         }
       }

@@ -16,7 +16,14 @@ export interface IRestaurant extends Document {
     city: string;
     state: string;
     zipCode: string;
+    country?: string;
+    countryCode?: string;
   };
+  country: string;
+  countryCode: string;
+  isNigeria: boolean;
+  isItaly: boolean;
+  isUk: boolean;
   location: {
     type: 'Point';
     coordinates: [number, number]; 
@@ -118,6 +125,30 @@ const restaurantSchema = new Schema<IRestaurant>(
       city: { type: String, required: true },
       state: { type: String, required: true },
       zipCode: { type: String, required: true },
+      country: { type: String },
+      countryCode: { type: String },
+    },
+    country: {
+      type: String,
+      default: 'Nigeria',
+      index: true,
+    },
+    countryCode: {
+      type: String,
+      default: 'NG',
+      index: true,
+    },
+    isNigeria: {
+      type: Boolean,
+      default: true,
+    },
+    isItaly: {
+      type: Boolean,
+      default: false,
+    },
+    isUk: {
+      type: Boolean,
+      default: false,
     },
     location: {
       type: {
@@ -313,8 +344,61 @@ const restaurantSchema = new Schema<IRestaurant>(
   }
 );
 
-// Index for geospatial queries
+// Auto-derive country & countryCode if not set or ambiguous
+restaurantSchema.pre('save', function (this: any) {
+  const rest = this;
+  const rawAddr = `${rest.address?.street || ''} ${rest.address?.city || ''} ${rest.address?.state || ''} ${rest.address?.country || ''}`.toLowerCase();
+  const coords = rest.location?.coordinates;
+  const lng = coords && Array.isArray(coords) ? coords[0] : 0;
+  const lat = coords && Array.isArray(coords) ? coords[1] : 0;
+
+  if (!rest.country || (rest.country === 'Nigeria' && rest.countryCode === 'NG')) {
+    if (
+      rawAddr.includes('united kingdom') ||
+      rawAddr.includes('london') ||
+      rawAddr.includes('england') ||
+      rawAddr.includes('uk') ||
+      rawAddr.includes('scotland') ||
+      rawAddr.includes('wales') ||
+      (lat >= 49.5 && lat <= 61.0 && lng >= -8.5 && lng <= 2.0)
+    ) {
+      rest.country = 'United Kingdom';
+      rest.countryCode = 'GB';
+      rest.isUk = true;
+      rest.isNigeria = false;
+      rest.isItaly = false;
+    } else if (
+      rawAddr.includes('italy') ||
+      rawAddr.includes('italia') ||
+      rawAddr.includes('rome') ||
+      rawAddr.includes('roma') ||
+      rawAddr.includes('milan') ||
+      (lat >= 36.0 && lat <= 47.5 && lng >= 6.5 && lng <= 18.5)
+    ) {
+      rest.country = 'Italy';
+      rest.countryCode = 'IT';
+      rest.isItaly = true;
+      rest.isNigeria = false;
+      rest.isUk = false;
+    } else {
+      rest.country = 'Nigeria';
+      rest.countryCode = 'NG';
+      rest.isNigeria = true;
+      rest.isItaly = false;
+      rest.isUk = false;
+    }
+  }
+
+  if (rest.address) {
+    rest.address.country = rest.country;
+    rest.address.countryCode = rest.countryCode;
+  }
+});
+
+// Indexes for geospatial and country queries
 restaurantSchema.index({ location: '2dsphere' });
+restaurantSchema.index({ country: 1, status: 1 });
+restaurantSchema.index({ countryCode: 1, status: 1 });
 
 const Restaurant = mongoose.model<IRestaurant>('Restaurant', restaurantSchema);
 

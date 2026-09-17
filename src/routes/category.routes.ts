@@ -13,7 +13,28 @@ const router = Router();
  *     tags:
  *       - Categories
  *     summary: Get all food categories
- *     description: Returns a list of all food & cravings categories (e.g. Rice, Drinks, Fast Food, Swallow) with image URLs for the Home screen.
+ *     description: Returns a list of all food & cravings categories filtered by user location / country.
+ *     parameters:
+ *       - in: query
+ *         name: country
+ *         schema:
+ *           type: string
+ *         description: Country name filter (e.g. United Kingdom, Nigeria, Italy)
+ *       - in: query
+ *         name: countryCode
+ *         schema:
+ *           type: string
+ *         description: 2-letter ISO country code (e.g. GB, NG, IT)
+ *       - in: header
+ *         name: x-country
+ *         schema:
+ *           type: string
+ *         description: Client current country header
+ *       - in: header
+ *         name: x-country-code
+ *         schema:
+ *           type: string
+ *         description: Client current 2-letter country code header
  *     responses:
  *       200:
  *         description: List of categories retrieved successfully.
@@ -33,6 +54,26 @@ router.get('/', categoryController.getAllCategories);
  *         required: true
  *         schema:
  *           type: string
+ *       - in: query
+ *         name: country
+ *         schema:
+ *           type: string
+ *         description: Country name filter
+ *       - in: query
+ *         name: countryCode
+ *         schema:
+ *           type: string
+ *         description: 2-letter ISO country code
+ *       - in: header
+ *         name: x-country
+ *         schema:
+ *           type: string
+ *         description: Client current country header
+ *       - in: header
+ *         name: x-country-code
+ *         schema:
+ *           type: string
+ *         description: Client current 2-letter country code header
  *     responses:
  *       200:
  *         description: Category details.

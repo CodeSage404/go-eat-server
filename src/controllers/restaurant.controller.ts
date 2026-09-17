@@ -4,6 +4,7 @@ import restaurantService from '../services/restaurant.service';
 import { catchAsync } from '../utils/catchAsync';
 import AppError from '../utils/appError';
 import Restaurant, { RestaurantStatus } from '../models/restaurant.model';
+import { resolveRequestLocation } from '../utils/locationResolver';
 
 const daySchedule = z.object({
   isOpen: z.boolean(),
@@ -106,16 +107,18 @@ class RestaurantController {
    * Get all active restaurants with optional filters
    */
   public getAllRestaurants = catchAsync(async (req: Request, res: Response) => {
-    const { cuisine, search, lat, lng, dist, isTopSpot, tags, sort } = req.query;
+    const { cuisine, search, dist, isTopSpot, tags, sort } = req.query;
+    const { country, countryCode, lat, lng } = resolveRequestLocation(req);
 
     let restaurants;
 
-    if (lat && lng) {
-      // Find nearby if lat/lng are provided
+    if (lat !== undefined && lng !== undefined) {
+      // Find nearby if lat/lng are provided, filtered by country/countryCode if detected
       restaurants = await restaurantService.findNearbyRestaurants(
-        parseFloat(lng as string),
-        parseFloat(lat as string),
-        dist ? parseInt(dist as string) : 5000
+        lng,
+        lat,
+        dist ? parseInt(dist as string) : 10000,
+        { country, countryCode }
       );
     } else {
       restaurants = await restaurantService.getAllRestaurants({ 
@@ -123,7 +126,9 @@ class RestaurantController {
         search, 
         isTopSpot: isTopSpot === 'true',
         tags: tags ? (Array.isArray(tags) ? tags : [tags]) : undefined,
-        sort: sort as string
+        sort: sort as string,
+        country,
+        countryCode
       });
     }
 

@@ -4,6 +4,7 @@ node_modules
 go-eat-service-acc-id.json
 service-account.json
 google-services.json
+apple-auth.txt
 # /scripts/*
 src-backup
 src-backup-v2

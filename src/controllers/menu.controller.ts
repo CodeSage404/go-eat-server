@@ -6,6 +6,8 @@ import { catchAsync } from '../utils/catchAsync';
 import AppError from '../utils/appError';
 import FoodItem from '../models/foodItem.model';
 import Category from '../models/category.model';
+import Restaurant, { RestaurantStatus } from '../models/restaurant.model';
+import { resolveRequestLocation, buildCountryFilter } from '../utils/locationResolver';
 
 const categorySchema = z.object({
   name: z.string().min(1, 'Category name is required'),
@@ -87,6 +89,16 @@ class MenuController {
 
     if (restaurant) {
       query.restaurant = restaurant;
+    } else {
+      const { country, countryCode } = resolveRequestLocation(req);
+      if (country || countryCode) {
+        const countryFilter = buildCountryFilter(country, countryCode);
+        const restIds = await Restaurant.find({
+          status: RestaurantStatus.ACTIVE,
+          ...countryFilter,
+        }).distinct('_id');
+        query.restaurant = { $in: restIds };
+      }
     }
 
     if (category) {
@@ -129,7 +141,7 @@ class MenuController {
     const foodItems = await FoodItem.find(query)
       .populate(
         'restaurant',
-        'name description images rating estimatedDeliveryTime deliveryFee address'
+        'name description images rating estimatedDeliveryTime deliveryFee address country countryCode'
       )
       .populate('category', 'name image');
 

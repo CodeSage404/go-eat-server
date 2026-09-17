@@ -1,4 +1,37 @@
 "use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
@@ -10,6 +43,8 @@ const catchAsync_1 = require("../utils/catchAsync");
 const appError_1 = __importDefault(require("../utils/appError"));
 const foodItem_model_1 = __importDefault(require("../models/foodItem.model"));
 const category_model_1 = __importDefault(require("../models/category.model"));
+const restaurant_model_1 = __importStar(require("../models/restaurant.model"));
+const locationResolver_1 = require("../utils/locationResolver");
 const categorySchema = zod_1.z.object({
     name: zod_1.z.string().min(1, 'Category name is required'),
     description: zod_1.z.string().optional(),
@@ -75,6 +110,17 @@ class MenuController {
             if (restaurant) {
                 query.restaurant = restaurant;
             }
+            else {
+                const { country, countryCode } = (0, locationResolver_1.resolveRequestLocation)(req);
+                if (country || countryCode) {
+                    const countryFilter = (0, locationResolver_1.buildCountryFilter)(country, countryCode);
+                    const restIds = await restaurant_model_1.default.find({
+                        status: restaurant_model_1.RestaurantStatus.ACTIVE,
+                        ...countryFilter,
+                    }).distinct('_id');
+                    query.restaurant = { $in: restIds };
+                }
+            }
             if (category) {
                 const catVal = String(category).trim();
                 let matchedIds = [];
@@ -106,7 +152,7 @@ class MenuController {
                 query.name = { $regex: new RegExp(String(search), 'i') };
             }
             const foodItems = await foodItem_model_1.default.find(query)
-                .populate('restaurant', 'name description images rating estimatedDeliveryTime deliveryFee address')
+                .populate('restaurant', 'name description images rating estimatedDeliveryTime deliveryFee address country countryCode')
                 .populate('category', 'name image');
             res.status(200).json({
                 status: 'success',
