@@ -72,6 +72,20 @@ class PaymentController {
             res.status(200).send('Flutterwave webhook received successfully');
         });
         /**
+         * Webhook endpoint for Stripe
+         */
+        this.handleStripeWebhook = (0, catchAsync_1.catchAsync)(async (req, res) => {
+            const event = req.body;
+            if (event?.type === 'checkout.session.completed') {
+                const session = event.data?.object;
+                const reference = session?.client_reference_id || session?.id;
+                if (reference) {
+                    await payment_service_1.default.verifyPayment(reference, 'stripe');
+                }
+            }
+            res.status(200).json({ received: true });
+        });
+        /**
          * Admin / System: Payout Delivery Rider
          */
         this.payoutRider = (0, catchAsync_1.catchAsync)(async (req, res) => {
@@ -216,7 +230,7 @@ class PaymentController {
          * Served when Paystack / Flutterwave / Stripe redirects the WebView after payment.
          */
         this.handlePaymentCallback = (0, catchAsync_1.catchAsync)(async (req, res) => {
-            const reference = (req.query.reference || req.query.trxref || req.query.tx_ref || '');
+            const reference = (req.query.reference || req.query.trxref || req.query.tx_ref || req.query.session_id || '');
             const provider = String(req.query.provider || 'paystack');
             const html = `<!DOCTYPE html>
 <html lang="en">

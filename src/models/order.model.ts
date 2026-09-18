@@ -53,6 +53,7 @@ export interface IOrder extends Document {
   rider?: mongoose.Types.ObjectId;
   items: IOrderItem[];
   totalAmount: number;
+  currency?: string;
   grossAmount?: number;
   commissionRate?: number; // e.g. 0.15 for 15%
   commissionAmount?: number; // e.g. 1500
@@ -132,6 +133,11 @@ const orderSchema = new Schema<IOrder>(
     totalAmount: {
       type: Number,
       required: true,
+    },
+    currency: {
+      type: String,
+      uppercase: true,
+      default: 'NGN',
     },
     grossAmount: {
       type: Number,

@@ -92,6 +92,25 @@ router.post('/webhook/flutterwave', paymentController.handleFlutterwaveWebhook);
 
 /**
  * @openapi
+ * /api/v1/payments/webhook/stripe:
+ *   post:
+ *     tags:
+ *       - Payments
+ *     summary: Stripe Webhook Handler
+ *     requestBody:
+ *       required: false
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *     responses:
+ *       200:
+ *         description: Webhook received successfully
+ */
+router.post('/webhook/stripe', paymentController.handleStripeWebhook);
+
+/**
+ * @openapi
  * /api/v1/payments/verify/{reference}:
  *   get:
  *     tags:
@@ -120,7 +139,7 @@ router.use(protect);
  *   post:
  *     tags:
  *       - Payments
- *     summary: Initialize a new payment (Paystack or Flutterwave)
+ *     summary: Initialize a new payment (Paystack, Flutterwave, or Stripe)
  *     security:
  *       - bearerAuth: []
  *     requestBody:
@@ -129,13 +148,13 @@ router.use(protect);
  *         application/json:
  *           schema:
  *             type: object
- *             required: [orderId, paymentMethod]
+ *             required: [orderId]
  *             properties:
  *               orderId:
  *                 type: string
- *               paymentMethod:
+ *               provider:
  *                 type: string
- *                 enum: [paystack, flutterwave]
+ *                 enum: [paystack, flutterwave, stripe]
  *     responses:
  *       200:
  *         description: Payment initialized, returns payment URL or details

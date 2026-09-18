@@ -69,30 +69,22 @@ class PaymentService {
         }
         if (!countryCode) {
             const locationStr = `${order.deliveryAddress?.address || ''} ${order.deliveryAddress?.city || ''} ${order.deliveryAddress?.state || ''} ${order.deliveryAddress?.street || ''}`.toLowerCase();
-            if (locationStr.includes('uk') || locationStr.includes('united kingdom') || locationStr.includes('london') || locationStr.includes('gb')) {
+            if (locationStr.includes('uk') || locationStr.includes('united kingdom') || locationStr.includes('london') || locationStr.includes('gb') || locationStr.includes('england') || locationStr.includes('manchester')) {
                 countryCode = 'GB';
-            }
-            else if (locationStr.includes('us') || locationStr.includes('usa') || locationStr.includes('united states')) {
-                countryCode = 'US';
             }
             else if (locationStr.includes('italy') || locationStr.includes('italia') || locationStr.includes('rome') || locationStr.includes('milan')) {
                 countryCode = 'IT';
             }
-            else if (locationStr.includes('canada') || locationStr.includes('toronto')) {
-                countryCode = 'CA';
-            }
-            else if (locationStr.includes('ghana') || locationStr.includes('accra')) {
-                countryCode = 'GH';
-            }
-            else if (locationStr.includes('kenya') || locationStr.includes('nairobi')) {
-                countryCode = 'KE';
-            }
-            else if (locationStr.includes('south africa') || locationStr.includes('johannesburg')) {
-                countryCode = 'ZA';
-            }
-            else {
+            else if (locationStr.includes('nigeria') || locationStr.includes('lagos') || locationStr.includes('abuja')) {
                 countryCode = 'NG';
             }
+        }
+        // Direct country assignment: Paystack for Nigeria, Stripe for UK & Italy
+        if (countryCode === 'NG' || user?.isNigeria) {
+            return 'paystack';
+        }
+        if (countryCode === 'GB' || countryCode === 'UK' || countryCode === 'IT' || user?.isUk || user?.isItaly) {
+            return 'stripe';
         }
         // 2. Check Admin Platform Settings (Country-specific payment provider mapping)
         if (setting?.countryPaymentProviders && Array.isArray(setting.countryPaymentProviders)) {
@@ -102,7 +94,7 @@ class PaymentService {
             }
         }
         // 3. African Countries default to Paystack / Flutterwave
-        const africanCountries = ['NG', 'GH', 'KE', 'ZA', 'EG', 'RW', 'UG', 'TZ', 'CI', 'SN', 'CM'];
+        const africanCountries = ['GH', 'KE', 'ZA', 'EG', 'RW', 'UG', 'TZ', 'CI', 'SN', 'CM'];
         if (africanCountries.includes(countryCode)) {
             return (setting?.defaultPaymentProvider === 'flutterwave' ? 'flutterwave' : 'paystack');
         }
@@ -160,13 +152,26 @@ class PaymentService {
             };
         }
         else if (activeProvider.toLowerCase() === 'stripe') {
+            const userCountryCode = (user?.countryCode || (user?.isNigeria ? 'NG' : user?.isUk ? 'GB' : user?.isItaly ? 'IT' : '')).toUpperCase();
+            let stripeCurrency = 'gbp';
+            if (user?.isItaly || userCountryCode === 'IT' || (order.currency && String(order.currency).toLowerCase() === 'eur')) {
+                stripeCurrency = 'eur';
+            }
+            else if (user?.isUk || userCountryCode === 'GB' || userCountryCode === 'UK' || (order.currency && String(order.currency).toLowerCase() === 'gbp')) {
+                stripeCurrency = 'gbp';
+            }
+            else if (order.currency) {
+                stripeCurrency = String(order.currency).toLowerCase();
+            }
             const result = await stripe_module_1.default.initializePayment({
                 email: safeEmail,
                 amount,
                 reference,
+                currency: stripeCurrency,
                 redirectUrl: callbackUrl || `${defaultCallbackUrl}&provider=stripe`,
                 metadata: {
                     orderId: order._id.toString(),
+                    orderIds: orderIdList.join(','),
                     customerId: user._id.toString(),
                 },
             });

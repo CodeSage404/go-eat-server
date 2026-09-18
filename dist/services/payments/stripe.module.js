@@ -9,7 +9,9 @@ const appError_1 = __importDefault(require("../../utils/appError"));
 class StripeModule {
     constructor() {
         this.baseUrl = 'https://api.stripe.com/v1';
-        this.secretKey = process.env.STRIPE_SECRET_KEY || 'sk_test_placeholder_key';
+    }
+    get secretKey() {
+        return process.env.STRIPE_SECRET_KEY || '';
     }
     getHeaders() {
         return {
@@ -22,22 +24,32 @@ class StripeModule {
      */
     async initializePayment(params) {
         const amountInCents = Math.round(params.amount * 100);
-        const email = params.email && params.email.trim() !== '' ? params.email : 'customer@goeat.com';
-        if (!this.secretKey || this.secretKey.includes('placeholder')) {
-            throw new appError_1.default('Stripe payment gateway is not properly configured.', 500);
+        const email = params.email && params.email.trim() !== '' ? params.email : 'support@goeatone.com';
+        const currency = (params.currency || 'gbp').toLowerCase();
+        if (!this.secretKey) {
+            throw new appError_1.default('Stripe payment gateway is not properly configured. Missing STRIPE_SECRET_KEY in environment.', 500);
         }
         try {
             const formData = new URLSearchParams();
             formData.append('payment_method_types[]', 'card');
-            formData.append('line_items[0][price_data][currency]', (params.currency || 'usd').toLowerCase());
+            formData.append('line_items[0][price_data][currency]', currency);
             formData.append('line_items[0][price_data][product_data][name]', 'Go-Eat Order');
             formData.append('line_items[0][price_data][unit_amount]', amountInCents.toString());
             formData.append('line_items[0][quantity]', '1');
             formData.append('mode', 'payment');
-            formData.append('success_url', params.redirectUrl || `https://api.goeatalone.com/payment/callback?reference=${params.reference}&provider=stripe`);
-            formData.append('cancel_url', params.redirectUrl || `https://api.goeatalone.com/payment/callback?reference=${params.reference}&provider=stripe&status=cancelled`);
+            const redirectBase = params.redirectUrl || `https://api.goeatalone.com/payment/callback?reference=${params.reference}&provider=stripe`;
+            const separator = redirectBase.includes('?') ? '&' : '?';
+            formData.append('success_url', `${redirectBase}${separator}session_id={CHECKOUT_SESSION_ID}&status=success`);
+            formData.append('cancel_url', `${redirectBase}${separator}status=cancelled`);
             formData.append('client_reference_id', params.reference);
             formData.append('customer_email', email);
+            if (params.metadata) {
+                for (const [key, val] of Object.entries(params.metadata)) {
+                    if (val !== undefined && val !== null) {
+                        formData.append(`metadata[${key}]`, String(val));
+                    }
+                }
+            }
             const response = await axios_1.default.post(`${this.baseUrl}/checkout/sessions`, formData.toString(), {
                 headers: this.getHeaders(),
             });
@@ -57,14 +69,26 @@ class StripeModule {
      * Verify Payment Status from Stripe
      */
     async verifyPayment(reference) {
-        if (!this.secretKey || this.secretKey.includes('placeholder')) {
-            throw new appError_1.default('Stripe payment gateway is not properly configured.', 500);
+        if (!this.secretKey) {
+            throw new appError_1.default('Stripe payment gateway is not properly configured. Missing STRIPE_SECRET_KEY in environment.', 500);
         }
         try {
-            const response = await axios_1.default.get(`${this.baseUrl}/checkout/sessions?client_reference_id=${reference}`, {
-                headers: this.getHeaders(),
-            });
-            const session = response.data.data && response.data.data[0];
+            let session = null;
+            // 1. If reference is a Stripe checkout session id (cs_...)
+            if (reference.startsWith('cs_')) {
+                const response = await axios_1.default.get(`${this.baseUrl}/checkout/sessions/${reference}`, {
+                    headers: this.getHeaders(),
+                });
+                session = response.data;
+            }
+            else {
+                // 2. Query recent sessions and match by client_reference_id
+                const response = await axios_1.default.get(`${this.baseUrl}/checkout/sessions?limit=50`, {
+                    headers: this.getHeaders(),
+                });
+                const sessions = response.data?.data || [];
+                session = sessions.find((s) => s.client_reference_id === reference);
+            }
             if (!session) {
                 throw new appError_1.default('Transaction not found on Stripe', 404);
             }
@@ -75,7 +99,9 @@ class StripeModule {
                 id: session.id,
                 status: 'success',
                 metadata: {
-                    orderId: session.client_reference_id ? session.client_reference_id.split('_')[1] : undefined,
+                    orderId: session.metadata?.orderId || (session.client_reference_id ? session.client_reference_id.split('_')[1] : undefined),
+                    orderIds: session.metadata?.orderIds,
+                    customerId: session.metadata?.customerId,
                 },
             };
         }

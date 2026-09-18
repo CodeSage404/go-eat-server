@@ -97,6 +97,11 @@ const orderSchema = new mongoose_1.Schema({
         type: Number,
         required: true,
     },
+    currency: {
+        type: String,
+        uppercase: true,
+        default: 'NGN',
+    },
     grossAmount: {
         type: Number,
         default: 0,
