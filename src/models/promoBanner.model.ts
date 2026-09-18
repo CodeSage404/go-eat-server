@@ -1,7 +1,22 @@
 import mongoose, { Schema, Document } from 'mongoose';
 
+export interface IPromoBannerSlide {
+  _id?: string;
+  isActive?: boolean;
+  headline: string;
+  subtitle: string;
+  ctaText: string;
+  ctaLink?: string;
+  voucherText?: string;
+  imageUrl?: string;
+  backgroundColor?: string;
+  backgroundColorDark?: string;
+  code?: string;
+}
+
 export interface IPromoBanner extends Document {
   isActive: boolean;
+  isCarouselEnabled: boolean;
   headline: string;
   subtitle: string;
   ctaText: string;
@@ -13,6 +28,7 @@ export interface IPromoBanner extends Document {
   topSpotsTitle?: string;
   offersTitle?: string;
   offersSubtitle?: string;
+  slides?: IPromoBannerSlide[];
   createdAt: Date;
   updatedAt: Date;
 }
@@ -20,6 +36,10 @@ export interface IPromoBanner extends Document {
 const promoBannerSchema = new Schema<IPromoBanner>(
   {
     isActive: {
+      type: Boolean,
+      default: true,
+    },
+    isCarouselEnabled: {
       type: Boolean,
       default: true,
     },
@@ -78,6 +98,20 @@ const promoBannerSchema = new Schema<IPromoBanner>(
       default: '#D99B26',
       trim: true,
     },
+    slides: [
+      {
+        isActive: { type: Boolean, default: true },
+        headline: { type: String, trim: true },
+        subtitle: { type: String, trim: true },
+        ctaText: { type: String, trim: true },
+        ctaLink: { type: String, trim: true },
+        voucherText: { type: String, trim: true },
+        imageUrl: { type: String, default: '', trim: true },
+        backgroundColor: { type: String, trim: true },
+        backgroundColorDark: { type: String, trim: true },
+        code: { type: String, trim: true },
+      },
+    ],
   },
   {
     timestamps: true,

@@ -74,6 +74,10 @@ const promoSchema = new mongoose_1.Schema({
         type: mongoose_1.Schema.Types.ObjectId,
         ref: 'Restaurant',
     },
+    foodItem: {
+        type: mongoose_1.Schema.Types.ObjectId,
+        ref: 'FoodItem',
+    },
 }, {
     timestamps: true,
 });

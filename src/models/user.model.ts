@@ -28,6 +28,11 @@ export interface IUser extends Document {
   profileImage?: string;
   fcmToken?: string;
   notificationsEnabled: boolean;
+  notificationPreferences?: {
+    email: boolean;
+    push: boolean;
+    inApp: boolean;
+  };
   googleId?: string;
   appleId?: string;
   isVerified: boolean;
@@ -140,6 +145,11 @@ const userSchema = new Schema<IUser>(
     notificationsEnabled: {
       type: Boolean,
       default: true,
+    },
+    notificationPreferences: {
+      email: { type: Boolean, default: true },
+      push: { type: Boolean, default: true },
+      inApp: { type: Boolean, default: true },
     },
     isVerified: {
       type: Boolean,

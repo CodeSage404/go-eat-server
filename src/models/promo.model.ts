@@ -10,6 +10,7 @@ export interface IPromo extends Document {
   usageLimit?: number;
   usedCount: number;
   restaurant?: mongoose.Types.ObjectId; // If null, applies to all restaurants
+  foodItem?: mongoose.Types.ObjectId; // If set, applies to a specific food item
   createdAt: Date;
   updatedAt: Date;
 }
@@ -54,6 +55,10 @@ const promoSchema = new Schema<IPromo>(
     restaurant: {
       type: Schema.Types.ObjectId,
       ref: 'Restaurant',
+    },
+    foodItem: {
+      type: Schema.Types.ObjectId,
+      ref: 'FoodItem',
     },
   },
   {

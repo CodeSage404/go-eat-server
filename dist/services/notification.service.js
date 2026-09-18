@@ -103,7 +103,8 @@ class NotificationService {
         // 3. Send via Push Notification (Expo or Native FCM)
         try {
             const user = await user_model_1.default.findById(userId);
-            if (user && user.fcmToken && user.notificationsEnabled !== false) {
+            const pushAllowed = user && user.fcmToken && user.notificationsEnabled !== false && user.notificationPreferences?.push !== false;
+            if (pushAllowed && user && user.fcmToken) {
                 if (user.fcmToken.startsWith('ExponentPushToken') || user.fcmToken.startsWith('ExpoPushToken')) {
                     // Send via Expo Push API with high priority and sound
                     const expoMessage = {

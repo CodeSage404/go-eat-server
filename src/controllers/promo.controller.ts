@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import Promo from '../models/promo.model';
 import Restaurant from '../models/restaurant.model';
+import FoodItem from '../models/foodItem.model';
 import { catchAsync } from '../utils/catchAsync';
 import AppError from '../utils/appError';
 
@@ -16,6 +17,19 @@ class PromoController {
     }
 
     const promo = await Promo.create(req.body);
+
+    // If promo is targeted to a specific food item, reflect discount directly on item
+    if (promo.foodItem && promo.discountPercentage > 0) {
+      const foodItem = await FoodItem.findById(promo.foodItem);
+      if (foodItem) {
+        if (!foodItem.originalPrice) {
+          foodItem.originalPrice = foodItem.price;
+        }
+        foodItem.discountPercentage = promo.discountPercentage;
+        foodItem.price = Math.round(foodItem.originalPrice * (1 - promo.discountPercentage / 100));
+        await foodItem.save();
+      }
+    }
 
     res.status(201).json({
       status: 'success',
@@ -48,6 +62,25 @@ class PromoController {
       { returnDocument: 'after', runValidators: true }
     );
     if (!promo) throw new AppError('Promo not found or not owned by vendor', 404);
+
+    // Sync food item discount if applicable
+    if (promo.foodItem) {
+      const foodItem = await FoodItem.findById(promo.foodItem);
+      if (foodItem) {
+        if (promo.isActive && promo.discountPercentage > 0) {
+          if (!foodItem.originalPrice) {
+            foodItem.originalPrice = foodItem.price;
+          }
+          foodItem.discountPercentage = promo.discountPercentage;
+          foodItem.price = Math.round(foodItem.originalPrice * (1 - promo.discountPercentage / 100));
+        } else if (!promo.isActive && foodItem.originalPrice) {
+          foodItem.price = foodItem.originalPrice;
+          foodItem.originalPrice = undefined;
+          foodItem.discountPercentage = 0;
+        }
+        await foodItem.save();
+      }
+    }
     
     res.status(200).json({ status: 'success', data: { promo } });
   });
@@ -62,6 +95,17 @@ class PromoController {
     
     const promo = await Promo.findOneAndDelete({ _id: id, restaurant: restaurant._id });
     if (!promo) throw new AppError('Promo not found or not owned by vendor', 404);
+
+    // Revert food item discount upon deleting promo
+    if (promo.foodItem) {
+      const foodItem = await FoodItem.findById(promo.foodItem);
+      if (foodItem && foodItem.originalPrice) {
+        foodItem.price = foodItem.originalPrice;
+        foodItem.originalPrice = undefined;
+        foodItem.discountPercentage = 0;
+        await foodItem.save();
+      }
+    }
     
     res.status(204).json({ status: 'success', data: null });
   });

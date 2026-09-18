@@ -8,13 +8,16 @@ const catchAsync_1 = require("../utils/catchAsync");
 class PromoBannerController {
     constructor() {
         /**
-         * Client/User App: Get active promo banner
+         * Client/User App: Get active promo banner and banners carousel
          */
         this.getActiveBanner = (0, catchAsync_1.catchAsync)(async (req, res) => {
-            const banner = await promoBanner_service_1.default.getActiveBanner();
+            const result = await promoBanner_service_1.default.getActiveBanners();
             res.status(200).json({
                 status: 'success',
-                data: { banner },
+                data: {
+                    banner: result.banner,
+                    banners: result.banners,
+                },
             });
         });
         /**

@@ -36,6 +36,9 @@ const router = Router();
  *                           type: string
  *                         isActive:
  *                           type: boolean
+ *                         isCarouselEnabled:
+ *                           type: boolean
+ *                           description: Whether customer app renders promo banners in a cycling carousel
  *                         headline:
  *                           type: string
  *                         subtitle:
@@ -61,6 +64,32 @@ const router = Router();
  *                         offersSubtitle:
  *                           type: string
  *                           example: Tailored to your taste buds
+ *                     banners:
+ *                       type: array
+ *                       description: List of active promotional banners for carousel display
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           _id:
+ *                             type: string
+ *                           headline:
+ *                             type: string
+ *                           subtitle:
+ *                             type: string
+ *                           ctaText:
+ *                             type: string
+ *                           ctaLink:
+ *                             type: string
+ *                           voucherText:
+ *                             type: string
+ *                           code:
+ *                             type: string
+ *                           imageUrl:
+ *                             type: string
+ *                           backgroundColor:
+ *                             type: string
+ *                           backgroundColorDark:
+ *                             type: string
  */
 router.get('/banner', promoBannerController.getActiveBanner);
 
@@ -123,6 +152,14 @@ router.get(
  *               isActive:
  *                 type: boolean
  *                 description: Whether the promo banner is visible on the customer app
+ *               isCarouselEnabled:
+ *                 type: boolean
+ *                 description: Whether banners run in carousel mode or static display
+ *               slides:
+ *                 type: array
+ *                 description: Custom promotional slides configured by administrator
+ *                 items:
+ *                   type: object
  *               headline:
  *                 type: string
  *                 description: Main bold headline text
@@ -235,6 +272,9 @@ router.post('/apply', restrictTo(UserRole.CUSTOMER), promoController.applyPromo)
  *               expiryDate:
  *                 type: string
  *                 format: date-time
+ *               foodItemId:
+ *                 type: string
+ *                 description: Optional ID of a specific food item to apply the discount to
  *     responses:
  *       201:
  *         description: Promo created

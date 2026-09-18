@@ -5,6 +5,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const promo_model_1 = __importDefault(require("../models/promo.model"));
 const restaurant_model_1 = __importDefault(require("../models/restaurant.model"));
+const foodItem_model_1 = __importDefault(require("../models/foodItem.model"));
 const catchAsync_1 = require("../utils/catchAsync");
 const appError_1 = __importDefault(require("../utils/appError"));
 class PromoController {
@@ -20,6 +21,18 @@ class PromoController {
                 req.body.restaurant = restaurant._id.toString();
             }
             const promo = await promo_model_1.default.create(req.body);
+            // If promo is targeted to a specific food item, reflect discount directly on item
+            if (promo.foodItem && promo.discountPercentage > 0) {
+                const foodItem = await foodItem_model_1.default.findById(promo.foodItem);
+                if (foodItem) {
+                    if (!foodItem.originalPrice) {
+                        foodItem.originalPrice = foodItem.price;
+                    }
+                    foodItem.discountPercentage = promo.discountPercentage;
+                    foodItem.price = Math.round(foodItem.originalPrice * (1 - promo.discountPercentage / 100));
+                    await foodItem.save();
+                }
+            }
             res.status(201).json({
                 status: 'success',
                 data: { promo },
@@ -46,6 +59,25 @@ class PromoController {
             const promo = await promo_model_1.default.findOneAndUpdate({ _id: id, restaurant: restaurant._id }, req.body, { returnDocument: 'after', runValidators: true });
             if (!promo)
                 throw new appError_1.default('Promo not found or not owned by vendor', 404);
+            // Sync food item discount if applicable
+            if (promo.foodItem) {
+                const foodItem = await foodItem_model_1.default.findById(promo.foodItem);
+                if (foodItem) {
+                    if (promo.isActive && promo.discountPercentage > 0) {
+                        if (!foodItem.originalPrice) {
+                            foodItem.originalPrice = foodItem.price;
+                        }
+                        foodItem.discountPercentage = promo.discountPercentage;
+                        foodItem.price = Math.round(foodItem.originalPrice * (1 - promo.discountPercentage / 100));
+                    }
+                    else if (!promo.isActive && foodItem.originalPrice) {
+                        foodItem.price = foodItem.originalPrice;
+                        foodItem.originalPrice = undefined;
+                        foodItem.discountPercentage = 0;
+                    }
+                    await foodItem.save();
+                }
+            }
             res.status(200).json({ status: 'success', data: { promo } });
         });
         /**
@@ -59,6 +91,16 @@ class PromoController {
             const promo = await promo_model_1.default.findOneAndDelete({ _id: id, restaurant: restaurant._id });
             if (!promo)
                 throw new appError_1.default('Promo not found or not owned by vendor', 404);
+            // Revert food item discount upon deleting promo
+            if (promo.foodItem) {
+                const foodItem = await foodItem_model_1.default.findById(promo.foodItem);
+                if (foodItem && foodItem.originalPrice) {
+                    foodItem.price = foodItem.originalPrice;
+                    foodItem.originalPrice = undefined;
+                    foodItem.discountPercentage = 0;
+                    await foodItem.save();
+                }
+            }
             res.status(204).json({ status: 'success', data: null });
         });
         /**

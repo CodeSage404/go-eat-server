@@ -16,6 +16,8 @@ export interface IFoodItem extends Document {
   calories?: number;
   preparationTime?: number;
   allergens?: string[];
+  discountPercentage?: number;
+  originalPrice?: number;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -34,6 +36,16 @@ const foodItemSchema = new Schema<IFoodItem>(
     price: {
       type: Number,
       required: [true, 'Food item price is required'],
+    },
+    originalPrice: {
+      type: Number,
+      default: null,
+    },
+    discountPercentage: {
+      type: Number,
+      min: 0,
+      max: 100,
+      default: 0,
     },
     image: {
       type: String,

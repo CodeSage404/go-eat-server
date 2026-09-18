@@ -39,6 +39,10 @@ const promoBannerSchema = new mongoose_1.Schema({
         type: Boolean,
         default: true,
     },
+    isCarouselEnabled: {
+        type: Boolean,
+        default: true,
+    },
     topSpotsTitle: {
         type: String,
         default: 'Neighborhood Favorites',
@@ -94,6 +98,20 @@ const promoBannerSchema = new mongoose_1.Schema({
         default: '#D99B26',
         trim: true,
     },
+    slides: [
+        {
+            isActive: { type: Boolean, default: true },
+            headline: { type: String, trim: true },
+            subtitle: { type: String, trim: true },
+            ctaText: { type: String, trim: true },
+            ctaLink: { type: String, trim: true },
+            voucherText: { type: String, trim: true },
+            imageUrl: { type: String, default: '', trim: true },
+            backgroundColor: { type: String, trim: true },
+            backgroundColorDark: { type: String, trim: true },
+            code: { type: String, trim: true },
+        },
+    ],
 }, {
     timestamps: true,
 });

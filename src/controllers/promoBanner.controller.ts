@@ -4,13 +4,16 @@ import { catchAsync } from '../utils/catchAsync';
 
 class PromoBannerController {
   /**
-   * Client/User App: Get active promo banner
+   * Client/User App: Get active promo banner and banners carousel
    */
   public getActiveBanner = catchAsync(async (req: Request, res: Response) => {
-    const banner = await promoBannerService.getActiveBanner();
+    const result = await promoBannerService.getActiveBanners();
     res.status(200).json({
       status: 'success',
-      data: { banner },
+      data: {
+        banner: result.banner,
+        banners: result.banners,
+      },
     });
   });
 

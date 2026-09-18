@@ -309,4 +309,118 @@ router.delete('/', notification_controller_1.default.clearAllNotifications);
  *         description: Test notification dispatched
  */
 router.post('/test-push', notification_controller_1.default.sendTestPush);
+/**
+ * @openapi
+ * /api/v1/notifications/settings:
+ *   get:
+ *     tags:
+ *       - Notifications
+ *     summary: Get user notification preferences
+ *     description: Returns the user's notification preferences for email, push notifications, and in-app notifications.
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Notification preferences retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: success
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     settings:
+ *                       type: object
+ *                       properties:
+ *                         email:
+ *                           type: boolean
+ *                           example: true
+ *                         push:
+ *                           type: boolean
+ *                           example: true
+ *                         inApp:
+ *                           type: boolean
+ *                           example: true
+ *                         notificationsEnabled:
+ *                           type: boolean
+ *                           example: true
+ *       401:
+ *         description: Unauthorized - Authentication token missing or invalid
+ *       500:
+ *         description: Internal server error
+ */
+router.get('/settings', notification_controller_1.default.getNotificationSettings);
+/**
+ * @openapi
+ * /api/v1/notifications/settings:
+ *   patch:
+ *     tags:
+ *       - Notifications
+ *     summary: Update user notification preferences
+ *     description: Updates the user's granular preferences for email, push notifications, and in-app alerts in real-time.
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               email:
+ *                 type: boolean
+ *                 description: Whether to receive email receipts and promotional emails
+ *                 example: true
+ *               push:
+ *                 type: boolean
+ *                 description: Whether to receive real-time push notifications for orders and delivery
+ *                 example: true
+ *               inApp:
+ *                 type: boolean
+ *                 description: Whether to receive in-app alert badges and inbox notifications
+ *                 example: true
+ *     responses:
+ *       200:
+ *         description: Notification preferences updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: success
+ *                 message:
+ *                   type: string
+ *                   example: Notification settings updated successfully
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     settings:
+ *                       type: object
+ *                       properties:
+ *                         email:
+ *                           type: boolean
+ *                           example: true
+ *                         push:
+ *                           type: boolean
+ *                           example: true
+ *                         inApp:
+ *                           type: boolean
+ *                           example: true
+ *                         notificationsEnabled:
+ *                           type: boolean
+ *                           example: true
+ *       400:
+ *         description: Bad request - Invalid request payload
+ *       401:
+ *         description: Unauthorized - Authentication token missing or invalid
+ *       500:
+ *         description: Internal server error
+ */
+router.patch('/settings', notification_controller_1.default.updateNotificationSettings);
 exports.default = router;

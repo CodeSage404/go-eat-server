@@ -375,6 +375,76 @@ class NotificationController {
       },
     });
   });
+
+  /**
+   * Get user notification preferences
+   */
+  public getNotificationSettings = catchAsync(async (req: AuthRequest, res: Response) => {
+    const user = await User.findById(req.user!._id).select('notificationsEnabled notificationPreferences');
+    if (!user) {
+      throw new AppError('User not found', 404);
+    }
+
+    const preferences = user.notificationPreferences || {
+      email: true,
+      push: user.notificationsEnabled !== false,
+      inApp: true,
+    };
+
+    res.status(200).json({
+      status: 'success',
+      data: {
+        settings: {
+          email: preferences.email !== false,
+          push: preferences.push !== false,
+          inApp: preferences.inApp !== false,
+          notificationsEnabled: user.notificationsEnabled !== false,
+        },
+      },
+    });
+  });
+
+  /**
+   * Update user notification preferences in real-time
+   */
+  public updateNotificationSettings = catchAsync(async (req: AuthRequest, res: Response) => {
+    const { email, push, inApp } = req.body;
+
+    const user = await User.findById(req.user!._id);
+    if (!user) {
+      throw new AppError('User not found', 404);
+    }
+
+    if (!user.notificationPreferences) {
+      user.notificationPreferences = {
+        email: true,
+        push: true,
+        inApp: true,
+      };
+    }
+
+    if (email !== undefined) user.notificationPreferences.email = Boolean(email);
+    if (push !== undefined) {
+      user.notificationPreferences.push = Boolean(push);
+      user.notificationsEnabled = Boolean(push);
+    }
+    if (inApp !== undefined) user.notificationPreferences.inApp = Boolean(inApp);
+
+    await user.save();
+
+    res.status(200).json({
+      status: 'success',
+      message: 'Notification settings updated successfully',
+      data: {
+        settings: {
+          email: user.notificationPreferences.email !== false,
+          push: user.notificationPreferences.push !== false,
+          inApp: user.notificationPreferences.inApp !== false,
+          notificationsEnabled: user.notificationsEnabled !== false,
+        },
+      },
+    });
+  });
 }
 
 export default new NotificationController();

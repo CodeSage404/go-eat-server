@@ -110,6 +110,11 @@ const userSchema = new mongoose_1.Schema({
         type: Boolean,
         default: true,
     },
+    notificationPreferences: {
+        email: { type: Boolean, default: true },
+        push: { type: Boolean, default: true },
+        inApp: { type: Boolean, default: true },
+    },
     isVerified: {
         type: Boolean,
         default: false,
