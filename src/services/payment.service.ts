@@ -18,9 +18,37 @@ export class PaymentService {
    * Helper to resolve payment provider based on order location, user country, and admin settings
    */
   private resolveProviderByLocation(order: any, setting: any, user?: any, requestedProvider?: PaymentProvider): PaymentProvider {
-    if (requestedProvider) return requestedProvider;
+    // 1. Check Global Provider Kill Switches
+    const paystackEnabled = setting?.enablePaystack !== false;
+    const flutterwaveEnabled = setting?.enableFlutterwave !== false;
+    const stripeEnabled = setting?.enableStripe !== false;
 
-    // 1. Determine Country Code from User profile or Order address
+    if (!paystackEnabled && !flutterwaveEnabled && !stripeEnabled) {
+      throw new AppError('Online card payments are currently disabled by the administrator.', 503);
+    }
+
+    const isProviderEnabled = (p: PaymentProvider): boolean => {
+      if (p === 'paystack') return paystackEnabled;
+      if (p === 'flutterwave') return flutterwaveEnabled;
+      if (p === 'stripe') return stripeEnabled;
+      return false;
+    };
+
+    // 2. Admin Override: Force a specific provider globally everywhere
+    if (
+      setting?.forceGlobalPaymentProvider &&
+      setting.forceGlobalPaymentProvider !== 'none' &&
+      isProviderEnabled(setting.forceGlobalPaymentProvider as PaymentProvider)
+    ) {
+      return setting.forceGlobalPaymentProvider as PaymentProvider;
+    }
+
+    // 3. If a specific provider was requested by user, verify it's not disabled
+    if (requestedProvider && isProviderEnabled(requestedProvider)) {
+      return requestedProvider;
+    }
+
+    // 4. Determine Country Code from User profile or Order address
     let countryCode = (user?.countryCode || '').toUpperCase();
     if (!countryCode) {
       if (user?.isNigeria) countryCode = 'NG';
@@ -29,7 +57,7 @@ export class PaymentService {
     }
 
     if (!countryCode) {
-      const locationStr = `${order.deliveryAddress?.address || ''} ${order.deliveryAddress?.city || ''} ${order.deliveryAddress?.state || ''} ${order.deliveryAddress?.street || ''}`.toLowerCase();
+      const locationStr = `${order?.deliveryAddress?.address || ''} ${order?.deliveryAddress?.city || ''} ${order?.deliveryAddress?.state || ''} ${order?.deliveryAddress?.street || ''}`.toLowerCase();
       if (locationStr.includes('uk') || locationStr.includes('united kingdom') || locationStr.includes('london') || locationStr.includes('gb') || locationStr.includes('england') || locationStr.includes('manchester')) {
         countryCode = 'GB';
       } else if (locationStr.includes('italy') || locationStr.includes('italia') || locationStr.includes('rome') || locationStr.includes('milan')) {
@@ -39,31 +67,43 @@ export class PaymentService {
       }
     }
 
-    // Direct country assignment: Paystack for Nigeria, Stripe for UK & Italy
-    if (countryCode === 'NG' || user?.isNigeria) {
-      return 'paystack';
-    }
-    if (countryCode === 'GB' || countryCode === 'UK' || countryCode === 'IT' || user?.isUk || user?.isItaly) {
-      return 'stripe';
-    }
-
-    // 2. Check Admin Platform Settings (Country-specific payment provider mapping)
+    // 5. Check Admin Platform Settings (Country-specific payment provider mapping)
     if (setting?.countryPaymentProviders && Array.isArray(setting.countryPaymentProviders)) {
       const match = setting.countryPaymentProviders.find(
         (c: any) => c.countryCode?.toUpperCase() === countryCode && c.isActive !== false
       );
-      if (match && match.provider) {
+      if (match && match.provider && isProviderEnabled(match.provider as PaymentProvider)) {
         return match.provider as PaymentProvider;
       }
     }
 
-    // 3. African Countries default to Paystack / Flutterwave
-    const africanCountries = ['GH', 'KE', 'ZA', 'EG', 'RW', 'UG', 'TZ', 'CI', 'SN', 'CM'];
-    if (africanCountries.includes(countryCode)) {
-      return (setting?.defaultPaymentProvider === 'flutterwave' ? 'flutterwave' : 'paystack') as PaymentProvider;
+    // 6. Direct Country Assignment (if enabled)
+    if (countryCode === 'NG' || user?.isNigeria) {
+      if (paystackEnabled) return 'paystack';
+      if (flutterwaveEnabled) return 'flutterwave';
+      if (stripeEnabled) return 'stripe';
     }
 
-    // 4. Outside Africa (UK, US, Europe, Canada, etc.) defaults to Stripe
+    if (countryCode === 'GB' || countryCode === 'UK' || countryCode === 'IT' || user?.isUk || user?.isItaly) {
+      if (stripeEnabled) return 'stripe';
+      if (paystackEnabled) return 'paystack';
+      if (flutterwaveEnabled) return 'flutterwave';
+    }
+
+    // 7. African Countries fallback
+    const africanCountries = ['GH', 'KE', 'ZA', 'EG', 'RW', 'UG', 'TZ', 'CI', 'SN', 'CM'];
+    if (africanCountries.includes(countryCode)) {
+      if (setting?.defaultPaymentProvider === 'flutterwave' && flutterwaveEnabled) return 'flutterwave';
+      if (paystackEnabled) return 'paystack';
+      if (flutterwaveEnabled) return 'flutterwave';
+      if (stripeEnabled) return 'stripe';
+    }
+
+    // 8. Outside Africa (UK, US, Europe, Canada, etc.) defaults to Stripe if enabled
+    if (stripeEnabled) return 'stripe';
+    if (paystackEnabled) return 'paystack';
+    if (flutterwaveEnabled) return 'flutterwave';
+
     return 'stripe';
   }
 

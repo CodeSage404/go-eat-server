@@ -1254,6 +1254,7 @@ class AdminController {
                 'deliveryBaseFee', 'deliveryFeePerKm', 'serviceFee', 'smallOrderFee',
                 'smallOrderFeeThreshold', 'batchPickupThresholdKm', 'multiOutletExtraStopFee',
                 'riderBasePayout', 'riderPerKmPayout', 'defaultPaymentProvider',
+                'enablePaystack', 'enableFlutterwave', 'enableStripe', 'forceGlobalPaymentProvider',
                 'countryPaymentProviders'
             ];
             const update = {};

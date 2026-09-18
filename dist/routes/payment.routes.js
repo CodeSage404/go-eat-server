@@ -36,6 +36,24 @@ const router = (0, express_1.Router)();
 router.get('/callback', payment_controller_1.default.handlePaymentCallback);
 /**
  * @openapi
+ * /api/v1/payments/active-providers:
+ *   get:
+ *     tags:
+ *       - Payments
+ *     summary: Get active payment providers based on location & admin settings
+ *     parameters:
+ *       - in: query
+ *         name: countryCode
+ *         schema:
+ *           type: string
+ *         description: ISO 2-letter country code (e.g. NG, GB, IT)
+ *     responses:
+ *       200:
+ *         description: Active payment providers and configuration
+ */
+router.get('/active-providers', payment_controller_1.default.getActivePaymentProviders);
+/**
+ * @openapi
  * /api/v1/payments/webhook:
  *   post:
  *     tags:

@@ -52,6 +52,14 @@ const settingSchema = new mongoose_1.Schema({
     riderBasePayout: { type: Number, default: 400 },
     riderPerKmPayout: { type: Number, default: 80 },
     defaultPaymentProvider: { type: String, enum: ['paystack', 'flutterwave', 'stripe'], default: 'paystack' },
+    enablePaystack: { type: Boolean, default: true },
+    enableFlutterwave: { type: Boolean, default: true },
+    enableStripe: { type: Boolean, default: true },
+    forceGlobalPaymentProvider: {
+        type: String,
+        enum: ['none', 'paystack', 'flutterwave', 'stripe'],
+        default: 'none',
+    },
     countryPaymentProviders: {
         type: [
             {

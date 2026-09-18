@@ -8,6 +8,7 @@ const catchAsync_1 = require("../utils/catchAsync");
 const appError_1 = __importDefault(require("../utils/appError"));
 const order_model_1 = __importDefault(require("../models/order.model"));
 const restaurant_model_1 = __importDefault(require("../models/restaurant.model"));
+const setting_model_1 = __importDefault(require("../models/setting.model"));
 const paystack_module_1 = __importDefault(require("../services/payments/paystack.module"));
 class PaymentController {
     constructor() {
@@ -27,6 +28,70 @@ class PaymentController {
                     accessCode: paymentData.accessCode,
                     reference: paymentData.reference,
                     provider: paymentData.provider,
+                },
+            });
+        });
+        /**
+         * Get active payment providers based on location & admin settings
+         */
+        this.getActivePaymentProviders = (0, catchAsync_1.catchAsync)(async (req, res) => {
+            const countryCode = String(req.query.countryCode || '').toUpperCase();
+            const setting = await setting_model_1.default.findOne();
+            const paystackEnabled = setting?.enablePaystack !== false;
+            const flutterwaveEnabled = setting?.enableFlutterwave !== false;
+            const stripeEnabled = setting?.enableStripe !== false;
+            const allDisabled = !paystackEnabled && !flutterwaveEnabled && !stripeEnabled;
+            let forcedProvider = setting?.forceGlobalPaymentProvider || 'none';
+            if (forcedProvider !== 'none') {
+                if (forcedProvider === 'stripe' && !stripeEnabled)
+                    forcedProvider = 'none';
+                if (forcedProvider === 'paystack' && !paystackEnabled)
+                    forcedProvider = 'none';
+                if (forcedProvider === 'flutterwave' && !flutterwaveEnabled)
+                    forcedProvider = 'none';
+            }
+            let activeProviders = [];
+            let defaultProvider = 'stripe';
+            if (forcedProvider !== 'none') {
+                activeProviders = [forcedProvider];
+                defaultProvider = forcedProvider;
+            }
+            else {
+                // Check country mapping
+                const countryMatch = setting?.countryPaymentProviders?.find((c) => c.countryCode?.toUpperCase() === countryCode && c.isActive !== false);
+                if (countryCode === 'NG') {
+                    if (paystackEnabled)
+                        activeProviders.push('paystack');
+                    if (flutterwaveEnabled)
+                        activeProviders.push('flutterwave');
+                    if (activeProviders.length === 0 && stripeEnabled)
+                        activeProviders.push('stripe');
+                    defaultProvider = countryMatch?.provider || (paystackEnabled ? 'paystack' : flutterwaveEnabled ? 'flutterwave' : 'stripe');
+                }
+                else {
+                    if (stripeEnabled)
+                        activeProviders.push('stripe');
+                    if (activeProviders.length === 0) {
+                        if (paystackEnabled)
+                            activeProviders.push('paystack');
+                        if (flutterwaveEnabled)
+                            activeProviders.push('flutterwave');
+                    }
+                    defaultProvider = countryMatch?.provider || (stripeEnabled ? 'stripe' : 'paystack');
+                }
+            }
+            res.status(200).json({
+                status: 'success',
+                data: {
+                    allDisabled,
+                    forcedProvider,
+                    activeProviders,
+                    defaultProvider,
+                    providers: {
+                        paystack: paystackEnabled,
+                        flutterwave: flutterwaveEnabled,
+                        stripe: stripeEnabled,
+                    },
                 },
             });
         });
