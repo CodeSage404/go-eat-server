@@ -38,6 +38,7 @@ import documentRoutes from './routes/document.routes';
 import staffRoutes from './routes/staff.routes';
 import notificationRoutes from './routes/notification.routes';
 import activityRoutes from './routes/activity.routes';
+import voiceRoutes from './routes/voice.routes';
 import activityService from './services/activity.service';
 import { startKeepAlivePing } from './utils/keepAlive';
 
@@ -136,6 +137,7 @@ class App {
     this.app.use('/api/v1/staff', staffRoutes);
     this.app.use('/api/v1/notifications', notificationRoutes);
     this.app.use('/api/v1/activity', activityRoutes);
+    this.app.use('/api/v1/voice', voiceRoutes);
 
     // Documentation Routes
     this.app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));

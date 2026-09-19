@@ -31,104 +31,29 @@ class PromoBannerService {
    * Returns promo banner configuration for mobile apps / customer clients.
    */
   async getActiveBanner(): Promise<IPromoBanner | null> {
-    return await this.getOrCreateBanner();
+    const banner = await this.getOrCreateBanner();
+    if (!banner || banner.isActive === false) {
+      return null;
+    }
+    return banner;
   }
 
   /**
-   * Returns active banners for carousel display including live promo codes
+   * Returns active banners. If admin has disabled promo banner, returns empty list.
    */
   async getActiveBanners(): Promise<{ banner: IPromoBanner | null; banners: any[] }> {
     const primaryBanner = await this.getOrCreateBanner();
 
-    // If admin has disabled carousel, only return the primary banner
-    if (primaryBanner && primaryBanner.isCarouselEnabled === false) {
+    if (!primaryBanner || primaryBanner.isActive === false) {
       return {
-        banner: primaryBanner,
-        banners: primaryBanner.isActive ? [primaryBanner] : [],
+        banner: null,
+        banners: [],
       };
-    }
-
-    const banners: any[] = [];
-
-    if (primaryBanner && primaryBanner.isActive) {
-      banners.push(primaryBanner);
-    }
-
-    // If admin has uploaded custom carousel slides, include them
-    if (primaryBanner && primaryBanner.slides && primaryBanner.slides.length > 0) {
-      for (const slide of primaryBanner.slides) {
-        if (slide.isActive !== false) {
-          banners.push(slide);
-        }
-      }
-    }
-
-    try {
-      // Find active public promos
-      const activePromos = await Promo.find({
-        isActive: true,
-        expiryDate: { $gt: new Date() },
-      })
-        .populate('restaurant', 'name images')
-        .limit(5);
-
-      const colorPalette = [
-        { light: '#0F3D26', dark: '#082819' }, // Brand green
-        { light: '#1E3A8A', dark: '#172554' }, // Royal navy
-        { light: '#9A3412', dark: '#7C2D12' }, // Warm spice
-      ];
-
-      activePromos.forEach((p, idx) => {
-        const restName = (p.restaurant as any)?.name;
-        const palette = colorPalette[idx % colorPalette.length];
-        banners.push({
-          _id: p._id.toString(),
-          isActive: true,
-          headline: restName ? `${p.discountPercentage}% OFF at ${restName}` : `${p.discountPercentage}% OFF Orders`,
-          subtitle: `Use code ${p.code} at checkout. ${p.minOrderAmount ? `Min. spend ₦${p.minOrderAmount.toLocaleString()}.` : 'No minimum spend.'}`,
-          ctaText: `Use ${p.code}`,
-          ctaLink: '/voucher',
-          voucherText: `${p.discountPercentage}% off`,
-          code: p.code,
-          imageUrl: (p.restaurant as any)?.images?.cover || '',
-          backgroundColor: palette.light,
-          backgroundColorDark: palette.dark,
-        });
-      });
-    } catch (err) {
-      // If promo query fails, keep fallback banner
-    }
-
-    // If only 1 banner exists, add complementary curated active promotions to make the carousel vibrant
-    if (banners.length === 1) {
-      banners.push({
-        _id: 'promo-card-free-delivery',
-        isActive: true,
-        headline: 'Free Delivery Feast',
-        subtitle: 'Enjoy ₦0 delivery fee on selected top spots near you today!',
-        ctaText: 'Explore spots',
-        ctaLink: '/(home)/map-view',
-        voucherText: 'Free Delivery',
-        backgroundColor: '#0F3D26',
-        backgroundColorDark: '#082819',
-      });
-      banners.push({
-        _id: 'promo-card-flash-discount',
-        isActive: true,
-        headline: 'Weekend Flash 15%',
-        subtitle: 'Get 15% off delicious local meals using code GOEAT15 at checkout.',
-        ctaText: 'Claim 15% off',
-        ctaLink: '/voucher',
-        voucherText: '15% off',
-        code: 'GOEAT15',
-        backgroundColor: '#1E3A8A',
-        backgroundColorDark: '#172554',
-      });
     }
 
     return {
       banner: primaryBanner,
-      banners,
+      banners: [primaryBanner],
     };
   }
 
