@@ -92,6 +92,12 @@ router.post('/categories', menuController.createCategory);
  *                 type: string
  *               price:
  *                 type: number
+ *               originalPrice:
+ *                 type: number
+ *                 description: Original base price before promo discount
+ *               discountPercentage:
+ *                 type: number
+ *                 description: Discount percentage (0-100)
  *               description:
  *                 type: string
  *     responses:
@@ -131,6 +137,12 @@ router.post('/items', upload.single('image'), menuController.addFoodItem);
  *                 type: string
  *               price:
  *                 type: number
+ *               originalPrice:
+ *                 type: number
+ *                 description: Original base price before promo discount
+ *               discountPercentage:
+ *                 type: number
+ *                 description: Discount percentage (0-100)
  *               isAvailable:
  *                 type: boolean
  *     responses:

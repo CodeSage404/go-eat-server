@@ -29,6 +29,8 @@ const foodItemSchema = z.object({
   calories: z.coerce.number().optional(),
   preparationTime: z.coerce.number().optional(),
   prepTime: z.coerce.number().optional(),
+  originalPrice: z.coerce.number().optional().nullable(),
+  discountPercentage: z.coerce.number().min(0).max(100).optional(),
   allergens: z.union([
     z.array(z.string()),
     z.string().transform(val => {
@@ -191,6 +193,12 @@ class MenuController {
     }
     if (updateData.calories !== undefined) {
       updateData.calories = Number(updateData.calories) || undefined;
+    }
+    if (updateData.originalPrice !== undefined) {
+      updateData.originalPrice = updateData.originalPrice === '' || updateData.originalPrice === null ? null : Number(updateData.originalPrice);
+    }
+    if (updateData.discountPercentage !== undefined) {
+      updateData.discountPercentage = updateData.discountPercentage === '' ? 0 : Number(updateData.discountPercentage);
     }
 
     const foodItem = await menuService.updateFoodItem(id, updateData);
