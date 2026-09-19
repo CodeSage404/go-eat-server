@@ -92,6 +92,26 @@ router.post('/categories', menu_controller_1.default.createCategory);
  *                 type: string
  *               price:
  *                 type: number
+ *               originalPrice:
+ *                 type: number
+ *                 description: Original base price before promo discount
+ *               discountPercentage:
+ *                 type: number
+ *                 description: Discount percentage (0-100)
+ *               isCombo:
+ *                 type: boolean
+ *                 description: Whether dish is a combo meal with side options
+ *               comboOptions:
+ *                 type: array
+ *                 items:
+ *                   type: object
+ *                   properties:
+ *                     name:
+ *                       type: string
+ *                     price:
+ *                       type: number
+ *                     description:
+ *                       type: string
  *               description:
  *                 type: string
  *     responses:
@@ -130,6 +150,12 @@ router.post('/items', upload_1.upload.single('image'), menu_controller_1.default
  *                 type: string
  *               price:
  *                 type: number
+ *               originalPrice:
+ *                 type: number
+ *                 description: Original base price before promo discount
+ *               discountPercentage:
+ *                 type: number
+ *                 description: Discount percentage (0-100)
  *               isAvailable:
  *                 type: boolean
  *     responses:

@@ -4,6 +4,7 @@ import AppError from '../utils/appError';
 import Order from '../models/order.model';
 import User from '../models/user.model';
 import { formatPhoneNumber } from '../utils/twilioVerify.util';
+import notificationService from './notification.service';
 
 class VoiceService {
   private cachedApiKeySid: string | null = null;
@@ -104,6 +105,26 @@ class VoiceService {
       profilePicture: (order.rider as any).profilePicture,
       vehicleType: (order.rider as any).vehicleType || 'Motorcycle',
     } : null;
+
+    // Send Push & Real-time Notification to call recipient
+    const recipientUserId = role === 'customer'
+      ? (order.rider ? (order.rider as any)._id?.toString() : null)
+      : (order.customer ? order.customer.toString() : null);
+
+    if (recipientUserId) {
+      const callerUser = await User.findById(userId).select('name');
+      const callerName = callerUser?.name || (role === 'customer' ? 'Customer' : 'Delivery Courier');
+      const displayOrderId = order._id.toString().slice(-6).toUpperCase();
+
+      notificationService.sendNotification(
+        recipientUserId,
+        'Incoming Voice Call 📞',
+        `${callerName} is calling you regarding Order #${displayOrderId}`,
+        { type: 'incoming_call', orderId, role, callerName }
+      ).catch((err: any) => {
+        logger.warn('Failed to dispatch call notification:', err);
+      });
+    }
 
     return {
       token: token.toJwt(),

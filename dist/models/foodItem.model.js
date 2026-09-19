@@ -88,6 +88,11 @@ const foodItemSchema = new mongoose_1.Schema({
         type: Boolean,
         default: false,
     },
+    spiceLevel: {
+        type: Number,
+        enum: [0, 1, 2, 3],
+        default: 0,
+    },
     isGlutenFree: {
         type: Boolean,
         default: false,
@@ -96,6 +101,17 @@ const foodItemSchema = new mongoose_1.Schema({
         type: Boolean,
         default: false,
     },
+    isCombo: {
+        type: Boolean,
+        default: false,
+    },
+    comboOptions: [
+        {
+            name: { type: String, required: true },
+            price: { type: Number, required: true },
+            description: { type: String },
+        },
+    ],
     calories: {
         type: Number,
     },

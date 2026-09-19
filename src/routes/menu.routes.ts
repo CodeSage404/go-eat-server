@@ -98,6 +98,20 @@ router.post('/categories', menuController.createCategory);
  *               discountPercentage:
  *                 type: number
  *                 description: Discount percentage (0-100)
+ *               isCombo:
+ *                 type: boolean
+ *                 description: Whether dish is a combo meal with side options
+ *               comboOptions:
+ *                 type: array
+ *                 items:
+ *                   type: object
+ *                   properties:
+ *                     name:
+ *                       type: string
+ *                     price:
+ *                       type: number
+ *                     description:
+ *                       type: string
  *               description:
  *                 type: string
  *     responses:

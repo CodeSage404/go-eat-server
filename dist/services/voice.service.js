@@ -9,6 +9,7 @@ const appError_1 = __importDefault(require("../utils/appError"));
 const order_model_1 = __importDefault(require("../models/order.model"));
 const user_model_1 = __importDefault(require("../models/user.model"));
 const twilioVerify_util_1 = require("../utils/twilioVerify.util");
+const notification_service_1 = __importDefault(require("./notification.service"));
 class VoiceService {
     constructor() {
         this.cachedApiKeySid = null;
@@ -91,6 +92,18 @@ class VoiceService {
             profilePicture: order.rider.profilePicture,
             vehicleType: order.rider.vehicleType || 'Motorcycle',
         } : null;
+        // Send Push & Real-time Notification to call recipient
+        const recipientUserId = role === 'customer'
+            ? (order.rider ? order.rider._id?.toString() : null)
+            : (order.customer ? order.customer.toString() : null);
+        if (recipientUserId) {
+            const callerUser = await user_model_1.default.findById(userId).select('name');
+            const callerName = callerUser?.name || (role === 'customer' ? 'Customer' : 'Delivery Courier');
+            const displayOrderId = order._id.toString().slice(-6).toUpperCase();
+            notification_service_1.default.sendNotification(recipientUserId, 'Incoming Voice Call 📞', `${callerName} is calling you regarding Order #${displayOrderId}`, { type: 'incoming_call', orderId, role, callerName }).catch((err) => {
+                logger_1.default.warn('Failed to dispatch call notification:', err);
+            });
+        }
         return {
             token: token.toJwt(),
             identity,

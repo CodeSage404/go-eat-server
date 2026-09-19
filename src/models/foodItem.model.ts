@@ -1,5 +1,12 @@
 import mongoose, { Schema, Document } from 'mongoose';
 
+export interface IComboOption {
+  _id?: string;
+  name: string;
+  price: number;
+  description?: string;
+}
+
 export interface IFoodItem extends Document {
   name: string;
   description: string;
@@ -11,8 +18,11 @@ export interface IFoodItem extends Document {
   isVegetarian: boolean;
   isVegan: boolean;
   isSpicy: boolean;
+  spiceLevel?: number; // 0 = None, 1 = Mild (🌶️), 2 = Extra Hot (🌶️🌶️), 3 = Fire (🔥)
   isGlutenFree: boolean;
   isHalal: boolean;
+  isCombo?: boolean;
+  comboOptions?: IComboOption[];
   calories?: number;
   preparationTime?: number;
   allergens?: string[];
@@ -77,6 +87,11 @@ const foodItemSchema = new Schema<IFoodItem>(
       type: Boolean,
       default: false,
     },
+    spiceLevel: {
+      type: Number,
+      enum: [0, 1, 2, 3],
+      default: 0,
+    },
     isGlutenFree: {
       type: Boolean,
       default: false,
@@ -85,6 +100,17 @@ const foodItemSchema = new Schema<IFoodItem>(
       type: Boolean,
       default: false,
     },
+    isCombo: {
+      type: Boolean,
+      default: false,
+    },
+    comboOptions: [
+      {
+        name: { type: String, required: true },
+        price: { type: Number, required: true },
+        description: { type: String },
+      },
+    ],
     calories: {
       type: Number,
     },

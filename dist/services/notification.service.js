@@ -105,6 +105,7 @@ class NotificationService {
             const user = await user_model_1.default.findById(userId);
             const pushAllowed = user && user.fcmToken && user.notificationsEnabled !== false && user.notificationPreferences?.push !== false;
             if (pushAllowed && user && user.fcmToken) {
+                const isCallNotif = data?.type === 'incoming_call' || data?.isVoip;
                 if (user.fcmToken.startsWith('ExponentPushToken') || user.fcmToken.startsWith('ExpoPushToken')) {
                     // Send via Expo Push API with high priority and sound
                     const expoMessage = {
@@ -114,7 +115,7 @@ class NotificationService {
                         body,
                         data: { ...data, orderId: data.orderId },
                         priority: 'high',
-                        channelId: 'default',
+                        channelId: isCallNotif ? 'incoming_calls' : 'default',
                         _displayInForeground: true,
                     };
                     const response = await fetch('https://exp.host/--/api/v2/push/send', {
@@ -146,10 +147,16 @@ class NotificationService {
                         token: user.fcmToken,
                         android: {
                             priority: 'high',
-                            notification: { sound: 'default', channelId: 'default' },
+                            notification: { sound: 'default', channelId: isCallNotif ? 'incoming_calls' : 'default', priority: 'max' },
                         },
                         apns: {
-                            payload: { aps: { sound: 'default', badge: 1 } },
+                            payload: {
+                                aps: {
+                                    sound: 'default',
+                                    badge: 1,
+                                    'content-available': 1,
+                                },
+                            },
                         },
                     };
                     const fcmResponse = await firebase_admin_1.default.messaging().send(message);

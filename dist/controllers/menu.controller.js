@@ -58,12 +58,32 @@ const foodItemSchema = zod_1.z.object({
     isVegetarian: zod_1.z.union([zod_1.z.boolean(), zod_1.z.enum(['true', 'false', '']).transform(val => val === 'true')]).optional(),
     isVegan: zod_1.z.union([zod_1.z.boolean(), zod_1.z.enum(['true', 'false', '']).transform(val => val === 'true')]).optional(),
     isSpicy: zod_1.z.union([zod_1.z.boolean(), zod_1.z.enum(['true', 'false', '']).transform(val => val === 'true')]).optional(),
+    spiceLevel: zod_1.z.coerce.number().min(0).max(3).optional(),
     isGlutenFree: zod_1.z.union([zod_1.z.boolean(), zod_1.z.enum(['true', 'false', '']).transform(val => val === 'true')]).optional(),
     isHalal: zod_1.z.union([zod_1.z.boolean(), zod_1.z.enum(['true', 'false', '']).transform(val => val === 'true')]).optional(),
     isAvailable: zod_1.z.union([zod_1.z.boolean(), zod_1.z.enum(['true', 'false', '']).transform(val => val === 'true')]).optional(),
+    isCombo: zod_1.z.union([zod_1.z.boolean(), zod_1.z.enum(['true', 'false', '']).transform(val => val === 'true')]).optional(),
+    comboOptions: zod_1.z.union([
+        zod_1.z.array(zod_1.z.object({
+            name: zod_1.z.string(),
+            price: zod_1.z.coerce.number(),
+            description: zod_1.z.string().optional(),
+        })),
+        zod_1.z.string().transform(val => {
+            try {
+                const parsed = JSON.parse(val);
+                if (Array.isArray(parsed))
+                    return parsed;
+            }
+            catch { }
+            return [];
+        })
+    ]).optional(),
     calories: zod_1.z.coerce.number().optional(),
     preparationTime: zod_1.z.coerce.number().optional(),
     prepTime: zod_1.z.coerce.number().optional(),
+    originalPrice: zod_1.z.coerce.number().optional().nullable(),
+    discountPercentage: zod_1.z.coerce.number().min(0).max(100).optional(),
     allergens: zod_1.z.union([
         zod_1.z.array(zod_1.z.string()),
         zod_1.z.string().transform(val => {
@@ -193,6 +213,23 @@ class MenuController {
             }
             if (updateData.calories !== undefined) {
                 updateData.calories = Number(updateData.calories) || undefined;
+            }
+            if (updateData.originalPrice !== undefined) {
+                updateData.originalPrice = updateData.originalPrice === '' || updateData.originalPrice === null ? null : Number(updateData.originalPrice);
+            }
+            if (updateData.discountPercentage !== undefined) {
+                updateData.discountPercentage = updateData.discountPercentage === '' ? 0 : Number(updateData.discountPercentage);
+            }
+            if (updateData.isCombo !== undefined) {
+                updateData.isCombo = updateData.isCombo === true || updateData.isCombo === 'true';
+            }
+            if (typeof updateData.comboOptions === 'string') {
+                try {
+                    updateData.comboOptions = JSON.parse(updateData.comboOptions);
+                }
+                catch {
+                    updateData.comboOptions = [];
+                }
             }
             const foodItem = await menu_service_1.default.updateFoodItem(id, updateData);
             if (!foodItem) {

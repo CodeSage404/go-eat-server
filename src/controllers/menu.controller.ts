@@ -23,9 +23,25 @@ const foodItemSchema = z.object({
   isVegetarian: z.union([z.boolean(), z.enum(['true', 'false', '']).transform(val => val === 'true')]).optional(),
   isVegan: z.union([z.boolean(), z.enum(['true', 'false', '']).transform(val => val === 'true')]).optional(),
   isSpicy: z.union([z.boolean(), z.enum(['true', 'false', '']).transform(val => val === 'true')]).optional(),
+  spiceLevel: z.coerce.number().min(0).max(3).optional(),
   isGlutenFree: z.union([z.boolean(), z.enum(['true', 'false', '']).transform(val => val === 'true')]).optional(),
   isHalal: z.union([z.boolean(), z.enum(['true', 'false', '']).transform(val => val === 'true')]).optional(),
   isAvailable: z.union([z.boolean(), z.enum(['true', 'false', '']).transform(val => val === 'true')]).optional(),
+  isCombo: z.union([z.boolean(), z.enum(['true', 'false', '']).transform(val => val === 'true')]).optional(),
+  comboOptions: z.union([
+    z.array(z.object({
+      name: z.string(),
+      price: z.coerce.number(),
+      description: z.string().optional(),
+    })),
+    z.string().transform(val => {
+      try {
+        const parsed = JSON.parse(val);
+        if (Array.isArray(parsed)) return parsed;
+      } catch {}
+      return [];
+    })
+  ]).optional(),
   calories: z.coerce.number().optional(),
   preparationTime: z.coerce.number().optional(),
   prepTime: z.coerce.number().optional(),
@@ -199,6 +215,16 @@ class MenuController {
     }
     if (updateData.discountPercentage !== undefined) {
       updateData.discountPercentage = updateData.discountPercentage === '' ? 0 : Number(updateData.discountPercentage);
+    }
+    if (updateData.isCombo !== undefined) {
+      updateData.isCombo = updateData.isCombo === true || updateData.isCombo === 'true';
+    }
+    if (typeof updateData.comboOptions === 'string') {
+      try {
+        updateData.comboOptions = JSON.parse(updateData.comboOptions);
+      } catch {
+        updateData.comboOptions = [];
+      }
     }
 
     const foodItem = await menuService.updateFoodItem(id, updateData);
