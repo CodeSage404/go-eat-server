@@ -178,6 +178,49 @@ class UserController {
       data: { user },
     });
   });
+
+  /**
+   * Get Responsible Purchasing Settings & GoEat Buddy
+   */
+  public getResponsiblePurchasing = catchAsync(async (req: Request, res: Response) => {
+    const user = await User.findById(req.user!._id).select('responsiblePurchasing');
+    res.status(200).json({
+      status: 'success',
+      data: {
+        responsiblePurchasing: user?.responsiblePurchasing || {
+          spendingLimit: { enabled: false, period: 'week' },
+          orderLimit: { enabled: false, period: 'week' },
+          takeABreak: { enabled: false, durationDays: 0 },
+          selfExclusion: { enabled: false },
+          buddy: undefined,
+        },
+      },
+    });
+  });
+
+  /**
+   * Update Responsible Purchasing Settings & GoEat Buddy
+   */
+  public updateResponsiblePurchasing = catchAsync(async (req: Request, res: Response) => {
+    const { responsiblePurchasing } = req.body;
+    if (!responsiblePurchasing) {
+      throw new AppError('responsiblePurchasing settings payload is required', 400);
+    }
+
+    const user = await User.findByIdAndUpdate(
+      req.user!._id,
+      { responsiblePurchasing },
+      { returnDocument: 'after', runValidators: true }
+    ).select('-password');
+
+    res.status(200).json({
+      status: 'success',
+      message: 'Responsible purchasing settings updated successfully',
+      data: {
+        responsiblePurchasing: user?.responsiblePurchasing,
+      },
+    });
+  });
 }
 
 export default new UserController();

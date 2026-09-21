@@ -83,6 +83,36 @@ export interface IUser extends Document {
     lastSeenAt: Date;
   }>;
   lastInactivityAlertAt?: Date;
+  responsiblePurchasing?: {
+    spendingLimit?: {
+      enabled: boolean;
+      amount?: number;
+      period: 'week' | 'month';
+      currencyCode?: string;
+    };
+    orderLimit?: {
+      enabled: boolean;
+      maxOrders?: number;
+      period: 'week' | 'month';
+    };
+    takeABreak?: {
+      enabled: boolean;
+      activeUntil?: Date;
+      durationDays?: number;
+    };
+    selfExclusion?: {
+      enabled: boolean;
+      activeUntil?: Date;
+    };
+    buddy?: {
+      name: string;
+      contact: string;
+      relationship?: string;
+      status: 'pending' | 'active';
+      is18PlusConfirmed: boolean;
+      invitedAt?: Date;
+    };
+  };
   createdAt: Date;
   updatedAt: Date;
   comparePassword(password: string): Promise<boolean>;
@@ -277,6 +307,36 @@ const userSchema = new Schema<IUser>(
     ],
     lastInactivityAlertAt: {
       type: Date,
+    },
+    responsiblePurchasing: {
+      spendingLimit: {
+        enabled: { type: Boolean, default: false },
+        amount: { type: Number },
+        period: { type: String, enum: ['week', 'month'], default: 'week' },
+        currencyCode: { type: String, default: 'GBP' },
+      },
+      orderLimit: {
+        enabled: { type: Boolean, default: false },
+        maxOrders: { type: Number },
+        period: { type: String, enum: ['week', 'month'], default: 'week' },
+      },
+      takeABreak: {
+        enabled: { type: Boolean, default: false },
+        activeUntil: { type: Date },
+        durationDays: { type: Number, default: 0 },
+      },
+      selfExclusion: {
+        enabled: { type: Boolean, default: false },
+        activeUntil: { type: Date },
+      },
+      buddy: {
+        name: { type: String, trim: true },
+        contact: { type: String, trim: true },
+        relationship: { type: String, trim: true },
+        status: { type: String, enum: ['pending', 'active'], default: 'pending' },
+        is18PlusConfirmed: { type: Boolean, default: false },
+        invitedAt: { type: Date, default: Date.now },
+      },
     },
   },
   {
