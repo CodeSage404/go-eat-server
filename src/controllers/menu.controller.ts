@@ -8,6 +8,7 @@ import FoodItem from '../models/foodItem.model';
 import Category from '../models/category.model';
 import Restaurant, { RestaurantStatus } from '../models/restaurant.model';
 import { resolveRequestLocation, buildCountryFilter } from '../utils/locationResolver';
+import { processBase64Image } from '../utils/upload';
 
 const categorySchema = z.object({
   name: z.string().min(1, 'Category name is required'),
@@ -28,11 +29,13 @@ const foodItemSchema = z.object({
   isHalal: z.union([z.boolean(), z.enum(['true', 'false', '']).transform(val => val === 'true')]).optional(),
   isAvailable: z.union([z.boolean(), z.enum(['true', 'false', '']).transform(val => val === 'true')]).optional(),
   isCombo: z.union([z.boolean(), z.enum(['true', 'false', '']).transform(val => val === 'true')]).optional(),
+  comboRequired: z.union([z.boolean(), z.enum(['true', 'false', '']).transform(val => val === 'true')]).optional(),
   comboOptions: z.union([
     z.array(z.object({
       name: z.string(),
       price: z.coerce.number(),
       description: z.string().optional(),
+      image: z.string().optional(),
     })),
     z.string().transform(val => {
       try {
@@ -53,6 +56,7 @@ const foodItemSchema = z.object({
         name: z.string().min(1, 'Option name is required'),
         price: z.coerce.number().default(0),
         description: z.string().optional(),
+        image: z.string().optional(),
         isDefault: z.boolean().optional().default(false),
       })).default([]),
     })),
@@ -213,6 +217,15 @@ class MenuController {
       preparationTime: validatedData.data.preparationTime || validatedData.data.prepTime || 20,
     };
 
+    if (foodItemData.comboOptions && Array.isArray(foodItemData.comboOptions)) {
+      foodItemData.comboOptions = await Promise.all(
+        foodItemData.comboOptions.map(async (opt: any) => ({
+          ...opt,
+          image: opt.image ? await processBase64Image(opt.image, req) : undefined,
+        }))
+      );
+    }
+
     const foodItem = await menuService.addFoodItem(foodItemData);
 
     res.status(201).json({
@@ -241,12 +254,23 @@ class MenuController {
     if (updateData.isCombo !== undefined) {
       updateData.isCombo = updateData.isCombo === true || updateData.isCombo === 'true';
     }
+    if (updateData.comboRequired !== undefined) {
+      updateData.comboRequired = updateData.comboRequired === true || updateData.comboRequired === 'true';
+    }
     if (typeof updateData.comboOptions === 'string') {
       try {
         updateData.comboOptions = JSON.parse(updateData.comboOptions);
       } catch {
         updateData.comboOptions = [];
       }
+    }
+    if (Array.isArray(updateData.comboOptions)) {
+      updateData.comboOptions = await Promise.all(
+        updateData.comboOptions.map(async (opt: any) => ({
+          ...opt,
+          image: opt.image ? await processBase64Image(opt.image, req) : undefined,
+        }))
+      );
     }
     if (typeof updateData.optionGroups === 'string') {
       try {

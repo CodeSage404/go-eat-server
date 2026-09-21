@@ -177,3 +177,58 @@ export const upload = {
 
 export { uploadDir, memUpload };
 
+/**
+ * Process a base64 or URL image and return a persistent URL
+ */
+export const processBase64Image = async (
+  base64String: string,
+  req?: Request
+): Promise<string> => {
+  if (!base64String || typeof base64String !== 'string') return '';
+  if (base64String.startsWith('http://') || base64String.startsWith('https://')) {
+    return base64String;
+  }
+
+  // If base64 data URI or raw base64
+  if (base64String.startsWith('data:image') || base64String.length > 200) {
+    const formatted = base64String.startsWith('data:image')
+      ? base64String
+      : `data:image/jpeg;base64,${base64String}`;
+
+    if (shouldUseCloudinary()) {
+      try {
+        const result = await cloudinary.uploader.upload(formatted, {
+          folder: 'combo_items',
+          resource_type: 'image',
+        });
+        return result.secure_url;
+      } catch (err: any) {
+        logger.warn(`Cloudinary base64 upload failed, falling back to local: ${err.message}`);
+      }
+    }
+
+    try {
+      if (!fs.existsSync(uploadDir)) {
+        fs.mkdirSync(uploadDir, { recursive: true });
+      }
+      const matches = formatted.match(/^data:image\/([A-Za-z-+\/]+);base64,(.+)$/);
+      const ext = matches ? `.${matches[1].replace('jpeg', 'jpg')}` : '.jpg';
+      const data = matches ? matches[2] : base64String;
+      const buffer = Buffer.from(data, 'base64');
+      const filename = `combo-${Date.now()}-${Math.round(Math.random() * 1e9)}${ext}`;
+      const filePath = path.join(uploadDir, filename);
+      await fs.promises.writeFile(filePath, buffer);
+
+      const baseUrl =
+        process.env.APP_URL ||
+        process.env.RENDER_EXTERNAL_URL ||
+        (req ? `${req.protocol}://${req.get('host')}` : '');
+      return baseUrl ? `${baseUrl.replace(/\/$/, '')}/uploads/${filename}` : `/uploads/${filename}`;
+    } catch (localErr: any) {
+      logger.error(`Local base64 save failed: ${localErr.message}`);
+    }
+  }
+
+  return base64String;
+};
+

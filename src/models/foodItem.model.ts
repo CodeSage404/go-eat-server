@@ -5,6 +5,7 @@ export interface IComboOption {
   name: string;
   price: number;
   description?: string;
+  image?: string;
 }
 
 export interface IOptionItem {
@@ -12,6 +13,7 @@ export interface IOptionItem {
   name: string;
   price: number;
   description?: string;
+  image?: string;
   isDefault?: boolean;
 }
 
@@ -40,6 +42,7 @@ export interface IFoodItem extends Document {
   isGlutenFree: boolean;
   isHalal: boolean;
   isCombo?: boolean;
+  comboRequired?: boolean;
   comboOptions?: IComboOption[];
   optionGroups?: IOptionGroup[];
   calories?: number;
@@ -123,11 +126,16 @@ const foodItemSchema = new Schema<IFoodItem>(
       type: Boolean,
       default: false,
     },
+    comboRequired: {
+      type: Boolean,
+      default: false,
+    },
     comboOptions: [
       {
         name: { type: String, required: true },
         price: { type: Number, required: true },
         description: { type: String },
+        image: { type: String },
       },
     ],
     optionGroups: [
@@ -142,6 +150,7 @@ const foodItemSchema = new Schema<IFoodItem>(
             name: { type: String, required: true },
             price: { type: Number, default: 0 },
             description: { type: String },
+            image: { type: String },
             isDefault: { type: Boolean, default: false },
           },
         ],
