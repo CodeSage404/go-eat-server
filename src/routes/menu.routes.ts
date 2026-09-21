@@ -112,6 +112,38 @@ router.post('/categories', menuController.createCategory);
  *                       type: number
  *                     description:
  *                       type: string
+ *               optionGroups:
+ *                 type: array
+ *                 description: Option groups for meal customisation (fillings, toppings, extras)
+ *                 items:
+ *                   type: object
+ *                   required: [name, required, selectionType]
+ *                   properties:
+ *                     name:
+ *                       type: string
+ *                     required:
+ *                       type: boolean
+ *                     selectionType:
+ *                       type: string
+ *                       enum: [single, multiple]
+ *                     minSelections:
+ *                       type: number
+ *                     maxSelections:
+ *                       type: number
+ *                     options:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         required: [name, price]
+ *                         properties:
+ *                           name:
+ *                             type: string
+ *                           price:
+ *                             type: number
+ *                           description:
+ *                             type: string
+ *                           isDefault:
+ *                             type: boolean
  *               description:
  *                 type: string
  *     responses:
@@ -159,6 +191,36 @@ router.post('/items', upload.single('image'), menuController.addFoodItem);
  *                 description: Discount percentage (0-100)
  *               isAvailable:
  *                 type: boolean
+ *               optionGroups:
+ *                 type: array
+ *                 description: Option groups for meal customisation (fillings, toppings, extras)
+ *                 items:
+ *                   type: object
+ *                   properties:
+ *                     name:
+ *                       type: string
+ *                     required:
+ *                       type: boolean
+ *                     selectionType:
+ *                       type: string
+ *                       enum: [single, multiple]
+ *                     minSelections:
+ *                       type: number
+ *                     maxSelections:
+ *                       type: number
+ *                     options:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           name:
+ *                             type: string
+ *                           price:
+ *                             type: number
+ *                           description:
+ *                             type: string
+ *                           isDefault:
+ *                             type: boolean
  *     responses:
  *       200:
  *         description: Food item updated successfully

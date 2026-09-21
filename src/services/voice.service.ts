@@ -5,6 +5,7 @@ import Order from '../models/order.model';
 import User from '../models/user.model';
 import { formatPhoneNumber } from '../utils/twilioVerify.util';
 import notificationService from './notification.service';
+import { emitToUser } from '../io';
 
 class VoiceService {
   private cachedApiKeySid: string | null = null;
@@ -71,8 +72,10 @@ class VoiceService {
     userId: string,
     orderId: string,
     role: 'customer' | 'rider' = 'customer'
-  ): Promise<{ token: string; identity: string; recipientIdentity: string; orderId: string; rider?: any }> {
-    const order = await Order.findById(orderId).populate('rider', 'name phoneNumber profilePicture vehicleType');
+  ): Promise<{ token: string; identity: string; recipientIdentity: string; orderId: string; rider?: any; customer?: any }> {
+    const order = await Order.findById(orderId)
+      .populate('rider', 'name phoneNumber profilePicture vehicleType')
+      .populate('customer', 'name phoneNumber profilePicture');
     if (!order) {
       throw new AppError('Order not found', 404);
     }
@@ -82,7 +85,7 @@ class VoiceService {
     const identity = `${role}_${userId}`;
     const recipientIdentity = role === 'customer'
       ? `rider_${order.rider ? (order.rider as any)._id : 'unassigned'}`
-      : `customer_${order.customer}`;
+      : `customer_${order.customer ? (order.customer as any)._id || order.customer : 'unknown'}`;
 
     const AccessToken = twilio.jwt.AccessToken;
     const VoiceGrant = AccessToken.VoiceGrant;
@@ -106,21 +109,40 @@ class VoiceService {
       vehicleType: (order.rider as any).vehicleType || 'Motorcycle',
     } : null;
 
+    const customerData = order.customer ? {
+      name: (order.customer as any).name || 'Customer',
+      phoneNumber: (order.customer as any).phoneNumber,
+      profilePicture: (order.customer as any).profilePicture,
+    } : null;
+
     // Send Push & Real-time Notification to call recipient
     const recipientUserId = role === 'customer'
       ? (order.rider ? (order.rider as any)._id?.toString() : null)
-      : (order.customer ? order.customer.toString() : null);
+      : (order.customer ? ((order.customer as any)._id?.toString() || order.customer.toString()) : null);
 
     if (recipientUserId) {
-      const callerUser = await User.findById(userId).select('name');
+      const callerUser = await User.findById(userId).select('name phoneNumber profileImage');
       const callerName = callerUser?.name || (role === 'customer' ? 'Customer' : 'Delivery Courier');
+      const callerImage = callerUser?.profileImage || (role === 'customer' ? customerData?.profilePicture : riderData?.profilePicture);
+      const callerPhone = callerUser?.phoneNumber || (role === 'customer' ? customerData?.phoneNumber : riderData?.phoneNumber);
       const displayOrderId = order._id.toString().slice(-6).toUpperCase();
 
+      // Direct real-time socket event for immediate ringing UI
+      emitToUser(recipientUserId, 'incoming_call', {
+        orderId,
+        role,
+        callerName,
+        callerImage,
+        callerPhone,
+        displayOrderId,
+      });
+
+      // Notification Inbox and FCM push notification
       notificationService.sendNotification(
         recipientUserId,
         'Incoming Voice Call 📞',
         `${callerName} is calling you regarding Order #${displayOrderId}`,
-        { type: 'incoming_call', orderId, role, callerName }
+        { type: 'incoming_call', orderId, role, callerName, callerImage, callerPhone, displayOrderId }
       ).catch((err: any) => {
         logger.warn('Failed to dispatch call notification:', err);
       });
@@ -132,6 +154,7 @@ class VoiceService {
       recipientIdentity,
       orderId,
       rider: riderData,
+      customer: customerData,
     };
   }
 

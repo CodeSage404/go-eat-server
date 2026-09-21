@@ -4,7 +4,10 @@ import AppError from '../utils/appError';
 import mapsService from '../services/maps.service';
 import { getStates, searchNigeriaLocations } from '../utils/nigeriaLocations';
 import { AuthRequest } from '../middleware/auth.middleware';
-import User from '../models/user.model';
+import User, { UserRole } from '../models/user.model';
+import Order, { OrderStatus } from '../models/order.model';
+import { emitToUser } from '../io';
+import { SOCKET_EVENTS } from '../types/constants';
 
 class LocationController {
   /**
@@ -358,6 +361,37 @@ class LocationController {
       },
       isOnline: true,
     });
+
+    // If courier has active delivery orders, stream live location update to customer
+    if (req.user.role === UserRole.RIDER) {
+      try {
+        const activeOrders = await Order.find({
+          rider: req.user._id,
+          status: {
+            $in: [
+              OrderStatus.COURIER_ASSIGNED,
+              OrderStatus.READY_FOR_COLLECTION,
+              OrderStatus.COURIER_COLLECTED,
+              OrderStatus.OUT_FOR_DELIVERY,
+            ],
+          },
+        }).select('_id customer status');
+
+        for (const ord of activeOrders) {
+          if (ord.customer) {
+            emitToUser(ord.customer.toString(), SOCKET_EVENTS.RIDER_LOCATION_UPDATE, {
+              orderId: ord._id.toString(),
+              coordinates: [lng, lat],
+              heading: heading || 0,
+              speed: speed || 0,
+              timestamp: new Date().toISOString(),
+            });
+          }
+        }
+      } catch (streamErr) {
+        // Non-blocking
+      }
+    }
 
     res.status(200).json({
       status: 'success',

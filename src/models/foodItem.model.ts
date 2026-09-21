@@ -7,6 +7,24 @@ export interface IComboOption {
   description?: string;
 }
 
+export interface IOptionItem {
+  _id?: string;
+  name: string;
+  price: number;
+  description?: string;
+  isDefault?: boolean;
+}
+
+export interface IOptionGroup {
+  _id?: string;
+  name: string;
+  required: boolean;
+  selectionType: 'single' | 'multiple';
+  minSelections?: number;
+  maxSelections?: number;
+  options: IOptionItem[];
+}
+
 export interface IFoodItem extends Document {
   name: string;
   description: string;
@@ -23,6 +41,7 @@ export interface IFoodItem extends Document {
   isHalal: boolean;
   isCombo?: boolean;
   comboOptions?: IComboOption[];
+  optionGroups?: IOptionGroup[];
   calories?: number;
   preparationTime?: number;
   allergens?: string[];
@@ -109,6 +128,23 @@ const foodItemSchema = new Schema<IFoodItem>(
         name: { type: String, required: true },
         price: { type: Number, required: true },
         description: { type: String },
+      },
+    ],
+    optionGroups: [
+      {
+        name: { type: String, required: true },
+        required: { type: Boolean, default: false },
+        selectionType: { type: String, enum: ['single', 'multiple'], default: 'single' },
+        minSelections: { type: Number, default: 0 },
+        maxSelections: { type: Number },
+        options: [
+          {
+            name: { type: String, required: true },
+            price: { type: Number, default: 0 },
+            description: { type: String },
+            isDefault: { type: Boolean, default: false },
+          },
+        ],
       },
     ],
     calories: {

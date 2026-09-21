@@ -259,35 +259,40 @@ class AuthService {
         let socialId;
         let name;
         if (type === 'google') {
+            let payload = null;
             try {
                 const ticket = await googleClient.verifyIdToken({
                     idToken: token,
-                    audience: process.env.GOOGLE_CLIENT_ID,
                 });
-                const payload = ticket.getPayload();
-                if (payload) {
-                    email = payload.email;
-                    socialId = payload.sub;
-                    name = payload.name || providedName || email.split('@')[0];
-                }
-                else {
-                    throw new Error('No payload');
-                }
+                payload = ticket.getPayload();
             }
             catch (tokenErr) {
-                // Fallback verification via Google UserInfo API
-                const userInfoRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
-                    headers: { Authorization: `Bearer ${token}` },
-                });
-                const userInfo = (await userInfoRes.json());
-                if (userInfo && userInfo.email) {
-                    email = userInfo.email;
-                    socialId = userInfo.sub || userInfo.id;
-                    name = userInfo.name || providedName || email.split('@')[0];
+                logger_1.default.warn('Google verifyIdToken SDK check failed, trying tokeninfo endpoint:', tokenErr?.message);
+                try {
+                    const tokenInfoRes = await fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(token)}`);
+                    if (tokenInfoRes.ok) {
+                        payload = await tokenInfoRes.json();
+                    }
+                    else {
+                        const userInfoRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+                            headers: { Authorization: `Bearer ${token}` },
+                        });
+                        if (userInfoRes.ok) {
+                            payload = await userInfoRes.json();
+                        }
+                    }
                 }
-                else {
-                    throw new appError_1.default('Invalid Google authentication token', 400);
+                catch (fetchErr) {
+                    logger_1.default.error('Google token verification fetch error:', fetchErr);
                 }
+            }
+            if (payload && (payload.email || payload.sub)) {
+                email = (payload.email || '').toLowerCase().trim();
+                socialId = payload.sub || payload.id;
+                name = payload.name || providedName || (email ? email.split('@')[0] : 'Google User');
+            }
+            else {
+                throw new appError_1.default('Invalid or expired Google authentication token', 400);
             }
         }
         else {

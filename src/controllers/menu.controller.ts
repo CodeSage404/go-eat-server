@@ -42,6 +42,28 @@ const foodItemSchema = z.object({
       return [];
     })
   ]).optional(),
+  optionGroups: z.union([
+    z.array(z.object({
+      name: z.string().min(1, 'Option group name is required'),
+      required: z.boolean().default(false),
+      selectionType: z.enum(['single', 'multiple']).default('single'),
+      minSelections: z.coerce.number().optional().default(0),
+      maxSelections: z.coerce.number().optional(),
+      options: z.array(z.object({
+        name: z.string().min(1, 'Option name is required'),
+        price: z.coerce.number().default(0),
+        description: z.string().optional(),
+        isDefault: z.boolean().optional().default(false),
+      })).default([]),
+    })),
+    z.string().transform(val => {
+      try {
+        const parsed = JSON.parse(val);
+        if (Array.isArray(parsed)) return parsed;
+      } catch {}
+      return [];
+    })
+  ]).optional(),
   calories: z.coerce.number().optional(),
   preparationTime: z.coerce.number().optional(),
   prepTime: z.coerce.number().optional(),
@@ -224,6 +246,13 @@ class MenuController {
         updateData.comboOptions = JSON.parse(updateData.comboOptions);
       } catch {
         updateData.comboOptions = [];
+      }
+    }
+    if (typeof updateData.optionGroups === 'string') {
+      try {
+        updateData.optionGroups = JSON.parse(updateData.optionGroups);
+      } catch {
+        updateData.optionGroups = [];
       }
     }
 
