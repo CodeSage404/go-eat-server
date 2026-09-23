@@ -242,6 +242,36 @@ const userSchema = new mongoose_1.Schema({
     lastInactivityAlertAt: {
         type: Date,
     },
+    responsiblePurchasing: {
+        spendingLimit: {
+            enabled: { type: Boolean, default: false },
+            amount: { type: Number },
+            period: { type: String, enum: ['week', 'month'], default: 'week' },
+            currencyCode: { type: String, default: 'GBP' },
+        },
+        orderLimit: {
+            enabled: { type: Boolean, default: false },
+            maxOrders: { type: Number },
+            period: { type: String, enum: ['week', 'month'], default: 'week' },
+        },
+        takeABreak: {
+            enabled: { type: Boolean, default: false },
+            activeUntil: { type: Date },
+            durationDays: { type: Number, default: 0 },
+        },
+        selfExclusion: {
+            enabled: { type: Boolean, default: false },
+            activeUntil: { type: Date },
+        },
+        buddy: {
+            name: { type: String, trim: true },
+            contact: { type: String, trim: true },
+            relationship: { type: String, trim: true },
+            status: { type: String, enum: ['pending', 'active'], default: 'pending' },
+            is18PlusConfirmed: { type: Boolean, default: false },
+            invitedAt: { type: Date, default: Date.now },
+        },
+    },
 }, {
     timestamps: true,
 });

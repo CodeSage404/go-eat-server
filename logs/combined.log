@@ -4607,3 +4607,7 @@
 2026-09-11 00:09:56 [error]: 	❌ Error sending push notification: [messaging/mismatched-credential] SenderId mismatch
 2026-09-12 02:00:14 [info]: 	🔥 Firebase Admin initialized
 2026-09-12 02:00:44 [error]: 	❌ Error sending push notification: [messaging/registration-token-not-registered] NotRegistered
+2026-09-23 14:05:04 [info]: 	🚀 Connected to MongoDB: ac-hjwrplp-shard-00-00.dupeyhe.mongodb.net
+2026-09-23 14:05:06 [info]: 	✅ Verified & migrated promo fields across all restaurant documents.
+2026-09-23 14:05:17 [info]: 	✅ Verified & migrated country fields across all restaurant documents.
+2026-09-23 14:05:19 [info]: 	✅ Verified & synced live promo status across restaurants.

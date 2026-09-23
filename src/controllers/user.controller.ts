@@ -184,16 +184,23 @@ class UserController {
    */
   public getResponsiblePurchasing = catchAsync(async (req: Request, res: Response) => {
     const user = await User.findById(req.user!._id).select('responsiblePurchasing');
+    const rp = (user?.responsiblePurchasing as any)?.toObject ? (user!.responsiblePurchasing as any).toObject() : user?.responsiblePurchasing;
+
+    const sanitizedRp = rp ? {
+      ...rp,
+      buddy: (rp.buddy && rp.buddy.name && rp.buddy.name.trim()) ? rp.buddy : undefined,
+    } : {
+      spendingLimit: { enabled: false, period: 'week' },
+      orderLimit: { enabled: false, period: 'week' },
+      takeABreak: { enabled: false, durationDays: 0 },
+      selfExclusion: { enabled: false },
+      buddy: undefined,
+    };
+
     res.status(200).json({
       status: 'success',
       data: {
-        responsiblePurchasing: user?.responsiblePurchasing || {
-          spendingLimit: { enabled: false, period: 'week' },
-          orderLimit: { enabled: false, period: 'week' },
-          takeABreak: { enabled: false, durationDays: 0 },
-          selfExclusion: { enabled: false },
-          buddy: undefined,
-        },
+        responsiblePurchasing: sanitizedRp,
       },
     });
   });
@@ -207,17 +214,36 @@ class UserController {
       throw new AppError('responsiblePurchasing settings payload is required', 400);
     }
 
+    const payload = { ...responsiblePurchasing };
+    if (payload.buddy && (!payload.buddy.name || !payload.buddy.name.trim())) {
+      delete payload.buddy;
+    }
+
+    let updateQuery: any = { responsiblePurchasing: payload };
+    if (!payload.buddy) {
+      updateQuery = {
+        ...updateQuery,
+        $unset: { 'responsiblePurchasing.buddy': 1 },
+      };
+    }
+
     const user = await User.findByIdAndUpdate(
       req.user!._id,
-      { responsiblePurchasing },
+      updateQuery,
       { returnDocument: 'after', runValidators: true }
     ).select('-password');
+
+    const resultRp = (user?.responsiblePurchasing as any)?.toObject ? (user!.responsiblePurchasing as any).toObject() : user?.responsiblePurchasing;
+    const sanitizedResult = resultRp ? {
+      ...resultRp,
+      buddy: (resultRp.buddy && resultRp.buddy.name && resultRp.buddy.name.trim()) ? resultRp.buddy : undefined,
+    } : undefined;
 
     res.status(200).json({
       status: 'success',
       message: 'Responsible purchasing settings updated successfully',
       data: {
-        responsiblePurchasing: user?.responsiblePurchasing,
+        responsiblePurchasing: sanitizedResult,
       },
     });
   });

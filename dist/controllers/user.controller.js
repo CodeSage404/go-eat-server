@@ -153,6 +153,62 @@ class UserController {
                 data: { user },
             });
         });
+        /**
+         * Get Responsible Purchasing Settings & GoEat Buddy
+         */
+        this.getResponsiblePurchasing = (0, catchAsync_1.catchAsync)(async (req, res) => {
+            const user = await user_model_1.default.findById(req.user._id).select('responsiblePurchasing');
+            const rp = user?.responsiblePurchasing?.toObject ? user.responsiblePurchasing.toObject() : user?.responsiblePurchasing;
+            const sanitizedRp = rp ? {
+                ...rp,
+                buddy: (rp.buddy && rp.buddy.name && rp.buddy.name.trim()) ? rp.buddy : undefined,
+            } : {
+                spendingLimit: { enabled: false, period: 'week' },
+                orderLimit: { enabled: false, period: 'week' },
+                takeABreak: { enabled: false, durationDays: 0 },
+                selfExclusion: { enabled: false },
+                buddy: undefined,
+            };
+            res.status(200).json({
+                status: 'success',
+                data: {
+                    responsiblePurchasing: sanitizedRp,
+                },
+            });
+        });
+        /**
+         * Update Responsible Purchasing Settings & GoEat Buddy
+         */
+        this.updateResponsiblePurchasing = (0, catchAsync_1.catchAsync)(async (req, res) => {
+            const { responsiblePurchasing } = req.body;
+            if (!responsiblePurchasing) {
+                throw new appError_1.default('responsiblePurchasing settings payload is required', 400);
+            }
+            const payload = { ...responsiblePurchasing };
+            if (payload.buddy && (!payload.buddy.name || !payload.buddy.name.trim())) {
+                delete payload.buddy;
+            }
+            let updateQuery = { responsiblePurchasing: payload };
+            if (!payload.buddy) {
+                updateQuery = {
+                    ...updateQuery,
+                    $unset: { 'responsiblePurchasing.buddy': 1 },
+                };
+            }
+            const user = await user_model_1.default.findByIdAndUpdate(req.user._id, updateQuery, { returnDocument: 'after', runValidators: true }).select('-password');
+            const resultRp = user?.responsiblePurchasing?.toObject ? user.responsiblePurchasing.toObject() : user?.responsiblePurchasing;
+            const sanitizedResult = resultRp ? {
+                ...resultRp,
+                buddy: (resultRp.buddy && resultRp.buddy.name && resultRp.buddy.name.trim()) ? resultRp.buddy : undefined,
+            } : undefined;
+            res.status(200).json({
+                status: 'success',
+                message: 'Responsible purchasing settings updated successfully',
+                data: {
+                    responsiblePurchasing: sanitizedResult,
+                },
+            });
+        });
     }
 }
 exports.default = new UserController();

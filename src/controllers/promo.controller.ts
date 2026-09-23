@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import Promo from '../models/promo.model';
 import Restaurant from '../models/restaurant.model';
 import FoodItem from '../models/foodItem.model';
+import { syncRestaurantPromoStatus } from '../services/restaurant.service';
 import { catchAsync } from '../utils/catchAsync';
 import AppError from '../utils/appError';
 
@@ -17,6 +18,10 @@ class PromoController {
     }
 
     const promo = await Promo.create(req.body);
+
+    if (promo.restaurant) {
+      syncRestaurantPromoStatus(promo.restaurant).catch(() => {});
+    }
 
     // If promo is targeted to a specific food item, reflect discount directly on item
     if (promo.foodItem && promo.discountPercentage > 0) {
@@ -82,6 +87,8 @@ class PromoController {
       }
     }
     
+    syncRestaurantPromoStatus(restaurant._id).catch(() => {});
+
     res.status(200).json({ status: 'success', data: { promo } });
   });
 
@@ -107,6 +114,8 @@ class PromoController {
       }
     }
     
+    syncRestaurantPromoStatus(restaurant._id).catch(() => {});
+
     res.status(204).json({ status: 'success', data: null });
   });
 

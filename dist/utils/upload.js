@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.memUpload = exports.uploadDir = exports.upload = exports.saveFileLocally = exports.shouldUseCloudinary = void 0;
+exports.processBase64Image = exports.memUpload = exports.uploadDir = exports.upload = exports.saveFileLocally = exports.shouldUseCloudinary = void 0;
 const multer_1 = __importDefault(require("multer"));
 const path_1 = __importDefault(require("path"));
 const fs_1 = __importDefault(require("fs"));
@@ -159,3 +159,52 @@ exports.upload = {
         ];
     }
 };
+/**
+ * Process a base64 or URL image and return a persistent URL
+ */
+const processBase64Image = async (base64String, req) => {
+    if (!base64String || typeof base64String !== 'string')
+        return '';
+    if (base64String.startsWith('http://') || base64String.startsWith('https://')) {
+        return base64String;
+    }
+    // If base64 data URI or raw base64
+    if (base64String.startsWith('data:image') || base64String.length > 200) {
+        const formatted = base64String.startsWith('data:image')
+            ? base64String
+            : `data:image/jpeg;base64,${base64String}`;
+        if ((0, exports.shouldUseCloudinary)()) {
+            try {
+                const result = await cloudinary_1.v2.uploader.upload(formatted, {
+                    folder: 'combo_items',
+                    resource_type: 'image',
+                });
+                return result.secure_url;
+            }
+            catch (err) {
+                logger_1.default.warn(`Cloudinary base64 upload failed, falling back to local: ${err.message}`);
+            }
+        }
+        try {
+            if (!fs_1.default.existsSync(uploadDir)) {
+                fs_1.default.mkdirSync(uploadDir, { recursive: true });
+            }
+            const matches = formatted.match(/^data:image\/([A-Za-z-+\/]+);base64,(.+)$/);
+            const ext = matches ? `.${matches[1].replace('jpeg', 'jpg')}` : '.jpg';
+            const data = matches ? matches[2] : base64String;
+            const buffer = Buffer.from(data, 'base64');
+            const filename = `combo-${Date.now()}-${Math.round(Math.random() * 1e9)}${ext}`;
+            const filePath = path_1.default.join(uploadDir, filename);
+            await fs_1.default.promises.writeFile(filePath, buffer);
+            const baseUrl = process.env.APP_URL ||
+                process.env.RENDER_EXTERNAL_URL ||
+                (req ? `${req.protocol}://${req.get('host')}` : '');
+            return baseUrl ? `${baseUrl.replace(/\/$/, '')}/uploads/${filename}` : `/uploads/${filename}`;
+        }
+        catch (localErr) {
+            logger_1.default.error(`Local base64 save failed: ${localErr.message}`);
+        }
+    }
+    return base64String;
+};
+exports.processBase64Image = processBase64Image;

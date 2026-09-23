@@ -1,4 +1,5 @@
 import { Response } from 'express';
+import mongoose from 'mongoose';
 import Cart from '../models/cart.model';
 import { AuthRequest } from '../middleware/auth.middleware';
 
@@ -28,17 +29,33 @@ export const updateCart = async (req: AuthRequest, res: Response) => {
       return res.status(200).json({ status: 'success', success: true, data: null });
     }
 
-    const formattedItems = (items || []).map((item: any) => ({
-      menuItemId: item.cartItemId ? (item._id || item.cartItemId.split('_')[0]) : (item._id || item.menuItemId),
-      restaurant: item.restaurantId || restaurantId,
-      quantity: item.quantity || 1,
-    }));
+    const formattedItems = (items || [])
+      .map((item: any) => {
+        let rawMenuId = item.cartItemId ? (item._id || item.cartItemId.split('_')[0]) : (item._id || item.menuItemId);
+        if (typeof rawMenuId === 'object' && rawMenuId?._id) rawMenuId = rawMenuId._id;
+        const validMenuId = rawMenuId && mongoose.isValidObjectId(rawMenuId) ? rawMenuId : null;
+
+        let rawRestId = item.restaurantId || restaurantId;
+        if (typeof rawRestId === 'object' && rawRestId?._id) rawRestId = rawRestId._id;
+        const validRestId = rawRestId && mongoose.isValidObjectId(rawRestId) ? rawRestId : undefined;
+
+        return {
+          menuItemId: validMenuId,
+          restaurant: validRestId,
+          quantity: item.quantity && Number(item.quantity) > 0 ? Number(item.quantity) : 1,
+        };
+      })
+      .filter((item: any) => item.menuItemId !== null);
+
+    const validRest = restaurantId && mongoose.isValidObjectId(restaurantId) 
+      ? restaurantId 
+      : formattedItems[0]?.restaurant;
     
     const cart = await Cart.findOneAndUpdate(
       { user: req.user?._id },
       { 
         user: req.user?._id,
-        restaurant: restaurantId || formattedItems[0]?.restaurant,
+        restaurant: validRest,
         items: formattedItems
       },
       { returnDocument: 'after', upsert: true }

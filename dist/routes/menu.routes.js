@@ -101,6 +101,9 @@ router.post('/categories', menu_controller_1.default.createCategory);
  *               isCombo:
  *                 type: boolean
  *                 description: Whether dish is a combo meal with side options
+ *               comboRequired:
+ *                 type: boolean
+ *                 description: Whether picking a combo option is compulsory (default false / optional)
  *               comboOptions:
  *                 type: array
  *                 items:
@@ -112,6 +115,41 @@ router.post('/categories', menu_controller_1.default.createCategory);
  *                       type: number
  *                     description:
  *                       type: string
+ *                     image:
+ *                       type: string
+ *                       description: URL or base64 image for the combo side
+ *               optionGroups:
+ *                 type: array
+ *                 description: Option groups for meal customisation (fillings, toppings, extras)
+ *                 items:
+ *                   type: object
+ *                   required: [name, required, selectionType]
+ *                   properties:
+ *                     name:
+ *                       type: string
+ *                     required:
+ *                       type: boolean
+ *                     selectionType:
+ *                       type: string
+ *                       enum: [single, multiple]
+ *                     minSelections:
+ *                       type: number
+ *                     maxSelections:
+ *                       type: number
+ *                     options:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         required: [name, price]
+ *                         properties:
+ *                           name:
+ *                             type: string
+ *                           price:
+ *                             type: number
+ *                           description:
+ *                             type: string
+ *                           isDefault:
+ *                             type: boolean
  *               description:
  *                 type: string
  *     responses:
@@ -158,6 +196,53 @@ router.post('/items', upload_1.upload.single('image'), menu_controller_1.default
  *                 description: Discount percentage (0-100)
  *               isAvailable:
  *                 type: boolean
+ *               isCombo:
+ *                 type: boolean
+ *               comboRequired:
+ *                 type: boolean
+ *               comboOptions:
+ *                 type: array
+ *                 items:
+ *                   type: object
+ *                   properties:
+ *                     name:
+ *                       type: string
+ *                     price:
+ *                       type: number
+ *                     description:
+ *                       type: string
+ *                     image:
+ *                       type: string
+ *               optionGroups:
+ *                 type: array
+ *                 description: Option groups for meal customisation (fillings, toppings, extras)
+ *                 items:
+ *                   type: object
+ *                   properties:
+ *                     name:
+ *                       type: string
+ *                     required:
+ *                       type: boolean
+ *                     selectionType:
+ *                       type: string
+ *                       enum: [single, multiple]
+ *                     minSelections:
+ *                       type: number
+ *                     maxSelections:
+ *                       type: number
+ *                     options:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           name:
+ *                             type: string
+ *                           price:
+ *                             type: number
+ *                           description:
+ *                             type: string
+ *                           isDefault:
+ *                             type: boolean
  *     responses:
  *       200:
  *         description: Food item updated successfully

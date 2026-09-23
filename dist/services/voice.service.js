@@ -10,6 +10,7 @@ const order_model_1 = __importDefault(require("../models/order.model"));
 const user_model_1 = __importDefault(require("../models/user.model"));
 const twilioVerify_util_1 = require("../utils/twilioVerify.util");
 const notification_service_1 = __importDefault(require("./notification.service"));
+const io_1 = require("../io");
 class VoiceService {
     constructor() {
         this.cachedApiKeySid = null;
@@ -66,7 +67,9 @@ class VoiceService {
      * Generate an in-app VoIP call token for an authenticated user and order
      */
     async generateVoiceToken(userId, orderId, role = 'customer') {
-        const order = await order_model_1.default.findById(orderId).populate('rider', 'name phoneNumber profilePicture vehicleType');
+        const order = await order_model_1.default.findById(orderId)
+            .populate('rider', 'name phoneNumber profilePicture vehicleType')
+            .populate('customer', 'name phoneNumber profilePicture');
         if (!order) {
             throw new appError_1.default('Order not found', 404);
         }
@@ -74,7 +77,7 @@ class VoiceService {
         const identity = `${role}_${userId}`;
         const recipientIdentity = role === 'customer'
             ? `rider_${order.rider ? order.rider._id : 'unassigned'}`
-            : `customer_${order.customer}`;
+            : `customer_${order.customer ? order.customer._id || order.customer : 'unknown'}`;
         const AccessToken = twilio_1.default.jwt.AccessToken;
         const VoiceGrant = AccessToken.VoiceGrant;
         const voiceGrant = new VoiceGrant({
@@ -92,15 +95,32 @@ class VoiceService {
             profilePicture: order.rider.profilePicture,
             vehicleType: order.rider.vehicleType || 'Motorcycle',
         } : null;
+        const customerData = order.customer ? {
+            name: order.customer.name || 'Customer',
+            phoneNumber: order.customer.phoneNumber,
+            profilePicture: order.customer.profilePicture,
+        } : null;
         // Send Push & Real-time Notification to call recipient
         const recipientUserId = role === 'customer'
             ? (order.rider ? order.rider._id?.toString() : null)
-            : (order.customer ? order.customer.toString() : null);
+            : (order.customer ? (order.customer._id?.toString() || order.customer.toString()) : null);
         if (recipientUserId) {
-            const callerUser = await user_model_1.default.findById(userId).select('name');
+            const callerUser = await user_model_1.default.findById(userId).select('name phoneNumber profileImage');
             const callerName = callerUser?.name || (role === 'customer' ? 'Customer' : 'Delivery Courier');
+            const callerImage = callerUser?.profileImage || (role === 'customer' ? customerData?.profilePicture : riderData?.profilePicture);
+            const callerPhone = callerUser?.phoneNumber || (role === 'customer' ? customerData?.phoneNumber : riderData?.phoneNumber);
             const displayOrderId = order._id.toString().slice(-6).toUpperCase();
-            notification_service_1.default.sendNotification(recipientUserId, 'Incoming Voice Call 📞', `${callerName} is calling you regarding Order #${displayOrderId}`, { type: 'incoming_call', orderId, role, callerName }).catch((err) => {
+            // Direct real-time socket event for immediate ringing UI
+            (0, io_1.emitToUser)(recipientUserId, 'incoming_call', {
+                orderId,
+                role,
+                callerName,
+                callerImage,
+                callerPhone,
+                displayOrderId,
+            });
+            // Notification Inbox and FCM push notification
+            notification_service_1.default.sendNotification(recipientUserId, 'Incoming Voice Call 📞', `${callerName} is calling you regarding Order #${displayOrderId}`, { type: 'incoming_call', orderId, role, callerName, callerImage, callerPhone, displayOrderId }).catch((err) => {
                 logger_1.default.warn('Failed to dispatch call notification:', err);
             });
         }
@@ -110,6 +130,7 @@ class VoiceService {
             recipientIdentity,
             orderId,
             rider: riderData,
+            customer: customerData,
         };
     }
     /**

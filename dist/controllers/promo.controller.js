@@ -6,6 +6,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const promo_model_1 = __importDefault(require("../models/promo.model"));
 const restaurant_model_1 = __importDefault(require("../models/restaurant.model"));
 const foodItem_model_1 = __importDefault(require("../models/foodItem.model"));
+const restaurant_service_1 = require("../services/restaurant.service");
 const catchAsync_1 = require("../utils/catchAsync");
 const appError_1 = __importDefault(require("../utils/appError"));
 class PromoController {
@@ -21,6 +22,9 @@ class PromoController {
                 req.body.restaurant = restaurant._id.toString();
             }
             const promo = await promo_model_1.default.create(req.body);
+            if (promo.restaurant) {
+                (0, restaurant_service_1.syncRestaurantPromoStatus)(promo.restaurant).catch(() => { });
+            }
             // If promo is targeted to a specific food item, reflect discount directly on item
             if (promo.foodItem && promo.discountPercentage > 0) {
                 const foodItem = await foodItem_model_1.default.findById(promo.foodItem);
@@ -78,6 +82,7 @@ class PromoController {
                     await foodItem.save();
                 }
             }
+            (0, restaurant_service_1.syncRestaurantPromoStatus)(restaurant._id).catch(() => { });
             res.status(200).json({ status: 'success', data: { promo } });
         });
         /**
@@ -101,6 +106,7 @@ class PromoController {
                     await foodItem.save();
                 }
             }
+            (0, restaurant_service_1.syncRestaurantPromoStatus)(restaurant._id).catch(() => { });
             res.status(204).json({ status: 'success', data: null });
         });
         /**

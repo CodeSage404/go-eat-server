@@ -1,6 +1,7 @@
 import mongoose from 'mongoose';
 import logger from '../utils/logger';
 import dotenv from 'dotenv';
+import { syncAllRestaurantsPromoStatus } from '../services/restaurant.service';
 
 dotenv.config();
 
@@ -48,6 +49,14 @@ const connectDB = async (): Promise<void> => {
         }
       );
       logger.info('✅ Verified & migrated country fields across all restaurant documents.');
+
+      // Automatically sync live promo status across restaurants with active food discounts/promos
+      try {
+        await syncAllRestaurantsPromoStatus();
+        logger.info('✅ Verified & synced live promo status across restaurants.');
+      } catch (syncErr: any) {
+        logger.warn('Could not sync restaurant live promo status:', syncErr.message);
+      }
     } catch (migErr: any) {
       logger.warn('Could not migrate restaurant fields (collection may not exist yet):', migErr.message);
     }

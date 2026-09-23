@@ -284,4 +284,87 @@ router.patch('/fcm-token', user_controller_1.default.updateFcmToken);
  *         description: Online shift status updated successfully.
  */
 router.patch('/status/toggle-online', user_controller_1.default.toggleOnlineStatus);
+/**
+ * @openapi
+ * /api/v1/users/responsible-purchasing:
+ *   get:
+ *     tags:
+ *       - Users
+ *     summary: Get User Responsible Purchasing & GoEat Buddy Settings
+ *     description: Retrieves the authenticated user's alcohol spending limit, order limit, take-a-break pause dates, and GoEat Buddy details.
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Responsible purchasing settings retrieved successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: success
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     responsiblePurchasing:
+ *                       type: object
+ *       401:
+ *         description: Unauthorized. Invalid or missing authentication token.
+ *   put:
+ *     tags:
+ *       - Users
+ *     summary: Update User Responsible Purchasing & GoEat Buddy Settings
+ *     description: Updates the authenticated user's responsible purchasing preferences including budget limits, order limits, pause periods, and buddy invitations.
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [responsiblePurchasing]
+ *             properties:
+ *               responsiblePurchasing:
+ *                 type: object
+ *                 properties:
+ *                   spendingLimit:
+ *                     type: object
+ *                     properties:
+ *                       enabled: { type: boolean, example: true }
+ *                       amount: { type: number, example: 50 }
+ *                       period: { type: string, enum: [week, month], example: week }
+ *                       currencyCode: { type: string, example: GBP }
+ *                   orderLimit:
+ *                     type: object
+ *                     properties:
+ *                       enabled: { type: boolean, example: true }
+ *                       maxOrders: { type: number, example: 2 }
+ *                       period: { type: string, enum: [week, month], example: week }
+ *                   takeABreak:
+ *                     type: object
+ *                     properties:
+ *                       enabled: { type: boolean, example: true }
+ *                       activeUntil: { type: string, format: date-time }
+ *                       durationDays: { type: number, example: 7 }
+ *                   buddy:
+ *                     type: object
+ *                     properties:
+ *                       name: { type: string, example: Jane Doe }
+ *                       contact: { type: string, example: jane@example.com }
+ *                       relationship: { type: string, example: Friend }
+ *                       is18PlusConfirmed: { type: boolean, example: true }
+ *     responses:
+ *       200:
+ *         description: Responsible purchasing settings updated successfully.
+ *       400:
+ *         description: Missing or invalid settings payload.
+ *       401:
+ *         description: Unauthorized. Invalid or missing authentication token.
+ */
+router.route('/responsible-purchasing')
+    .get(user_controller_1.default.getResponsiblePurchasing)
+    .put(user_controller_1.default.updateResponsiblePurchasing);
 exports.default = router;

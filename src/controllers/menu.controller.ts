@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import menuService from '../services/menu.service';
-import restaurantService from '../services/restaurant.service';
+import restaurantService, { syncRestaurantPromoStatus } from '../services/restaurant.service';
 import { catchAsync } from '../utils/catchAsync';
 import AppError from '../utils/appError';
 import FoodItem from '../models/foodItem.model';
@@ -21,6 +21,7 @@ const foodItemSchema = z.object({
   description: z.string().optional(),
   price: z.coerce.number().positive('Price must be positive'),
   category: z.string().min(1, 'Category ID is required'),
+  image: z.string().optional(),
   isVegetarian: z.union([z.boolean(), z.enum(['true', 'false', '']).transform(val => val === 'true')]).optional(),
   isVegan: z.union([z.boolean(), z.enum(['true', 'false', '']).transform(val => val === 'true')]).optional(),
   isSpicy: z.union([z.boolean(), z.enum(['true', 'false', '']).transform(val => val === 'true')]).optional(),
@@ -213,20 +214,28 @@ class MenuController {
       ...validatedData.data,
       category: validatedData.data.category as any,
       restaurant: restaurantId as any,
-      image: req.file?.path || 'default-food.png',
+      image: req.file?.path || validatedData.data.image || req.body?.image || 'default-food.png',
       preparationTime: validatedData.data.preparationTime || validatedData.data.prepTime || 20,
     };
 
     if (foodItemData.comboOptions && Array.isArray(foodItemData.comboOptions)) {
       foodItemData.comboOptions = await Promise.all(
-        foodItemData.comboOptions.map(async (opt: any) => ({
-          ...opt,
-          image: opt.image ? await processBase64Image(opt.image, req) : undefined,
-        }))
+        foodItemData.comboOptions
+          .filter((opt: any) => opt && opt.name && String(opt.name).trim() !== '')
+          .map(async (opt: any) => ({
+            ...opt,
+            name: String(opt.name).trim(),
+            price: !isNaN(parseFloat(opt.price)) ? parseFloat(opt.price) : 0,
+            image: opt.image ? await processBase64Image(opt.image, req) : undefined,
+          }))
       );
+      if (foodItemData.comboOptions.length > 0) {
+        foodItemData.isCombo = true;
+      }
     }
 
     const foodItem = await menuService.addFoodItem(foodItemData);
+    syncRestaurantPromoStatus(restaurantId as string).catch(() => {});
 
     res.status(201).json({
       status: 'success',
@@ -239,6 +248,9 @@ class MenuController {
     await this.checkRestaurantOwnership(restaurantId as string, req.user._id, req.user.role);
 
     const updateData: any = { ...req.body };
+    if (req.file?.path) {
+      updateData.image = req.file.path;
+    }
     if (updateData.prepTime && !updateData.preparationTime) {
       updateData.preparationTime = Number(updateData.prepTime);
     }
@@ -266,11 +278,18 @@ class MenuController {
     }
     if (Array.isArray(updateData.comboOptions)) {
       updateData.comboOptions = await Promise.all(
-        updateData.comboOptions.map(async (opt: any) => ({
-          ...opt,
-          image: opt.image ? await processBase64Image(opt.image, req) : undefined,
-        }))
+        updateData.comboOptions
+          .filter((opt: any) => opt && opt.name && String(opt.name).trim() !== '')
+          .map(async (opt: any) => ({
+            ...opt,
+            name: String(opt.name).trim(),
+            price: !isNaN(parseFloat(opt.price)) ? parseFloat(opt.price) : 0,
+            image: opt.image ? await processBase64Image(opt.image, req) : undefined,
+          }))
       );
+      if (updateData.comboOptions.length > 0) {
+        updateData.isCombo = true;
+      }
     }
     if (typeof updateData.optionGroups === 'string') {
       try {
@@ -286,6 +305,8 @@ class MenuController {
       throw new AppError('Food item not found', 404);
     }
 
+    syncRestaurantPromoStatus(restaurantId as string).catch(() => {});
+
     res.status(200).json({
       status: 'success',
       data: { foodItem },
@@ -297,6 +318,7 @@ class MenuController {
     await this.checkRestaurantOwnership(restaurantId as string, req.user._id, req.user.role);
 
     await menuService.deleteFoodItem(id as string);
+    syncRestaurantPromoStatus(restaurantId as string).catch(() => {});
 
     res.status(204).json({
       status: 'success',

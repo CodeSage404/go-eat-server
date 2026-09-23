@@ -105,11 +105,34 @@ const foodItemSchema = new mongoose_1.Schema({
         type: Boolean,
         default: false,
     },
+    comboRequired: {
+        type: Boolean,
+        default: false,
+    },
     comboOptions: [
         {
             name: { type: String, required: true },
             price: { type: Number, required: true },
             description: { type: String },
+            image: { type: String },
+        },
+    ],
+    optionGroups: [
+        {
+            name: { type: String, required: true },
+            required: { type: Boolean, default: false },
+            selectionType: { type: String, enum: ['single', 'multiple'], default: 'single' },
+            minSelections: { type: Number, default: 0 },
+            maxSelections: { type: Number },
+            options: [
+                {
+                    name: { type: String, required: true },
+                    price: { type: Number, default: 0 },
+                    description: { type: String },
+                    image: { type: String },
+                    isDefault: { type: Boolean, default: false },
+                },
+            ],
         },
     ],
     calories: {

@@ -6,6 +6,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const mongoose_1 = __importDefault(require("mongoose"));
 const logger_1 = __importDefault(require("../utils/logger"));
 const dotenv_1 = __importDefault(require("dotenv"));
+const restaurant_service_1 = require("../services/restaurant.service");
 dotenv_1.default.config();
 const mongodbUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/go-eat';
 const connectDB = async () => {
@@ -42,6 +43,14 @@ const connectDB = async () => {
                 }
             });
             logger_1.default.info('✅ Verified & migrated country fields across all restaurant documents.');
+            // Automatically sync live promo status across restaurants with active food discounts/promos
+            try {
+                await (0, restaurant_service_1.syncAllRestaurantsPromoStatus)();
+                logger_1.default.info('✅ Verified & synced live promo status across restaurants.');
+            }
+            catch (syncErr) {
+                logger_1.default.warn('Could not sync restaurant live promo status:', syncErr.message);
+            }
         }
         catch (migErr) {
             logger_1.default.warn('Could not migrate restaurant fields (collection may not exist yet):', migErr.message);
