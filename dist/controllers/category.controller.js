@@ -42,6 +42,7 @@ const appError_1 = __importDefault(require("../utils/appError"));
 const category_model_1 = __importDefault(require("../models/category.model"));
 const foodItem_model_1 = __importDefault(require("../models/foodItem.model"));
 const restaurant_model_1 = __importStar(require("../models/restaurant.model"));
+const user_model_1 = require("../models/user.model");
 const locationResolver_1 = require("../utils/locationResolver");
 class CategoryController {
     constructor() {
@@ -51,9 +52,23 @@ class CategoryController {
          */
         this.getAllCategories = (0, catchAsync_1.catchAsync)(async (req, res) => {
             const { country, countryCode } = (0, locationResolver_1.resolveRequestLocation)(req);
-            // If country/countryCode provided, filter categories relevant to that country
+            const { restaurant, onlyMine } = req.query;
             let filter = {};
-            if (country || countryCode) {
+            if (restaurant && mongoose_1.default.Types.ObjectId.isValid(restaurant)) {
+                const restObjId = new mongoose_1.default.Types.ObjectId(restaurant);
+                if (onlyMine === 'true') {
+                    // Return ONLY categories created by this specific restaurant
+                    filter = { restaurant: restObjId, isGlobal: false };
+                }
+                else {
+                    // Return global categories + this restaurant's custom categories
+                    filter.$or = [
+                        { isGlobal: true },
+                        { restaurant: restObjId },
+                    ];
+                }
+            }
+            else if (country || countryCode) {
                 const countryFilter = (0, locationResolver_1.buildCountryFilter)(country, countryCode);
                 const activeRestaurants = await restaurant_model_1.default.find({
                     status: restaurant_model_1.RestaurantStatus.ACTIVE,
@@ -201,6 +216,19 @@ class CategoryController {
          * Create a category
          */
         this.createCategory = (0, catchAsync_1.catchAsync)(async (req, res) => {
+            const user = req.user;
+            let targetRestaurantId = req.body.restaurant;
+            // Enforce outlet scope for Vendors
+            if (user && user.role === user_model_1.UserRole.VENDOR) {
+                if (!targetRestaurantId) {
+                    const vendorRest = await restaurant_model_1.default.findOne({ owner: user._id });
+                    if (vendorRest) {
+                        targetRestaurantId = vendorRest._id;
+                    }
+                }
+                req.body.restaurant = targetRestaurantId;
+                req.body.isGlobal = false;
+            }
             const { name, restaurant } = req.body;
             if (name) {
                 const trimmedName = String(name).trim();
@@ -220,7 +248,7 @@ class CategoryController {
                 }
                 const existing = await category_model_1.default.findOne(existingQuery);
                 if (existing) {
-                    throw new appError_1.default(`Category "${trimmedName}" already exists. Please use a different name or edit the existing category.`, 409);
+                    throw new appError_1.default(`Category "${trimmedName}" already exists. Please use a different name or edit your category.`, 409);
                 }
             }
             // Check if an image was uploaded via multer (now Cloudinary URL is in req.file.path)
@@ -239,12 +267,24 @@ class CategoryController {
          * Update a category
          */
         this.updateCategory = (0, catchAsync_1.catchAsync)(async (req, res) => {
+            const targetCategory = await category_model_1.default.findById(req.params.id);
+            if (!targetCategory) {
+                throw new appError_1.default('Category not found with that ID', 404);
+            }
+            const user = req.user;
+            if (user && user.role === user_model_1.UserRole.VENDOR) {
+                const vendorRest = await restaurant_model_1.default.findOne({ owner: user._id });
+                const vendorRestId = vendorRest?._id?.toString();
+                const catRestId = targetCategory.restaurant?.toString();
+                if (targetCategory.isGlobal || !catRestId || catRestId !== vendorRestId) {
+                    throw new appError_1.default('You do not have permission to edit this category. Vendors can only edit categories created by their outlet.', 403);
+                }
+                // Prevent vendor from altering ownership or converting to global
+                delete req.body.isGlobal;
+                delete req.body.restaurant;
+            }
             if (req.body.name) {
                 const trimmedName = String(req.body.name).trim();
-                const targetCategory = await category_model_1.default.findById(req.params.id);
-                if (!targetCategory) {
-                    throw new appError_1.default('Category not found with that ID', 404);
-                }
                 const restId = req.body.restaurant || targetCategory.restaurant;
                 const existingQuery = {
                     _id: { $ne: req.params.id },
@@ -288,10 +328,20 @@ class CategoryController {
          * Delete a category
          */
         this.deleteCategory = (0, catchAsync_1.catchAsync)(async (req, res) => {
-            const category = await category_model_1.default.findByIdAndDelete(req.params.id);
-            if (!category) {
+            const targetCategory = await category_model_1.default.findById(req.params.id);
+            if (!targetCategory) {
                 throw new appError_1.default('Category not found with that ID', 404);
             }
+            const user = req.user;
+            if (user && user.role === user_model_1.UserRole.VENDOR) {
+                const vendorRest = await restaurant_model_1.default.findOne({ owner: user._id });
+                const vendorRestId = vendorRest?._id?.toString();
+                const catRestId = targetCategory.restaurant?.toString();
+                if (targetCategory.isGlobal || !catRestId || catRestId !== vendorRestId) {
+                    throw new appError_1.default('You do not have permission to delete this category. Vendors can only delete categories created by their outlet.', 403);
+                }
+            }
+            await category_model_1.default.findByIdAndDelete(req.params.id);
             res.status(204).json({
                 status: 'success',
                 data: null,

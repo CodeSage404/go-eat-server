@@ -261,8 +261,16 @@ class AuthService {
         if (type === 'google') {
             let payload = null;
             try {
+                const validAudiences = [
+                    process.env.GOOGLE_CLIENT_ID,
+                    process.env.GOOGLE_IOS_CLIENT_ID,
+                    '195791016618-46mo0kle1vi8pt34d8adc8n3s6n1poql.apps.googleusercontent.com',
+                    '195791016618-jf7m1lp87m040tgcvl4da92qtn71ehgq.apps.googleusercontent.com',
+                    '11578371068-gsti8o4ben9b531qllg4peqrjg9adtfa.apps.googleusercontent.com',
+                ].filter(Boolean);
                 const ticket = await googleClient.verifyIdToken({
                     idToken: token,
+                    audience: validAudiences,
                 });
                 payload = ticket.getPayload();
             }

@@ -13,8 +13,19 @@ const router = Router();
  *     tags:
  *       - Categories
  *     summary: Get all food categories
- *     description: Returns a list of all food & cravings categories filtered by user location / country.
+ *     description: Returns a list of all food & cravings categories filtered by user location / country, or scoped to a specific restaurant outlet.
  *     parameters:
+ *       - in: query
+ *         name: restaurant
+ *         schema:
+ *           type: string
+ *         description: Restaurant ID to retrieve custom outlet categories or combined options
+ *       - in: query
+ *         name: onlyMine
+ *         schema:
+ *           type: string
+ *           enum: ['true', 'false']
+ *         description: When set to 'true' with restaurant ID, returns ONLY categories created by that outlet
  *       - in: query
  *         name: country
  *         schema:
@@ -150,6 +161,8 @@ router.post('/', restrictTo(UserRole.ADMIN, UserRole.VENDOR), upload.single('ima
  *     responses:
  *       200:
  *         description: Category updated successfully.
+ *       403:
+ *         description: Forbidden - Vendors can only edit categories created by their outlet.
  *       404:
  *         description: Category not found.
  */
@@ -190,6 +203,8 @@ router.patch('/:id', restrictTo(UserRole.ADMIN, UserRole.VENDOR), upload.single(
  *     responses:
  *       200:
  *         description: Category updated successfully.
+ *       403:
+ *         description: Forbidden - Vendors can only edit categories created by their outlet.
  *       404:
  *         description: Category not found.
  */
@@ -214,6 +229,8 @@ router.put('/:id', restrictTo(UserRole.ADMIN, UserRole.VENDOR), upload.single('i
  *     responses:
  *       204:
  *         description: Category deleted successfully.
+ *       403:
+ *         description: Forbidden - Vendors can only delete categories created by their outlet.
  *       404:
  *         description: Category not found.
  */
