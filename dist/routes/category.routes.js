@@ -120,7 +120,8 @@ router.post('/', (0, auth_middleware_1.restrictTo)(user_model_1.UserRole.ADMIN, 
  *   patch:
  *     tags:
  *       - Categories
- *     summary: Update a category (Admin only)
+ *     summary: Update a category (Admin/Vendor)
+ *     description: Update an existing category details or image. Allowed for Administrators and Vendors.
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -148,15 +149,18 @@ router.post('/', (0, auth_middleware_1.restrictTo)(user_model_1.UserRole.ADMIN, 
  *     responses:
  *       200:
  *         description: Category updated successfully.
+ *       404:
+ *         description: Category not found.
  */
-router.patch('/:id', (0, auth_middleware_1.restrictTo)(user_model_1.UserRole.ADMIN), upload_1.upload.single('image'), category_controller_1.default.updateCategory);
+router.patch('/:id', (0, auth_middleware_1.restrictTo)(user_model_1.UserRole.ADMIN, user_model_1.UserRole.VENDOR), upload_1.upload.single('image'), category_controller_1.default.updateCategory);
 /**
  * @openapi
  * /api/v1/categories/{id}:
  *   put:
  *     tags:
  *       - Categories
- *     summary: Update a category (Admin only)
+ *     summary: Update a category (Admin/Vendor)
+ *     description: Full update of an existing category. Allowed for Administrators and Vendors.
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -184,15 +188,18 @@ router.patch('/:id', (0, auth_middleware_1.restrictTo)(user_model_1.UserRole.ADM
  *     responses:
  *       200:
  *         description: Category updated successfully.
+ *       404:
+ *         description: Category not found.
  */
-router.put('/:id', (0, auth_middleware_1.restrictTo)(user_model_1.UserRole.ADMIN), upload_1.upload.single('image'), category_controller_1.default.updateCategory);
+router.put('/:id', (0, auth_middleware_1.restrictTo)(user_model_1.UserRole.ADMIN, user_model_1.UserRole.VENDOR), upload_1.upload.single('image'), category_controller_1.default.updateCategory);
 /**
  * @openapi
  * /api/v1/categories/{id}:
  *   delete:
  *     tags:
  *       - Categories
- *     summary: Delete a category (Admin only)
+ *     summary: Delete a category (Admin/Vendor)
+ *     description: Remove a category by ID. Allowed for Administrators and Vendors.
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -204,6 +211,8 @@ router.put('/:id', (0, auth_middleware_1.restrictTo)(user_model_1.UserRole.ADMIN
  *     responses:
  *       204:
  *         description: Category deleted successfully.
+ *       404:
+ *         description: Category not found.
  */
-router.delete('/:id', (0, auth_middleware_1.restrictTo)(user_model_1.UserRole.ADMIN), category_controller_1.default.deleteCategory);
+router.delete('/:id', (0, auth_middleware_1.restrictTo)(user_model_1.UserRole.ADMIN, user_model_1.UserRole.VENDOR), category_controller_1.default.deleteCategory);
 exports.default = router;
