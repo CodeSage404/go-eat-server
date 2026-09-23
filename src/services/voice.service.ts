@@ -7,6 +7,8 @@ import { formatPhoneNumber } from '../utils/twilioVerify.util';
 import notificationService from './notification.service';
 import { emitToUser } from '../io';
 
+const voiceServiceLastCallPushMap = new Map<string, number>();
+
 class VoiceService {
   private cachedApiKeySid: string | null = null;
   private cachedApiSecret: string | null = null;
@@ -28,6 +30,10 @@ class VoiceService {
   }
 
   private get iosPushCredentialSid(): string {
+    const isDev = process.env.NODE_ENV === 'development';
+    if (isDev && process.env.TWILIO_IOS_SANDBOX_PUSH_CREDENTIAL_SID) {
+      return process.env.TWILIO_IOS_SANDBOX_PUSH_CREDENTIAL_SID;
+    }
     return process.env.TWILIO_IOS_PUSH_CREDENTIAL_SID || '';
   }
 
@@ -139,25 +145,36 @@ class VoiceService {
       const callerPhone = callerUser?.phoneNumber || (role === 'customer' ? customerData?.phoneNumber : riderData?.phoneNumber);
       const displayOrderId = order._id.toString().slice(-6).toUpperCase();
 
-      // Direct real-time socket event for immediate ringing UI
-      emitToUser(recipientUserId, 'incoming_call', {
-        orderId,
-        role,
-        callerName,
-        callerImage,
-        callerPhone,
-        displayOrderId,
-      });
+      // Send Push & Real-time Notification to call recipient (with 45s cooldown to prevent notification spam)
+      const callCooldownKey = `${orderId}_${recipientUserId}`;
+      const now = Date.now();
+      const lastSentTime = voiceServiceLastCallPushMap.get(callCooldownKey) || 0;
 
-      // Notification Inbox and FCM push notification
-      notificationService.sendNotification(
-        recipientUserId,
-        'Incoming Voice Call 📞',
-        `${callerName} is calling you regarding Order #${displayOrderId}`,
-        { type: 'incoming_call', orderId, role, callerName, callerImage, callerPhone, displayOrderId }
-      ).catch((err: any) => {
-        logger.warn('Failed to dispatch call notification:', err);
-      });
+      if (now - lastSentTime > 45000) {
+        voiceServiceLastCallPushMap.set(callCooldownKey, now);
+
+        // Direct real-time socket event for immediate ringing UI
+        emitToUser(recipientUserId, 'incoming_call', {
+          orderId,
+          role,
+          callerName,
+          callerImage,
+          callerPhone,
+          displayOrderId,
+        });
+
+        // Notification Inbox and FCM push notification
+        notificationService.sendNotification(
+          recipientUserId,
+          'Incoming Voice Call 📞',
+          `${callerName} is calling you regarding Order #${displayOrderId}`,
+          { type: 'incoming_call', orderId, role, callerName, callerImage, callerPhone, displayOrderId }
+        ).catch((err: any) => {
+          logger.warn('Failed to dispatch call notification:', err);
+        });
+      } else {
+        logger.info(`⏳ Skipping duplicate call push notification for ${recipientUserId} (cooldown active)`);
+      }
     }
 
     return {

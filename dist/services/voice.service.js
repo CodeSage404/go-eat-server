@@ -11,6 +11,7 @@ const user_model_1 = __importDefault(require("../models/user.model"));
 const twilioVerify_util_1 = require("../utils/twilioVerify.util");
 const notification_service_1 = __importDefault(require("./notification.service"));
 const io_1 = require("../io");
+const voiceServiceLastCallPushMap = new Map();
 class VoiceService {
     constructor() {
         this.cachedApiKeySid = null;
@@ -29,6 +30,10 @@ class VoiceService {
         return process.env.TWILIO_TWIML_APP_SID || '';
     }
     get iosPushCredentialSid() {
+        const isDev = process.env.NODE_ENV === 'development';
+        if (isDev && process.env.TWILIO_IOS_SANDBOX_PUSH_CREDENTIAL_SID) {
+            return process.env.TWILIO_IOS_SANDBOX_PUSH_CREDENTIAL_SID;
+        }
         return process.env.TWILIO_IOS_PUSH_CREDENTIAL_SID || '';
     }
     get androidPushCredentialSid() {
@@ -118,19 +123,29 @@ class VoiceService {
             const callerImage = callerUser?.profileImage || (role === 'customer' ? customerData?.profilePicture : riderData?.profilePicture);
             const callerPhone = callerUser?.phoneNumber || (role === 'customer' ? customerData?.phoneNumber : riderData?.phoneNumber);
             const displayOrderId = order._id.toString().slice(-6).toUpperCase();
-            // Direct real-time socket event for immediate ringing UI
-            (0, io_1.emitToUser)(recipientUserId, 'incoming_call', {
-                orderId,
-                role,
-                callerName,
-                callerImage,
-                callerPhone,
-                displayOrderId,
-            });
-            // Notification Inbox and FCM push notification
-            notification_service_1.default.sendNotification(recipientUserId, 'Incoming Voice Call 📞', `${callerName} is calling you regarding Order #${displayOrderId}`, { type: 'incoming_call', orderId, role, callerName, callerImage, callerPhone, displayOrderId }).catch((err) => {
-                logger_1.default.warn('Failed to dispatch call notification:', err);
-            });
+            // Send Push & Real-time Notification to call recipient (with 45s cooldown to prevent notification spam)
+            const callCooldownKey = `${orderId}_${recipientUserId}`;
+            const now = Date.now();
+            const lastSentTime = voiceServiceLastCallPushMap.get(callCooldownKey) || 0;
+            if (now - lastSentTime > 45000) {
+                voiceServiceLastCallPushMap.set(callCooldownKey, now);
+                // Direct real-time socket event for immediate ringing UI
+                (0, io_1.emitToUser)(recipientUserId, 'incoming_call', {
+                    orderId,
+                    role,
+                    callerName,
+                    callerImage,
+                    callerPhone,
+                    displayOrderId,
+                });
+                // Notification Inbox and FCM push notification
+                notification_service_1.default.sendNotification(recipientUserId, 'Incoming Voice Call 📞', `${callerName} is calling you regarding Order #${displayOrderId}`, { type: 'incoming_call', orderId, role, callerName, callerImage, callerPhone, displayOrderId }).catch((err) => {
+                    logger_1.default.warn('Failed to dispatch call notification:', err);
+                });
+            }
+            else {
+                logger_1.default.info(`⏳ Skipping duplicate call push notification for ${recipientUserId} (cooldown active)`);
+            }
         }
         return {
             token: token.toJwt(),
