@@ -8,13 +8,18 @@ class VoiceController {
    * Issue Twilio Voice Access Token for in-app VoIP calling
    */
   public getToken = catchAsync(async (req: Request, res: Response) => {
-    const { orderId, role } = req.body;
+    const { orderId, role, platform } = req.body;
     if (!orderId) {
       throw new AppError('orderId is required', 400);
     }
 
     const userId = req.user!._id.toString();
-    const tokenData = await voiceService.generateVoiceToken(userId, orderId, role || 'customer');
+    const tokenData = await voiceService.generateVoiceToken(
+      userId,
+      orderId,
+      role || 'customer',
+      (platform || 'ios') as 'ios' | 'android'
+    );
 
     res.status(200).json({
       status: 'success',
@@ -27,7 +32,10 @@ class VoiceController {
    */
   public handleTwiml = (req: Request, res: Response) => {
     const to = (req.body.To || req.query.To || '') as string;
-    const twiml = voiceService.generateCallTwiml(to);
+    const callerName = (req.body.callerName || req.query.callerName || '') as string;
+    const orderId = (req.body.orderId || req.query.orderId || '') as string;
+
+    const twiml = voiceService.generateCallTwiml(to, callerName, orderId);
 
     res.type('text/xml');
     res.send(twiml);

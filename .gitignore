@@ -5,7 +5,7 @@ go-eat-service-acc-id.json
 service-account.json
 google-services.json
 apple-auth.txt
-# /scripts/*
+/scripts/*
 src-backup
 src-backup-v2
 src-backup-v3
@@ -14,3 +14,4 @@ src-backup-v5
 src-backup-v6
 src copy
 src-copy
+voip-certs

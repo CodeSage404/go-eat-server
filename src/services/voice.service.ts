@@ -27,6 +27,14 @@ class VoiceService {
     return process.env.TWILIO_TWIML_APP_SID || '';
   }
 
+  private get iosPushCredentialSid(): string {
+    return process.env.TWILIO_IOS_PUSH_CREDENTIAL_SID || '';
+  }
+
+  private get androidPushCredentialSid(): string {
+    return process.env.TWILIO_ANDROID_PUSH_CREDENTIAL_SID || '';
+  }
+
   private get client(): twilio.Twilio {
     if (!this.accountSid || !this.authToken) {
       throw new AppError('Twilio credentials are not configured on the server', 500);
@@ -71,7 +79,8 @@ class VoiceService {
   async generateVoiceToken(
     userId: string,
     orderId: string,
-    role: 'customer' | 'rider' = 'customer'
+    role: 'customer' | 'rider' = 'customer',
+    platform: 'ios' | 'android' = 'ios'
   ): Promise<{ token: string; identity: string; recipientIdentity: string; orderId: string; rider?: any; customer?: any }> {
     const order = await Order.findById(orderId)
       .populate('rider', 'name phoneNumber profilePicture vehicleType')
@@ -90,9 +99,12 @@ class VoiceService {
     const AccessToken = twilio.jwt.AccessToken;
     const VoiceGrant = AccessToken.VoiceGrant;
 
+    const pushCredentialSid = platform === 'android' ? this.androidPushCredentialSid : this.iosPushCredentialSid;
+
     const voiceGrant = new VoiceGrant({
       outgoingApplicationSid: this.twimlAppSid || undefined,
       incomingAllow: true,
+      pushCredentialSid: pushCredentialSid || undefined,
     });
 
     const token = new AccessToken(this.accountSid, keySid, keySecret, {
@@ -161,20 +173,31 @@ class VoiceService {
   /**
    * Generates TwiML for routing a call to a client identity or phone number
    */
-  generateCallTwiml(to: string): string {
+  generateCallTwiml(to: string, callerName?: string, orderId?: string): string {
     const VoiceResponse = twilio.twiml.VoiceResponse;
     const response = new VoiceResponse();
 
-    if (to.startsWith('client:')) {
+    if (to.startsWith('client:') || to.startsWith('rider_') || to.startsWith('customer_')) {
       const clientName = to.replace('client:', '');
-      const dial = response.dial({ callerId: this.twilioPhoneNumber });
-      dial.client(clientName);
+      const dial = response.dial({
+        callerId: 'Go-Eat',
+        answerOnBridge: true,
+      });
+      const client = dial.client(clientName);
+      if (callerName) {
+        client.parameter({ name: 'callerName', value: callerName });
+      }
+      if (orderId) {
+        client.parameter({ name: 'orderId', value: orderId });
+      }
     } else if (to.startsWith('+') || /^\d+$/.test(to)) {
       const dial = response.dial({ callerId: this.twilioPhoneNumber });
       dial.number(formatPhoneNumber(to));
     } else {
-      const dial = response.dial({ callerId: this.twilioPhoneNumber });
-      dial.client(to);
+      const dial = response.dial({ callerId: 'Go-Eat', answerOnBridge: true });
+      const client = dial.client(to);
+      if (callerName) client.parameter({ name: 'callerName', value: callerName });
+      if (orderId) client.parameter({ name: 'orderId', value: orderId });
     }
 
     return response.toString();

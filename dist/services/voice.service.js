@@ -28,6 +28,12 @@ class VoiceService {
     get twimlAppSid() {
         return process.env.TWILIO_TWIML_APP_SID || '';
     }
+    get iosPushCredentialSid() {
+        return process.env.TWILIO_IOS_PUSH_CREDENTIAL_SID || '';
+    }
+    get androidPushCredentialSid() {
+        return process.env.TWILIO_ANDROID_PUSH_CREDENTIAL_SID || '';
+    }
     get client() {
         if (!this.accountSid || !this.authToken) {
             throw new appError_1.default('Twilio credentials are not configured on the server', 500);
@@ -66,7 +72,7 @@ class VoiceService {
     /**
      * Generate an in-app VoIP call token for an authenticated user and order
      */
-    async generateVoiceToken(userId, orderId, role = 'customer') {
+    async generateVoiceToken(userId, orderId, role = 'customer', platform = 'ios') {
         const order = await order_model_1.default.findById(orderId)
             .populate('rider', 'name phoneNumber profilePicture vehicleType')
             .populate('customer', 'name phoneNumber profilePicture');
@@ -80,9 +86,11 @@ class VoiceService {
             : `customer_${order.customer ? order.customer._id || order.customer : 'unknown'}`;
         const AccessToken = twilio_1.default.jwt.AccessToken;
         const VoiceGrant = AccessToken.VoiceGrant;
+        const pushCredentialSid = platform === 'android' ? this.androidPushCredentialSid : this.iosPushCredentialSid;
         const voiceGrant = new VoiceGrant({
             outgoingApplicationSid: this.twimlAppSid || undefined,
             incomingAllow: true,
+            pushCredentialSid: pushCredentialSid || undefined,
         });
         const token = new AccessToken(this.accountSid, keySid, keySecret, {
             identity,
@@ -136,21 +144,34 @@ class VoiceService {
     /**
      * Generates TwiML for routing a call to a client identity or phone number
      */
-    generateCallTwiml(to) {
+    generateCallTwiml(to, callerName, orderId) {
         const VoiceResponse = twilio_1.default.twiml.VoiceResponse;
         const response = new VoiceResponse();
-        if (to.startsWith('client:')) {
+        if (to.startsWith('client:') || to.startsWith('rider_') || to.startsWith('customer_')) {
             const clientName = to.replace('client:', '');
-            const dial = response.dial({ callerId: this.twilioPhoneNumber });
-            dial.client(clientName);
+            const dial = response.dial({
+                callerId: 'Go-Eat',
+                answerOnBridge: true,
+            });
+            const client = dial.client(clientName);
+            if (callerName) {
+                client.parameter({ name: 'callerName', value: callerName });
+            }
+            if (orderId) {
+                client.parameter({ name: 'orderId', value: orderId });
+            }
         }
         else if (to.startsWith('+') || /^\d+$/.test(to)) {
             const dial = response.dial({ callerId: this.twilioPhoneNumber });
             dial.number((0, twilioVerify_util_1.formatPhoneNumber)(to));
         }
         else {
-            const dial = response.dial({ callerId: this.twilioPhoneNumber });
-            dial.client(to);
+            const dial = response.dial({ callerId: 'Go-Eat', answerOnBridge: true });
+            const client = dial.client(to);
+            if (callerName)
+                client.parameter({ name: 'callerName', value: callerName });
+            if (orderId)
+                client.parameter({ name: 'orderId', value: orderId });
         }
         return response.toString();
     }

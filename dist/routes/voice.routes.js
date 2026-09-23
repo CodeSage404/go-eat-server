@@ -34,6 +34,11 @@ const router = (0, express_1.Router)();
  *                 enum: [customer, rider]
  *                 default: customer
  *                 description: User calling role in this session
+ *               platform:
+ *                 type: string
+ *                 enum: [ios, android]
+ *                 default: ios
+ *                 description: Mobile platform for APNs vs FCM push credential assignment
  *     responses:
  *       200:
  *         description: Twilio Voice access token generated successfully
