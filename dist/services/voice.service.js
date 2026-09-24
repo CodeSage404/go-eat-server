@@ -77,18 +77,43 @@ class VoiceService {
     /**
      * Generate an in-app VoIP call token for an authenticated user and order
      */
-    async generateVoiceToken(userId, orderId, role = 'customer', platform = 'ios') {
+    async generateVoiceToken(userId, orderId, role = 'customer', platform = 'ios', target = 'customer') {
         const order = await order_model_1.default.findById(orderId)
-            .populate('rider', 'name phoneNumber profilePicture vehicleType')
-            .populate('customer', 'name phoneNumber profilePicture');
+            .populate('rider', 'name phoneNumber profilePicture profileImage vehicleType')
+            .populate('customer', 'name phoneNumber profilePicture profileImage')
+            .populate('restaurant', 'name phoneContact logo');
         if (!order) {
             throw new appError_1.default('Order not found', 404);
         }
         const { keySid, keySecret } = await this.getOrCreateApiKey();
         const identity = `${role}_${userId}`;
-        const recipientIdentity = role === 'customer'
-            ? `rider_${order.rider ? order.rider._id : 'unassigned'}`
-            : `customer_${order.customer ? order.customer._id || order.customer : 'unknown'}`;
+        let recipientIdentity = '';
+        let recipientUserId = null;
+        if (role === 'vendor') {
+            if (target === 'rider') {
+                recipientIdentity = `rider_${order.rider ? order.rider._id : 'unassigned'}`;
+                recipientUserId = order.rider ? order.rider._id?.toString() : null;
+            }
+            else {
+                recipientIdentity = `customer_${order.customer ? order.customer._id || order.customer : 'unknown'}`;
+                recipientUserId = order.customer ? (order.customer._id?.toString() || order.customer.toString()) : null;
+            }
+        }
+        else if (role === 'customer') {
+            recipientIdentity = `rider_${order.rider ? order.rider._id : 'unassigned'}`;
+            recipientUserId = order.rider ? order.rider._id?.toString() : null;
+        }
+        else {
+            // rider calling
+            if (target === 'restaurant') {
+                recipientIdentity = `vendor_${order.restaurant?.owner || order.restaurant}`;
+                recipientUserId = order.restaurant?.owner ? order.restaurant.owner.toString() : null;
+            }
+            else {
+                recipientIdentity = `customer_${order.customer ? order.customer._id || order.customer : 'unknown'}`;
+                recipientUserId = order.customer ? (order.customer._id?.toString() || order.customer.toString()) : null;
+            }
+        }
         const AccessToken = twilio_1.default.jwt.AccessToken;
         const VoiceGrant = AccessToken.VoiceGrant;
         const pushCredentialSid = platform === 'android' ? this.androidPushCredentialSid : this.iosPushCredentialSid;
@@ -105,23 +130,40 @@ class VoiceService {
         const riderData = order.rider ? {
             name: order.rider.name || 'Delivery Courier',
             phoneNumber: order.rider.phoneNumber,
-            profilePicture: order.rider.profilePicture,
+            profilePicture: order.rider.profilePicture || order.rider.profileImage,
             vehicleType: order.rider.vehicleType || 'Motorcycle',
         } : null;
         const customerData = order.customer ? {
             name: order.customer.name || 'Customer',
             phoneNumber: order.customer.phoneNumber,
-            profilePicture: order.customer.profilePicture,
+            profilePicture: order.customer.profilePicture || order.customer.profileImage,
+        } : null;
+        const restaurantData = order.restaurant ? {
+            name: order.restaurant.name || 'Restaurant Outlet',
+            phoneContact: order.restaurant.phoneContact,
+            logo: order.restaurant.logo,
         } : null;
         // Send Push & Real-time Notification to call recipient
-        const recipientUserId = role === 'customer'
-            ? (order.rider ? order.rider._id?.toString() : null)
-            : (order.customer ? (order.customer._id?.toString() || order.customer.toString()) : null);
         if (recipientUserId) {
             const callerUser = await user_model_1.default.findById(userId).select('name phoneNumber profileImage');
-            const callerName = callerUser?.name || (role === 'customer' ? 'Customer' : 'Delivery Courier');
-            const callerImage = callerUser?.profileImage || (role === 'customer' ? customerData?.profilePicture : riderData?.profilePicture);
-            const callerPhone = callerUser?.phoneNumber || (role === 'customer' ? customerData?.phoneNumber : riderData?.phoneNumber);
+            let callerName = callerUser?.name || 'Go-Eat Partner';
+            let callerImage = callerUser?.profileImage;
+            let callerPhone = callerUser?.phoneNumber;
+            if (role === 'vendor') {
+                callerName = restaurantData?.name ? `${restaurantData.name} (Restaurant)` : (callerUser?.name || 'Restaurant Outlet');
+                callerImage = restaurantData?.logo || callerUser?.profileImage;
+                callerPhone = restaurantData?.phoneContact || callerUser?.phoneNumber;
+            }
+            else if (role === 'customer') {
+                callerName = callerUser?.name || customerData?.name || 'Customer';
+                callerImage = customerData?.profilePicture || callerUser?.profileImage;
+                callerPhone = customerData?.phoneNumber || callerUser?.phoneNumber;
+            }
+            else if (role === 'rider') {
+                callerName = riderData?.name || callerUser?.name || 'Delivery Courier';
+                callerImage = riderData?.profilePicture || callerUser?.profileImage;
+                callerPhone = riderData?.phoneNumber || callerUser?.phoneNumber;
+            }
             const displayOrderId = order._id.toString().slice(-6).toUpperCase();
             // Send Push & Real-time Notification to call recipient (with 45s cooldown to prevent notification spam)
             const callCooldownKey = `${orderId}_${recipientUserId}`;
@@ -133,13 +175,14 @@ class VoiceService {
                 (0, io_1.emitToUser)(recipientUserId, 'incoming_call', {
                     orderId,
                     role,
+                    target,
                     callerName,
                     callerImage,
                     callerPhone,
                     displayOrderId,
                 });
                 // Notification Inbox and FCM push notification
-                notification_service_1.default.sendNotification(recipientUserId, 'Incoming Voice Call 📞', `${callerName} is calling you regarding Order #${displayOrderId}`, { type: 'incoming_call', orderId, role, callerName, callerImage, callerPhone, displayOrderId }).catch((err) => {
+                notification_service_1.default.sendNotification(recipientUserId, 'Incoming Voice Call 📞', `${callerName} is calling you regarding Order #${displayOrderId}`, { type: 'incoming_call', orderId, role, target, callerName, callerImage, callerPhone, displayOrderId }).catch((err) => {
                     logger_1.default.warn('Failed to dispatch call notification:', err);
                 });
             }
@@ -154,6 +197,7 @@ class VoiceService {
             orderId,
             rider: riderData,
             customer: customerData,
+            restaurant: restaurantData,
         };
     }
     /**
@@ -162,7 +206,7 @@ class VoiceService {
     generateCallTwiml(to, callerName, orderId) {
         const VoiceResponse = twilio_1.default.twiml.VoiceResponse;
         const response = new VoiceResponse();
-        if (to.startsWith('client:') || to.startsWith('rider_') || to.startsWith('customer_')) {
+        if (to.startsWith('client:') || to.startsWith('rider_') || to.startsWith('customer_') || to.startsWith('vendor_')) {
             const clientName = to.replace('client:', '');
             const dial = response.dial({
                 callerId: 'Go-Eat',
@@ -191,43 +235,81 @@ class VoiceService {
         return response.toString();
     }
     /**
-     * Initiates a masked cellular call bridge between customer and rider
+     * Initiates a masked cellular call bridge between parties
      */
-    async initiateMaskedBridgeCall(orderId, customerUserId) {
-        const order = await order_model_1.default.findById(orderId).populate('rider', 'phoneNumber name');
+    async initiateMaskedBridgeCall(orderId, callerUserId, target = 'customer') {
+        const order = await order_model_1.default.findById(orderId)
+            .populate('rider', 'phoneNumber name')
+            .populate('customer', 'phoneNumber name')
+            .populate('restaurant', 'phoneContact name');
         if (!order) {
             throw new appError_1.default('Order not found', 404);
         }
-        const customer = await user_model_1.default.findById(customerUserId);
-        if (!customer || !customer.phoneNumber) {
-            throw new appError_1.default('Customer phone number not available for cellular call', 400);
+        const callerUser = await user_model_1.default.findById(callerUserId);
+        if (!callerUser) {
+            throw new appError_1.default('Caller user not found', 404);
         }
-        const rider = order.rider;
-        if (!rider || !rider.phoneNumber) {
-            throw new appError_1.default('Courier has not been assigned or does not have a phone number', 400);
+        let callerPhone = callerUser.phoneNumber;
+        if (!callerPhone && callerUser.role === 'vendor' && order.restaurant?.phoneContact) {
+            callerPhone = order.restaurant.phoneContact;
         }
-        const customerPhone = (0, twilioVerify_util_1.formatPhoneNumber)(customer.phoneNumber);
-        const riderPhone = (0, twilioVerify_util_1.formatPhoneNumber)(rider.phoneNumber);
+        if (!callerPhone) {
+            throw new appError_1.default('Caller phone number not available for cellular call', 400);
+        }
+        let recipientPhone = '';
+        let recipientLabel = 'your courier';
+        if (callerUser.role === 'vendor') {
+            if (target === 'rider' && order.rider?.phoneNumber) {
+                recipientPhone = order.rider.phoneNumber;
+                recipientLabel = 'your delivery courier';
+            }
+            else if (order.customer?.phoneNumber) {
+                recipientPhone = order.customer.phoneNumber;
+                recipientLabel = 'the customer';
+            }
+        }
+        else if (callerUser.role === 'rider') {
+            if (target === 'restaurant' && order.restaurant?.phoneContact) {
+                recipientPhone = order.restaurant.phoneContact;
+                recipientLabel = 'the restaurant';
+            }
+            else if (order.customer?.phoneNumber) {
+                recipientPhone = order.customer.phoneNumber;
+                recipientLabel = 'the customer';
+            }
+        }
+        else {
+            // Customer calling courier
+            if (order.rider?.phoneNumber) {
+                recipientPhone = order.rider.phoneNumber;
+                recipientLabel = 'your courier';
+            }
+        }
+        if (!recipientPhone) {
+            throw new appError_1.default('Recipient phone number not available for cellular call', 400);
+        }
+        const formattedCaller = (0, twilioVerify_util_1.formatPhoneNumber)(callerPhone);
+        const formattedRecipient = (0, twilioVerify_util_1.formatPhoneNumber)(recipientPhone);
         const twilioFrom = this.twilioPhoneNumber;
-        logger_1.default.info(`📞 Bridging masked call for Order ${orderId}: ${customerPhone} -> Twilio -> ${riderPhone}`);
+        logger_1.default.info(`📞 Bridging masked call for Order ${orderId}: ${formattedCaller} -> Twilio -> ${formattedRecipient}`);
         try {
             const twiml = `
         <Response>
-          <Say voice="Polly.Joanna">Connecting you securely to your Go Eat courier. Please wait.</Say>
+          <Say voice="Polly.Joanna">Connecting you securely to ${recipientLabel}. Please wait.</Say>
           <Dial callerId="${twilioFrom}" timeout="30">
-            <Number>${riderPhone}</Number>
+            <Number>${formattedRecipient}</Number>
           </Dial>
         </Response>
       `.trim();
             const call = await this.client.calls.create({
-                to: customerPhone,
+                to: formattedCaller,
                 from: twilioFrom,
                 twiml,
             });
             logger_1.default.info(`✅ Masked bridge call initiated with SID: ${call.sid}`);
             return {
                 callSid: call.sid,
-                message: 'Calling your phone now. When you answer, we will connect you to your courier.',
+                message: `Calling your phone now. When you answer, we will connect you to ${recipientLabel}.`,
                 maskedCallerId: twilioFrom,
             };
         }

@@ -28,9 +28,14 @@ const router = Router();
  *                 description: The MongoDB ObjectId of the active order
  *               role:
  *                 type: string
- *                 enum: [customer, rider]
+ *                 enum: [customer, rider, vendor]
  *                 default: customer
  *                 description: User calling role in this session
+ *               target:
+ *                 type: string
+ *                 enum: [customer, rider]
+ *                 default: customer
+ *                 description: Target party recipient for the voice call session
  *               platform:
  *                 type: string
  *                 enum: [ios, android]
@@ -141,6 +146,11 @@ router.get('/twiml', voiceController.handleTwiml);
  *               orderId:
  *                 type: string
  *                 description: Active order ObjectId
+ *               target:
+ *                 type: string
+ *                 enum: [customer, rider]
+ *                 default: customer
+ *                 description: Target party to connect via masked cellular bridge
  *     responses:
  *       200:
  *         description: Masked phone call initiated

@@ -43,6 +43,7 @@ const restaurant_model_1 = __importDefault(require("../models/restaurant.model")
 const foodItem_model_1 = __importDefault(require("../models/foodItem.model"));
 const setting_model_1 = __importDefault(require("../models/setting.model"));
 const user_model_1 = __importStar(require("../models/user.model"));
+const riderOnboarding_model_1 = __importDefault(require("../models/riderOnboarding.model"));
 const io_1 = require("../io");
 const notification_service_1 = __importDefault(require("./notification.service"));
 const settlement_service_1 = __importDefault(require("./settlement.service"));
@@ -728,7 +729,23 @@ class OrderService {
         if (!mongoose_1.default.Types.ObjectId.isValid(targetId)) {
             return null;
         }
-        return await order_model_1.default.findById(targetId).populate('customer restaurant rider items.foodItem');
+        const order = await order_model_1.default.findById(targetId).populate('customer restaurant rider items.foodItem');
+        if (!order)
+            return null;
+        if (order.rider) {
+            try {
+                const riderId = order.rider._id || order.rider;
+                const onboarding = await riderOnboarding_model_1.default.findOne({ user: riderId }).select('vehicle');
+                const riderObj = order.rider.toObject ? order.rider.toObject() : { ...order.rider };
+                riderObj.vehicleType = onboarding?.vehicle?.vehicleType || 'motorcycle';
+                riderObj.vehicle = onboarding?.vehicle;
+                order.rider = riderObj;
+            }
+            catch (err) {
+                logger_1.default.warn('Failed to load rider onboarding vehicle details:', err);
+            }
+        }
+        return order;
     }
     async getRestaurantOrders(restaurantId) {
         return await order_model_1.default.find({
@@ -740,6 +757,7 @@ class OrderService {
             status: { $ne: order_model_1.OrderStatus.PAYMENT_PENDING },
         })
             .populate('customer', 'name phoneNumber email')
+            .populate('rider', 'name phoneNumber profileImage')
             .populate('items.foodItem', 'name price image')
             .sort({ createdAt: -1 });
     }

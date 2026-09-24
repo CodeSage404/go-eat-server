@@ -8,6 +8,41 @@ const user_controller_1 = __importDefault(require("../controllers/user.controlle
 const auth_controller_1 = __importDefault(require("../controllers/auth.controller"));
 const auth_middleware_1 = require("../middleware/auth.middleware");
 const router = (0, express_1.Router)();
+/**
+ * @openapi
+ * /api/v1/users/buddy/respond:
+ *   get:
+ *     tags:
+ *       - Users
+ *     summary: Respond to GoEatOne Buddy Invitation
+ *     description: Public web callback allowing a designated buddy to accept or decline an invitation via mobile browser.
+ *     parameters:
+ *       - in: query
+ *         name: token
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Cryptographic invitation token.
+ *       - in: query
+ *         name: action
+ *         required: true
+ *         schema:
+ *           type: string
+ *           enum: [accept, decline]
+ *         description: Action to perform on the invitation.
+ *     responses:
+ *       200:
+ *         description: HTML webpage confirming action status.
+ *         content:
+ *           text/html:
+ *             schema:
+ *               type: string
+ *       400:
+ *         description: Missing or invalid token or action query parameters.
+ *       404:
+ *         description: Invitation token has expired or is invalid.
+ */
+router.get('/buddy/respond', user_controller_1.default.respondToBuddyInvite);
 router.use(auth_middleware_1.protect);
 /**
  * @openapi
@@ -367,4 +402,36 @@ router.patch('/status/toggle-online', user_controller_1.default.toggleOnlineStat
 router.route('/responsible-purchasing')
     .get(user_controller_1.default.getResponsiblePurchasing)
     .put(user_controller_1.default.updateResponsiblePurchasing);
+/**
+ * @openapi
+ * /api/v1/users/buddy/resend-invite:
+ *   post:
+ *     tags:
+ *       - Users
+ *     summary: Resend GoEatOne Buddy Invitation
+ *     description: Re-dispatches an SMS or email invitation with a refreshed invitation token to the currently designated buddy.
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Invitation resent successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: success
+ *                 message:
+ *                   type: string
+ *                   example: Invitation resent to Jane Doe
+ *       400:
+ *         description: No buddy has been designated on this account.
+ *       401:
+ *         description: Unauthorized. Missing or invalid authentication token.
+ *       404:
+ *         description: User profile not found.
+ */
+router.post('/buddy/resend-invite', user_controller_1.default.resendBuddyInvite);
 exports.default = router;

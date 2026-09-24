@@ -5,6 +5,7 @@ import Restaurant from '../models/restaurant.model';
 import FoodItem from '../models/foodItem.model';
 import Setting from '../models/setting.model';
 import User, { UserRole, UserStatus } from '../models/user.model';
+import RiderOnboarding from '../models/riderOnboarding.model';
 import { emitToUser } from '../io';
 import notificationService from './notification.service';
 import settlementService from './settlement.service';
@@ -877,7 +878,23 @@ class OrderService {
     if (!mongoose.Types.ObjectId.isValid(targetId)) {
       return null;
     }
-    return await Order.findById(targetId).populate('customer restaurant rider items.foodItem');
+    const order = await Order.findById(targetId).populate('customer restaurant rider items.foodItem');
+    if (!order) return null;
+
+    if (order.rider) {
+      try {
+        const riderId = (order.rider as any)._id || order.rider;
+        const onboarding = await RiderOnboarding.findOne({ user: riderId }).select('vehicle');
+        const riderObj = (order.rider as any).toObject ? (order.rider as any).toObject() : { ...(order.rider as any) };
+        riderObj.vehicleType = onboarding?.vehicle?.vehicleType || 'motorcycle';
+        riderObj.vehicle = onboarding?.vehicle;
+        (order as any).rider = riderObj;
+      } catch (err) {
+        logger.warn('Failed to load rider onboarding vehicle details:', err);
+      }
+    }
+
+    return order;
   }
 
   async getRestaurantOrders(restaurantId: string): Promise<IOrder[]> {
@@ -890,6 +907,7 @@ class OrderService {
       status: { $ne: OrderStatus.PAYMENT_PENDING },
     })
       .populate('customer', 'name phoneNumber email')
+      .populate('rider', 'name phoneNumber profileImage')
       .populate('items.foodItem', 'name price image')
       .sort({ createdAt: -1 });
   }

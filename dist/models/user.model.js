@@ -267,9 +267,11 @@ const userSchema = new mongoose_1.Schema({
             name: { type: String, trim: true },
             contact: { type: String, trim: true },
             relationship: { type: String, trim: true },
-            status: { type: String, enum: ['pending', 'active'], default: 'pending' },
+            status: { type: String, enum: ['pending', 'active', 'declined'], default: 'pending' },
             is18PlusConfirmed: { type: Boolean, default: false },
             invitedAt: { type: Date, default: Date.now },
+            acceptedAt: { type: Date },
+            inviteToken: { type: String, index: true },
         },
     },
 }, {

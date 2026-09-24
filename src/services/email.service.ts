@@ -240,6 +240,56 @@ class EmailService {
     this.sendEmail(email, 'We miss you at Go-Eat! 🍽️ Craving something delicious?', htmlContent, 'default')
       .catch(err => logger.error(`Background inactivity email failed to ${email}:`, err?.message || err));
   }
+
+  /**
+   * Sends a GoEatOne Buddy invitation email
+   */
+  public async sendBuddyInvitation(
+    to: string,
+    data: {
+      buddyName: string;
+      userName: string;
+      acceptUrl: string;
+      declineUrl: string;
+    }
+  ): Promise<void> {
+    const htmlContent = `
+      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 580px; margin: 0 auto; background-color: #ffffff; border-radius: 16px; overflow: hidden; border: 1px solid #E5E7EB;">
+        <div style="background-color: #004320; padding: 32px 24px; text-align: center;">
+          <h1 style="color: #ffffff; margin: 0; font-size: 26px; font-weight: 700; letter-spacing: -0.5px;">Go-Eat</h1>
+          <p style="color: #A7F3D0; margin: 8px 0 0 0; font-size: 14px; font-weight: 500;">Responsible Purchasing Safeguard</p>
+        </div>
+        <div style="padding: 32px 24px; color: #1F2937;">
+          <h2 style="margin: 0 0 16px 0; font-size: 20px; color: #111827;">Hello ${data.buddyName},</h2>
+          <p style="font-size: 15px; line-height: 24px; color: #4B5563; margin-bottom: 20px;">
+            <strong>${data.userName}</strong> has invited you to be their <strong>GoEatOne Buddy</strong> on Go-Eat.
+          </p>
+          <div style="background-color: #F0FDF4; border: 1px solid #BBF7D0; border-radius: 12px; padding: 18px; margin-bottom: 24px;">
+            <p style="margin: 0; font-size: 14px; line-height: 22px; color: #166534;">
+              🛡️ <strong>What does a GoEatOne Buddy do?</strong><br/>
+              A GoEatOne Buddy is an accountability partner who helps encourage responsible purchasing choices (such as alcohol limits). You will <strong>never</strong> see what ${data.userName} orders, their food choices, delivery address, or payment details.
+            </p>
+          </div>
+          <div style="text-align: center; margin: 32px 0 24px 0;">
+            <a href="${data.acceptUrl}" style="background-color: #004320; color: #ffffff; text-decoration: none; padding: 14px 32px; border-radius: 30px; font-weight: 600; font-size: 15px; display: inline-block; margin-right: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);">
+              Accept Invitation
+            </a>
+            <a href="${data.declineUrl}" style="background-color: #F3F4F6; color: #4B5563; text-decoration: none; padding: 14px 24px; border-radius: 30px; font-weight: 500; font-size: 14px; display: inline-block;">
+              Decline
+            </a>
+          </div>
+          <p style="font-size: 12px; color: #9CA3AF; text-align: center; margin-top: 30px;">
+            No app download or account creation is required to accept this request.
+          </p>
+        </div>
+        <div style="background-color: #F9FAFB; padding: 16px 24px; text-align: center; border-top: 1px solid #E5E7EB;">
+          <p style="margin: 0; font-size: 12px; color: #6B7280;">© ${new Date().getFullYear()} Go-Eat. All rights reserved.</p>
+        </div>
+      </div>
+    `;
+    this.sendEmail(to, `${data.userName} invited you to be their GoEatOne Buddy`, htmlContent, 'default')
+      .catch(err => logger.error(`Background buddy invitation email failed to ${to}:`, err?.message || err));
+  }
 }
 
 export default new EmailService();

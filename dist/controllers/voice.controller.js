@@ -12,12 +12,12 @@ class VoiceController {
          * Issue Twilio Voice Access Token for in-app VoIP calling
          */
         this.getToken = (0, catchAsync_1.catchAsync)(async (req, res) => {
-            const { orderId, role, platform } = req.body;
+            const { orderId, role, platform, target } = req.body;
             if (!orderId) {
                 throw new appError_1.default('orderId is required', 400);
             }
             const userId = req.user._id.toString();
-            const tokenData = await voice_service_1.default.generateVoiceToken(userId, orderId, role || 'customer', (platform || 'ios'));
+            const tokenData = await voice_service_1.default.generateVoiceToken(userId, orderId, role || req.user.role || 'customer', (platform || 'ios'), target || 'customer');
             res.status(200).json({
                 status: 'success',
                 data: tokenData,
@@ -35,15 +35,15 @@ class VoiceController {
             res.send(twiml);
         };
         /**
-         * Initiate masked cellular call bridge between customer and courier
+         * Initiate masked cellular call bridge between parties
          */
         this.initiateMaskedBridge = (0, catchAsync_1.catchAsync)(async (req, res) => {
-            const { orderId } = req.body;
+            const { orderId, target } = req.body;
             if (!orderId) {
                 throw new appError_1.default('orderId is required', 400);
             }
             const userId = req.user._id.toString();
-            const result = await voice_service_1.default.initiateMaskedBridgeCall(orderId, userId);
+            const result = await voice_service_1.default.initiateMaskedBridgeCall(orderId, userId, target || 'customer');
             res.status(200).json({
                 status: 'success',
                 data: result,

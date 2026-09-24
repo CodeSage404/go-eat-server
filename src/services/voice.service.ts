@@ -85,12 +85,14 @@ class VoiceService {
   async generateVoiceToken(
     userId: string,
     orderId: string,
-    role: 'customer' | 'rider' = 'customer',
-    platform: 'ios' | 'android' = 'ios'
-  ): Promise<{ token: string; identity: string; recipientIdentity: string; orderId: string; rider?: any; customer?: any }> {
+    role: 'customer' | 'rider' | 'vendor' = 'customer',
+    platform: 'ios' | 'android' = 'ios',
+    target: 'customer' | 'rider' | 'restaurant' = 'customer'
+  ): Promise<{ token: string; identity: string; recipientIdentity: string; orderId: string; rider?: any; customer?: any; restaurant?: any }> {
     const order = await Order.findById(orderId)
-      .populate('rider', 'name phoneNumber profilePicture vehicleType')
-      .populate('customer', 'name phoneNumber profilePicture');
+      .populate('rider', 'name phoneNumber profilePicture profileImage vehicleType')
+      .populate('customer', 'name phoneNumber profilePicture profileImage')
+      .populate('restaurant', 'name phoneContact logo');
     if (!order) {
       throw new AppError('Order not found', 404);
     }
@@ -98,9 +100,30 @@ class VoiceService {
     const { keySid, keySecret } = await this.getOrCreateApiKey();
 
     const identity = `${role}_${userId}`;
-    const recipientIdentity = role === 'customer'
-      ? `rider_${order.rider ? (order.rider as any)._id : 'unassigned'}`
-      : `customer_${order.customer ? (order.customer as any)._id || order.customer : 'unknown'}`;
+    let recipientIdentity = '';
+    let recipientUserId: string | null = null;
+
+    if (role === 'vendor') {
+      if (target === 'rider') {
+        recipientIdentity = `rider_${order.rider ? (order.rider as any)._id : 'unassigned'}`;
+        recipientUserId = order.rider ? (order.rider as any)._id?.toString() : null;
+      } else {
+        recipientIdentity = `customer_${order.customer ? (order.customer as any)._id || order.customer : 'unknown'}`;
+        recipientUserId = order.customer ? ((order.customer as any)._id?.toString() || order.customer.toString()) : null;
+      }
+    } else if (role === 'customer') {
+      recipientIdentity = `rider_${order.rider ? (order.rider as any)._id : 'unassigned'}`;
+      recipientUserId = order.rider ? (order.rider as any)._id?.toString() : null;
+    } else {
+      // rider calling
+      if (target === 'restaurant') {
+        recipientIdentity = `vendor_${(order.restaurant as any)?.owner || order.restaurant}`;
+        recipientUserId = (order.restaurant as any)?.owner ? (order.restaurant as any).owner.toString() : null;
+      } else {
+        recipientIdentity = `customer_${order.customer ? (order.customer as any)._id || order.customer : 'unknown'}`;
+        recipientUserId = order.customer ? ((order.customer as any)._id?.toString() || order.customer.toString()) : null;
+      }
+    }
 
     const AccessToken = twilio.jwt.AccessToken;
     const VoiceGrant = AccessToken.VoiceGrant;
@@ -123,26 +146,43 @@ class VoiceService {
     const riderData = order.rider ? {
       name: (order.rider as any).name || 'Delivery Courier',
       phoneNumber: (order.rider as any).phoneNumber,
-      profilePicture: (order.rider as any).profilePicture,
+      profilePicture: (order.rider as any).profilePicture || (order.rider as any).profileImage,
       vehicleType: (order.rider as any).vehicleType || 'Motorcycle',
     } : null;
 
     const customerData = order.customer ? {
       name: (order.customer as any).name || 'Customer',
       phoneNumber: (order.customer as any).phoneNumber,
-      profilePicture: (order.customer as any).profilePicture,
+      profilePicture: (order.customer as any).profilePicture || (order.customer as any).profileImage,
+    } : null;
+
+    const restaurantData = order.restaurant ? {
+      name: (order.restaurant as any).name || 'Restaurant Outlet',
+      phoneContact: (order.restaurant as any).phoneContact,
+      logo: (order.restaurant as any).logo,
     } : null;
 
     // Send Push & Real-time Notification to call recipient
-    const recipientUserId = role === 'customer'
-      ? (order.rider ? (order.rider as any)._id?.toString() : null)
-      : (order.customer ? ((order.customer as any)._id?.toString() || order.customer.toString()) : null);
-
     if (recipientUserId) {
       const callerUser = await User.findById(userId).select('name phoneNumber profileImage');
-      const callerName = callerUser?.name || (role === 'customer' ? 'Customer' : 'Delivery Courier');
-      const callerImage = callerUser?.profileImage || (role === 'customer' ? customerData?.profilePicture : riderData?.profilePicture);
-      const callerPhone = callerUser?.phoneNumber || (role === 'customer' ? customerData?.phoneNumber : riderData?.phoneNumber);
+      let callerName = callerUser?.name || 'Go-Eat Partner';
+      let callerImage = callerUser?.profileImage;
+      let callerPhone = callerUser?.phoneNumber;
+
+      if (role === 'vendor') {
+        callerName = restaurantData?.name ? `${restaurantData.name} (Restaurant)` : (callerUser?.name || 'Restaurant Outlet');
+        callerImage = restaurantData?.logo || callerUser?.profileImage;
+        callerPhone = restaurantData?.phoneContact || callerUser?.phoneNumber;
+      } else if (role === 'customer') {
+        callerName = callerUser?.name || customerData?.name || 'Customer';
+        callerImage = customerData?.profilePicture || callerUser?.profileImage;
+        callerPhone = customerData?.phoneNumber || callerUser?.phoneNumber;
+      } else if (role === 'rider') {
+        callerName = riderData?.name || callerUser?.name || 'Delivery Courier';
+        callerImage = riderData?.profilePicture || callerUser?.profileImage;
+        callerPhone = riderData?.phoneNumber || callerUser?.phoneNumber;
+      }
+
       const displayOrderId = order._id.toString().slice(-6).toUpperCase();
 
       // Send Push & Real-time Notification to call recipient (with 45s cooldown to prevent notification spam)
@@ -157,6 +197,7 @@ class VoiceService {
         emitToUser(recipientUserId, 'incoming_call', {
           orderId,
           role,
+          target,
           callerName,
           callerImage,
           callerPhone,
@@ -168,7 +209,7 @@ class VoiceService {
           recipientUserId,
           'Incoming Voice Call 📞',
           `${callerName} is calling you regarding Order #${displayOrderId}`,
-          { type: 'incoming_call', orderId, role, callerName, callerImage, callerPhone, displayOrderId }
+          { type: 'incoming_call', orderId, role, target, callerName, callerImage, callerPhone, displayOrderId }
         ).catch((err: any) => {
           logger.warn('Failed to dispatch call notification:', err);
         });
@@ -184,6 +225,7 @@ class VoiceService {
       orderId,
       rider: riderData,
       customer: customerData,
+      restaurant: restaurantData,
     };
   }
 
@@ -194,7 +236,7 @@ class VoiceService {
     const VoiceResponse = twilio.twiml.VoiceResponse;
     const response = new VoiceResponse();
 
-    if (to.startsWith('client:') || to.startsWith('rider_') || to.startsWith('customer_')) {
+    if (to.startsWith('client:') || to.startsWith('rider_') || to.startsWith('customer_') || to.startsWith('vendor_')) {
       const clientName = to.replace('client:', '');
       const dial = response.dial({
         callerId: 'Go-Eat',
@@ -221,45 +263,83 @@ class VoiceService {
   }
 
   /**
-   * Initiates a masked cellular call bridge between customer and rider
+   * Initiates a masked cellular call bridge between parties
    */
   async initiateMaskedBridgeCall(
     orderId: string,
-    customerUserId: string
+    callerUserId: string,
+    target: 'customer' | 'rider' | 'restaurant' = 'customer'
   ): Promise<{ callSid: string; message: string; maskedCallerId: string }> {
-    const order = await Order.findById(orderId).populate('rider', 'phoneNumber name');
+    const order = await Order.findById(orderId)
+      .populate('rider', 'phoneNumber name')
+      .populate('customer', 'phoneNumber name')
+      .populate('restaurant', 'phoneContact name');
     if (!order) {
       throw new AppError('Order not found', 404);
     }
 
-    const customer = await User.findById(customerUserId);
-    if (!customer || !customer.phoneNumber) {
-      throw new AppError('Customer phone number not available for cellular call', 400);
+    const callerUser = await User.findById(callerUserId);
+    if (!callerUser) {
+      throw new AppError('Caller user not found', 404);
     }
 
-    const rider = order.rider as any;
-    if (!rider || !rider.phoneNumber) {
-      throw new AppError('Courier has not been assigned or does not have a phone number', 400);
+    let callerPhone = callerUser.phoneNumber;
+    if (!callerPhone && callerUser.role === 'vendor' && (order.restaurant as any)?.phoneContact) {
+      callerPhone = (order.restaurant as any).phoneContact;
+    }
+    if (!callerPhone) {
+      throw new AppError('Caller phone number not available for cellular call', 400);
     }
 
-    const customerPhone = formatPhoneNumber(customer.phoneNumber);
-    const riderPhone = formatPhoneNumber(rider.phoneNumber);
+    let recipientPhone = '';
+    let recipientLabel = 'your courier';
+
+    if (callerUser.role === 'vendor') {
+      if (target === 'rider' && (order.rider as any)?.phoneNumber) {
+        recipientPhone = (order.rider as any).phoneNumber;
+        recipientLabel = 'your delivery courier';
+      } else if ((order.customer as any)?.phoneNumber) {
+        recipientPhone = (order.customer as any).phoneNumber;
+        recipientLabel = 'the customer';
+      }
+    } else if (callerUser.role === 'rider') {
+      if (target === 'restaurant' && (order.restaurant as any)?.phoneContact) {
+        recipientPhone = (order.restaurant as any).phoneContact;
+        recipientLabel = 'the restaurant';
+      } else if ((order.customer as any)?.phoneNumber) {
+        recipientPhone = (order.customer as any).phoneNumber;
+        recipientLabel = 'the customer';
+      }
+    } else {
+      // Customer calling courier
+      if ((order.rider as any)?.phoneNumber) {
+        recipientPhone = (order.rider as any).phoneNumber;
+        recipientLabel = 'your courier';
+      }
+    }
+
+    if (!recipientPhone) {
+      throw new AppError('Recipient phone number not available for cellular call', 400);
+    }
+
+    const formattedCaller = formatPhoneNumber(callerPhone);
+    const formattedRecipient = formatPhoneNumber(recipientPhone);
     const twilioFrom = this.twilioPhoneNumber;
 
-    logger.info(`📞 Bridging masked call for Order ${orderId}: ${customerPhone} -> Twilio -> ${riderPhone}`);
+    logger.info(`📞 Bridging masked call for Order ${orderId}: ${formattedCaller} -> Twilio -> ${formattedRecipient}`);
 
     try {
       const twiml = `
         <Response>
-          <Say voice="Polly.Joanna">Connecting you securely to your Go Eat courier. Please wait.</Say>
+          <Say voice="Polly.Joanna">Connecting you securely to ${recipientLabel}. Please wait.</Say>
           <Dial callerId="${twilioFrom}" timeout="30">
-            <Number>${riderPhone}</Number>
+            <Number>${formattedRecipient}</Number>
           </Dial>
         </Response>
       `.trim();
 
       const call = await this.client.calls.create({
-        to: customerPhone,
+        to: formattedCaller,
         from: twilioFrom,
         twiml,
       });
@@ -268,7 +348,7 @@ class VoiceService {
 
       return {
         callSid: call.sid,
-        message: 'Calling your phone now. When you answer, we will connect you to your courier.',
+        message: `Calling your phone now. When you answer, we will connect you to ${recipientLabel}.`,
         maskedCallerId: twilioFrom,
       };
     } catch (error: any) {
