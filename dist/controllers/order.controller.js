@@ -155,6 +155,14 @@ class OrderController {
                 orders = orders.map((ord) => {
                     const obj = ord.toObject ? ord.toObject() : { ...ord };
                     delete obj.deliveryPin;
+                    if (obj.orderType !== 'pickup') {
+                        delete obj.deliveryAddress;
+                    }
+                    if (obj.customer && typeof obj.customer === 'object') {
+                        delete obj.customer.phoneNumber;
+                        delete obj.customer.phone;
+                        delete obj.customer.email;
+                    }
                     return obj;
                 });
             }
@@ -176,6 +184,14 @@ class OrderController {
             const orderObj = order.toObject ? order.toObject() : { ...order };
             if (req.user.role === 'vendor') {
                 delete orderObj.deliveryPin;
+                if (orderObj.orderType !== 'pickup') {
+                    delete orderObj.deliveryAddress;
+                }
+                if (orderObj.customer && typeof orderObj.customer === 'object') {
+                    delete orderObj.customer.phoneNumber;
+                    delete orderObj.customer.phone;
+                    delete orderObj.customer.email;
+                }
             }
             res.status(200).json({
                 status: 'success',

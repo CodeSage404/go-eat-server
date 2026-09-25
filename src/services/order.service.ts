@@ -414,6 +414,7 @@ class OrderService {
         refundAmount: order.refundAmount,
         estimatedPrepTime: order.estimatedPrepTime,
         estimatedDeliveryTime: order.estimatedDeliveryTime,
+        deliveryPin: order.deliveryPin,
       });
 
       // Also notify customer of real-time wallet refund if applicable
@@ -816,7 +817,11 @@ class OrderService {
         );
 
         // Emit Real-time Socket to Customer
-        emitToUser(customerId, SOCKET_EVENTS.RIDER_ASSIGNED, order.rider);
+        const riderObj = (order.rider as any)?.toObject ? (order.rider as any).toObject() : order.rider;
+        emitToUser(customerId, SOCKET_EVENTS.RIDER_ASSIGNED, {
+          ...(typeof riderObj === 'object' ? riderObj : {}),
+          deliveryPin: order.deliveryPin,
+        });
       }
 
       // 2. Send Push & In-app Notification to Restaurant Outlet
@@ -1318,7 +1323,7 @@ class OrderService {
     return {
       orderId: order._id,
       orderStatus: order.status,
-      currency: order.currency || 'GBP',
+      currency: preview.currency || order.currency || 'NGN',
       totalAmount: order.totalAmount,
       deliveryFee: order.deliveryFee || 0,
       paymentMethod: order.paymentMethod,
@@ -1441,7 +1446,22 @@ class OrderService {
     await order.save();
 
     const shortId = order._id.toString().substring(0, 6).toUpperCase();
-    const currencySymbol = (order.currency === 'GBP' || (!order.currency && !(order as any).isNigeria)) ? '£' : '₦';
+    const orderCurrencyUpper = String(order.currency || '').toUpperCase();
+    const isNigeria =
+      orderCurrencyUpper === 'NGN' ||
+      (order as any).isNigeria === true ||
+      (order.restaurant as any)?.isNigeria === true ||
+      (order.restaurant as any)?.country === 'Nigeria' ||
+      (order.customer as any)?.isNigeria === true ||
+      (order.customer as any)?.country === 'Nigeria' ||
+      (order.deliveryAddress && /nigeria|lagos|abuja|ibadan|kano|port harcourt|enugu/i.test(
+        String(order.deliveryAddress.state || '') + ' ' +
+        String(order.deliveryAddress.city || '') + ' ' +
+        String(order.deliveryAddress.street || '')
+      ));
+
+    const currencySymbol = isNigeria ? '₦' : orderCurrencyUpper === 'EUR' ? '€' : (orderCurrencyUpper === 'GBP' ? '£' : '₦');
+    const formattedRefund = isNigeria ? Math.round(calculatedRefund).toLocaleString() : calculatedRefund.toFixed(2);
 
     // Notify customer
     if (customerId) {
@@ -1449,7 +1469,7 @@ class OrderService {
         customerId,
         `Issue Report Received 📋`,
         calculatedRefund > 0
-          ? `We processed a partial refund of ${currencySymbol}${calculatedRefund.toFixed(2)} to your original payment method for order #${shortId}.`
+          ? `We processed a partial refund of ${currencySymbol}${formattedRefund} to your original payment method for order #${shortId}.`
           : `Your report for order #${shortId} has been received and our support team will review it.`,
         { orderId: order._id.toString(), type: 'ORDER_ISSUE_REPORTED', refundAmount: calculatedRefund },
         NotificationType.ORDER_UPDATE
@@ -1459,7 +1479,7 @@ class OrderService {
     return {
       success: true,
       message: calculatedRefund > 0
-        ? `Refund of ${currencySymbol}${calculatedRefund.toFixed(2)} has been issued to your original payment method.`
+        ? `Refund of ${currencySymbol}${formattedRefund} has been issued to your original payment method.`
         : `Your issue report has been submitted to support.`,
       issue: issueRecord,
       refundAmount: calculatedRefund,

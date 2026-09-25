@@ -110,15 +110,16 @@ class NotificationService {
                     ? 'incoming_calls'
                     : (data?.type === 'RIDER_JOB' || data?.type === 'NEW_ORDER' ? 'delivery_alerts' : 'default');
                 if (user.fcmToken.startsWith('ExponentPushToken') || user.fcmToken.startsWith('ExpoPushToken')) {
-                    // Send via Expo Push API with high priority and sound
+                    // Send via Expo Push API with high priority, sound, and badge for iOS & Android
                     const expoMessage = {
                         to: user.fcmToken,
                         sound: 'default',
                         title,
                         body,
-                        data: { ...data, orderId: data.orderId },
+                        data: { ...(data || {}), orderId: data?.orderId },
                         priority: 'high',
                         channelId,
+                        badge: 1,
                         _displayInForeground: true,
                     };
                     const response = await fetch('https://exp.host/--/api/v2/push/send', {
@@ -131,7 +132,17 @@ class NotificationService {
                         body: JSON.stringify(expoMessage),
                     });
                     const expoResult = await response.json();
-                    logger_1.default.info(`📲 Expo push notification sent to user ${userId} (${user.email || user.phoneNumber}):`, expoResult);
+                    const ticket = Array.isArray(expoResult?.data) ? expoResult.data[0] : expoResult?.data;
+                    if (ticket?.status === 'error') {
+                        logger_1.default.warn(`⚠️ Expo push notification delivery error for user ${userId}: ${ticket.message || 'Delivery error'} (${ticket.details?.error || 'Unknown'})`);
+                    }
+                    else {
+                        logger_1.default.info(`📲 Expo push notification sent to user ${userId} (${user.email || user.phoneNumber}):`, expoResult);
+                    }
+                }
+                else if (/^[0-9a-fA-F]{64}$/.test(user.fcmToken)) {
+                    // Raw 64-character APNs device token detected (sent from a legacy or misconfigured iOS client)
+                    logger_1.default.warn(`⚠️ User ${userId} has a raw 64-char APNs token (${user.fcmToken.substring(0, 8)}...). Firebase Admin cannot deliver directly to raw APNs tokens without FCM mapping. Client must register with ExpoPushToken.`);
                 }
                 else if (firebase_admin_1.default.apps?.length) {
                     // Ensure all data values are strictly strings for FCM specifications

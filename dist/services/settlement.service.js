@@ -328,7 +328,21 @@ class SettlementService {
         const status = order.status;
         const isPaid = order.paymentStatus === 'completed';
         const total = order.totalAmount || 0;
-        const currencySymbol = String(order.currency).toUpperCase() === 'NGN' ? '₦' : '£';
+        const orderCurrencyUpper = String(order.currency || '').toUpperCase();
+        const isNigeria = orderCurrencyUpper === 'NGN' ||
+            order.isNigeria === true ||
+            order.restaurant?.isNigeria === true ||
+            order.restaurant?.country === 'Nigeria' ||
+            order.customer?.isNigeria === true ||
+            order.customer?.country === 'Nigeria' ||
+            (order.deliveryAddress && /nigeria|lagos|abuja|ibadan|kano|port harcourt|enugu/i.test(String(order.deliveryAddress.state || '') + ' ' +
+                String(order.deliveryAddress.city || '') + ' ' +
+                String(order.deliveryAddress.street || '')));
+        const currencySymbol = isNigeria ? '₦' : orderCurrencyUpper === 'EUR' ? '€' : (orderCurrencyUpper === 'GBP' ? '£' : '₦');
+        const currency = isNigeria ? 'NGN' : orderCurrencyUpper === 'EUR' ? 'EUR' : (order.currency || (orderCurrencyUpper === 'GBP' ? 'GBP' : 'NGN'));
+        const formatAmount = (amt) => {
+            return isNigeria ? Math.round(amt).toLocaleString() : amt.toFixed(2);
+        };
         // 1. Orders out for delivery or completed
         if (status === order_model_1.OrderStatus.OUT_FOR_DELIVERY ||
             status === order_model_1.OrderStatus.COURIER_COLLECTED ||
@@ -340,6 +354,8 @@ class SettlementService {
                 refundType: 'none',
                 message: 'This order is no longer eligible for cancellation.',
                 canContactSupport: true,
+                currency,
+                currencySymbol,
             };
         }
         // 2. Already cancelled
@@ -354,6 +370,8 @@ class SettlementService {
                 refundType: 'none',
                 message: 'This order has already been cancelled.',
                 canContactSupport: false,
+                currency,
+                currencySymbol,
             };
         }
         // 3. Before prep: 100% full refund
@@ -366,9 +384,11 @@ class SettlementService {
                 refundAmount: isPaid ? total : 0,
                 refundType: isPaid ? 'full' : 'none',
                 message: isPaid
-                    ? `Full refund of ${currencySymbol}${total.toFixed(2)} will be returned to your original payment method.`
+                    ? `Full refund of ${currencySymbol}${formatAmount(total)} will be returned to your original payment method.`
                     : 'Order will be cancelled without charge.',
                 canContactSupport: false,
+                currency,
+                currencySymbol,
             };
         }
         // 4. In prep / ready: 50% partial refund
@@ -381,9 +401,11 @@ class SettlementService {
                 refundAmount: isPaid ? partialAmount : 0,
                 refundType: isPaid ? 'partial' : 'none',
                 message: isPaid
-                    ? `Partial refund: ${currencySymbol}${partialAmount.toFixed(2)} (covers kitchen food preparation costs).`
+                    ? `Partial refund: ${currencySymbol}${formatAmount(partialAmount)} (covers kitchen food preparation costs).`
                     : 'Order will be cancelled.',
                 canContactSupport: true,
+                currency,
+                currencySymbol,
             };
         }
         return {
@@ -392,6 +414,8 @@ class SettlementService {
             refundType: 'none',
             message: 'This order is no longer eligible for cancellation.',
             canContactSupport: true,
+            currency,
+            currencySymbol,
         };
     }
 }

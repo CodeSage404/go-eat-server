@@ -275,6 +275,20 @@ const restaurantSchema = new mongoose_1.Schema({
             close: { type: String },
         }
     ],
+    hygieneRating: {
+        type: Number,
+        min: 0,
+        max: 5,
+        default: 5,
+    },
+    hygieneRatedAt: {
+        type: Date,
+        default: Date.now,
+    },
+    hygieneNotes: {
+        type: String,
+        trim: true,
+    },
 }, {
     timestamps: true,
 });

@@ -365,6 +365,7 @@ class OrderService {
                 refundAmount: order.refundAmount,
                 estimatedPrepTime: order.estimatedPrepTime,
                 estimatedDeliveryTime: order.estimatedDeliveryTime,
+                deliveryPin: order.deliveryPin,
             });
             // Also notify customer of real-time wallet refund if applicable
             if (order.refundAmount && order.refundAmount > 0) {
@@ -686,7 +687,11 @@ class OrderService {
                     rider: order.rider,
                 }, userNotification_model_1.NotificationType.ORDER_UPDATE);
                 // Emit Real-time Socket to Customer
-                (0, io_1.emitToUser)(customerId, constants_1.SOCKET_EVENTS.RIDER_ASSIGNED, order.rider);
+                const riderObj = order.rider?.toObject ? order.rider.toObject() : order.rider;
+                (0, io_1.emitToUser)(customerId, constants_1.SOCKET_EVENTS.RIDER_ASSIGNED, {
+                    ...(typeof riderObj === 'object' ? riderObj : {}),
+                    deliveryPin: order.deliveryPin,
+                });
             }
             // 2. Send Push & In-app Notification to Restaurant Outlet
             if (restaurantDoc && restaurantDoc.owner) {
@@ -745,6 +750,11 @@ class OrderService {
             catch (err) {
                 logger_1.default.warn('Failed to load rider onboarding vehicle details:', err);
             }
+        }
+        if (!order.deliveryPin && order.orderType !== 'pickup') {
+            const generatedPin = Math.floor(1000 + Math.random() * 9000).toString();
+            order.deliveryPin = generatedPin;
+            await order_model_1.default.findByIdAndUpdate(order._id, { deliveryPin: generatedPin }).catch(() => { });
         }
         return order;
     }
@@ -1061,7 +1071,7 @@ class OrderService {
         return {
             orderId: order._id,
             orderStatus: order.status,
-            currency: order.currency || 'GBP',
+            currency: preview.currency || order.currency || 'NGN',
             totalAmount: order.totalAmount,
             deliveryFee: order.deliveryFee || 0,
             paymentMethod: order.paymentMethod,
@@ -1154,17 +1164,28 @@ class OrderService {
         }
         await order.save();
         const shortId = order._id.toString().substring(0, 6).toUpperCase();
-        const currencySymbol = (order.currency === 'GBP' || (!order.currency && !order.isNigeria)) ? '£' : '₦';
+        const orderCurrencyUpper = String(order.currency || '').toUpperCase();
+        const isNigeria = orderCurrencyUpper === 'NGN' ||
+            order.isNigeria === true ||
+            order.restaurant?.isNigeria === true ||
+            order.restaurant?.country === 'Nigeria' ||
+            order.customer?.isNigeria === true ||
+            order.customer?.country === 'Nigeria' ||
+            (order.deliveryAddress && /nigeria|lagos|abuja|ibadan|kano|port harcourt|enugu/i.test(String(order.deliveryAddress.state || '') + ' ' +
+                String(order.deliveryAddress.city || '') + ' ' +
+                String(order.deliveryAddress.street || '')));
+        const currencySymbol = isNigeria ? '₦' : orderCurrencyUpper === 'EUR' ? '€' : (orderCurrencyUpper === 'GBP' ? '£' : '₦');
+        const formattedRefund = isNigeria ? Math.round(calculatedRefund).toLocaleString() : calculatedRefund.toFixed(2);
         // Notify customer
         if (customerId) {
             await notification_service_1.default.sendNotification(customerId, `Issue Report Received 📋`, calculatedRefund > 0
-                ? `We processed a partial refund of ${currencySymbol}${calculatedRefund.toFixed(2)} to your original payment method for order #${shortId}.`
+                ? `We processed a partial refund of ${currencySymbol}${formattedRefund} to your original payment method for order #${shortId}.`
                 : `Your report for order #${shortId} has been received and our support team will review it.`, { orderId: order._id.toString(), type: 'ORDER_ISSUE_REPORTED', refundAmount: calculatedRefund }, userNotification_model_1.NotificationType.ORDER_UPDATE);
         }
         return {
             success: true,
             message: calculatedRefund > 0
-                ? `Refund of ${currencySymbol}${calculatedRefund.toFixed(2)} has been issued to your original payment method.`
+                ? `Refund of ${currencySymbol}${formattedRefund} has been issued to your original payment method.`
                 : `Your issue report has been submitted to support.`,
             issue: issueRecord,
             refundAmount: calculatedRefund,
