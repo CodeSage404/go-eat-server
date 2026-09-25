@@ -189,6 +189,35 @@ class PaystackModule {
             throw new appError_1.default(error.response?.data?.message || 'Failed to resolve bank account number with Paystack', error.response?.status || 400);
         }
     }
+    /**
+     * Process refund via Paystack
+     */
+    async refundTransaction(params) {
+        if (!this.secretKey || this.secretKey.includes('placeholder')) {
+            throw new appError_1.default('Paystack payment gateway is not properly configured.', 500);
+        }
+        try {
+            const payload = {
+                transaction: params.reference,
+            };
+            if (params.amountInKobo && params.amountInKobo > 0) {
+                payload.amount = Math.round(params.amountInKobo);
+            }
+            if (params.reason) {
+                payload.merchant_note = params.reason;
+                payload.customer_note = params.reason;
+            }
+            const response = await axios_1.default.post(`${this.baseUrl}/refund`, payload, {
+                headers: this.getHeaders(),
+            });
+            logger_1.default.info(`✅ Paystack refund submitted: ${response.data?.data?.id} for reference ${params.reference}`);
+            return response.data;
+        }
+        catch (error) {
+            logger_1.default.error('Paystack refundTransaction error:', error.response?.data || error.message);
+            throw new appError_1.default(error.response?.data?.message || 'Failed to process refund with Paystack', error.response?.status || 500);
+        }
+    }
 }
 exports.PaystackModule = PaystackModule;
 exports.default = new PaystackModule();

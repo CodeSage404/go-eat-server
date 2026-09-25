@@ -133,6 +133,55 @@ class StripeModule {
       throw new AppError(errorMessage, error.response?.status || 500);
     }
   }
+
+  /**
+   * Process refund via Stripe
+   */
+  async refundPayment(params: {
+    paymentIntentId?: string;
+    sessionId?: string;
+    amountInCents?: number;
+    reason?: string;
+  }): Promise<any> {
+    if (!this.secretKey) {
+      throw new AppError('Stripe payment gateway is not properly configured.', 500);
+    }
+
+    try {
+      let paymentIntentId = params.paymentIntentId;
+
+      if (!paymentIntentId && params.sessionId) {
+        const sessionRes = await axios.get(`${this.baseUrl}/checkout/sessions/${params.sessionId}`, {
+          headers: this.getHeaders(),
+        });
+        paymentIntentId = sessionRes.data?.payment_intent;
+      }
+
+      if (!paymentIntentId) {
+        throw new AppError('Could not identify Stripe payment intent for refund', 400);
+      }
+
+      const formData = new URLSearchParams();
+      formData.append('payment_intent', paymentIntentId);
+      if (params.amountInCents && params.amountInCents > 0) {
+        formData.append('amount', Math.round(params.amountInCents).toString());
+      }
+      if (params.reason) {
+        formData.append('metadata[reason]', params.reason);
+      }
+
+      const response = await axios.post(`${this.baseUrl}/refunds`, formData.toString(), {
+        headers: this.getHeaders(),
+      });
+
+      logger.info(`✅ Stripe refund successful: ${response.data?.id} for payment_intent ${paymentIntentId}`);
+      return response.data;
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.error?.message || error.message || 'Stripe refund error';
+      logger.error(`Stripe refundPayment error: ${errorMessage}`);
+      throw new AppError(errorMessage, error.response?.status || 500);
+    }
+  }
 }
 
 export default new StripeModule();

@@ -9,6 +9,7 @@ import RiderOnboarding from '../models/riderOnboarding.model';
 import { emitToUser } from '../io';
 import notificationService from './notification.service';
 import settlementService from './settlement.service';
+import paymentService from './payment.service';
 import emailService from './email.service';
 import logger from '../utils/logger';
 import { NotificationType } from '../models/userNotification.model';
@@ -894,6 +895,12 @@ class OrderService {
       }
     }
 
+    if (!order.deliveryPin && order.orderType !== 'pickup') {
+      const generatedPin = Math.floor(1000 + Math.random() * 9000).toString();
+      order.deliveryPin = generatedPin;
+      await Order.findByIdAndUpdate(order._id, { deliveryPin: generatedPin }).catch(() => {});
+    }
+
     return order;
   }
 
@@ -1283,6 +1290,179 @@ class OrderService {
       orders: createdOrders,
       totalCharged,
       totalDeliveryFee: quote.totalDeliveryFee || 0,
+    };
+  }
+
+  /**
+   * Get pre-confirmation cancellation transparency preview for an active order
+   */
+  async getCancellationPreview(orderId: string, userId: string) {
+    const order = await Order.findById(orderId).populate('customer restaurant');
+    if (!order) {
+      throw new AppError('Order not found', 404);
+    }
+
+    const customerId = (order.customer as any)?._id
+      ? (order.customer as any)._id.toString()
+      : order.customer ? order.customer.toString() : '';
+
+    if (customerId !== userId.toString()) {
+      const requestingUser = await User.findById(userId);
+      if (!requestingUser || requestingUser.role !== 'admin') {
+        throw new AppError('You are not authorized to view cancellation preview for this order', 403);
+      }
+    }
+
+    const preview = settlementService.calculateCancellationPreview(order);
+
+    return {
+      orderId: order._id,
+      orderStatus: order.status,
+      currency: order.currency || 'GBP',
+      totalAmount: order.totalAmount,
+      deliveryFee: order.deliveryFee || 0,
+      paymentMethod: order.paymentMethod,
+      ...preview,
+    };
+  }
+
+  /**
+   * Report an issue for a delivered order within 24 hours to claim a partial refund
+   */
+  async reportOrderIssue(
+    orderId: string,
+    userId: string,
+    data: {
+      reason: string;
+      itemIds?: string[];
+      notes?: string;
+      customReason?: string;
+      photoUrls?: string[];
+    }
+  ) {
+    const order = await Order.findById(orderId).populate('customer restaurant');
+    if (!order) {
+      throw new AppError('Order not found', 404);
+    }
+
+    const customerId = (order.customer as any)?._id
+      ? (order.customer as any)._id.toString()
+      : order.customer ? order.customer.toString() : '';
+
+    if (customerId !== userId.toString()) {
+      const requestingUser = await User.findById(userId);
+      if (!requestingUser || requestingUser.role !== 'admin') {
+        throw new AppError('You are not authorized to report an issue on this order', 403);
+      }
+    }
+
+    // 1. Verify order status is DELIVERED or COMPLETED
+    if (order.status !== OrderStatus.DELIVERED && order.status !== OrderStatus.COMPLETED) {
+      throw new AppError('Issues and partial refunds can only be reported on delivered orders', 400);
+    }
+
+    // 2. Verify 24-hour delivery window
+    const deliveryTimestamp = order.deliveredAt ? new Date(order.deliveredAt).getTime() : new Date((order as any).updatedAt || Date.now()).getTime();
+    const now = Date.now();
+    const twentyFourHoursMs = 24 * 60 * 60 * 1000;
+    if (now - deliveryTimestamp > twentyFourHoursMs) {
+      throw new AppError('Partial refund claims must be submitted within 24 hours of delivery. Please contact customer support.', 400);
+    }
+
+    // 3. Validate reason
+    const validReasons = ['missing_item', 'wrong_item', 'damaged_item', 'food_quality', 'other'];
+    if (!data.reason || !validReasons.includes(data.reason)) {
+      throw new AppError('Invalid issue reason. Must be one of: missing_item, wrong_item, damaged_item, food_quality, other', 400);
+    }
+
+    // 4. Validate photo requirements:
+    // Physical issues (wrong item, damaged, food quality) require photo evidence.
+    // Missing items explicitly do NOT require photo evidence (customers cannot photo missing food).
+    const photoEvidence = data.photoUrls || [];
+    if (['wrong_item', 'damaged_item', 'food_quality'].includes(data.reason)) {
+      if (!photoEvidence || photoEvidence.length === 0) {
+        throw new AppError('Photo evidence is required when reporting damaged, incorrect, or food quality issues.', 400);
+      }
+    }
+
+    // 5. Match affected items and calculate refund claim amount
+    const selectedItemIds = data.itemIds || [];
+    const matchedItems: any[] = [];
+    let calculatedRefund = 0;
+
+    if (selectedItemIds.length > 0) {
+      for (const ordItem of order.items) {
+        const foodIdStr = (ordItem.foodItem as any)?._id
+          ? (ordItem.foodItem as any)._id.toString()
+          : ordItem.foodItem ? ordItem.foodItem.toString() : '';
+        const orderItemId = (ordItem as any)._id ? (ordItem as any)._id.toString() : '';
+
+        if (selectedItemIds.includes(foodIdStr) || selectedItemIds.includes(orderItemId)) {
+          const itemTotal = (ordItem.price || 0) * (ordItem.quantity || 1);
+          calculatedRefund += itemTotal;
+          matchedItems.push({
+            foodItem: ordItem.foodItem,
+            name: ordItem.name,
+            quantity: ordItem.quantity,
+            price: ordItem.price,
+          });
+        }
+      }
+    }
+
+    // Cap refund at order total amount
+    calculatedRefund = Math.min(calculatedRefund, order.totalAmount);
+
+    const issueRecord = {
+      reason: data.reason,
+      affectedItems: matchedItems,
+      photoEvidence,
+      notes: data.notes || data.customReason || '',
+      refundAmount: calculatedRefund,
+      status: 'approved',
+      reportedAt: new Date(),
+    };
+
+    if (!order.issuesReported) {
+      order.issuesReported = [];
+    }
+    (order.issuesReported as any).push(issueRecord);
+
+    // Process gateway refund directly to original payment method (Stripe / Paystack)
+    if (calculatedRefund > 0) {
+      await paymentService.processGatewayRefund(
+        order,
+        calculatedRefund,
+        `Customer partial refund for ${data.reason.replace('_', ' ')}: #${order._id.toString().slice(-6).toUpperCase()}`
+      );
+      order.refundAmount = (order.refundAmount || 0) + calculatedRefund;
+    }
+
+    await order.save();
+
+    const shortId = order._id.toString().substring(0, 6).toUpperCase();
+    const currencySymbol = (order.currency === 'GBP' || (!order.currency && !(order as any).isNigeria)) ? '£' : '₦';
+
+    // Notify customer
+    if (customerId) {
+      await notificationService.sendNotification(
+        customerId,
+        `Issue Report Received 📋`,
+        calculatedRefund > 0
+          ? `We processed a partial refund of ${currencySymbol}${calculatedRefund.toFixed(2)} to your original payment method for order #${shortId}.`
+          : `Your report for order #${shortId} has been received and our support team will review it.`,
+        { orderId: order._id.toString(), type: 'ORDER_ISSUE_REPORTED', refundAmount: calculatedRefund },
+        NotificationType.ORDER_UPDATE
+      );
+    }
+
+    return {
+      success: true,
+      message: calculatedRefund > 0
+        ? `Refund of ${currencySymbol}${calculatedRefund.toFixed(2)} has been issued to your original payment method.`
+        : `Your issue report has been submitted to support.`,
+      issue: issueRecord,
+      refundAmount: calculatedRefund,
     };
   }
 }

@@ -89,6 +89,7 @@ export interface IOrder extends Document {
   status: OrderStatus;
   estimatedPrepTime?: number; // In minutes
   estimatedDeliveryTime?: Date;
+  deliveredAt?: Date;
   deliveryMode?: string;
   deliveryTime?: string;
   deliveryNotes?: string;
@@ -100,6 +101,21 @@ export interface IOrder extends Document {
   cancellationInitiator?: 'customer' | 'outlet' | 'courier' | 'goeat';
   cancelReason?: string;
   refundAmount?: number;
+  issuesReported?: Array<{
+    _id?: any;
+    reason: 'missing_item' | 'wrong_item' | 'damaged_item' | 'food_quality' | 'other';
+    affectedItems: Array<{
+      foodItem?: Schema.Types.ObjectId | string;
+      name: string;
+      quantity: number;
+      price: number;
+    }>;
+    photoEvidence?: string[];
+    details?: string;
+    refundAmount: number;
+    refundStatus: 'pending' | 'approved' | 'rejected' | 'processed';
+    createdAt?: Date;
+  }>;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -237,6 +253,9 @@ const orderSchema = new Schema<IOrder>(
     estimatedDeliveryTime: {
       type: Date,
     },
+    deliveredAt: {
+      type: Date,
+    },
     deliveryMode: {
       type: String,
       default: 'Standard',
@@ -280,6 +299,32 @@ const orderSchema = new Schema<IOrder>(
       type: Number,
       default: 0,
     },
+    issuesReported: [
+      {
+        reason: {
+          type: String,
+          enum: ['missing_item', 'wrong_item', 'damaged_item', 'food_quality', 'other'],
+          required: true,
+        },
+        affectedItems: [
+          {
+            foodItem: { type: Schema.Types.ObjectId, ref: 'FoodItem' },
+            name: { type: String, required: true },
+            quantity: { type: Number, required: true, default: 1 },
+            price: { type: Number, required: true },
+          },
+        ],
+        photoEvidence: [{ type: String }],
+        details: { type: String },
+        refundAmount: { type: Number, required: true, default: 0 },
+        refundStatus: {
+          type: String,
+          enum: ['pending', 'approved', 'rejected', 'processed'],
+          default: 'pending',
+        },
+        createdAt: { type: Date, default: Date.now },
+      },
+    ],
   },
   {
     timestamps: true,

@@ -595,6 +595,41 @@ export class PaymentService {
       transferDetails: transferResult,
     };
   }
+
+  /**
+   * Process refund to customer's original payment method via Stripe or Paystack
+   */
+  async processGatewayRefund(order: any, amount: number, reason: string): Promise<any> {
+    const provider = order.paymentResult?.provider || order.paymentMethod || 'stripe';
+    const reference = order.paymentResult?.id || order.paymentReference;
+
+    logger.info(`🔄 Initiating gateway refund of ${amount} for order #${order._id} via ${provider}`);
+
+    try {
+      if (String(provider).toLowerCase() === 'stripe') {
+        const sessionId = reference?.startsWith('cs_') ? reference : undefined;
+        const paymentIntentId = reference?.startsWith('pi_') ? reference : undefined;
+        return await stripeModule.refundPayment({
+          paymentIntentId,
+          sessionId,
+          amountInCents: Math.round(amount * 100),
+          reason: reason || 'Order cancellation or item refund',
+        });
+      } else if (String(provider).toLowerCase() === 'paystack') {
+        return await paystackModule.refundTransaction({
+          reference: reference || order.paymentReference,
+          amountInKobo: Math.round(amount * 100),
+          reason: reason || 'Order cancellation or item refund',
+        });
+      } else {
+        logger.warn(`⚠️ Gateway refund not supported for provider ${provider}.`);
+        return null;
+      }
+    } catch (err: any) {
+      logger.error(`❌ Gateway refund error for order #${order._id}:`, err.message);
+      return null;
+    }
+  }
 }
 
 export default new PaymentService();

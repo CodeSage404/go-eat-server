@@ -279,6 +279,45 @@ export class PaystackModule {
       );
     }
   }
+
+  /**
+   * Process refund via Paystack
+   */
+  async refundTransaction(params: {
+    reference: string;
+    amountInKobo?: number;
+    reason?: string;
+  }): Promise<any> {
+    if (!this.secretKey || this.secretKey.includes('placeholder')) {
+      throw new AppError('Paystack payment gateway is not properly configured.', 500);
+    }
+
+    try {
+      const payload: Record<string, any> = {
+        transaction: params.reference,
+      };
+      if (params.amountInKobo && params.amountInKobo > 0) {
+        payload.amount = Math.round(params.amountInKobo);
+      }
+      if (params.reason) {
+        payload.merchant_note = params.reason;
+        payload.customer_note = params.reason;
+      }
+
+      const response = await axios.post(`${this.baseUrl}/refund`, payload, {
+        headers: this.getHeaders(),
+      });
+
+      logger.info(`✅ Paystack refund submitted: ${response.data?.data?.id} for reference ${params.reference}`);
+      return response.data;
+    } catch (error: any) {
+      logger.error('Paystack refundTransaction error:', error.response?.data || error.message);
+      throw new AppError(
+        error.response?.data?.message || 'Failed to process refund with Paystack',
+        error.response?.status || 500
+      );
+    }
+  }
 }
 
 export default new PaystackModule();

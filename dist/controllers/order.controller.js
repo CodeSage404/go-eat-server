@@ -276,6 +276,37 @@ class OrderController {
                 },
             });
         });
+        /**
+         * Get cancellation transparency preview for an active order
+         */
+        this.getCancellationPreview = (0, catchAsync_1.catchAsync)(async (req, res) => {
+            const { id, orderId } = req.params;
+            const targetId = orderId || id;
+            const preview = await order_service_1.default.getCancellationPreview(targetId, req.user._id);
+            res.status(200).json({
+                status: 'success',
+                data: preview,
+            });
+        });
+        /**
+         * Report an issue on a delivered order (missing, wrong, damaged, quality) within 24h
+         */
+        this.reportOrderIssue = (0, catchAsync_1.catchAsync)(async (req, res) => {
+            const { id, orderId } = req.params;
+            const targetId = orderId || id;
+            const { reason, itemIds, notes, customReason, photoUrls } = req.body;
+            const result = await order_service_1.default.reportOrderIssue(targetId, req.user._id, {
+                reason,
+                itemIds,
+                notes,
+                customReason,
+                photoUrls,
+            });
+            res.status(200).json({
+                status: 'success',
+                data: result,
+            });
+        });
     }
 }
 exports.default = new OrderController();

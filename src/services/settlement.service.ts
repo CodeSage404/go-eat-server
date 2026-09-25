@@ -3,6 +3,7 @@ import Restaurant from '../models/restaurant.model';
 import Wallet, { IWallet } from '../models/wallet.model';
 import Transaction, { TransactionType, TransactionStatus } from '../models/transaction.model';
 import logger from '../utils/logger';
+import paymentService from './payment.service';
 
 class SettlementService {
   /**
@@ -319,11 +320,111 @@ class SettlementService {
       } catch (refundErr) {
         logger.error('❌ Error crediting customer wallet during cancellation refund:', refundErr);
       }
+
+      // Also initiate direct gateway refund back to card/bank via Stripe / Paystack
+      try {
+        await paymentService.processGatewayRefund(order, refundAmount, reason || 'Order cancelled');
+      } catch (gwErr: any) {
+        logger.error('❌ Error in payment gateway refund:', gwErr.message);
+      }
     }
 
     await order.save();
 
     return { refundAmount, courierCompensation };
+  }
+
+  /**
+   * Transparently calculates cancellation eligibility and refund breakdown for an active order
+   */
+  public calculateCancellationPreview(order: IOrder): {
+    eligible: boolean;
+    refundAmount: number;
+    refundType: 'full' | 'partial' | 'none';
+    message: string;
+    canContactSupport: boolean;
+  } {
+    const status = order.status;
+    const isPaid = order.paymentStatus === 'completed';
+    const total = order.totalAmount || 0;
+    const currencySymbol = String(order.currency).toUpperCase() === 'NGN' ? '₦' : '£';
+
+    // 1. Orders out for delivery or completed
+    if (
+      status === OrderStatus.OUT_FOR_DELIVERY ||
+      status === OrderStatus.COURIER_COLLECTED ||
+      status === OrderStatus.DELIVERED ||
+      status === OrderStatus.COMPLETED
+    ) {
+      return {
+        eligible: false,
+        refundAmount: 0,
+        refundType: 'none',
+        message: 'This order is no longer eligible for cancellation.',
+        canContactSupport: true,
+      };
+    }
+
+    // 2. Already cancelled
+    if (
+      status === OrderStatus.CANCELLED ||
+      status === OrderStatus.CANCELLED_BY_CUSTOMER ||
+      status === OrderStatus.CANCELLED_BY_OUTLET ||
+      status === OrderStatus.CANCELLED_BY_GOEAT ||
+      status === OrderStatus.REJECTED
+    ) {
+      return {
+        eligible: false,
+        refundAmount: 0,
+        refundType: 'none',
+        message: 'This order has already been cancelled.',
+        canContactSupport: false,
+      };
+    }
+
+    // 3. Before prep: 100% full refund
+    if (
+      status === OrderStatus.PENDING ||
+      status === OrderStatus.PAYMENT_PENDING ||
+      status === OrderStatus.SENT_TO_OUTLET ||
+      status === OrderStatus.ACCEPTED
+    ) {
+      return {
+        eligible: true,
+        refundAmount: isPaid ? total : 0,
+        refundType: isPaid ? 'full' : 'none',
+        message: isPaid
+          ? `Full refund of ${currencySymbol}${total.toFixed(2)} will be returned to your original payment method.`
+          : 'Order will be cancelled without charge.',
+        canContactSupport: false,
+      };
+    }
+
+    // 4. In prep / ready: 50% partial refund
+    if (
+      status === OrderStatus.PREPARING ||
+      status === OrderStatus.READY ||
+      status === OrderStatus.READY_FOR_COLLECTION
+    ) {
+      const partialAmount = Math.round(total * 0.5 * 100) / 100;
+      return {
+        eligible: true,
+        refundAmount: isPaid ? partialAmount : 0,
+        refundType: isPaid ? 'partial' : 'none',
+        message: isPaid
+          ? `Partial refund: ${currencySymbol}${partialAmount.toFixed(2)} (covers kitchen food preparation costs).`
+          : 'Order will be cancelled.',
+        canContactSupport: true,
+      };
+    }
+
+    return {
+      eligible: false,
+      refundAmount: 0,
+      refundType: 'none',
+      message: 'This order is no longer eligible for cancellation.',
+      canContactSupport: true,
+    };
   }
 }
 

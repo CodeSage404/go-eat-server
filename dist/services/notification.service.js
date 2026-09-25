@@ -106,6 +106,9 @@ class NotificationService {
             const pushAllowed = user && user.fcmToken && user.notificationsEnabled !== false && user.notificationPreferences?.push !== false;
             if (pushAllowed && user && user.fcmToken) {
                 const isCallNotif = data?.type === 'incoming_call' || data?.isVoip;
+                const channelId = isCallNotif
+                    ? 'incoming_calls'
+                    : (data?.type === 'RIDER_JOB' || data?.type === 'NEW_ORDER' ? 'delivery_alerts' : 'default');
                 if (user.fcmToken.startsWith('ExponentPushToken') || user.fcmToken.startsWith('ExpoPushToken')) {
                     // Send via Expo Push API with high priority and sound
                     const expoMessage = {
@@ -115,7 +118,7 @@ class NotificationService {
                         body,
                         data: { ...data, orderId: data.orderId },
                         priority: 'high',
-                        channelId: isCallNotif ? 'incoming_calls' : 'default',
+                        channelId,
                         _displayInForeground: true,
                     };
                     const response = await fetch('https://exp.host/--/api/v2/push/send', {
@@ -147,7 +150,7 @@ class NotificationService {
                         token: user.fcmToken,
                         android: {
                             priority: 'high',
-                            notification: { sound: 'default', channelId: isCallNotif ? 'incoming_calls' : 'default', priority: 'max' },
+                            notification: { sound: 'default', channelId, priority: 'max' },
                         },
                         apns: {
                             payload: {

@@ -41,6 +41,7 @@ const restaurant_model_1 = __importDefault(require("../models/restaurant.model")
 const wallet_model_1 = __importDefault(require("../models/wallet.model"));
 const transaction_model_1 = __importStar(require("../models/transaction.model"));
 const logger_1 = __importDefault(require("../utils/logger"));
+const payment_service_1 = __importDefault(require("./payment.service"));
 class SettlementService {
     /**
      * Calculate Outlet Net Settlement
@@ -309,9 +310,89 @@ class SettlementService {
             catch (refundErr) {
                 logger_1.default.error('❌ Error crediting customer wallet during cancellation refund:', refundErr);
             }
+            // Also initiate direct gateway refund back to card/bank via Stripe / Paystack
+            try {
+                await payment_service_1.default.processGatewayRefund(order, refundAmount, reason || 'Order cancelled');
+            }
+            catch (gwErr) {
+                logger_1.default.error('❌ Error in payment gateway refund:', gwErr.message);
+            }
         }
         await order.save();
         return { refundAmount, courierCompensation };
+    }
+    /**
+     * Transparently calculates cancellation eligibility and refund breakdown for an active order
+     */
+    calculateCancellationPreview(order) {
+        const status = order.status;
+        const isPaid = order.paymentStatus === 'completed';
+        const total = order.totalAmount || 0;
+        const currencySymbol = String(order.currency).toUpperCase() === 'NGN' ? '₦' : '£';
+        // 1. Orders out for delivery or completed
+        if (status === order_model_1.OrderStatus.OUT_FOR_DELIVERY ||
+            status === order_model_1.OrderStatus.COURIER_COLLECTED ||
+            status === order_model_1.OrderStatus.DELIVERED ||
+            status === order_model_1.OrderStatus.COMPLETED) {
+            return {
+                eligible: false,
+                refundAmount: 0,
+                refundType: 'none',
+                message: 'This order is no longer eligible for cancellation.',
+                canContactSupport: true,
+            };
+        }
+        // 2. Already cancelled
+        if (status === order_model_1.OrderStatus.CANCELLED ||
+            status === order_model_1.OrderStatus.CANCELLED_BY_CUSTOMER ||
+            status === order_model_1.OrderStatus.CANCELLED_BY_OUTLET ||
+            status === order_model_1.OrderStatus.CANCELLED_BY_GOEAT ||
+            status === order_model_1.OrderStatus.REJECTED) {
+            return {
+                eligible: false,
+                refundAmount: 0,
+                refundType: 'none',
+                message: 'This order has already been cancelled.',
+                canContactSupport: false,
+            };
+        }
+        // 3. Before prep: 100% full refund
+        if (status === order_model_1.OrderStatus.PENDING ||
+            status === order_model_1.OrderStatus.PAYMENT_PENDING ||
+            status === order_model_1.OrderStatus.SENT_TO_OUTLET ||
+            status === order_model_1.OrderStatus.ACCEPTED) {
+            return {
+                eligible: true,
+                refundAmount: isPaid ? total : 0,
+                refundType: isPaid ? 'full' : 'none',
+                message: isPaid
+                    ? `Full refund of ${currencySymbol}${total.toFixed(2)} will be returned to your original payment method.`
+                    : 'Order will be cancelled without charge.',
+                canContactSupport: false,
+            };
+        }
+        // 4. In prep / ready: 50% partial refund
+        if (status === order_model_1.OrderStatus.PREPARING ||
+            status === order_model_1.OrderStatus.READY ||
+            status === order_model_1.OrderStatus.READY_FOR_COLLECTION) {
+            const partialAmount = Math.round(total * 0.5 * 100) / 100;
+            return {
+                eligible: true,
+                refundAmount: isPaid ? partialAmount : 0,
+                refundType: isPaid ? 'partial' : 'none',
+                message: isPaid
+                    ? `Partial refund: ${currencySymbol}${partialAmount.toFixed(2)} (covers kitchen food preparation costs).`
+                    : 'Order will be cancelled.',
+                canContactSupport: true,
+            };
+        }
+        return {
+            eligible: false,
+            refundAmount: 0,
+            refundType: 'none',
+            message: 'This order is no longer eligible for cancellation.',
+            canContactSupport: true,
+        };
     }
 }
 exports.default = new SettlementService();

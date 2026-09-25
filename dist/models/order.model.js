@@ -200,6 +200,9 @@ const orderSchema = new mongoose_1.Schema({
     estimatedDeliveryTime: {
         type: Date,
     },
+    deliveredAt: {
+        type: Date,
+    },
     deliveryMode: {
         type: String,
         default: 'Standard',
@@ -243,6 +246,32 @@ const orderSchema = new mongoose_1.Schema({
         type: Number,
         default: 0,
     },
+    issuesReported: [
+        {
+            reason: {
+                type: String,
+                enum: ['missing_item', 'wrong_item', 'damaged_item', 'food_quality', 'other'],
+                required: true,
+            },
+            affectedItems: [
+                {
+                    foodItem: { type: mongoose_1.Schema.Types.ObjectId, ref: 'FoodItem' },
+                    name: { type: String, required: true },
+                    quantity: { type: Number, required: true, default: 1 },
+                    price: { type: Number, required: true },
+                },
+            ],
+            photoEvidence: [{ type: String }],
+            details: { type: String },
+            refundAmount: { type: Number, required: true, default: 0 },
+            refundStatus: {
+                type: String,
+                enum: ['pending', 'approved', 'rejected', 'processed'],
+                default: 'pending',
+            },
+            createdAt: { type: Date, default: Date.now },
+        },
+    ],
 }, {
     timestamps: true,
 });

@@ -100,6 +100,9 @@ export interface IRestaurant extends Document {
     open?: string;
     close?: string;
   }[];
+  hygieneRating?: number;
+  hygieneRatedAt?: Date;
+  hygieneNotes?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -338,6 +341,20 @@ const restaurantSchema = new Schema<IRestaurant>(
         close: { type: String },
       }
     ],
+    hygieneRating: {
+      type: Number,
+      min: 0,
+      max: 5,
+      default: 5,
+    },
+    hygieneRatedAt: {
+      type: Date,
+      default: Date.now,
+    },
+    hygieneNotes: {
+      type: String,
+      trim: true,
+    },
   },
   {
     timestamps: true,

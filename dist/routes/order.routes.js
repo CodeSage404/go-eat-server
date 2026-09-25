@@ -278,6 +278,138 @@ router.get('/:id', order_controller_1.default.getOrderById);
  *         description: Status updated
  */
 router.patch('/:id/status', order_controller_1.default.updateStatus);
+/**
+ * @openapi
+ * /api/v1/orders/{id}/cancellation-preview:
+ *   get:
+ *     tags:
+ *       - Orders
+ *     summary: Get pre-confirmation cancellation transparency preview
+ *     description: Returns the transparent refund calculation (full, partial, or ineligible) and breakdown for an active order before customer confirms cancellation.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         description: The unique MongoDB ID of the order
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Cancellation preview details returned successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: success
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     orderId:
+ *                       type: string
+ *                     orderStatus:
+ *                       type: string
+ *                     eligible:
+ *                       type: boolean
+ *                     refundAmount:
+ *                       type: number
+ *                     refundType:
+ *                       type: string
+ *                       enum: [FULL_REFUND, PARTIAL_REFUND, NO_REFUND]
+ *                     message:
+ *                       type: string
+ *                     canContactSupport:
+ *                       type: boolean
+ *       401:
+ *         description: Unauthorized.
+ *       403:
+ *         description: Forbidden, user does not own this order.
+ *       404:
+ *         description: Order not found.
+ */
+router.get('/:id/cancellation-preview', order_controller_1.default.getCancellationPreview);
+/**
+ * @openapi
+ * /api/v1/orders/{id}/report-issue:
+ *   post:
+ *     tags:
+ *       - Orders
+ *     summary: Report an issue on a delivered order to claim a partial refund
+ *     description: Customers can report order issues (missing items, wrong items, damaged food, food quality) within 24 hours of delivery. Photo evidence is mandatory for physical/food quality issues, and optional/exempt for missing items. Eligible refund is processed directly to the customer's original payment method via Stripe or Paystack.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         description: The unique MongoDB ID of the delivered order
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - reason
+ *             properties:
+ *               reason:
+ *                 type: string
+ *                 enum: [missing_item, wrong_item, damaged_item, food_quality, other]
+ *                 description: Category of the order issue
+ *               itemIds:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                 description: Array of foodItem IDs or order item IDs affected
+ *               notes:
+ *                 type: string
+ *                 description: Additional notes or description of the issue
+ *               customReason:
+ *                 type: string
+ *                 description: Custom reason if other is selected
+ *               photoUrls:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                 description: Array of photo evidence URLs (exempt for missing_item)
+ *     responses:
+ *       200:
+ *         description: Issue report submitted successfully and refund processed if eligible.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: success
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     success:
+ *                       type: boolean
+ *                     message:
+ *                       type: string
+ *                     refundAmount:
+ *                       type: number
+ *                     issue:
+ *                       type: object
+ *       400:
+ *         description: Validation error, missing required photo, or order is past 24h delivery window.
+ *       401:
+ *         description: Unauthorized.
+ *       403:
+ *         description: Forbidden, user does not own this order.
+ *       404:
+ *         description: Order not found.
+ */
+router.post('/:id/report-issue', (0, auth_middleware_1.restrictTo)(user_model_1.UserRole.CUSTOMER, user_model_1.UserRole.ADMIN), order_controller_1.default.reportOrderIssue);
 // Rider specific
 /**
  * @openapi
