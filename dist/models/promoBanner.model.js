@@ -88,6 +88,11 @@ const promoBannerSchema = new mongoose_1.Schema({
         default: '',
         trim: true,
     },
+    bannerType: {
+        type: String,
+        enum: ['side', 'background'],
+        default: 'side',
+    },
     backgroundColor: {
         type: String,
         default: '#F5B743',
@@ -107,6 +112,7 @@ const promoBannerSchema = new mongoose_1.Schema({
             ctaLink: { type: String, trim: true },
             voucherText: { type: String, trim: true },
             imageUrl: { type: String, default: '', trim: true },
+            bannerType: { type: String, enum: ['side', 'background'], default: 'side' },
             backgroundColor: { type: String, trim: true },
             backgroundColorDark: { type: String, trim: true },
             code: { type: String, trim: true },

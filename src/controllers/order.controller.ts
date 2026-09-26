@@ -158,6 +158,13 @@ class OrderController {
     const { id } = req.params; // Order ID
     const riderId = req.user._id;
 
+    if (req.user.role === 'rider' && req.user.riderVerificationStatus !== 'approved') {
+      throw new AppError(
+        'You cannot accept deliveries until your verification documents have been approved by Admin.',
+        403
+      );
+    }
+
     const order = await orderService.assignRider(id as string, riderId);
 
     res.status(200).json({

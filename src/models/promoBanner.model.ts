@@ -9,6 +9,7 @@ export interface IPromoBannerSlide {
   ctaLink?: string;
   voucherText?: string;
   imageUrl?: string;
+  bannerType?: 'side' | 'background';
   backgroundColor?: string;
   backgroundColorDark?: string;
   code?: string;
@@ -23,6 +24,7 @@ export interface IPromoBanner extends Document {
   ctaLink?: string;
   voucherText?: string;
   imageUrl?: string;
+  bannerType: 'side' | 'background';
   backgroundColor?: string;
   backgroundColorDark?: string;
   topSpotsTitle?: string;
@@ -88,6 +90,11 @@ const promoBannerSchema = new Schema<IPromoBanner>(
       default: '',
       trim: true,
     },
+    bannerType: {
+      type: String,
+      enum: ['side', 'background'],
+      default: 'side',
+    },
     backgroundColor: {
       type: String,
       default: '#F5B743',
@@ -107,6 +114,7 @@ const promoBannerSchema = new Schema<IPromoBanner>(
         ctaLink: { type: String, trim: true },
         voucherText: { type: String, trim: true },
         imageUrl: { type: String, default: '', trim: true },
+        bannerType: { type: String, enum: ['side', 'background'], default: 'side' },
         backgroundColor: { type: String, trim: true },
         backgroundColorDark: { type: String, trim: true },
         code: { type: String, trim: true },

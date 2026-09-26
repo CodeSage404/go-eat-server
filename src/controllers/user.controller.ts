@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import crypto from 'crypto';
-import User from '../models/user.model';
+import User, { UserRole } from '../models/user.model';
 import { catchAsync } from '../utils/catchAsync';
 import AppError from '../utils/appError';
 import emailService from '../services/email.service';
@@ -171,15 +171,27 @@ class UserController {
    */
   public toggleOnlineStatus = catchAsync(async (req: Request, res: Response) => {
     const { isOnline } = req.body;
+    const requestedOnline = Boolean(isOnline);
+
+    // Gatekeeping: Courier must be approved by admin before going online
+    if (requestedOnline && req.user?.role === UserRole.RIDER) {
+      if (req.user.riderVerificationStatus !== 'approved') {
+        throw new AppError(
+          'Your courier account is pending document verification and admin approval. You cannot go online until approved.',
+          403
+        );
+      }
+    }
+
     const user = await User.findByIdAndUpdate(
       req.user!._id,
-      { isOnline: Boolean(isOnline) },
+      { isOnline: requestedOnline },
       { returnDocument: 'after', runValidators: true }
     ).select('-password');
 
     res.status(200).json({
       status: 'success',
-      message: `Shift status set to ${isOnline ? 'Online' : 'Offline'}`,
+      message: `Shift status set to ${requestedOnline ? 'Online' : 'Offline'}`,
       data: { user },
     });
   });

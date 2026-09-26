@@ -1,22 +1,26 @@
 import mongoose, { Schema, Document } from 'mongoose';
 
-export type RiderOnboardingStatus = 
-  | 'pending_review' 
-  | 'documents_submitted' 
-  | 'verification_in_progress' 
-  | 'training_pending' 
-  | 'approved' 
-  | 'active' 
-  | 'suspended' 
+export type RiderOnboardingStatus =
+  | 'pending'
+  | 'pending_review'
+  | 'under_review'
+  | 'action_required'
+  | 'approved'
+  | 'active'
+  | 'rejected'
+  | 'suspended'
   | 'deactivated';
 
 export interface IRiderOnboarding extends Document {
   user: mongoose.Types.ObjectId;
+  country: string;
+  countryCode: string;
   fullName: string;
   dob: string;
   phoneNumber: string;
   emailAddress: string;
   residentialAddress: string;
+  profilePhotoUrl?: string;
   emergencyContact: {
     name: string;
     phone: string;
@@ -26,7 +30,9 @@ export interface IRiderOnboarding extends Document {
     nin: string;
     verifiedName?: string;
     status: 'pending' | 'verified' | 'failed';
+    verifiedAt?: Date;
   };
+  deliveryMethod: 'bicycle' | 'ebike' | 'motorcycle' | 'car';
   documents: {
     ninDoc?: string;
     driverLicense?: string;
@@ -43,10 +49,18 @@ export interface IRiderOnboarding extends Document {
     signedAgreementUrl?: string;
     governmentIdUrl?: string;
     bicycleOwnershipDetails?: string;
+    vehiclePhoto?: string;
+    vehicleInsurance?: string;
+    vehicleRegistration?: string;
+    roadworthinessDoc?: string;
   };
   vehicle: {
-    vehicleType: 'motorcycle' | 'bicycle' | 'car';
+    vehicleType: 'bicycle' | 'ebike' | 'motorcycle' | 'car';
+    make?: string;
+    model?: string;
+    color?: string;
     registrationNumber?: string;
+    vehiclePhotoUrl?: string;
     vehicleLicenseUrl?: string;
     insuranceCertificateUrl?: string;
     roadWorthinessCertificateUrl?: string;
@@ -59,6 +73,23 @@ export interface IRiderOnboarding extends Document {
     accountName: string;
     bvn?: string;
     isVerified: boolean;
+  };
+  safetyAcknowledgements: {
+    foodSafetyHygiene: boolean;
+    tamperEvidentDelivery: boolean;
+    customerPrivacy: boolean;
+    incidentReporting: boolean;
+    acknowledgedAt?: Date;
+  };
+  agreements: {
+    courierAgreementAccepted: boolean;
+    privacyNoticeAccepted: boolean;
+    codeOfConductAccepted: boolean;
+    healthSafetyAccepted: boolean;
+    foodHygieneAccepted: boolean;
+    verificationConsentAccepted: boolean;
+    accuracyDeclarationAccepted: boolean;
+    acceptedAt?: Date;
   };
   equipmentChecklist: {
     deliveryBag: boolean;
@@ -76,7 +107,14 @@ export interface IRiderOnboarding extends Document {
     cashHandling: boolean;
     emergencyIncidentReporting: boolean;
   };
+  adminReview?: {
+    reviewedBy?: mongoose.Types.ObjectId;
+    reviewedAt?: Date;
+    rejectionReason?: string;
+    notes?: string;
+  };
   status: RiderOnboardingStatus;
+  currentStep: number;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -88,6 +126,17 @@ const riderOnboardingSchema = new Schema<IRiderOnboarding>(
       ref: 'User',
       required: true,
       unique: true,
+    },
+    country: {
+      type: String,
+      default: 'Nigeria',
+      trim: true,
+    },
+    countryCode: {
+      type: String,
+      default: 'NG',
+      uppercase: true,
+      trim: true,
     },
     fullName: {
       type: String,
@@ -112,19 +161,28 @@ const riderOnboardingSchema = new Schema<IRiderOnboarding>(
       type: String,
       required: true,
     },
+    profilePhotoUrl: {
+      type: String,
+    },
     emergencyContact: {
       name: { type: String, required: true },
       phone: { type: String, required: true },
       relationship: { type: String },
     },
     ninVerification: {
-      nin: { type: String, required: true },
+      nin: { type: String, default: '' },
       verifiedName: { type: String },
       status: {
         type: String,
         enum: ['pending', 'verified', 'failed'],
         default: 'pending',
       },
+      verifiedAt: { type: Date },
+    },
+    deliveryMethod: {
+      type: String,
+      enum: ['bicycle', 'ebike', 'motorcycle', 'car'],
+      default: 'motorcycle',
     },
     documents: {
       ninDoc: { type: String },
@@ -142,14 +200,22 @@ const riderOnboardingSchema = new Schema<IRiderOnboarding>(
       signedAgreementUrl: { type: String },
       governmentIdUrl: { type: String },
       bicycleOwnershipDetails: { type: String },
+      vehiclePhoto: { type: String },
+      vehicleInsurance: { type: String },
+      vehicleRegistration: { type: String },
+      roadworthinessDoc: { type: String },
     },
     vehicle: {
       vehicleType: {
         type: String,
-        enum: ['motorcycle', 'bicycle', 'car'],
-        required: true,
+        enum: ['bicycle', 'ebike', 'motorcycle', 'car'],
+        default: 'motorcycle',
       },
-      registrationNumber: { type: String },
+      make: { type: String, trim: true },
+      model: { type: String, trim: true },
+      color: { type: String, trim: true },
+      registrationNumber: { type: String, trim: true },
+      vehiclePhotoUrl: { type: String },
       vehicleLicenseUrl: { type: String },
       insuranceCertificateUrl: { type: String },
       roadWorthinessCertificateUrl: { type: String },
@@ -157,11 +223,28 @@ const riderOnboardingSchema = new Schema<IRiderOnboarding>(
       bicyclePhotoUrl: { type: String },
     },
     financialDetails: {
-      bankName: { type: String, required: true },
-      accountNumber: { type: String, required: true },
-      accountName: { type: String, required: true },
+      bankName: { type: String, default: '' },
+      accountNumber: { type: String, default: '' },
+      accountName: { type: String, default: '' },
       bvn: { type: String },
       isVerified: { type: Boolean, default: false },
+    },
+    safetyAcknowledgements: {
+      foodSafetyHygiene: { type: Boolean, default: false },
+      tamperEvidentDelivery: { type: Boolean, default: false },
+      customerPrivacy: { type: Boolean, default: false },
+      incidentReporting: { type: Boolean, default: false },
+      acknowledgedAt: { type: Date },
+    },
+    agreements: {
+      courierAgreementAccepted: { type: Boolean, default: false },
+      privacyNoticeAccepted: { type: Boolean, default: false },
+      codeOfConductAccepted: { type: Boolean, default: false },
+      healthSafetyAccepted: { type: Boolean, default: false },
+      foodHygieneAccepted: { type: Boolean, default: false },
+      verificationConsentAccepted: { type: Boolean, default: false },
+      accuracyDeclarationAccepted: { type: Boolean, default: false },
+      acceptedAt: { type: Date },
     },
     equipmentChecklist: {
       deliveryBag: { type: Boolean, default: false },
@@ -179,19 +262,30 @@ const riderOnboardingSchema = new Schema<IRiderOnboarding>(
       cashHandling: { type: Boolean, default: false },
       emergencyIncidentReporting: { type: Boolean, default: false },
     },
+    adminReview: {
+      reviewedBy: { type: Schema.Types.ObjectId, ref: 'User' },
+      reviewedAt: { type: Date },
+      rejectionReason: { type: String },
+      notes: { type: String },
+    },
     status: {
       type: String,
       enum: [
+        'pending',
         'pending_review',
-        'documents_submitted',
-        'verification_in_progress',
-        'training_pending',
+        'under_review',
+        'action_required',
         'approved',
         'active',
+        'rejected',
         'suspended',
         'deactivated',
       ],
-      default: 'pending_review',
+      default: 'pending',
+    },
+    currentStep: {
+      type: Number,
+      default: 1,
     },
   },
   {
@@ -201,6 +295,7 @@ const riderOnboardingSchema = new Schema<IRiderOnboarding>(
 
 riderOnboardingSchema.index({ status: 1 });
 riderOnboardingSchema.index({ 'ninVerification.status': 1 });
+riderOnboardingSchema.index({ countryCode: 1 });
 
 const RiderOnboarding = mongoose.model<IRiderOnboarding>('RiderOnboarding', riderOnboardingSchema);
 

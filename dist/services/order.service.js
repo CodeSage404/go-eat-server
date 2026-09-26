@@ -444,6 +444,7 @@ class OrderService {
                         role: user_model_1.UserRole.RIDER,
                         isOnline: true,
                         status: user_model_1.UserStatus.ACTIVE,
+                        riderVerificationStatus: 'approved',
                         location: {
                             $near: {
                                 $geometry: {
@@ -465,6 +466,7 @@ class OrderService {
                     role: user_model_1.UserRole.RIDER,
                     isOnline: true,
                     status: user_model_1.UserStatus.ACTIVE,
+                    riderVerificationStatus: 'approved',
                 });
                 if (restaurantCoords && restaurantCoords.length >= 2) {
                     const [restLng, restLat] = restaurantCoords;
@@ -610,6 +612,11 @@ class OrderService {
      * Assign a rider to an order and dispatch push notifications to customer and outlet
      */
     async assignRider(orderId, riderId) {
+        // 0. Enforce verification check: Rider must be approved by admin
+        const rider = await user_model_1.default.findById(riderId);
+        if (!rider || (rider.role === user_model_1.UserRole.RIDER && rider.riderVerificationStatus !== 'approved')) {
+            throw new appError_1.default('You cannot accept deliveries until your verification documents have been approved by Admin.', 403);
+        }
         // 1. Enforce single active delivery rule: A rider cannot go on more than one delivery at a time
         const existingActiveOrder = await order_model_1.default.findOne({
             rider: riderId,

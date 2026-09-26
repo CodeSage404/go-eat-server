@@ -37,6 +37,8 @@ export interface IUser extends Document {
   appleId?: string;
   isVerified: boolean;
   isOnline: boolean;
+  riderVerificationStatus?: 'unsubmitted' | 'under_review' | 'action_required' | 'approved' | 'rejected';
+  hasSkippedRiderOnboarding?: boolean;
   location?: {
     type: 'Point';
     coordinates: [number, number];
@@ -198,6 +200,15 @@ const userSchema = new Schema<IUser>(
       sparse: true,
     },
     isOnline: {
+      type: Boolean,
+      default: false,
+    },
+    riderVerificationStatus: {
+      type: String,
+      enum: ['unsubmitted', 'under_review', 'action_required', 'approved', 'rejected'],
+      default: 'unsubmitted',
+    },
+    hasSkippedRiderOnboarding: {
       type: Boolean,
       default: false,
     },
