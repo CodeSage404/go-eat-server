@@ -383,7 +383,7 @@ class AuthController {
     const role = (req.query.role as string) || UserRole.CUSTOMER;
     const clientRedirectUri = (req.query.redirect_uri as string) || (role === UserRole.VENDOR ? 'go-eat-partners://apple-auth' : 'go-eat://apple-auth');
     
-    const clientId = process.env.APPLE_SERVICES_ID || process.env.APPLE_CLIENT_ID?.split(',')[0] || 'com.emmanuelnwafor.goeat';
+    const clientId = process.env.APPLE_SERVICES_ID || process.env.APPLE_CLIENT_ID?.split(',')[0] || 'com.emmanuelnwafor.goeat.auth';
     const serverCallbackUrl = `${process.env.RENDER_EXTERNAL_URL || 'https://go-eat-server-z96s.onrender.com'}/api/v1/auth/apple/callback`;
     
     const stateObj = { role, clientRedirectUri };

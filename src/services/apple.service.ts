@@ -53,7 +53,9 @@ class AppleService {
    */
   public getAllowedClientIds(): string[] {
     const list = [
+      process.env.APPLE_SERVICES_ID,
       process.env.APPLE_CLIENT_ID,
+      'com.emmanuelnwafor.goeat.auth',
       'com.emmanuelnwafor.goeat',
       'com.emmanuelnwafor.goeatpartners',
     ].filter(Boolean) as string[];
