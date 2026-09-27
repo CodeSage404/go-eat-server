@@ -4611,3 +4611,31 @@
 2026-09-23 14:05:06 [info]: 	✅ Verified & migrated promo fields across all restaurant documents.
 2026-09-23 14:05:17 [info]: 	✅ Verified & migrated country fields across all restaurant documents.
 2026-09-23 14:05:19 [info]: 	✅ Verified & synced live promo status across restaurants.
+2026-09-26 15:37:40 [info]: 	🔥 Firebase Admin initialized
+2026-09-26 15:38:01 [info]: 	🚀 Connected to MongoDB: ac-hjwrplp-shard-00-00.dupeyhe.mongodb.net
+2026-09-26 15:39:15 [warn]: 	Could not inspect or drop user email index (collection may not exist yet):
+2026-09-26 15:39:31 [warn]: 	⚠️ MongoDB Disconnected
+2026-09-26 15:39:31 [info]: 	⚡ MongoDB Reconnected
+2026-09-26 15:39:38 [info]: 	✅ Verified & migrated promo fields across all restaurant documents.
+2026-09-26 15:39:39 [info]: 	✅ Verified & migrated country fields across all restaurant documents.
+2026-09-26 15:40:02 [info]: 	✅ Verified & synced live promo status across restaurants.
+2026-09-26 15:40:19 [info]: 	📲 Native FCM push notification sent to user: 6a6203e2e20f3aab7dd9d9a4 (echinecherem729@gmail.com). MessageID: projects/go-eat-d7f26/messages/0:1790433617476585%3067818a3067818a
+2026-09-26 15:42:41 [info]: 	🚀 Connected to MongoDB: ac-hjwrplp-shard-00-01.dupeyhe.mongodb.net
+2026-09-26 15:42:47 [info]: 	✅ Verified & migrated promo fields across all restaurant documents.
+2026-09-26 15:42:52 [info]: 	✅ Verified & migrated country fields across all restaurant documents.
+2026-09-26 15:43:06 [info]: 	✅ Verified & synced live promo status across restaurants.
+2026-09-26 15:52:02 [info]: 	🔥 Firebase Admin initialized
+2026-09-27 12:33:17 [info]: 	🔥 Firebase Admin initialized
+2026-09-27 12:34:30 [error]: MongoServerSelectionError: getaddrinfo ENOTFOUND ac-hjwrplp-shard-00-01.dupeyhe.mongodb.net
+    at Topology.selectServer (C:\Users\Immanuel\Desktop\EMStack\Go-Eat\server\node_modules\mongodb\lib\sdam\topology.js:348:38)
+    at async executeOperationWithRetries (C:\Users\Immanuel\Desktop\EMStack\Go-Eat\server\node_modules\mongodb\lib\operations\execute_operation.js:260:22)
+    at async executeOperation (C:\Users\Immanuel\Desktop\EMStack\Go-Eat\server\node_modules\mongodb\lib\operations\execute_operation.js:83:16)
+    at async Collection.insertOne (C:\Users\Immanuel\Desktop\EMStack\Go-Eat\server\node_modules\mongodb\lib\collection.js:154:16)
+    at async model.$__save (C:\Users\Immanuel\Desktop\EMStack\Go-Eat\server\node_modules\mongoose\lib\model.js:428:16)
+    at async model.save (C:\Users\Immanuel\Desktop\EMStack\Go-Eat\server\node_modules\mongoose\lib\model.js:667:5)
+    at async model.create (C:\Users\Immanuel\Desktop\EMStack\Go-Eat\server\node_modules\mongoose\lib\model.js:2747:5)
+    at async NotificationService.sendNotification (C:\Users\Immanuel\Desktop\EMStack\Go-Eat\server\dist\services\notification.service.js:69:34)
+    at async testSend (C:\Users\Immanuel\Desktop\EMStack\Go-Eat\server\src\scripts\test-send-bella.js:18:5)
+2026-09-27 12:34:57 [info]: 	📲 Native FCM push notification sent to user: 6a7f0a742b0882d449617dfc (nwafor.synthdatasolutions@gmail.com). MessageID: projects/go-eat-d7f26/messages/0:1790508894429843%8919143589191435
+2026-09-27 12:41:02 [info]: 	🔥 Firebase Admin initialized
+2026-09-27 12:41:43 [error]: 	❌ Error sending push notification: [app/invalid-credential] Credential implementation provided to initializeApp() via the "credential" property failed to fetch a valid Google OAuth2 access token with the following error: "request to https://oauth2.googleapis.com/token failed, reason: getaddrinfo ENOTFOUND oauth2.googleapis.com".

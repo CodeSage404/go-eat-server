@@ -90,6 +90,8 @@ class PromoBannerService {
             banner.voucherText = payload.voucherText;
         if (payload.imageUrl !== undefined)
             banner.imageUrl = payload.imageUrl;
+        if (payload.bannerType !== undefined)
+            banner.bannerType = payload.bannerType;
         if (payload.backgroundColor !== undefined)
             banner.backgroundColor = payload.backgroundColor;
         if (payload.backgroundColorDark !== undefined)

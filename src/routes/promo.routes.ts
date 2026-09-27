@@ -178,6 +178,10 @@ router.get(
  *               imageUrl:
  *                 type: string
  *                 description: Optional uploaded graphic URL
+ *               bannerType:
+ *                 type: string
+ *                 enum: [side, background]
+ *                 description: Banner layout style - side image or full background image / GIF
  *               backgroundColor:
  *                 type: string
  *                 description: Light theme background hex color

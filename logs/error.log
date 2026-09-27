@@ -4268,3 +4268,14 @@
     at processTicksAndRejections (node:internal/process/task_queues:103:5)
 2026-09-11 00:09:56 [error]: 	❌ Error sending push notification: [messaging/mismatched-credential] SenderId mismatch
 2026-09-12 02:00:44 [error]: 	❌ Error sending push notification: [messaging/registration-token-not-registered] NotRegistered
+2026-09-27 12:34:30 [error]: MongoServerSelectionError: getaddrinfo ENOTFOUND ac-hjwrplp-shard-00-01.dupeyhe.mongodb.net
+    at Topology.selectServer (C:\Users\Immanuel\Desktop\EMStack\Go-Eat\server\node_modules\mongodb\lib\sdam\topology.js:348:38)
+    at async executeOperationWithRetries (C:\Users\Immanuel\Desktop\EMStack\Go-Eat\server\node_modules\mongodb\lib\operations\execute_operation.js:260:22)
+    at async executeOperation (C:\Users\Immanuel\Desktop\EMStack\Go-Eat\server\node_modules\mongodb\lib\operations\execute_operation.js:83:16)
+    at async Collection.insertOne (C:\Users\Immanuel\Desktop\EMStack\Go-Eat\server\node_modules\mongodb\lib\collection.js:154:16)
+    at async model.$__save (C:\Users\Immanuel\Desktop\EMStack\Go-Eat\server\node_modules\mongoose\lib\model.js:428:16)
+    at async model.save (C:\Users\Immanuel\Desktop\EMStack\Go-Eat\server\node_modules\mongoose\lib\model.js:667:5)
+    at async model.create (C:\Users\Immanuel\Desktop\EMStack\Go-Eat\server\node_modules\mongoose\lib\model.js:2747:5)
+    at async NotificationService.sendNotification (C:\Users\Immanuel\Desktop\EMStack\Go-Eat\server\dist\services\notification.service.js:69:34)
+    at async testSend (C:\Users\Immanuel\Desktop\EMStack\Go-Eat\server\src\scripts\test-send-bella.js:18:5)
+2026-09-27 12:41:43 [error]: 	❌ Error sending push notification: [app/invalid-credential] Credential implementation provided to initializeApp() via the "credential" property failed to fetch a valid Google OAuth2 access token with the following error: "request to https://oauth2.googleapis.com/token failed, reason: getaddrinfo ENOTFOUND oauth2.googleapis.com".

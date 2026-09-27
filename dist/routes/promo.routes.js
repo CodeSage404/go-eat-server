@@ -174,6 +174,10 @@ router.get('/banner/config', (0, auth_middleware_1.restrictTo)(user_model_1.User
  *               imageUrl:
  *                 type: string
  *                 description: Optional uploaded graphic URL
+ *               bannerType:
+ *                 type: string
+ *                 enum: [side, background]
+ *                 description: Banner layout style - side image or full background image / GIF
  *               backgroundColor:
  *                 type: string
  *                 description: Light theme background hex color

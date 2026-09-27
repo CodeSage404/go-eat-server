@@ -43,6 +43,14 @@ const connectDB = async () => {
                 }
             });
             logger_1.default.info('✅ Verified & migrated country fields across all restaurant documents.');
+            // Automatically ensure all promo banner documents have bannerType field
+            try {
+                const promoBannersCollection = conn.connection.collection('promobanners');
+                await promoBannersCollection.updateMany({ bannerType: { $exists: false } }, { $set: { bannerType: 'side' } });
+            }
+            catch (pbErr) {
+                // Silent catch if collection does not exist
+            }
             // Automatically sync live promo status across restaurants with active food discounts/promos
             try {
                 await (0, restaurant_service_1.syncAllRestaurantsPromoStatus)();

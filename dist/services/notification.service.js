@@ -106,9 +106,15 @@ class NotificationService {
             const pushAllowed = user && user.fcmToken && user.notificationsEnabled !== false && user.notificationPreferences?.push !== false;
             if (pushAllowed && user && user.fcmToken) {
                 const isCallNotif = data?.type === 'incoming_call' || data?.isVoip;
+                const isVendor = user.role === 'vendor';
+                const isRider = user.role === 'rider';
                 const channelId = isCallNotif
                     ? 'incoming_calls'
-                    : (data?.type === 'RIDER_JOB' || data?.type === 'NEW_ORDER' ? 'delivery_alerts' : 'default');
+                    : (isVendor && (data?.type === 'NEW_ORDER' || data?.type === 'ORDER_UPDATE'))
+                        ? 'order_alerts'
+                        : (isRider && (data?.type === 'RIDER_JOB' || data?.type === 'NEW_ORDER'))
+                            ? 'delivery_alerts'
+                            : 'default';
                 if (user.fcmToken.startsWith('ExponentPushToken') || user.fcmToken.startsWith('ExpoPushToken')) {
                     // Send via Expo Push API with high priority, sound, and badge for iOS & Android
                     const expoMessage = {
