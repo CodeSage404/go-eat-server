@@ -21,13 +21,13 @@ const uploadDir = process.env.UPLOAD_DIR
     : path_1.default.join(__dirname, '../../uploads');
 exports.uploadDir = uploadDir;
 const fileFilter = (req, file, cb) => {
-    const allowedTypes = /jpeg|jpg|png|webp|pdf/;
+    const allowedTypes = /jpeg|jpg|png|webp|gif|pdf/;
     const ext = allowedTypes.test(path_1.default.extname(file.originalname).toLowerCase());
     const mime = allowedTypes.test(file.mimetype);
     if (ext && mime) {
         return cb(null, true);
     }
-    cb(new Error('Only images (jpg, jpeg, png, webp) and PDFs are allowed!'));
+    cb(new Error('Only images (jpg, jpeg, png, webp, gif) and PDFs are allowed!'));
 };
 const memUpload = (0, multer_1.default)({
     storage: multer_1.default.memoryStorage(),

@@ -21,12 +21,12 @@ const memUpload = (0, multer_1.default)({
     storage: multer_1.default.memoryStorage(),
     limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
     fileFilter: (req, file, cb) => {
-        const allowed = /jpeg|jpg|png|webp/;
+        const allowed = /jpeg|jpg|png|webp|gif/;
         const ext = allowed.test(file.originalname.toLowerCase());
         const mime = allowed.test(file.mimetype);
         if (ext && mime)
             return cb(null, true);
-        cb(new Error('Only images (jpg, jpeg, png, webp) are allowed!'));
+        cb(new Error('Only images (jpg, jpeg, png, webp, gif) are allowed!'));
     },
 });
 const express_rate_limit_1 = __importDefault(require("express-rate-limit"));
@@ -110,7 +110,7 @@ router.post('/image', upload_1.upload.single('image'), (0, catchAsync_1.catchAsy
  *               image:
  *                 type: string
  *                 format: binary
- *                 description: Image file (jpg, jpeg, png, webp, max 10MB)
+ *                 description: Image file (jpg, jpeg, png, webp, gif, max 10MB)
  *     responses:
  *       200:
  *         description: Image uploaded to Cloudinary successfully

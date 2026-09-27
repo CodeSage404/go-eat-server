@@ -18,11 +18,11 @@ const memUpload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
   fileFilter: (req, file, cb) => {
-    const allowed = /jpeg|jpg|png|webp/;
+    const allowed = /jpeg|jpg|png|webp|gif/;
     const ext = allowed.test(file.originalname.toLowerCase());
     const mime = allowed.test(file.mimetype);
     if (ext && mime) return cb(null, true);
-    cb(new Error('Only images (jpg, jpeg, png, webp) are allowed!'));
+    cb(new Error('Only images (jpg, jpeg, png, webp, gif) are allowed!'));
   },
 });
 
@@ -117,7 +117,7 @@ router.post(
  *               image:
  *                 type: string
  *                 format: binary
- *                 description: Image file (jpg, jpeg, png, webp, max 10MB)
+ *                 description: Image file (jpg, jpeg, png, webp, gif, max 10MB)
  *     responses:
  *       200:
  *         description: Image uploaded to Cloudinary successfully
