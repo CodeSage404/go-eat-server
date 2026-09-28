@@ -79,7 +79,11 @@ class PaystackModule {
         if (!signature || !this.secretKey)
             return false;
         try {
-            const rawBody = typeof payload === 'string' ? payload : JSON.stringify(payload);
+            const rawBody = Buffer.isBuffer(payload)
+                ? payload.toString('utf8')
+                : typeof payload === 'string'
+                    ? payload
+                    : JSON.stringify(payload);
             const computedHash = crypto_1.default
                 .createHmac('sha512', this.secretKey)
                 .update(rawBody)

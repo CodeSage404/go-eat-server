@@ -4,11 +4,22 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
+const express_rate_limit_1 = __importDefault(require("express-rate-limit"));
 const order_controller_1 = __importDefault(require("../controllers/order.controller"));
 const auth_middleware_1 = require("../middleware/auth.middleware");
 const user_model_1 = require("../models/user.model");
 const rateLimiter_1 = require("../middleware/rateLimiter");
 const router = (0, express_1.Router)();
+const quoteFeeLimiter = (0, express_rate_limit_1.default)({
+    windowMs: 60 * 1000, // 1 minute
+    max: 30, // max 30 quotes per minute per IP
+    message: {
+        status: 'fail',
+        message: 'Too many delivery fee calculations requested from this IP, please try again in a moment.',
+    },
+    standardHeaders: true,
+    legacyHeaders: false,
+});
 // Public Order Fee & Quoting Routes
 /**
  * @openapi
@@ -106,7 +117,7 @@ router.get('/fees', order_controller_1.default.getPublicFees);
  *       400:
  *         description: Invalid coordinates or address outside delivery radius.
  */
-router.post('/quote-fee', order_controller_1.default.quoteFees);
+router.post('/quote-fee', quoteFeeLimiter, order_controller_1.default.quoteFees);
 router.use(auth_middleware_1.protect);
 // Customer routes
 /**

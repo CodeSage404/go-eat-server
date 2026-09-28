@@ -56,14 +56,47 @@ class App {
   constructor() {
     this.app = express();
     this.server = http.createServer(this.app);
+
+    const allowedOrigins = process.env.ALLOWED_ORIGINS
+      ? process.env.ALLOWED_ORIGINS.split(',').map((s) => s.trim())
+      : [
+          'http://localhost:3000',
+          'http://localhost:8081',
+          'http://localhost:19006',
+          'http://localhost:5173',
+          'https://goeat.ng',
+          'https://admin.goeat.ng',
+          'https://vendor.goeat.ng',
+        ];
+
+    const isOriginAllowed = (origin: string | undefined): boolean => {
+      // Allow all origins during development and testing phase.
+      // In strict production mode, toggle ENFORCE_CORS=true in .env to enforce domain whitelisting.
+      if (process.env.ENFORCE_CORS !== 'true') {
+        return true;
+      }
+      // Allow requests with no origin (e.g. mobile apps, curl, server-to-server)
+      if (!origin) return true;
+      if (allowedOrigins.includes(origin)) {
+        return true;
+      }
+      return false;
+    };
+
     this.io = new Server(this.server, {
       cors: {
-        origin: "*",
-        methods: ["GET", "POST", "PUT", "DELETE", "PATCH"]
-      }
+        origin: (origin, callback) => {
+          if (isOriginAllowed(origin)) {
+            return callback(null, true);
+          }
+          return callback(new Error('Blocked by CORS policy'), false);
+        },
+        methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
+        credentials: true,
+      },
     });
 
-    this.config();
+    this.config(isOriginAllowed);
     this.database();
     this.routes();
     this.sockets();
@@ -75,16 +108,49 @@ class App {
     connectDB();
   }
 
-  private config(): void {
+  private config(isOriginAllowed: (origin: string | undefined) => boolean): void {
     // Trust reverse proxy headers (e.g. Render, Cloudflare, load balancers)
     this.app.set('trust proxy', 1);
-    this.app.use(express.json({ limit: '2mb' }));
-    this.app.use(express.urlencoded({ extended: true, limit: '2mb' }));
+
+    // Capture rawBody for cryptographic webhook signatures (Stripe, Paystack)
+    this.app.use(
+      express.json({
+        limit: '10mb',
+        verify: (req: any, _res, buf) => {
+          req.rawBody = buf;
+        },
+      })
+    );
+    this.app.use(express.urlencoded({ extended: true, limit: '10mb' }));
     this.app.use(mongoSanitizeMiddleware);
-    this.app.use(cors());
+
+    this.app.use(
+      cors({
+        origin: (origin, callback) => {
+          if (isOriginAllowed(origin)) {
+            return callback(null, true);
+          }
+          return callback(new Error('Blocked by CORS policy'));
+        },
+        credentials: true,
+        methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+        allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'x-country-code', 'x-platform', 'stripe-signature', 'x-paystack-signature', 'verif-hash'],
+      })
+    );
+
     this.app.use(helmet());
     this.app.use(morgan('dev'));
-    this.app.use('/uploads', express.static(uploadDir));
+
+    // Secure static uploads serving against Stored XSS
+    this.app.use(
+      '/uploads',
+      (_req, res, next) => {
+        res.setHeader('X-Content-Type-Options', 'nosniff');
+        res.setHeader('Content-Security-Policy', "default-src 'none'; style-src 'unsafe-inline'; sandbox");
+        next();
+      },
+      express.static(uploadDir)
+    );
   }
 
   private routes(): void {

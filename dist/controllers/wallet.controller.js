@@ -89,22 +89,30 @@ class WalletController {
             if (!amount || amount <= 0) {
                 throw new appError_1.default('A valid withdrawal amount is required', 400);
             }
-            const wallet = await wallet_model_1.default.findOne({ user: req.user._id });
+            // Atomically check available balance and deduct in a single database operation to prevent race conditions
+            const wallet = await wallet_model_1.default.findOneAndUpdate({
+                user: req.user._id,
+                isSettlementOnHold: { $ne: true },
+                $or: [
+                    { availableBalance: { $gte: amount } },
+                    { availableBalance: { $exists: false }, balance: { $gte: amount } },
+                ],
+            }, {
+                $inc: { balance: -amount, availableBalance: -amount },
+                $set: { lastPayoutDate: new Date() },
+            }, { new: true });
             if (!wallet) {
-                throw new appError_1.default('Wallet not found', 404);
+                // Find wallet to provide a specific, informative error message
+                const existingWallet = await wallet_model_1.default.findOne({ user: req.user._id });
+                if (!existingWallet) {
+                    throw new appError_1.default('Wallet not found', 404);
+                }
+                if (existingWallet.isSettlementOnHold) {
+                    throw new appError_1.default(`Settlement is temporarily on hold: ${existingWallet.holdReason || 'Account investigation or dispute'}`, 400);
+                }
+                const currentAvailable = existingWallet.availableBalance ?? existingWallet.balance ?? 0;
+                throw new appError_1.default(`Insufficient available balance. Available: ₦${currentAvailable.toLocaleString()}, Requested: ₦${amount.toLocaleString()}. (Note: Pending funds cannot be withdrawn until order completion).`, 400);
             }
-            if (wallet.isSettlementOnHold) {
-                throw new appError_1.default(`Settlement is temporarily on hold: ${wallet.holdReason || 'Account investigation or dispute'}`, 400);
-            }
-            const withdrawableBalance = wallet.availableBalance || wallet.balance;
-            if (withdrawableBalance < amount) {
-                throw new appError_1.default(`Insufficient available balance. Available: ${withdrawableBalance}, Requested: ${amount}. (Note: Pending funds cannot be withdrawn until order completion).`, 400);
-            }
-            // Deduct from available balance
-            wallet.balance -= amount;
-            wallet.availableBalance -= amount;
-            wallet.lastPayoutDate = new Date();
-            await wallet.save();
             // Create withdrawal transaction
             const transaction = await transaction_model_1.default.create({
                 wallet: wallet._id,

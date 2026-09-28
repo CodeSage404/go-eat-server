@@ -6,6 +6,7 @@ import Order from '../models/order.model';
 import Restaurant from '../models/restaurant.model';
 import Setting from '../models/setting.model';
 import paystackModule from '../services/payments/paystack.module';
+import stripeModule from '../services/payments/stripe.module';
 
 class PaymentController {
   /**
@@ -127,7 +128,8 @@ class PaymentController {
       return;
     }
 
-    await paymentService.processPaystackWebhook(req.body, signature);
+    const payload = (req as any).rawBody || req.body;
+    await paymentService.processPaystackWebhook(payload, signature);
 
     // Paystack expects a 200 OK response immediately
     res.status(200).send('Paystack webhook received successfully');
@@ -153,7 +155,21 @@ class PaymentController {
    * Webhook endpoint for Stripe
    */
   public handleStripeWebhook = catchAsync(async (req: Request, res: Response) => {
-    const event = req.body;
+    const signature = req.headers['stripe-signature'] as string;
+    const rawBody = (req as any).rawBody || (typeof req.body === 'string' ? req.body : JSON.stringify(req.body));
+
+    // Cryptographically verify Stripe Webhook Signature if secret configured
+    if (process.env.STRIPE_WEBHOOK_SECRET) {
+      if (!signature) {
+        throw new AppError('Missing Stripe signature header', 400);
+      }
+      const isValid = stripeModule.verifyWebhookSignature(rawBody, signature);
+      if (!isValid) {
+        throw new AppError('Invalid Stripe webhook signature', 400);
+      }
+    }
+
+    const event = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
     if (event?.type === 'checkout.session.completed') {
       const session = event.data?.object;
       const reference = session?.client_reference_id || session?.id;

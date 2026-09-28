@@ -1,9 +1,21 @@
 import { Router } from 'express';
+import rateLimit from 'express-rate-limit';
 import walletController from '../controllers/wallet.controller';
 import { protect, restrictTo } from '../middleware/auth.middleware';
 import { UserRole } from '../models/user.model';
 
 const router = Router();
+
+const withdrawLimiter = rateLimit({
+  windowMs: 5 * 60 * 1000, // 5 minutes
+  max: 5, // max 5 withdrawal attempts per 5 minutes per IP/user
+  message: {
+    status: 'fail',
+    message: 'Too many withdrawal attempts, please wait 5 minutes before trying again.',
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
 
 router.use(protect);
 
@@ -88,7 +100,7 @@ router.get('/banks', restrictTo(UserRole.RIDER, UserRole.VENDOR), walletControll
  *       200:
  *         description: Payout processed
  */
-router.post('/request-payout', restrictTo(UserRole.RIDER, UserRole.VENDOR), walletController.requestWithdrawal);
+router.post('/request-payout', withdrawLimiter, restrictTo(UserRole.RIDER, UserRole.VENDOR), walletController.requestWithdrawal);
 
 /**
  * @openapi
@@ -121,7 +133,7 @@ router.post('/request-payout', restrictTo(UserRole.RIDER, UserRole.VENDOR), wall
  *       403:
  *         description: Forbidden, only riders or vendors can withdraw
  */
-router.post('/me/withdraw', restrictTo(UserRole.RIDER, UserRole.VENDOR), walletController.requestWithdrawal);
+router.post('/me/withdraw', withdrawLimiter, restrictTo(UserRole.RIDER, UserRole.VENDOR), walletController.requestWithdrawal);
 
 export default router;
 

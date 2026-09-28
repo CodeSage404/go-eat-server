@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import rateLimit from 'express-rate-limit';
 import adminController from '../controllers/admin.controller';
 import promoBannerController from '../controllers/promoBanner.controller';
 import { upload } from '../utils/upload';
@@ -6,6 +7,17 @@ import { protect, restrictTo, checkPermission } from '../middleware/auth.middlew
 import { UserRole } from '../models/user.model';
 
 const router = Router();
+
+const adminAuthLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 10, // max 10 attempts per 15 minutes
+  message: {
+    status: 'fail',
+    message: 'Too many admin authentication attempts from this IP, please try again after 15 minutes.',
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
 
 // Public Admin Auth Routes
 /**
@@ -36,7 +48,7 @@ const router = Router();
  *       401:
  *         description: Invalid email or password.
  */
-router.post('/auth/login', adminController.adminLogin);
+router.post('/auth/login', adminAuthLimiter, adminController.adminLogin);
 
 
 // Enforce auth & restrict all endpoints to platform Admins and Staff members
@@ -76,7 +88,7 @@ router.use(restrictTo(UserRole.ADMIN, UserRole.STAFF));
  *       401:
  *         description: Incorrect current password.
  */
-router.post('/auth/reset-password', adminController.adminResetPassword);
+router.post('/auth/reset-password', adminAuthLimiter, adminController.adminResetPassword);
 
 /**
  * @openapi

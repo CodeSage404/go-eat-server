@@ -86,31 +86,32 @@ class OTPUtil {
                 await redis_1.default.set(key, otp.trim(), {
                     EX: ttlSeconds,
                 });
-                logger_1.default.info(`🔑 Fresh OTP (${otp}) stored in Redis for ${identifier}`);
+                logger_1.default.info(`🔑 Fresh OTP generated and stored in Redis for ${identifier}`);
             }
             catch (error) {
                 logger_1.default.warn('⚠️ Redis error storing OTP, preserved in local memory:', error);
             }
         }
         else {
-            logger_1.default.info(`🔑 Fresh OTP (${otp}) stored in memory for ${identifier}`);
+            logger_1.default.info(`🔑 Fresh OTP generated and stored in memory for ${identifier}`);
         }
     }
     /**
      * Verifies an OTP from Redis or in-memory store
+     * Protects against brute-force attacks by invalidating the OTP after 5 failed attempts
      */
     async verifyOTP(identifier, otp) {
         const cleanId = identifier.toLowerCase().trim();
         const key = `otp:${cleanId}`;
+        const failedKey = `otp_failed_attempts:${cleanId}`;
         const cleanOTP = otp.trim();
+        let isMatch = false;
         // 1. Check Redis if available
         if (redis_1.default.isOpen) {
             try {
                 const storedOTP = await redis_1.default.get(key);
-                if (storedOTP === cleanOTP) {
-                    await redis_1.default.del(key);
-                    this.inMemoryCache.delete(key);
-                    return true;
+                if (storedOTP && storedOTP === cleanOTP) {
+                    isMatch = true;
                 }
             }
             catch (error) {
@@ -118,11 +119,57 @@ class OTPUtil {
             }
         }
         // 2. Check In-Memory Store
-        const entry = this.inMemoryCache.get(key);
-        if (entry && entry.expiresAt > Date.now()) {
-            if (entry.value === cleanOTP) {
-                this.inMemoryCache.delete(key);
-                return true;
+        if (!isMatch) {
+            const entry = this.inMemoryCache.get(key);
+            if (entry && entry.expiresAt > Date.now() && entry.value === cleanOTP) {
+                isMatch = true;
+            }
+        }
+        if (isMatch) {
+            // Clear OTP and failed attempt counters
+            this.inMemoryCache.delete(key);
+            this.inMemoryAttempts.delete(failedKey);
+            if (redis_1.default.isOpen) {
+                try {
+                    await redis_1.default.del(key);
+                    await redis_1.default.del(failedKey);
+                }
+                catch (_) { }
+            }
+            return true;
+        }
+        // Track failed attempt
+        let failedCount = 1;
+        if (redis_1.default.isOpen) {
+            try {
+                failedCount = await redis_1.default.incr(failedKey);
+                if (failedCount === 1) {
+                    await redis_1.default.expire(failedKey, 600);
+                }
+            }
+            catch (_) { }
+        }
+        else {
+            const existing = this.inMemoryAttempts.get(failedKey);
+            if (existing && existing.expiresAt > Date.now()) {
+                existing.count += 1;
+                failedCount = existing.count;
+            }
+            else {
+                this.inMemoryAttempts.set(failedKey, { count: 1, expiresAt: Date.now() + 600000 });
+            }
+        }
+        // Invalidate OTP immediately if 5 or more incorrect attempts occur
+        if (failedCount >= 5) {
+            logger_1.default.warn(`🚫 OTP for ${identifier} burned/invalidated after exceeding 5 failed attempts.`);
+            this.inMemoryCache.delete(key);
+            this.inMemoryAttempts.delete(failedKey);
+            if (redis_1.default.isOpen) {
+                try {
+                    await redis_1.default.del(key);
+                    await redis_1.default.del(failedKey);
+                }
+                catch (_) { }
             }
         }
         return false;

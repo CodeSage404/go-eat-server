@@ -42,7 +42,7 @@ const uploadLimiter = (0, express_rate_limit_1.default)({
 });
 const router = (0, express_1.Router)();
 router.use(uploadLimiter);
-router.use(auth_middleware_1.optionalAuth);
+router.use(auth_middleware_1.protect);
 /**
  * @openapi
  * /api/v1/upload/image:

@@ -1,4 +1,5 @@
 import axios from 'axios';
+import crypto from 'crypto';
 import logger from '../../utils/logger';
 import AppError from '../../utils/appError';
 
@@ -180,6 +181,62 @@ class StripeModule {
       const errorMessage = error.response?.data?.error?.message || error.message || 'Stripe refund error';
       logger.error(`Stripe refundPayment error: ${errorMessage}`);
       throw new AppError(errorMessage, error.response?.status || 500);
+    }
+  }
+
+  /**
+   * Cryptographically verify Stripe Webhook Signature (HMAC SHA-256)
+   */
+  verifyWebhookSignature(rawBody: string | Buffer, signatureHeader: string): boolean {
+    const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+    if (!webhookSecret || !signatureHeader) return false;
+
+    try {
+      const items = signatureHeader.split(',');
+      let timestamp = '';
+      const signatures: string[] = [];
+
+      for (const item of items) {
+        const parts = item.trim().split('=');
+        if (parts[0] === 't') {
+          timestamp = parts[1];
+        } else if (parts[0] === 'v1') {
+          signatures.push(parts[1]);
+        }
+      }
+
+      if (!timestamp || signatures.length === 0) {
+        return false;
+      }
+
+      // 5-minute replay attack tolerance
+      const now = Math.floor(Date.now() / 1000);
+      const eventTime = parseInt(timestamp, 10);
+      if (isNaN(eventTime) || Math.abs(now - eventTime) > 300) {
+        logger.warn('Stripe webhook signature timestamp outside 5-minute tolerance window');
+        return false;
+      }
+
+      const bodyStr = Buffer.isBuffer(rawBody) ? rawBody.toString('utf8') : rawBody;
+      const signedPayload = `${timestamp}.${bodyStr}`;
+      const computedHash = crypto
+        .createHmac('sha256', webhookSecret)
+        .update(signedPayload)
+        .digest('hex');
+
+      const hashBuffer = Buffer.from(computedHash, 'hex');
+
+      for (const sig of signatures) {
+        const sigBuffer = Buffer.from(sig, 'hex');
+        if (sigBuffer.length === hashBuffer.length && crypto.timingSafeEqual(sigBuffer, hashBuffer)) {
+          return true;
+        }
+      }
+
+      return false;
+    } catch (err) {
+      logger.error('Error during Stripe webhook signature verification:', err);
+      return false;
     }
   }
 }

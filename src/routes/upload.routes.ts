@@ -2,7 +2,7 @@ import { Router, Request, Response } from 'express';
 import { v2 as cloudinary } from 'cloudinary';
 import multer from 'multer';
 import { upload, saveFileLocally } from '../utils/upload';
-import { optionalAuth } from '../middleware/auth.middleware';
+import { protect } from '../middleware/auth.middleware';
 import { catchAsync } from '../utils/catchAsync';
 import AppError from '../utils/appError';
 
@@ -42,7 +42,7 @@ const uploadLimiter = rateLimit({
 const router = Router();
 
 router.use(uploadLimiter);
-router.use(optionalAuth);
+router.use(protect);
 
 /**
  * @openapi

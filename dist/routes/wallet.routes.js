@@ -4,10 +4,21 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
+const express_rate_limit_1 = __importDefault(require("express-rate-limit"));
 const wallet_controller_1 = __importDefault(require("../controllers/wallet.controller"));
 const auth_middleware_1 = require("../middleware/auth.middleware");
 const user_model_1 = require("../models/user.model");
 const router = (0, express_1.Router)();
+const withdrawLimiter = (0, express_rate_limit_1.default)({
+    windowMs: 5 * 60 * 1000, // 5 minutes
+    max: 5, // max 5 withdrawal attempts per 5 minutes per IP/user
+    message: {
+        status: 'fail',
+        message: 'Too many withdrawal attempts, please wait 5 minutes before trying again.',
+    },
+    standardHeaders: true,
+    legacyHeaders: false,
+});
 router.use(auth_middleware_1.protect);
 /**
  * @openapi
@@ -87,7 +98,7 @@ router.get('/banks', (0, auth_middleware_1.restrictTo)(user_model_1.UserRole.RID
  *       200:
  *         description: Payout processed
  */
-router.post('/request-payout', (0, auth_middleware_1.restrictTo)(user_model_1.UserRole.RIDER, user_model_1.UserRole.VENDOR), wallet_controller_1.default.requestWithdrawal);
+router.post('/request-payout', withdrawLimiter, (0, auth_middleware_1.restrictTo)(user_model_1.UserRole.RIDER, user_model_1.UserRole.VENDOR), wallet_controller_1.default.requestWithdrawal);
 /**
  * @openapi
  * /api/v1/wallets/me/withdraw:
@@ -119,5 +130,5 @@ router.post('/request-payout', (0, auth_middleware_1.restrictTo)(user_model_1.Us
  *       403:
  *         description: Forbidden, only riders or vendors can withdraw
  */
-router.post('/me/withdraw', (0, auth_middleware_1.restrictTo)(user_model_1.UserRole.RIDER, user_model_1.UserRole.VENDOR), wallet_controller_1.default.requestWithdrawal);
+router.post('/me/withdraw', withdrawLimiter, (0, auth_middleware_1.restrictTo)(user_model_1.UserRole.RIDER, user_model_1.UserRole.VENDOR), wallet_controller_1.default.requestWithdrawal);
 exports.default = router;

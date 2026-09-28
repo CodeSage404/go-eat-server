@@ -4,12 +4,23 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
+const express_rate_limit_1 = __importDefault(require("express-rate-limit"));
 const admin_controller_1 = __importDefault(require("../controllers/admin.controller"));
 const promoBanner_controller_1 = __importDefault(require("../controllers/promoBanner.controller"));
 const upload_1 = require("../utils/upload");
 const auth_middleware_1 = require("../middleware/auth.middleware");
 const user_model_1 = require("../models/user.model");
 const router = (0, express_1.Router)();
+const adminAuthLimiter = (0, express_rate_limit_1.default)({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 10, // max 10 attempts per 15 minutes
+    message: {
+        status: 'fail',
+        message: 'Too many admin authentication attempts from this IP, please try again after 15 minutes.',
+    },
+    standardHeaders: true,
+    legacyHeaders: false,
+});
 // Public Admin Auth Routes
 /**
  * @openapi
@@ -39,7 +50,7 @@ const router = (0, express_1.Router)();
  *       401:
  *         description: Invalid email or password.
  */
-router.post('/auth/login', admin_controller_1.default.adminLogin);
+router.post('/auth/login', adminAuthLimiter, admin_controller_1.default.adminLogin);
 // Enforce auth & restrict all endpoints to platform Admins and Staff members
 router.use(auth_middleware_1.protect);
 router.use((0, auth_middleware_1.restrictTo)(user_model_1.UserRole.ADMIN, user_model_1.UserRole.STAFF));
@@ -76,7 +87,7 @@ router.use((0, auth_middleware_1.restrictTo)(user_model_1.UserRole.ADMIN, user_m
  *       401:
  *         description: Incorrect current password.
  */
-router.post('/auth/reset-password', admin_controller_1.default.adminResetPassword);
+router.post('/auth/reset-password', adminAuthLimiter, admin_controller_1.default.adminResetPassword);
 /**
  * @openapi
  * /api/v1/admin/auth/refresh-token:

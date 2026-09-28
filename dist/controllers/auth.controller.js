@@ -304,8 +304,19 @@ class AuthController {
         });
         this.appleAuthStart = (0, catchAsync_1.catchAsync)(async (req, res) => {
             const role = req.query.role || user_model_1.UserRole.CUSTOMER;
-            const clientRedirectUri = req.query.redirect_uri || (role === user_model_1.UserRole.VENDOR ? 'go-eat-partners://apple-auth' : 'go-eat://apple-auth');
-            const clientId = process.env.APPLE_SERVICES_ID || process.env.APPLE_CLIENT_ID?.split(',')[0] || 'com.emmanuelnwafor.goeat';
+            const clientRedirectUri = req.query.redirect_uri ||
+                (role === user_model_1.UserRole.VENDOR
+                    ? 'go-eat-partners://apple-auth'
+                    : role === user_model_1.UserRole.RIDER
+                        ? 'go-eat-courier://apple-auth'
+                        : 'go-eat://apple-auth');
+            let clientId = process.env.APPLE_SERVICES_ID || 'com.emmanuelnwafor.goeat.auth';
+            if (role === user_model_1.UserRole.RIDER) {
+                clientId = process.env.APPLE_SERVICES_ID_RIDER || 'com.emmanuelnwafor.goeatdelivery.auth';
+            }
+            else if (role === user_model_1.UserRole.VENDOR) {
+                clientId = process.env.APPLE_SERVICES_ID_VENDOR || 'com.emmanuelnwafor.goeatpartners.auth';
+            }
             const serverCallbackUrl = `${process.env.RENDER_EXTERNAL_URL || 'https://go-eat-server-z96s.onrender.com'}/api/v1/auth/apple/callback`;
             const stateObj = { role, clientRedirectUri };
             const state = Buffer.from(JSON.stringify(stateObj)).toString('base64url');

@@ -10,6 +10,7 @@ const order_model_1 = __importDefault(require("../models/order.model"));
 const restaurant_model_1 = __importDefault(require("../models/restaurant.model"));
 const setting_model_1 = __importDefault(require("../models/setting.model"));
 const paystack_module_1 = __importDefault(require("../services/payments/paystack.module"));
+const stripe_module_1 = __importDefault(require("../services/payments/stripe.module"));
 class PaymentController {
     constructor() {
         /**
@@ -119,7 +120,8 @@ class PaymentController {
                 res.status(400).send('Missing Paystack signature header');
                 return;
             }
-            await payment_service_1.default.processPaystackWebhook(req.body, signature);
+            const payload = req.rawBody || req.body;
+            await payment_service_1.default.processPaystackWebhook(payload, signature);
             // Paystack expects a 200 OK response immediately
             res.status(200).send('Paystack webhook received successfully');
         });
@@ -140,7 +142,19 @@ class PaymentController {
          * Webhook endpoint for Stripe
          */
         this.handleStripeWebhook = (0, catchAsync_1.catchAsync)(async (req, res) => {
-            const event = req.body;
+            const signature = req.headers['stripe-signature'];
+            const rawBody = req.rawBody || (typeof req.body === 'string' ? req.body : JSON.stringify(req.body));
+            // Cryptographically verify Stripe Webhook Signature if secret configured
+            if (process.env.STRIPE_WEBHOOK_SECRET) {
+                if (!signature) {
+                    throw new appError_1.default('Missing Stripe signature header', 400);
+                }
+                const isValid = stripe_module_1.default.verifyWebhookSignature(rawBody, signature);
+                if (!isValid) {
+                    throw new appError_1.default('Invalid Stripe webhook signature', 400);
+                }
+            }
+            const event = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
             if (event?.type === 'checkout.session.completed') {
                 const session = event.data?.object;
                 const reference = session?.client_reference_id || session?.id;

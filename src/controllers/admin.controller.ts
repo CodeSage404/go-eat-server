@@ -238,11 +238,14 @@ class AdminController {
     }
 
     const adminEmail = (process.env.ADMIN_EMAIL || 'admin@goeat.com').toLowerCase();
-    const adminPass = process.env.ADMIN_PASS || 'AdminPass123!';
+    const adminPass = process.env.ADMIN_PASS;
 
     let user: any;
 
     if (email.toLowerCase() === adminEmail) {
+      if (!adminPass) {
+        throw new AppError('Admin credentials not properly configured on server. Set ADMIN_PASS in environment.', 500);
+      }
       if (password !== adminPass) {
         throw new AppError('Incorrect email or password', 401);
       }
@@ -283,9 +286,9 @@ class AdminController {
       }
     }
 
-    // Sign JWT token
+    // Sign JWT token - default to 24h for security instead of 365d
     const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET as string, {
-      expiresIn: (process.env.JWT_EXPIRES_IN as any) || '365d',
+      expiresIn: (process.env.ADMIN_JWT_EXPIRES_IN as any) || '24h',
     });
 
     user.password = undefined;
@@ -336,47 +339,39 @@ class AdminController {
       throw new AppError('New password must be at least 8 characters long', 400);
     }
 
-    const adminPass = process.env.ADMIN_PASS || 'AdminPass123!';
+    const userId = req.user?._id;
+    if (!userId) {
+      throw new AppError('Authentication required', 401);
+    }
 
-    if (currentPassword !== adminPass) {
+    const user = await User.findById(userId).select('+password');
+    if (!user) {
+      throw new AppError('Admin user not found', 404);
+    }
+
+    // Verify current password against stored hash or env password if initial
+    let isMatch = await user.comparePassword(currentPassword);
+    if (!isMatch && process.env.ADMIN_PASS && currentPassword === process.env.ADMIN_PASS) {
+      isMatch = true;
+    }
+
+    if (!isMatch) {
       throw new AppError('Current password is incorrect', 401);
     }
 
-    // Update in-memory env variable
-    process.env.ADMIN_PASS = newPassword;
+    // Update database user password (mongoose pre-save hook will hash it)
+    user.password = newPassword;
+    await user.save();
 
-    // Update .env file on disk
-    try {
-      const envPath = path.join(__dirname, '../../.env');
-      if (fs.existsSync(envPath)) {
-        let envContent = fs.readFileSync(envPath, 'utf8');
-        
-        // Match ADMIN_PASS=...
-        const regex = /^ADMIN_PASS=.*$/m;
-        if (regex.test(envContent)) {
-          envContent = envContent.replace(regex, `ADMIN_PASS=${newPassword}`);
-        } else {
-          // If not found, append it
-          envContent += `\nADMIN_PASS=${newPassword}`;
-        }
-        
-        fs.writeFileSync(envPath, envContent, 'utf8');
-      }
-    } catch (err) {
-      console.error('Error updating .env file:', err);
-    }
-
-    // 3. Update database user password
+    // If this is the primary env admin user, update in-memory cache
     const adminEmail = (process.env.ADMIN_EMAIL || 'admin@goeat.com').toLowerCase();
-    const user = await User.findOne({ email: adminEmail });
-    if (user) {
-      user.password = newPassword;
-      await user.save();
+    if (user.email.toLowerCase() === adminEmail) {
+      process.env.ADMIN_PASS = newPassword;
     }
 
     res.status(200).json({
       status: 'success',
-      message: 'Admin password reset successfully',
+      message: 'Admin password updated successfully',
     });
   });
 

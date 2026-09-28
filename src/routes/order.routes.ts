@@ -1,10 +1,22 @@
 import { Router } from 'express';
+import rateLimit from 'express-rate-limit';
 import orderController from '../controllers/order.controller';
 import { protect, restrictTo } from '../middleware/auth.middleware';
 import { UserRole } from '../models/user.model';
 import { pinVerificationLimiter } from '../middleware/rateLimiter';
 
 const router = Router();
+
+const quoteFeeLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 30, // max 30 quotes per minute per IP
+  message: {
+    status: 'fail',
+    message: 'Too many delivery fee calculations requested from this IP, please try again in a moment.',
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
 
 // Public Order Fee & Quoting Routes
 /**
@@ -104,7 +116,7 @@ router.get('/fees', orderController.getPublicFees);
  *       400:
  *         description: Invalid coordinates or address outside delivery radius.
  */
-router.post('/quote-fee', orderController.quoteFees);
+router.post('/quote-fee', quoteFeeLimiter, orderController.quoteFees);
 
 router.use(protect);
 

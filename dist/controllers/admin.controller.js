@@ -37,8 +37,6 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
-const fs_1 = __importDefault(require("fs"));
-const path_1 = __importDefault(require("path"));
 const crypto_1 = __importDefault(require("crypto"));
 const mongoose_1 = __importDefault(require("mongoose"));
 const user_model_1 = __importStar(require("../models/user.model"));
@@ -216,9 +214,12 @@ class AdminController {
                 throw new appError_1.default('Please provide email and password', 400);
             }
             const adminEmail = (process.env.ADMIN_EMAIL || 'admin@goeat.com').toLowerCase();
-            const adminPass = process.env.ADMIN_PASS || 'AdminPass123!';
+            const adminPass = process.env.ADMIN_PASS;
             let user;
             if (email.toLowerCase() === adminEmail) {
+                if (!adminPass) {
+                    throw new appError_1.default('Admin credentials not properly configured on server. Set ADMIN_PASS in environment.', 500);
+                }
                 if (password !== adminPass) {
                     throw new appError_1.default('Incorrect email or password', 401);
                 }
@@ -256,9 +257,9 @@ class AdminController {
                     throw new appError_1.default('Your account has been suspended. Please contact support.', 403);
                 }
             }
-            // Sign JWT token
+            // Sign JWT token - default to 24h for security instead of 365d
             const token = jsonwebtoken_1.default.sign({ id: user._id }, process.env.JWT_SECRET, {
-                expiresIn: process.env.JWT_EXPIRES_IN || '365d',
+                expiresIn: process.env.ADMIN_JWT_EXPIRES_IN || '24h',
             });
             user.password = undefined;
             // Resolve permissions for the login response
@@ -303,42 +304,33 @@ class AdminController {
             if (newPassword.length < 8) {
                 throw new appError_1.default('New password must be at least 8 characters long', 400);
             }
-            const adminPass = process.env.ADMIN_PASS || 'AdminPass123!';
-            if (currentPassword !== adminPass) {
+            const userId = req.user?._id;
+            if (!userId) {
+                throw new appError_1.default('Authentication required', 401);
+            }
+            const user = await user_model_1.default.findById(userId).select('+password');
+            if (!user) {
+                throw new appError_1.default('Admin user not found', 404);
+            }
+            // Verify current password against stored hash or env password if initial
+            let isMatch = await user.comparePassword(currentPassword);
+            if (!isMatch && process.env.ADMIN_PASS && currentPassword === process.env.ADMIN_PASS) {
+                isMatch = true;
+            }
+            if (!isMatch) {
                 throw new appError_1.default('Current password is incorrect', 401);
             }
-            // Update in-memory env variable
-            process.env.ADMIN_PASS = newPassword;
-            // Update .env file on disk
-            try {
-                const envPath = path_1.default.join(__dirname, '../../.env');
-                if (fs_1.default.existsSync(envPath)) {
-                    let envContent = fs_1.default.readFileSync(envPath, 'utf8');
-                    // Match ADMIN_PASS=...
-                    const regex = /^ADMIN_PASS=.*$/m;
-                    if (regex.test(envContent)) {
-                        envContent = envContent.replace(regex, `ADMIN_PASS=${newPassword}`);
-                    }
-                    else {
-                        // If not found, append it
-                        envContent += `\nADMIN_PASS=${newPassword}`;
-                    }
-                    fs_1.default.writeFileSync(envPath, envContent, 'utf8');
-                }
-            }
-            catch (err) {
-                console.error('Error updating .env file:', err);
-            }
-            // 3. Update database user password
+            // Update database user password (mongoose pre-save hook will hash it)
+            user.password = newPassword;
+            await user.save();
+            // If this is the primary env admin user, update in-memory cache
             const adminEmail = (process.env.ADMIN_EMAIL || 'admin@goeat.com').toLowerCase();
-            const user = await user_model_1.default.findOne({ email: adminEmail });
-            if (user) {
-                user.password = newPassword;
-                await user.save();
+            if (user.email.toLowerCase() === adminEmail) {
+                process.env.ADMIN_PASS = newPassword;
             }
             res.status(200).json({
                 status: 'success',
-                message: 'Admin password reset successfully',
+                message: 'Admin password updated successfully',
             });
         });
         /**
