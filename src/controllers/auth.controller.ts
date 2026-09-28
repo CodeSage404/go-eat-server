@@ -3,6 +3,7 @@ import { catchAsync } from '../utils/catchAsync';
 import AppError from '../utils/appError';
 import authService from '../services/auth.service';
 import User, { UserRole, UserStatus } from '../models/user.model';
+import RiderOnboarding from '../models/riderOnboarding.model';
 import otpUtil from '../utils/otp.util';
 import emailUtil from '../services/email.service';
 import logger from '../utils/logger';
@@ -136,6 +137,7 @@ class AuthController {
 
     const cleanData = await authService.validateUniqueness({
       ...req.body,
+      hasSkippedRiderOnboarding: Boolean(req.body.hasSkippedRiderOnboarding),
       role: UserRole.RIDER,
       status: UserStatus.PENDING,
       referredBy,
@@ -258,6 +260,67 @@ class AuthController {
         const local = phoneNumber.startsWith('+234') ? '0' + phoneNumber.slice(4) : phoneNumber;
         await otpUtil.deletePendingUser(local);
       }
+
+      // 🚲 Automatically provision and sync RiderOnboarding profile for new couriers
+      if (user.role === UserRole.RIDER) {
+        const rawVehicleType = pendingUserData.vehicleType || user.vehicleType || 'motorcycle';
+        const deliveryMethod = rawVehicleType === 'motorbike' ? 'motorcycle' : rawVehicleType;
+        const docs = pendingUserData.documents || {};
+        const hasDocuments = Boolean(
+          docs.riderPhoto ||
+          docs.selfieVerification ||
+          docs.license ||
+          docs.vehiclePhoto ||
+          docs.proofOfAddress
+        );
+        const hasSkipped = Boolean(pendingUserData.hasSkippedRiderOnboarding);
+        const initialStatus = hasDocuments && !hasSkipped ? 'under_review' : 'pending';
+
+        await RiderOnboarding.findOneAndUpdate(
+          { user: user._id },
+          {
+            $set: {
+              fullName: user.name || pendingUserData.name || '',
+              phoneNumber: user.phoneNumber || pendingUserData.phoneNumber || '',
+              emailAddress: user.email || pendingUserData.email || '',
+              country: user.country || 'Nigeria',
+              countryCode: user.countryCode || (user.isNigeria ? 'NG' : 'GB'),
+              deliveryMethod,
+              vehicle: {
+                vehicleType: deliveryMethod,
+                registrationNumber: pendingUserData.vehicleNumber || user.vehicleNumber || '',
+                vehiclePhotoUrl: docs.vehiclePhoto || undefined,
+              },
+              documents: {
+                riderPhoto: docs.riderPhoto || docs.selfieVerification || user.profileImage,
+                selfieVerification: docs.selfieVerification || docs.riderPhoto || user.profileImage,
+                driverLicense: docs.license || docs.driverLicense,
+                proofOfAddress: docs.proofOfAddress,
+                vehiclePhoto: docs.vehiclePhoto,
+                vehicleRegistration: docs.vehicleRegistration || docs.vehiclePapers,
+              },
+              status: initialStatus,
+            },
+            $setOnInsert: {
+              user: user._id,
+              currentStep: 1,
+            },
+          },
+          { upsert: true, returnDocument: 'after' }
+        );
+
+        const updatedUser = await User.findByIdAndUpdate(
+          user._id,
+          {
+            riderVerificationStatus: initialStatus,
+            hasSkippedRiderOnboarding: hasSkipped,
+          },
+          { returnDocument: 'after' }
+        );
+        if (updatedUser) {
+          user = updatedUser;
+        }
+      }
     } else {
       // Update existing DB user if already present
       const query = email
@@ -279,10 +342,37 @@ class AuthController {
         throw new AppError('User registration not found. Please sign up again.', 404);
       }
       token = authService.signToken(user._id as unknown as string);
+
+      // Ensure existing verified rider has a linked RiderOnboarding document
+      if (user.role === UserRole.RIDER) {
+        const existingOnboarding = await RiderOnboarding.findOne({ user: user._id });
+        if (!existingOnboarding) {
+          const rawMethod = user.vehicleType || 'motorcycle';
+          const deliveryMethod = (rawMethod === 'motorbike' ? 'motorcycle' : rawMethod) as any;
+          await RiderOnboarding.create({
+            user: user._id,
+            fullName: user.name || 'Courier',
+            phoneNumber: user.phoneNumber || '',
+            emailAddress: user.email || '',
+            country: user.country || 'Nigeria',
+            countryCode: user.countryCode || (user.isNigeria ? 'NG' : 'GB'),
+            deliveryMethod,
+            vehicle: {
+              vehicleType: deliveryMethod,
+              registrationNumber: user.vehicleNumber || '',
+            },
+            documents: {
+              riderPhoto: user.profileImage,
+              selfieVerification: user.profileImage,
+            },
+            status: (user.riderVerificationStatus as any) || 'pending',
+          });
+        }
+      }
     }
 
     // Send welcome email if user has an email address
-    if (user.email) {
+    if (user && user.email) {
       try {
         await emailUtil.sendTemplateEmail(
           user.email,

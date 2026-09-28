@@ -135,12 +135,20 @@ const userSchema = new mongoose_1.Schema({
     },
     riderVerificationStatus: {
         type: String,
-        enum: ['unsubmitted', 'under_review', 'action_required', 'approved', 'rejected'],
-        default: 'unsubmitted',
+        enum: ['pending', 'unsubmitted', 'under_review', 'action_required', 'approved', 'rejected', 'suspended'],
+        default: 'pending',
     },
     hasSkippedRiderOnboarding: {
         type: Boolean,
         default: false,
+    },
+    vehicleType: {
+        type: String,
+        trim: true,
+    },
+    vehicleNumber: {
+        type: String,
+        trim: true,
     },
     location: {
         type: {

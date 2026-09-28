@@ -40,6 +40,7 @@ const catchAsync_1 = require("../utils/catchAsync");
 const appError_1 = __importDefault(require("../utils/appError"));
 const auth_service_1 = __importDefault(require("../services/auth.service"));
 const user_model_1 = __importStar(require("../models/user.model"));
+const riderOnboarding_model_1 = __importDefault(require("../models/riderOnboarding.model"));
 const otp_util_1 = __importDefault(require("../utils/otp.util"));
 const email_service_1 = __importDefault(require("../services/email.service"));
 const logger_1 = __importDefault(require("../utils/logger"));
@@ -101,6 +102,7 @@ class AuthController {
             }
             const cleanData = await auth_service_1.default.validateUniqueness({
                 ...req.body,
+                hasSkippedRiderOnboarding: Boolean(req.body.hasSkippedRiderOnboarding),
                 role: user_model_1.UserRole.RIDER,
                 status: user_model_1.UserStatus.PENDING,
                 referredBy,
@@ -206,6 +208,54 @@ class AuthController {
                     const local = phoneNumber.startsWith('+234') ? '0' + phoneNumber.slice(4) : phoneNumber;
                     await otp_util_1.default.deletePendingUser(local);
                 }
+                // 🚲 Automatically provision and sync RiderOnboarding profile for new couriers
+                if (user.role === user_model_1.UserRole.RIDER) {
+                    const rawVehicleType = pendingUserData.vehicleType || user.vehicleType || 'motorcycle';
+                    const deliveryMethod = rawVehicleType === 'motorbike' ? 'motorcycle' : rawVehicleType;
+                    const docs = pendingUserData.documents || {};
+                    const hasDocuments = Boolean(docs.riderPhoto ||
+                        docs.selfieVerification ||
+                        docs.license ||
+                        docs.vehiclePhoto ||
+                        docs.proofOfAddress);
+                    const hasSkipped = Boolean(pendingUserData.hasSkippedRiderOnboarding);
+                    const initialStatus = hasDocuments && !hasSkipped ? 'under_review' : 'pending';
+                    await riderOnboarding_model_1.default.findOneAndUpdate({ user: user._id }, {
+                        $set: {
+                            fullName: user.name || pendingUserData.name || '',
+                            phoneNumber: user.phoneNumber || pendingUserData.phoneNumber || '',
+                            emailAddress: user.email || pendingUserData.email || '',
+                            country: user.country || 'Nigeria',
+                            countryCode: user.countryCode || (user.isNigeria ? 'NG' : 'GB'),
+                            deliveryMethod,
+                            vehicle: {
+                                vehicleType: deliveryMethod,
+                                registrationNumber: pendingUserData.vehicleNumber || user.vehicleNumber || '',
+                                vehiclePhotoUrl: docs.vehiclePhoto || undefined,
+                            },
+                            documents: {
+                                riderPhoto: docs.riderPhoto || docs.selfieVerification || user.profileImage,
+                                selfieVerification: docs.selfieVerification || docs.riderPhoto || user.profileImage,
+                                driverLicense: docs.license || docs.driverLicense,
+                                proofOfAddress: docs.proofOfAddress,
+                                vehiclePhoto: docs.vehiclePhoto,
+                                vehicleRegistration: docs.vehicleRegistration || docs.vehiclePapers,
+                            },
+                            status: initialStatus,
+                        },
+                        $setOnInsert: {
+                            user: user._id,
+                            currentStep: 1,
+                        },
+                    }, { upsert: true, returnDocument: 'after' });
+                    const updatedUser = await user_model_1.default.findByIdAndUpdate(user._id, {
+                        riderVerificationStatus: initialStatus,
+                        hasSkippedRiderOnboarding: hasSkipped,
+                    }, { returnDocument: 'after' });
+                    if (updatedUser) {
+                        user = updatedUser;
+                    }
+                }
             }
             else {
                 // Update existing DB user if already present
@@ -223,9 +273,35 @@ class AuthController {
                     throw new appError_1.default('User registration not found. Please sign up again.', 404);
                 }
                 token = auth_service_1.default.signToken(user._id);
+                // Ensure existing verified rider has a linked RiderOnboarding document
+                if (user.role === user_model_1.UserRole.RIDER) {
+                    const existingOnboarding = await riderOnboarding_model_1.default.findOne({ user: user._id });
+                    if (!existingOnboarding) {
+                        const rawMethod = user.vehicleType || 'motorcycle';
+                        const deliveryMethod = (rawMethod === 'motorbike' ? 'motorcycle' : rawMethod);
+                        await riderOnboarding_model_1.default.create({
+                            user: user._id,
+                            fullName: user.name || 'Courier',
+                            phoneNumber: user.phoneNumber || '',
+                            emailAddress: user.email || '',
+                            country: user.country || 'Nigeria',
+                            countryCode: user.countryCode || (user.isNigeria ? 'NG' : 'GB'),
+                            deliveryMethod,
+                            vehicle: {
+                                vehicleType: deliveryMethod,
+                                registrationNumber: user.vehicleNumber || '',
+                            },
+                            documents: {
+                                riderPhoto: user.profileImage,
+                                selfieVerification: user.profileImage,
+                            },
+                            status: user.riderVerificationStatus || 'pending',
+                        });
+                    }
+                }
             }
             // Send welcome email if user has an email address
-            if (user.email) {
+            if (user && user.email) {
                 try {
                     await email_service_1.default.sendTemplateEmail(user.email, 'WELCOME_USER', 'Welcome to Go-Eat!', { name: user.name || 'User' });
                 }

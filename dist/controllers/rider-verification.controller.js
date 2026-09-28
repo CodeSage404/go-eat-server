@@ -231,6 +231,46 @@ class RiderVerificationController {
          */
         this.adminListRiderVerifications = (0, catchAsync_1.catchAsync)(async (req, res) => {
             const { status, deliveryMethod, countryCode, search, page = 1, limit = 20 } = req.query;
+            // 🛡️ Auto-sync check: Ensure any registered couriers in Users have a corresponding RiderOnboarding profile
+            try {
+                const allRiders = await user_model_1.default.find({ role: user_model_1.UserRole.RIDER }).lean();
+                if (allRiders.length > 0) {
+                    const riderIds = allRiders.map((r) => r._id);
+                    const existingOnboardings = await riderOnboarding_model_1.default.find({ user: { $in: riderIds } }).select('user').lean();
+                    const existingUserIds = new Set(existingOnboardings.map((o) => o.user.toString()));
+                    const missingRiders = allRiders.filter((r) => !existingUserIds.has(r._id.toString()));
+                    if (missingRiders.length > 0) {
+                        const docsToInsert = missingRiders.map((r) => {
+                            const rawType = r.vehicleType || 'motorcycle';
+                            const method = rawType === 'motorbike' ? 'motorcycle' : rawType;
+                            return {
+                                user: r._id,
+                                fullName: r.name || 'Courier',
+                                phoneNumber: r.phoneNumber || '',
+                                emailAddress: r.email || '',
+                                country: r.country || 'Nigeria',
+                                countryCode: r.countryCode || (r.isNigeria ? 'NG' : 'GB'),
+                                deliveryMethod: method,
+                                vehicle: {
+                                    vehicleType: method,
+                                    registrationNumber: r.vehicleNumber || '',
+                                },
+                                documents: {
+                                    riderPhoto: r.profileImage,
+                                    selfieVerification: r.profileImage,
+                                },
+                                status: r.riderVerificationStatus || 'pending',
+                                currentStep: 1,
+                            };
+                        });
+                        await riderOnboarding_model_1.default.insertMany(docsToInsert);
+                        logger_1.default.info(`🔄 Auto-backfilled ${docsToInsert.length} missing RiderOnboarding records for existing couriers.`);
+                    }
+                }
+            }
+            catch (syncErr) {
+                logger_1.default.error('Failed to auto-sync missing RiderOnboarding profiles:', syncErr.message);
+            }
             const query = {};
             if (status && status !== 'all') {
                 if (status === 'pending') {

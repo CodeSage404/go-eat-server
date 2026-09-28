@@ -242,6 +242,47 @@ class RiderVerificationController {
   public adminListRiderVerifications = catchAsync(async (req: Request, res: Response) => {
     const { status, deliveryMethod, countryCode, search, page = 1, limit = 20 } = req.query as any;
 
+    // 🛡️ Auto-sync check: Ensure any registered couriers in Users have a corresponding RiderOnboarding profile
+    try {
+      const allRiders = await User.find({ role: UserRole.RIDER }).lean();
+      if (allRiders.length > 0) {
+        const riderIds = allRiders.map((r) => r._id);
+        const existingOnboardings = await RiderOnboarding.find({ user: { $in: riderIds } }).select('user').lean();
+        const existingUserIds = new Set(existingOnboardings.map((o) => o.user.toString()));
+
+        const missingRiders = allRiders.filter((r) => !existingUserIds.has(r._id.toString()));
+        if (missingRiders.length > 0) {
+          const docsToInsert = missingRiders.map((r: any) => {
+            const rawType = r.vehicleType || 'motorcycle';
+            const method = rawType === 'motorbike' ? 'motorcycle' : rawType;
+            return {
+              user: r._id,
+              fullName: r.name || 'Courier',
+              phoneNumber: r.phoneNumber || '',
+              emailAddress: r.email || '',
+              country: r.country || 'Nigeria',
+              countryCode: r.countryCode || (r.isNigeria ? 'NG' : 'GB'),
+              deliveryMethod: method,
+              vehicle: {
+                vehicleType: method,
+                registrationNumber: r.vehicleNumber || '',
+              },
+              documents: {
+                riderPhoto: r.profileImage,
+                selfieVerification: r.profileImage,
+              },
+              status: r.riderVerificationStatus || 'pending',
+              currentStep: 1,
+            };
+          });
+          await RiderOnboarding.insertMany(docsToInsert);
+          logger.info(`🔄 Auto-backfilled ${docsToInsert.length} missing RiderOnboarding records for existing couriers.`);
+        }
+      }
+    } catch (syncErr: any) {
+      logger.error('Failed to auto-sync missing RiderOnboarding profiles:', syncErr.message);
+    }
+
     const query: any = {};
 
     if (status && status !== 'all') {
