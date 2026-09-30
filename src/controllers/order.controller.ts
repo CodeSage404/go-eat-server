@@ -173,12 +173,28 @@ class OrderController {
     });
   });
 
-  public getAvailableJobs = catchAsync(async (_req: any, res: Response) => {
-    const orders = await orderService.getAvailableDeliveryJobs();
+  public getAvailableJobs = catchAsync(async (req: any, res: Response) => {
+    const lat = req.query.lat ? parseFloat(req.query.lat as string) : undefined;
+    const lng = req.query.lng ? parseFloat(req.query.lng as string) : undefined;
+    const riderId = req.user?._id?.toString();
+
+    const orders = await orderService.getAvailableDeliveryJobs(lat, lng, riderId, req.user);
     res.status(200).json({
       status: 'success',
       results: orders.length,
       data: { orders },
+    });
+  });
+
+  public declineDelivery = catchAsync(async (req: any, res: Response) => {
+    const { id } = req.params;
+    const riderId = req.user._id;
+
+    await orderService.declineDeliveryJob(id as string, riderId);
+
+    res.status(200).json({
+      status: 'success',
+      message: 'Job declined successfully',
     });
   });
 

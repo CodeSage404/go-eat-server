@@ -116,6 +116,7 @@ export interface IOrder extends Document {
     refundStatus: 'pending' | 'approved' | 'rejected' | 'processed';
     createdAt?: Date;
   }>;
+  declinedRiders?: mongoose.Types.ObjectId[];
   createdAt: Date;
   updatedAt: Date;
 }
@@ -325,6 +326,7 @@ const orderSchema = new Schema<IOrder>(
         createdAt: { type: Date, default: Date.now },
       },
     ],
+    declinedRiders: [{ type: Schema.Types.ObjectId, ref: 'User' }],
   },
   {
     timestamps: true,

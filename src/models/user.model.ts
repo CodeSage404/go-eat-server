@@ -141,7 +141,12 @@ const userSchema = new Schema<IUser>(
     },
     password: {
       type: String,
-      required: [true, 'Please provide a password'],
+      required: [
+        function (this: any) {
+          return !this.googleId && !this.appleId;
+        },
+        'Please provide a password',
+      ],
       minlength: 8,
       select: false, // Don't return password by default
     },

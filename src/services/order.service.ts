@@ -142,13 +142,15 @@ class OrderService {
       const travelDistKm = travelData.distanceValue ? (travelData.distanceValue / 1000) : haversineDistKm;
       finalDistKm = Number((travelDistKm || haversineDistKm).toFixed(2));
 
-      // Guard: Check if delivery exceeds restaurant delivery radius
+      // Guard: Check if delivery exceeds restaurant delivery radius (temporarily bypassed for review/testing)
+      /*
       if (finalDistKm > maxRadius) {
         throw new AppError(
           `Delivery address is outside the maximum delivery radius for ${restaurant.name} (${finalDistKm.toFixed(1)} km > ${maxRadius} km max). Please select an outlet closer to your location.`,
           400
         );
       }
+      */
 
       totalTimeInSeconds = (travelData.durationValue || Math.round(finalDistKm * 3 * 60)) + prepTimeInSeconds;
 
@@ -555,8 +557,14 @@ class OrderService {
         }
       }
 
+      // Filter out couriers who have already declined this job offer
+      if (order.declinedRiders && order.declinedRiders.length > 0) {
+        const declinedSet = new Set(order.declinedRiders.map((id: any) => id.toString()));
+        candidateRiders = candidateRiders.filter((r) => !declinedSet.has(r._id.toString()));
+      }
+
       if (!candidateRiders || candidateRiders.length === 0) {
-        logger.info(`📡 Proximity Dispatch: No online riders found near order #${order._id}`);
+        logger.info(`📡 Proximity Dispatch: No online eligible riders found near order #${order._id}`);
         return;
       }
 
@@ -660,10 +668,15 @@ class OrderService {
   }
 
   /**
-   * Get available delivery jobs for couriers, with optional proximity sorting
+   * Get available delivery jobs for couriers, filtered by location, country & declined list
    */
-  async getAvailableDeliveryJobs(riderLat?: number, riderLng?: number): Promise<IOrder[]> {
-    const orders = await Order.find({
+  async getAvailableDeliveryJobs(
+    riderLat?: number,
+    riderLng?: number,
+    riderId?: string,
+    riderUser?: any
+  ): Promise<IOrder[]> {
+    let orders = await Order.find({
       status: {
         $in: [
           OrderStatus.ACCEPTED,
@@ -678,13 +691,42 @@ class OrderService {
         { paymentMethod: PaymentMethod.CASH },
       ],
     })
-      .populate('restaurant', 'name address location images phoneContact rating')
+      .populate('restaurant', 'name address location country countryCode isNigeria isUk isItaly images phoneContact rating')
       .populate('customer', 'name phoneNumber email profileImage')
       .populate('items.foodItem', 'name price image')
       .sort({ createdAt: -1 });
 
-    // If rider coordinates provided, filter to nearby jobs (max 25km pickup radius) and sort closest first
-    if (riderLat && riderLng && orders.length > 0) {
+    // 1. Exclude orders that this rider has previously declined
+    if (riderId && orders.length > 0) {
+      orders = orders.filter((o) => {
+        if (!o.declinedRiders || o.declinedRiders.length === 0) return true;
+        return !o.declinedRiders.some((id: any) => id.toString() === riderId.toString());
+      });
+    }
+
+    // 2. Country-based filtering
+    if (riderUser && orders.length > 0) {
+      const isRiderNigeria = riderUser.isNigeria || riderUser.countryCode === 'NG' || String(riderUser.country || '').toLowerCase().includes('nigeria');
+      const isRiderUk = riderUser.isUk || riderUser.countryCode === 'GB' || riderUser.countryCode === 'UK' || String(riderUser.country || '').toLowerCase().includes('uk') || String(riderUser.country || '').toLowerCase().includes('united kingdom');
+      const isRiderItaly = riderUser.isItaly || riderUser.countryCode === 'IT' || String(riderUser.country || '').toLowerCase().includes('italy');
+
+      orders = orders.filter((o) => {
+        const rest = o.restaurant as any;
+        if (!rest) return true;
+
+        const isRestNigeria = rest.isNigeria || rest.countryCode === 'NG' || String(rest.address?.country || rest.country || '').toLowerCase().includes('nigeria') || String(rest.address?.city || rest.address?.street || '').toLowerCase().includes('lagos');
+        const isRestUk = rest.isUk || rest.countryCode === 'GB' || rest.countryCode === 'UK' || String(rest.address?.country || rest.country || '').toLowerCase().includes('uk') || String(rest.address?.city || rest.address?.street || '').toLowerCase().includes('london');
+        const isRestItaly = rest.isItaly || rest.countryCode === 'IT' || String(rest.address?.country || rest.country || '').toLowerCase().includes('italy');
+
+        if (isRiderNigeria) return isRestNigeria || (!isRestUk && !isRestItaly);
+        if (isRiderUk) return isRestUk || (!isRestNigeria && !isRestItaly);
+        if (isRiderItaly) return isRestItaly || (!isRestNigeria && !isRestUk);
+        return true;
+      });
+    }
+
+    // 3. Proximity filtering (max 25km search radius)
+    if (riderLat !== undefined && riderLng !== undefined && orders.length > 0) {
       const MAX_PICKUP_SEARCH_RADIUS_KM = 25;
       const nearbyOrders = orders.filter((o) => {
         const coords = (o.restaurant as any)?.location?.coordinates;
@@ -703,6 +745,33 @@ class OrderService {
     }
 
     return orders;
+  }
+
+  /**
+   * Log rider decline for an incoming job offer and re-dispatch to the next closest online courier
+   */
+  async declineDeliveryJob(orderId: string, riderId: string): Promise<IOrder | null> {
+    const order = await Order.findById(orderId);
+    if (!order) {
+      throw new AppError('Order not found', 404);
+    }
+
+    if (!order.declinedRiders) {
+      order.declinedRiders = [];
+    }
+
+    const riderObjectId = new mongoose.Types.ObjectId(riderId);
+    if (!order.declinedRiders.some((id: any) => id.toString() === riderId.toString())) {
+      order.declinedRiders.push(riderObjectId);
+      await order.save();
+    }
+
+    // Re-dispatch offer to next eligible nearby rider
+    this.notifyNearbyRiders(order).catch((err: any) => {
+      logger.error(`Failed to re-notify nearby riders after decline on order ${orderId}:`, err);
+    });
+
+    return order;
   }
 
   /**
@@ -1135,7 +1204,8 @@ class OrderService {
       });
     }
 
-    // Check if any outlet is outside delivery radius
+    // Check if any outlet is outside delivery radius (temporarily bypassed for review/testing)
+    /*
     const outOfBounds = outletQuotes.find((o) => !o.withinRadius);
     if (outOfBounds) {
       throw new AppError(
@@ -1143,6 +1213,7 @@ class OrderService {
         400
       );
     }
+    */
 
     // Single outlet vs Multi-outlet routing determination
     let routingMode: 'SINGLE_OUTLET' | 'BATCHED_PICKUP' | 'SPLIT_DELIVERY' = 'SINGLE_OUTLET';

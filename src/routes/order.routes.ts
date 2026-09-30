@@ -454,6 +454,44 @@ router.patch('/:id/accept', restrictTo(UserRole.RIDER), orderController.acceptDe
 
 /**
  * @openapi
+ * /api/v1/orders/{id}/decline:
+ *   patch:
+ *     tags:
+ *       - Orders
+ *     summary: Decline an incoming delivery job offer (Rider only)
+ *     description: Log courier decline for a job offer, update declinedRiders history, and automatically re-dispatch the job offer to the next closest available online courier.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         description: The unique MongoDB ID of the order being declined
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Job offer declined and re-routed successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: success
+ *                 message:
+ *                   type: string
+ *                   example: Job declined successfully
+ *       401:
+ *         description: Unauthorized, missing or invalid token
+ *       404:
+ *         description: Order not found
+ */
+router.patch('/:id/decline', restrictTo(UserRole.RIDER), orderController.declineDelivery);
+
+/**
+ * @openapi
  * /api/v1/orders/{id}/reorder:
  *   post:
  *     tags:

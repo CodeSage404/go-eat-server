@@ -1,4 +1,5 @@
 import jwt, { SignOptions } from 'jsonwebtoken';
+import crypto from 'crypto';
 import User, { IUser, UserRole, UserStatus } from '../models/user.model';
 import AppError from '../utils/appError';
 import logger from '../utils/logger';
@@ -297,12 +298,18 @@ class AuthService {
       }
     } else {
       const applePayload = await appleService.verifyIdToken(token);
-      email = applePayload.email!;
+      email = (applePayload.email || '').toLowerCase().trim();
       socialId = applePayload.sub;
       name = providedName?.trim() || (email ? email.split('@')[0] : 'Apple User');
     }
 
-    let user = await User.findOne({ email });
+    // Try finding by socialId (googleId or appleId) first, or by email
+    const searchConditions: any[] = [];
+    if (type === 'google' && socialId) searchConditions.push({ googleId: socialId });
+    if (type === 'apple' && socialId) searchConditions.push({ appleId: socialId });
+    if (email) searchConditions.push({ email });
+
+    let user = searchConditions.length > 0 ? await User.findOne({ $or: searchConditions }) : null;
 
     if (user) {
       // 🔒 Role Enforcement on Social Login
@@ -327,10 +334,18 @@ class AuthService {
       user.lastActiveAt = new Date();
       await user.save();
     } else {
+      if (!email && type === 'apple') {
+        email = `${socialId}@privaterelay.appleid.com`;
+      }
+
+      // Generate a secure random password for social accounts
+      const randomPassword = crypto.randomBytes(24).toString('hex') + 'A1!';
+
       user = await User.create({
         email,
         name,
         role,
+        password: randomPassword,
         googleId: type === 'google' ? socialId : undefined,
         appleId: type === 'apple' ? socialId : undefined,
         isVerified: true,
