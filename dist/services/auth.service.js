@@ -259,6 +259,7 @@ class AuthService {
         let email;
         let socialId;
         let name;
+        let picture = undefined;
         if (type === 'google') {
             let payload = null;
             try {
@@ -299,6 +300,7 @@ class AuthService {
                 email = (payload.email || '').toLowerCase().trim();
                 socialId = payload.sub || payload.id;
                 name = payload.name || providedName || (email ? email.split('@')[0] : 'Google User');
+                picture = payload.picture || payload.avatar_url || payload.photoUrl;
             }
             else {
                 throw new appError_1.default('Invalid or expired Google authentication token', 400);
@@ -335,6 +337,9 @@ class AuthService {
                 user.googleId = socialId;
             if (type === 'apple' && !user.appleId)
                 user.appleId = socialId;
+            if (picture && (!user.profileImage || user.profileImage === 'default-profile.png')) {
+                user.profileImage = picture;
+            }
             user.lastLoginAt = new Date();
             user.lastActiveAt = new Date();
             await user.save();
@@ -352,6 +357,7 @@ class AuthService {
                 password: randomPassword,
                 googleId: type === 'google' ? socialId : undefined,
                 appleId: type === 'apple' ? socialId : undefined,
+                profileImage: picture || 'default-profile.png',
                 isVerified: true,
                 lastLoginAt: new Date(),
                 lastActiveAt: new Date(),

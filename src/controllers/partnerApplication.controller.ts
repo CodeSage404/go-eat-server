@@ -21,12 +21,43 @@ export const applyForPartnership = catchAsync(async (req: Request, res: Response
     city,
   } = req.body;
 
+  const files = req.files as { [fieldname: string]: Express.Multer.File[] } | undefined;
+  let ninUrl = req.body.ninUrl || req.body['ninUrl'] || '';
+  let foodHygieneUrl = req.body.foodHygieneUrl || req.body['foodHygieneUrl'] || '';
+  let cacUrl = req.body.cacUrl || req.body['cacUrl'] || '';
+
+  if (files) {
+    if (files['nin'] && files['nin'][0]) {
+      ninUrl = files['nin'][0].path;
+    }
+    if (files['foodHygiene'] && files['foodHygiene'][0]) {
+      foodHygieneUrl = files['foodHygiene'][0].path;
+    }
+    if (files['cac'] && files['cac'][0]) {
+      cacUrl = files['cac'][0].path;
+    }
+  }
+
   const resolvedOwnerName =
     ownerName || `${firstName || ''} ${lastName || ''}`.trim() || 'Valued Partner';
 
   if (!businessName || !businessAddress || !email || !phoneNumber) {
     throw new AppError(
       'Business name, business address, email, and phone number are required',
+      400
+    );
+  }
+
+  // Verification requirements: NIN and Food Hygiene are mandatory, CAC is optional
+  if (!ninUrl) {
+    throw new AppError(
+      'National Identification Number (NIN) document is required for verification',
+      400
+    );
+  }
+  if (!foodHygieneUrl) {
+    throw new AppError(
+      'Food Hygiene Certificate is required for verification',
       400
     );
   }
@@ -44,6 +75,14 @@ export const applyForPartnership = catchAsync(async (req: Request, res: Response
     email: email.toLowerCase().trim(),
     phoneNumber: phoneNumber.trim(),
     city: city ? city.trim() : '',
+    documents: {
+      ninUrl,
+      foodHygieneUrl,
+      cacUrl,
+    },
+    ninUrl,
+    foodHygieneUrl,
+    cacUrl,
     status: 'pending',
   });
 

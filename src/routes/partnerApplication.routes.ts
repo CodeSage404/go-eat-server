@@ -7,6 +7,7 @@ import {
 } from '../controllers/partnerApplication.controller';
 import { protect, restrictTo } from '../middleware/auth.middleware';
 import { UserRole } from '../models/user.model';
+import { upload } from '../utils/upload';
 
 const router = Router();
 
@@ -17,10 +18,60 @@ const router = Router();
  *     tags:
  *       - Partners
  *     summary: Submit a partner onboarding application
- *     description: Allows restaurants, grocers, and food businesses to apply to partner with GoEat. Creates a pending application and sends an acknowledgement email.
+ *     description: Allows restaurants, grocers, and food businesses to apply to partner with GoEat. Supports document uploads (NIN, Food Hygiene certificate, and optional CAC certificate). Creates a pending application and sends an acknowledgement email.
  *     requestBody:
  *       required: true
  *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - businessName
+ *               - businessAddress
+ *               - email
+ *               - phoneNumber
+ *             properties:
+ *               businessName:
+ *                 type: string
+ *                 example: The Artisan Burger
+ *               businessAddress:
+ *                 type: string
+ *                 example: 14 Broad Street, Lagos
+ *               businessType:
+ *                 type: string
+ *                 enum: [restaurant, grocery, convenience, bakery, cafe, other]
+ *                 example: restaurant
+ *               ownerName:
+ *                 type: string
+ *                 example: Alexander Davis
+ *               firstName:
+ *                 type: string
+ *                 example: Alexander
+ *               lastName:
+ *                 type: string
+ *                 example: Davis
+ *               email:
+ *                 type: string
+ *                 format: email
+ *                 example: alexander@artisanburger.com
+ *               phoneNumber:
+ *                 type: string
+ *                 example: "+2348012345678"
+ *               city:
+ *                 type: string
+ *                 example: Lagos
+ *               nin:
+ *                 type: string
+ *                 format: binary
+ *                 description: Mandatory National Identification Number document or image
+ *               foodHygiene:
+ *                 type: string
+ *                 format: binary
+ *                 description: Mandatory Food Hygiene Certificate document or image
+ *               cac:
+ *                 type: string
+ *                 format: binary
+ *                 description: Optional Corporate Affairs Commission (CAC) certificate for registered entities
  *         application/json:
  *           schema:
  *             type: object
@@ -59,6 +110,15 @@ const router = Router();
  *               city:
  *                 type: string
  *                 example: Lagos
+ *               ninUrl:
+ *                 type: string
+ *                 example: https://res.cloudinary.com/demo/image/upload/nin.jpg
+ *               foodHygieneUrl:
+ *                 type: string
+ *                 example: https://res.cloudinary.com/demo/image/upload/food_hygiene.jpg
+ *               cacUrl:
+ *                 type: string
+ *                 example: https://res.cloudinary.com/demo/image/upload/cac.jpg
  *     responses:
  *       201:
  *         description: Application submitted successfully
@@ -82,7 +142,15 @@ const router = Router();
  *       500:
  *         description: Internal server error
  */
-router.post('/apply', applyForPartnership);
+router.post(
+  '/apply',
+  upload.fields([
+    { name: 'nin', maxCount: 1 },
+    { name: 'foodHygiene', maxCount: 1 },
+    { name: 'cac', maxCount: 1 },
+  ]),
+  applyForPartnership
+);
 
 /**
  * @openapi

@@ -2,6 +2,13 @@ import mongoose, { Schema, Document } from 'mongoose';
 
 export type PartnerApplicationStatus = 'pending' | 'under_review' | 'approved' | 'rejected';
 
+export interface IPartnerDocuments {
+  ninUrl?: string;
+  foodHygieneUrl?: string;
+  cacUrl?: string;
+  idNumber?: string;
+}
+
 export interface IPartnerApplication extends Document {
   businessName: string;
   businessAddress: string;
@@ -10,6 +17,10 @@ export interface IPartnerApplication extends Document {
   email: string;
   phoneNumber: string;
   city?: string;
+  documents?: IPartnerDocuments;
+  ninUrl?: string;
+  foodHygieneUrl?: string;
+  cacUrl?: string;
   status: PartnerApplicationStatus;
   adminNotes?: string;
   reviewedBy?: mongoose.Types.ObjectId;
@@ -58,6 +69,24 @@ const partnerApplicationSchema = new Schema<IPartnerApplication>(
     city: {
       type: String,
       trim: true,
+      default: '',
+    },
+    documents: {
+      ninUrl: { type: String, default: '' },
+      foodHygieneUrl: { type: String, default: '' },
+      cacUrl: { type: String, default: '' },
+      idNumber: { type: String, default: '' },
+    },
+    ninUrl: {
+      type: String,
+      default: '',
+    },
+    foodHygieneUrl: {
+      type: String,
+      default: '',
+    },
+    cacUrl: {
+      type: String,
       default: '',
     },
     status: {

@@ -74,6 +74,24 @@ const partnerApplicationSchema = new mongoose_1.Schema({
         trim: true,
         default: '',
     },
+    documents: {
+        ninUrl: { type: String, default: '' },
+        foodHygieneUrl: { type: String, default: '' },
+        cacUrl: { type: String, default: '' },
+        idNumber: { type: String, default: '' },
+    },
+    ninUrl: {
+        type: String,
+        default: '',
+    },
+    foodHygieneUrl: {
+        type: String,
+        default: '',
+    },
+    cacUrl: {
+        type: String,
+        default: '',
+    },
     status: {
         type: String,
         enum: ['pending', 'under_review', 'approved', 'rejected'],

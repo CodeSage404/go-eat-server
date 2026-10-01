@@ -344,7 +344,7 @@ class AdminController {
             const randomHex = crypto_1.default.randomBytes(6).toString('hex').toUpperCase();
             const password = `GoEat#${randomHex}9!`;
             const oName = req.body.ownerName || req.body['Owner Name'] || req.body['ownerName'] || 'Manual Owner';
-            const phone = req.body.ownerPhone || req.body.phoneContact || req.body['Phone Contact'] || req.body['phoneContact'];
+            const phone = req.body.outletPhone || req.body.businessPhone || req.body.phoneNumber || req.body.ownerPhone || req.body.phoneContact || req.body['Phone Contact'] || req.body['phoneContact'];
             const description = req.body.description || `Welcome to ${name}`;
             if (!email || !name) {
                 throw new appError_1.default('Please provide all required fields (email/username and restaurant/business name)', 400);

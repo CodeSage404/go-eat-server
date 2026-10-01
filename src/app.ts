@@ -275,10 +275,53 @@ class App {
 
       // Handle Mongoose Validation Error
       if (err.name === 'ValidationError') {
-        const errors = Object.values(err.errors || {}).map((el: any) => el.message);
+        const fieldLabels: Record<string, string> = {
+          'emergencyContact.phone': 'emergency contact phone number',
+          'emergencyContact.name': 'emergency contact name',
+          'residentialAddress': 'residential address',
+          'phoneNumber': 'phone number',
+          'dob': 'date of birth',
+          'fullName': 'full name',
+          'emailAddress': 'email address',
+          'documents.guarantorInfo': 'guarantor information',
+          'ninVerification.nin': 'NIN number',
+          'vehicle.registrationNumber': 'vehicle registration plate',
+        };
+
+        const errorItems = Object.values(err.errors || {});
+        const missingFields: string[] = [];
+        const otherErrors: string[] = [];
+
+        for (const item of errorItems as any[]) {
+          const path = item.path || '';
+          const label = fieldLabels[path] || path.replace(/([A-Z])/g, ' $1').toLowerCase();
+
+          if (item.kind === 'required' || (item.message && item.message.includes('is required'))) {
+            missingFields.push(label);
+          } else if (item.name === 'CastError' || (item.message && item.message.includes('Cast to'))) {
+            otherErrors.push(`Invalid format for ${label}`);
+          } else if (item.message) {
+            const cleaned = item.message.replace(/Path `([^`]+)` is required\.?/g, (_: string, p: string) => {
+              return `Please provide ${fieldLabels[p] || p}`;
+            });
+            otherErrors.push(cleaned);
+          }
+        }
+
+        let cleanMessage = '';
+        if (missingFields.length > 0) {
+          cleanMessage = `Please provide the following required details: ${missingFields.join(', ')}.`;
+        }
+        if (otherErrors.length > 0) {
+          cleanMessage = cleanMessage ? `${cleanMessage} ${otherErrors.join('. ')}` : otherErrors.join('. ');
+        }
+        if (!cleanMessage) {
+          cleanMessage = 'Please complete all required fields with valid information.';
+        }
+
         return res.status(400).json({
           status: 'fail',
-          message: `Invalid input: ${errors.join('. ')}`
+          message: cleanMessage,
         });
       }
 

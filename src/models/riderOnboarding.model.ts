@@ -32,7 +32,7 @@ export interface IRiderOnboarding extends Document {
     status: 'pending' | 'verified' | 'failed';
     verifiedAt?: Date;
   };
-  deliveryMethod: 'bicycle' | 'ebike' | 'motorcycle' | 'car';
+  deliveryMethod: 'bicycle' | 'ebike' | 'motorcycle' | 'car' | 'fuel_car';
   documents: {
     ninDoc?: string;
     driverLicense?: string;
@@ -55,7 +55,7 @@ export interface IRiderOnboarding extends Document {
     roadworthinessDoc?: string;
   };
   vehicle: {
-    vehicleType: 'bicycle' | 'ebike' | 'motorcycle' | 'car';
+    vehicleType: 'bicycle' | 'ebike' | 'motorcycle' | 'car' | 'fuel_car';
     make?: string;
     model?: string;
     color?: string;
@@ -140,34 +140,37 @@ const riderOnboardingSchema = new Schema<IRiderOnboarding>(
     },
     fullName: {
       type: String,
-      required: true,
+      default: '',
       trim: true,
     },
     dob: {
       type: String,
-      required: true,
+      default: '',
+      trim: true,
     },
     phoneNumber: {
       type: String,
-      required: true,
+      default: '',
+      trim: true,
     },
     emailAddress: {
       type: String,
-      required: true,
+      default: '',
       lowercase: true,
       trim: true,
     },
     residentialAddress: {
       type: String,
-      required: true,
+      default: '',
+      trim: true,
     },
     profilePhotoUrl: {
       type: String,
     },
     emergencyContact: {
-      name: { type: String, required: true },
-      phone: { type: String, required: true },
-      relationship: { type: String },
+      name: { type: String, default: '' },
+      phone: { type: String, default: '' },
+      relationship: { type: String, default: '' },
     },
     ninVerification: {
       nin: { type: String, default: '' },
@@ -181,7 +184,7 @@ const riderOnboardingSchema = new Schema<IRiderOnboarding>(
     },
     deliveryMethod: {
       type: String,
-      enum: ['bicycle', 'ebike', 'motorcycle', 'car'],
+      enum: ['bicycle', 'ebike', 'motorcycle', 'car', 'fuel_car'],
       default: 'motorcycle',
     },
     documents: {
@@ -208,7 +211,7 @@ const riderOnboardingSchema = new Schema<IRiderOnboarding>(
     vehicle: {
       vehicleType: {
         type: String,
-        enum: ['bicycle', 'ebike', 'motorcycle', 'car'],
+        enum: ['bicycle', 'ebike', 'motorcycle', 'car', 'fuel_car'],
         default: 'motorcycle',
       },
       make: { type: String, trim: true },

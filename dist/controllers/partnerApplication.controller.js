@@ -14,9 +14,31 @@ const logger_1 = __importDefault(require("../utils/logger"));
  */
 exports.applyForPartnership = (0, catchAsync_1.catchAsync)(async (req, res) => {
     const { businessName, businessAddress, businessType, ownerName, firstName, lastName, email, phoneNumber, city, } = req.body;
+    const files = req.files;
+    let ninUrl = req.body.ninUrl || req.body['ninUrl'] || '';
+    let foodHygieneUrl = req.body.foodHygieneUrl || req.body['foodHygieneUrl'] || '';
+    let cacUrl = req.body.cacUrl || req.body['cacUrl'] || '';
+    if (files) {
+        if (files['nin'] && files['nin'][0]) {
+            ninUrl = files['nin'][0].path;
+        }
+        if (files['foodHygiene'] && files['foodHygiene'][0]) {
+            foodHygieneUrl = files['foodHygiene'][0].path;
+        }
+        if (files['cac'] && files['cac'][0]) {
+            cacUrl = files['cac'][0].path;
+        }
+    }
     const resolvedOwnerName = ownerName || `${firstName || ''} ${lastName || ''}`.trim() || 'Valued Partner';
     if (!businessName || !businessAddress || !email || !phoneNumber) {
         throw new appError_1.default('Business name, business address, email, and phone number are required', 400);
+    }
+    // Verification requirements: NIN and Food Hygiene are mandatory, CAC is optional
+    if (!ninUrl) {
+        throw new appError_1.default('National Identification Number (NIN) document is required for verification', 400);
+    }
+    if (!foodHygieneUrl) {
+        throw new appError_1.default('Food Hygiene Certificate is required for verification', 400);
     }
     const validTypes = ['restaurant', 'grocery', 'convenience', 'bakery', 'cafe', 'other'];
     const resolvedBusinessType = validTypes.includes((businessType || '').toLowerCase())
@@ -30,6 +52,14 @@ exports.applyForPartnership = (0, catchAsync_1.catchAsync)(async (req, res) => {
         email: email.toLowerCase().trim(),
         phoneNumber: phoneNumber.trim(),
         city: city ? city.trim() : '',
+        documents: {
+            ninUrl,
+            foodHygieneUrl,
+            cacUrl,
+        },
+        ninUrl,
+        foodHygieneUrl,
+        cacUrl,
         status: 'pending',
     });
     // Dispatch acknowledgement email to the applicant

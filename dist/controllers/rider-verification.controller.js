@@ -137,13 +137,23 @@ class RiderVerificationController {
                     vehicleType: profile.deliveryMethod,
                 };
             }
-            if (dataToSave.documents) {
+            if (dataToSave.documents && typeof dataToSave.documents === 'object') {
+                const docs = { ...dataToSave.documents };
+                // Strip any invalid or stringified "undefined" / "null" values
+                Object.keys(docs).forEach((k) => {
+                    if (docs[k] === 'undefined' || docs[k] === 'null' || docs[k] === undefined || docs[k] === null) {
+                        delete docs[k];
+                    }
+                });
+                if (docs.guarantorInfo && (typeof docs.guarantorInfo !== 'object' || Array.isArray(docs.guarantorInfo))) {
+                    delete docs.guarantorInfo;
+                }
                 profile.documents = {
                     ...profile.documents,
-                    ...dataToSave.documents,
+                    ...docs,
                 };
             }
-            if (dataToSave.financialDetails) {
+            if (dataToSave.financialDetails && typeof dataToSave.financialDetails === 'object') {
                 profile.financialDetails = {
                     ...profile.financialDetails,
                     ...dataToSave.financialDetails,
@@ -168,10 +178,21 @@ class RiderVerificationController {
             }
             // Handle Final Submission for Admin Review
             if (isFinalSubmit) {
-                const isMotorized = profile.deliveryMethod === 'motorcycle' || profile.deliveryMethod === 'car';
+                const isMotorized = profile.deliveryMethod === 'motorcycle' ||
+                    profile.deliveryMethod === 'car' ||
+                    profile.deliveryMethod === 'fuel_car';
                 // Validation according to spec
                 if (!profile.fullName || !profile.dob || !profile.phoneNumber || !profile.residentialAddress) {
-                    throw new appError_1.default('Personal details are incomplete.', 400);
+                    const missing = [];
+                    if (!profile.fullName)
+                        missing.push('Full Name');
+                    if (!profile.dob)
+                        missing.push('Date of Birth');
+                    if (!profile.phoneNumber)
+                        missing.push('Phone Number');
+                    if (!profile.residentialAddress)
+                        missing.push('Residential Address');
+                    throw new appError_1.default(`Please complete your personal details: ${missing.join(', ')}.`, 400);
                 }
                 if (!profile.ninVerification?.nin) {
                     throw new appError_1.default('NIN or Identity document number is required.', 400);
@@ -248,6 +269,13 @@ class RiderVerificationController {
                                 fullName: r.name || 'Courier',
                                 phoneNumber: r.phoneNumber || '',
                                 emailAddress: r.email || '',
+                                dob: 'Not provided',
+                                residentialAddress: 'Not provided',
+                                emergencyContact: {
+                                    name: 'Not provided',
+                                    phone: r.phoneNumber || 'Not provided',
+                                    relationship: 'Not provided',
+                                },
                                 country: r.country || 'Nigeria',
                                 countryCode: r.countryCode || (r.isNigeria ? 'NG' : 'GB'),
                                 deliveryMethod: method,
@@ -362,7 +390,25 @@ class RiderVerificationController {
                 reviewedAt: new Date(),
                 notes: notes || 'Application approved by Admin.',
             };
-            await application.save();
+            // Ensure fallback values so validation passes even if fields were unpopulated during early signup
+            if (!application.dob)
+                application.dob = 'Not provided';
+            if (!application.residentialAddress)
+                application.residentialAddress = 'Not provided';
+            if (!application.emergencyContact) {
+                application.emergencyContact = {
+                    name: 'Not provided',
+                    phone: application.phoneNumber || 'Not provided',
+                    relationship: 'Not provided',
+                };
+            }
+            else {
+                if (!application.emergencyContact.name)
+                    application.emergencyContact.name = 'Not provided';
+                if (!application.emergencyContact.phone)
+                    application.emergencyContact.phone = application.phoneNumber || 'Not provided';
+            }
+            await application.save({ validateModifiedOnly: true });
             // Activate User
             const user = await user_model_1.default.findByIdAndUpdate(application.user, {
                 status: user_model_1.UserStatus.ACTIVE,
@@ -409,7 +455,24 @@ class RiderVerificationController {
                 rejectionReason,
                 notes,
             };
-            await application.save();
+            if (!application.dob)
+                application.dob = 'Not provided';
+            if (!application.residentialAddress)
+                application.residentialAddress = 'Not provided';
+            if (!application.emergencyContact) {
+                application.emergencyContact = {
+                    name: 'Not provided',
+                    phone: application.phoneNumber || 'Not provided',
+                    relationship: 'Not provided',
+                };
+            }
+            else {
+                if (!application.emergencyContact.name)
+                    application.emergencyContact.name = 'Not provided';
+                if (!application.emergencyContact.phone)
+                    application.emergencyContact.phone = application.phoneNumber || 'Not provided';
+            }
+            await application.save({ validateModifiedOnly: true });
             const user = await user_model_1.default.findByIdAndUpdate(application.user, {
                 riderVerificationStatus: 'action_required',
             }, { returnDocument: 'after' });

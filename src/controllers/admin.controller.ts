@@ -387,7 +387,7 @@ class AdminController {
     const password = `GoEat#${randomHex}9!`;
     
     const oName = req.body.ownerName || req.body['Owner Name'] || req.body['ownerName'] || 'Manual Owner';
-    const phone = req.body.ownerPhone || req.body.phoneContact || req.body['Phone Contact'] || req.body['phoneContact'];
+    const phone = req.body.outletPhone || req.body.businessPhone || req.body.phoneNumber || req.body.ownerPhone || req.body.phoneContact || req.body['Phone Contact'] || req.body['phoneContact'];
     const description = req.body.description || `Welcome to ${name}`;
     
     if (!email || !name) {
