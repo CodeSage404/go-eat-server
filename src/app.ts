@@ -40,6 +40,7 @@ import notificationRoutes from './routes/notification.routes';
 import activityRoutes from './routes/activity.routes';
 import voiceRoutes from './routes/voice.routes';
 import riderVerificationRoutes from './routes/rider-verification.routes';
+import partnerApplicationRoutes from './routes/partnerApplication.routes';
 import activityService from './services/activity.service';
 import { startKeepAlivePing } from './utils/keepAlive';
 
@@ -206,6 +207,7 @@ class App {
     this.app.use('/api/v1/activity', activityRoutes);
     this.app.use('/api/v1/voice', voiceRoutes);
     this.app.use('/api/v1/riders', riderVerificationRoutes);
+    this.app.use('/api/v1/partners', partnerApplicationRoutes);
 
     // Documentation Routes
     this.app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));

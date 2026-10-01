@@ -61,6 +61,9 @@ const vendorUpdateRestaurantSchema = z.object({
     cover: z.string().optional(),
   }).optional(),
   businessPhone: z.string().optional(),
+  phone: z.string().optional(),
+  phoneNumber: z.string().optional(),
+  phoneContact: z.string().optional(),
   businessEmail: z.string().email().optional(),
   businessWebsite: z.string().optional(),
   tradingName: z.string().optional(),
@@ -165,7 +168,7 @@ class RestaurantController {
    * Get logged in vendor's restaurant
    */
   public getMyRestaurant = catchAsync(async (req: any, res: Response) => {
-    const restaurant = await Restaurant.findOne({ owner: req.user._id }).populate('owner', 'name email profileImage');
+    const restaurant = await Restaurant.findOne({ owner: req.user._id }).populate('owner', 'name email profileImage phoneNumber phone');
 
     if (!restaurant) {
       throw new AppError('No restaurant profile found for this user', 404);
@@ -194,9 +197,18 @@ class RestaurantController {
 
     // validatedData.data now only contains the fields allowed in vendorUpdateRestaurantSchema
     // all extra fields (like status, isTopSpot, popularityScore) have been stripped out.
+    const updatePayload: any = { ...validatedData.data };
+    const phoneVal = updatePayload.businessPhone || updatePayload.phone || updatePayload.phoneNumber || updatePayload.phoneContact;
+    if (phoneVal) {
+      updatePayload.businessPhone = phoneVal;
+      updatePayload.phone = phoneVal;
+      updatePayload.phoneNumber = phoneVal;
+      updatePayload.phoneContact = phoneVal;
+    }
+
     const updatedRestaurant = await restaurantService.updateRestaurant(
       restaurant._id.toString(), 
-      validatedData.data as any
+      updatePayload
     );
 
     res.status(200).json({
@@ -229,7 +241,17 @@ class RestaurantController {
       if (!validatedData.success) {
         throw new AppError(validatedData.error.issues.map(i => i.message).join(', '), 400);
       }
-      updateData = validatedData.data;
+      updateData = { ...validatedData.data };
+    } else {
+      updateData = { ...updateData };
+    }
+
+    const phoneVal = updateData.businessPhone || updateData.phone || updateData.phoneNumber || updateData.phoneContact;
+    if (phoneVal) {
+      updateData.businessPhone = phoneVal;
+      updateData.phone = phoneVal;
+      updateData.phoneNumber = phoneVal;
+      updateData.phoneContact = phoneVal;
     }
 
     const updatedRestaurant = await restaurantService.updateRestaurant(req.params.id as string, updateData);

@@ -92,7 +92,7 @@ class VoiceService {
     const order = await Order.findById(orderId)
       .populate('rider', 'name phoneNumber profilePicture profileImage vehicleType')
       .populate('customer', 'name phoneNumber profilePicture profileImage')
-      .populate('restaurant', 'name phoneContact logo');
+      .populate('restaurant', 'name phoneContact businessPhone phone phoneNumber logo owner');
     if (!order) {
       throw new AppError('Order not found', 404);
     }
@@ -112,8 +112,13 @@ class VoiceService {
         recipientUserId = order.customer ? ((order.customer as any)._id?.toString() || order.customer.toString()) : null;
       }
     } else if (role === 'customer') {
-      recipientIdentity = `rider_${order.rider ? (order.rider as any)._id : 'unassigned'}`;
-      recipientUserId = order.rider ? (order.rider as any)._id?.toString() : null;
+      if (target === 'restaurant') {
+        recipientIdentity = `vendor_${(order.restaurant as any)?.owner || order.restaurant}`;
+        recipientUserId = (order.restaurant as any)?.owner ? (order.restaurant as any).owner.toString() : null;
+      } else {
+        recipientIdentity = `rider_${order.rider ? (order.rider as any)._id : 'unassigned'}`;
+        recipientUserId = order.rider ? (order.rider as any)._id?.toString() : null;
+      }
     } else {
       // rider calling
       if (target === 'restaurant') {
@@ -156,9 +161,13 @@ class VoiceService {
       profilePicture: (order.customer as any).profilePicture || (order.customer as any).profileImage,
     } : null;
 
+    const restPhone = (order.restaurant as any)?.phoneContact || (order.restaurant as any)?.businessPhone || (order.restaurant as any)?.phoneNumber || (order.restaurant as any)?.phone;
     const restaurantData = order.restaurant ? {
       name: (order.restaurant as any).name || 'Restaurant Outlet',
-      phoneContact: (order.restaurant as any).phoneContact,
+      phoneContact: restPhone,
+      businessPhone: restPhone,
+      phoneNumber: restPhone,
+      phone: restPhone,
       logo: (order.restaurant as any).logo,
     } : null;
 
@@ -273,7 +282,7 @@ class VoiceService {
     const order = await Order.findById(orderId)
       .populate('rider', 'phoneNumber name')
       .populate('customer', 'phoneNumber name')
-      .populate('restaurant', 'phoneContact name');
+      .populate('restaurant', 'phoneContact businessPhone phone phoneNumber name owner');
     if (!order) {
       throw new AppError('Order not found', 404);
     }
@@ -283,9 +292,11 @@ class VoiceService {
       throw new AppError('Caller user not found', 404);
     }
 
+    const restaurantPhone = (order.restaurant as any)?.phoneContact || (order.restaurant as any)?.businessPhone || (order.restaurant as any)?.phoneNumber || (order.restaurant as any)?.phone;
+
     let callerPhone = callerUser.phoneNumber;
-    if (!callerPhone && callerUser.role === 'vendor' && (order.restaurant as any)?.phoneContact) {
-      callerPhone = (order.restaurant as any).phoneContact;
+    if (!callerPhone && callerUser.role === 'vendor' && restaurantPhone) {
+      callerPhone = restaurantPhone;
     }
     if (!callerPhone) {
       throw new AppError('Caller phone number not available for cellular call', 400);
@@ -303,16 +314,19 @@ class VoiceService {
         recipientLabel = 'the customer';
       }
     } else if (callerUser.role === 'rider') {
-      if (target === 'restaurant' && (order.restaurant as any)?.phoneContact) {
-        recipientPhone = (order.restaurant as any).phoneContact;
+      if (target === 'restaurant' && restaurantPhone) {
+        recipientPhone = restaurantPhone;
         recipientLabel = 'the restaurant';
       } else if ((order.customer as any)?.phoneNumber) {
         recipientPhone = (order.customer as any).phoneNumber;
         recipientLabel = 'the customer';
       }
     } else {
-      // Customer calling courier
-      if ((order.rider as any)?.phoneNumber) {
+      // Customer calling courier or restaurant
+      if (target === 'restaurant' && restaurantPhone) {
+        recipientPhone = restaurantPhone;
+        recipientLabel = 'the restaurant';
+      } else if ((order.rider as any)?.phoneNumber) {
         recipientPhone = (order.rider as any).phoneNumber;
         recipientLabel = 'your courier';
       }

@@ -272,6 +272,7 @@ const orderSchema = new mongoose_1.Schema({
             createdAt: { type: Date, default: Date.now },
         },
     ],
+    declinedRiders: [{ type: mongoose_1.Schema.Types.ObjectId, ref: 'User' }],
 }, {
     timestamps: true,
 });

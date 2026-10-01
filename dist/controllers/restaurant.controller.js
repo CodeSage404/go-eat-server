@@ -61,6 +61,9 @@ const vendorUpdateRestaurantSchema = zod_1.z.object({
         cover: zod_1.z.string().optional(),
     }).optional(),
     businessPhone: zod_1.z.string().optional(),
+    phone: zod_1.z.string().optional(),
+    phoneNumber: zod_1.z.string().optional(),
+    phoneContact: zod_1.z.string().optional(),
     businessEmail: zod_1.z.string().email().optional(),
     businessWebsite: zod_1.z.string().optional(),
     tradingName: zod_1.z.string().optional(),
@@ -151,7 +154,7 @@ class RestaurantController {
          * Get logged in vendor's restaurant
          */
         this.getMyRestaurant = (0, catchAsync_1.catchAsync)(async (req, res) => {
-            const restaurant = await restaurant_model_1.default.findOne({ owner: req.user._id }).populate('owner', 'name email profileImage');
+            const restaurant = await restaurant_model_1.default.findOne({ owner: req.user._id }).populate('owner', 'name email profileImage phoneNumber phone');
             if (!restaurant) {
                 throw new appError_1.default('No restaurant profile found for this user', 404);
             }
@@ -174,7 +177,15 @@ class RestaurantController {
             }
             // validatedData.data now only contains the fields allowed in vendorUpdateRestaurantSchema
             // all extra fields (like status, isTopSpot, popularityScore) have been stripped out.
-            const updatedRestaurant = await restaurant_service_1.default.updateRestaurant(restaurant._id.toString(), validatedData.data);
+            const updatePayload = { ...validatedData.data };
+            const phoneVal = updatePayload.businessPhone || updatePayload.phone || updatePayload.phoneNumber || updatePayload.phoneContact;
+            if (phoneVal) {
+                updatePayload.businessPhone = phoneVal;
+                updatePayload.phone = phoneVal;
+                updatePayload.phoneNumber = phoneVal;
+                updatePayload.phoneContact = phoneVal;
+            }
+            const updatedRestaurant = await restaurant_service_1.default.updateRestaurant(restaurant._id.toString(), updatePayload);
             res.status(200).json({
                 status: 'success',
                 data: { restaurant: updatedRestaurant },
@@ -201,7 +212,17 @@ class RestaurantController {
                 if (!validatedData.success) {
                     throw new appError_1.default(validatedData.error.issues.map(i => i.message).join(', '), 400);
                 }
-                updateData = validatedData.data;
+                updateData = { ...validatedData.data };
+            }
+            else {
+                updateData = { ...updateData };
+            }
+            const phoneVal = updateData.businessPhone || updateData.phone || updateData.phoneNumber || updateData.phoneContact;
+            if (phoneVal) {
+                updateData.businessPhone = phoneVal;
+                updateData.phone = phoneVal;
+                updateData.phoneNumber = phoneVal;
+                updateData.phoneContact = phoneVal;
             }
             const updatedRestaurant = await restaurant_service_1.default.updateRestaurant(req.params.id, updateData);
             res.status(200).json({

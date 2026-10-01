@@ -53,6 +53,7 @@ const role_model_1 = __importDefault(require("../models/role.model"));
 const review_model_1 = __importDefault(require("../models/review.model"));
 const setting_model_1 = __importDefault(require("../models/setting.model"));
 const category_model_1 = __importDefault(require("../models/category.model"));
+const partnerApplication_model_1 = __importDefault(require("../models/partnerApplication.model"));
 const notification_service_1 = __importDefault(require("../services/notification.service"));
 const email_util_1 = __importDefault(require("../utils/email.util"));
 const sms_util_1 = require("../utils/sms.util");
@@ -468,9 +469,29 @@ class AdminController {
                     baseCurrency: req.body.baseCurrency || 'NGN',
                     status: restaurant_model_1.RestaurantStatus.ACTIVE, // Auto-approved
                     images: images,
+                    businessPhone: phone,
+                    phone: phone,
+                    phoneNumber: phone,
+                    phoneContact: phone,
                 });
                 user.restaurantId = restaurant._id;
                 await user.save({ validateBeforeSave: false });
+                // Link and approve any matching PartnerApplication
+                try {
+                    const appId = req.body.applicationId;
+                    const appFilter = appId
+                        ? { _id: appId }
+                        : { email: email.toLowerCase(), status: { $in: ['pending', 'under_review'] } };
+                    await partnerApplication_model_1.default.findOneAndUpdate(appFilter, {
+                        status: 'approved',
+                        onboardedRestaurant: restaurant._id,
+                        reviewedBy: req.user?._id,
+                        reviewedAt: new Date(),
+                    }, { runValidators: false });
+                }
+                catch (appErr) {
+                    logger_1.default.warn('Failed to update matching PartnerApplication status:', appErr);
+                }
                 // Send Welcome / Partner email to the vendor owner!
                 try {
                     await email_util_1.default.sendTemplateEmail(email.toLowerCase(), 'WELCOME_PARTNER', 'Welcome to the Go-Eat Family — Partner Onboarding Successful!', {
@@ -549,7 +570,7 @@ class AdminController {
             const { id } = req.params;
             const order = await order_model_1.default.findById(id)
                 .populate('customer', 'name email phoneNumber')
-                .populate('restaurant', 'name address location phoneContact')
+                .populate('restaurant', 'name address location phoneContact businessPhone phone phoneNumber')
                 .populate('rider', 'name phoneNumber');
             if (!order) {
                 throw new appError_1.default('Order not found', 404);
@@ -567,7 +588,7 @@ class AdminController {
             const { status } = req.body;
             const order = await order_model_1.default.findByIdAndUpdate(id, { status }, { returnDocument: 'after', runValidators: true })
                 .populate('customer', 'name email phoneNumber')
-                .populate('restaurant', 'name address location phoneContact')
+                .populate('restaurant', 'name address location phoneContact businessPhone phone phoneNumber')
                 .populate('rider', 'name phoneNumber');
             if (!order) {
                 throw new appError_1.default('Order not found', 404);
@@ -1388,7 +1409,7 @@ class AdminController {
                         r.owner?.email || 'N/A',
                         r.outletType || 'Restaurant',
                         r.location?.city || r.address || '',
-                        r.phoneContact || '',
+                        r.businessPhone || r.phoneNumber || r.phone || r.phoneContact || r.owner?.phoneNumber || '',
                         r.status || '',
                         r.verificationStatus || '',
                         r.commissionRate || 10,

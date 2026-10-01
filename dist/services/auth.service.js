@@ -37,6 +37,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
+const crypto_1 = __importDefault(require("crypto"));
 const user_model_1 = __importStar(require("../models/user.model"));
 const appError_1 = __importDefault(require("../utils/appError"));
 const logger_1 = __importDefault(require("../utils/logger"));
@@ -305,11 +306,19 @@ class AuthService {
         }
         else {
             const applePayload = await apple_service_1.appleService.verifyIdToken(token);
-            email = applePayload.email;
+            email = (applePayload.email || '').toLowerCase().trim();
             socialId = applePayload.sub;
             name = providedName?.trim() || (email ? email.split('@')[0] : 'Apple User');
         }
-        let user = await user_model_1.default.findOne({ email });
+        // Try finding by socialId (googleId or appleId) first, or by email
+        const searchConditions = [];
+        if (type === 'google' && socialId)
+            searchConditions.push({ googleId: socialId });
+        if (type === 'apple' && socialId)
+            searchConditions.push({ appleId: socialId });
+        if (email)
+            searchConditions.push({ email });
+        let user = searchConditions.length > 0 ? await user_model_1.default.findOne({ $or: searchConditions }) : null;
         if (user) {
             // 🔒 Role Enforcement on Social Login
             if (role && user.role !== role) {
@@ -331,10 +340,16 @@ class AuthService {
             await user.save();
         }
         else {
+            if (!email && type === 'apple') {
+                email = `${socialId}@privaterelay.appleid.com`;
+            }
+            // Generate a secure random password for social accounts
+            const randomPassword = crypto_1.default.randomBytes(24).toString('hex') + 'A1!';
             user = await user_model_1.default.create({
                 email,
                 name,
                 role,
+                password: randomPassword,
                 googleId: type === 'google' ? socialId : undefined,
                 appleId: type === 'apple' ? socialId : undefined,
                 isVerified: true,

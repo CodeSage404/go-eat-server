@@ -136,12 +136,24 @@ class OrderController {
                 data: { order },
             });
         });
-        this.getAvailableJobs = (0, catchAsync_1.catchAsync)(async (_req, res) => {
-            const orders = await order_service_1.default.getAvailableDeliveryJobs();
+        this.getAvailableJobs = (0, catchAsync_1.catchAsync)(async (req, res) => {
+            const lat = req.query.lat ? parseFloat(req.query.lat) : undefined;
+            const lng = req.query.lng ? parseFloat(req.query.lng) : undefined;
+            const riderId = req.user?._id?.toString();
+            const orders = await order_service_1.default.getAvailableDeliveryJobs(lat, lng, riderId, req.user);
             res.status(200).json({
                 status: 'success',
                 results: orders.length,
                 data: { orders },
+            });
+        });
+        this.declineDelivery = (0, catchAsync_1.catchAsync)(async (req, res) => {
+            const { id } = req.params;
+            const riderId = req.user._id;
+            await order_service_1.default.declineDeliveryJob(id, riderId);
+            res.status(200).json({
+                status: 'success',
+                message: 'Job declined successfully',
             });
         });
         this.getMyOrders = (0, catchAsync_1.catchAsync)(async (req, res) => {

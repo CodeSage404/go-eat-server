@@ -18,6 +18,7 @@ import RolePermission from '../models/role.model';
 import Review from '../models/review.model';
 import Setting from '../models/setting.model';
 import Category from '../models/category.model';
+import PartnerApplication from '../models/partnerApplication.model';
 import notificationService from '../services/notification.service';
 import emailUtil from '../utils/email.util';
 import { sendSMS } from '../utils/sms.util';
@@ -516,10 +517,35 @@ class AdminController {
         baseCurrency: req.body.baseCurrency || 'NGN',
         status: RestaurantStatus.ACTIVE, // Auto-approved
         images: images,
+        businessPhone: phone,
+        phone: phone,
+        phoneNumber: phone,
+        phoneContact: phone,
       });
 
       user.restaurantId = restaurant._id as mongoose.Types.ObjectId;
       await user.save({ validateBeforeSave: false });
+
+      // Link and approve any matching PartnerApplication
+      try {
+        const appId = req.body.applicationId;
+        const appFilter = appId
+          ? { _id: appId }
+          : { email: email.toLowerCase(), status: { $in: ['pending', 'under_review'] } };
+
+        await PartnerApplication.findOneAndUpdate(
+          appFilter as any,
+          {
+            status: 'approved',
+            onboardedRestaurant: restaurant._id,
+            reviewedBy: req.user?._id,
+            reviewedAt: new Date(),
+          },
+          { runValidators: false }
+        );
+      } catch (appErr) {
+        logger.warn('Failed to update matching PartnerApplication status:', appErr);
+      }
 
       // Send Welcome / Partner email to the vendor owner!
       try {
@@ -612,7 +638,7 @@ class AdminController {
     const { id } = req.params;
     const order = await Order.findById(id)
       .populate('customer', 'name email phoneNumber')
-      .populate('restaurant', 'name address location phoneContact')
+      .populate('restaurant', 'name address location phoneContact businessPhone phone phoneNumber')
       .populate('rider', 'name phoneNumber');
 
     if (!order) {
@@ -638,7 +664,7 @@ class AdminController {
       { returnDocument: 'after', runValidators: true }
     )
     .populate('customer', 'name email phoneNumber')
-    .populate('restaurant', 'name address location phoneContact')
+    .populate('restaurant', 'name address location phoneContact businessPhone phone phoneNumber')
     .populate('rider', 'name phoneNumber');
 
     if (!order) {
@@ -1618,7 +1644,7 @@ class AdminController {
           r.owner?.email || 'N/A',
           r.outletType || 'Restaurant',
           r.location?.city || r.address || '',
-          r.phoneContact || '',
+          r.businessPhone || r.phoneNumber || r.phone || r.phoneContact || r.owner?.phoneNumber || '',
           r.status || '',
           r.verificationStatus || '',
           r.commissionRate || 10,

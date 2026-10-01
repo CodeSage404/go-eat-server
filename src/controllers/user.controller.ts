@@ -112,17 +112,18 @@ class UserController {
    */
   public updateProfile = catchAsync(async (req: Request, res: Response) => {
     // Filter out unwanted fields that shouldn't be manually updated here
-    const { name, email, phoneNumber, profileImage } = req.body;
+    const { name, email, phoneNumber, phone, profileImage } = req.body;
+    const incomingPhone = phoneNumber !== undefined ? phoneNumber : phone;
     const updateData: any = {};
     if (name) updateData.name = name;
     if (email && email.trim() !== '') updateData.email = email.toLowerCase();
-    if (phoneNumber && phoneNumber.trim() !== '') updateData.phoneNumber = phoneNumber;
+    if (incomingPhone && incomingPhone.trim() !== '') updateData.phoneNumber = incomingPhone.trim();
     if (profileImage) updateData.profileImage = profileImage;
 
     // If an explicitly empty string is sent for a unique field, unset it using $unset so it doesn't trigger E11000
     const unsetData: any = {};
     if (email !== undefined && email.trim() === '') unsetData.email = 1;
-    if (phoneNumber !== undefined && phoneNumber.trim() === '') unsetData.phoneNumber = 1;
+    if (incomingPhone !== undefined && incomingPhone.trim() === '') unsetData.phoneNumber = 1;
 
     const updatePayload: any = { $set: updateData };
     if (Object.keys(unsetData).length > 0) {

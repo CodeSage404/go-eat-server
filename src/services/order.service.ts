@@ -504,7 +504,7 @@ class OrderService {
   private async notifyNearbyRiders(order: IOrder) {
     try {
       const populatedOrder = await Order.findById(order._id)
-        .populate('restaurant', 'name address location images phoneContact rating')
+        .populate('restaurant', 'name address location images phoneContact businessPhone phone phoneNumber rating')
         .populate('customer', 'name phoneNumber email profileImage')
         .populate('items.foodItem', 'name price image');
 
@@ -691,7 +691,7 @@ class OrderService {
         { paymentMethod: PaymentMethod.CASH },
       ],
     })
-      .populate('restaurant', 'name address location country countryCode isNigeria isUk isItaly images phoneContact rating')
+      .populate('restaurant', 'name address location country countryCode isNigeria isUk isItaly images phoneContact businessPhone phone phoneNumber rating')
       .populate('customer', 'name phoneNumber email profileImage')
       .populate('items.foodItem', 'name price image')
       .sort({ createdAt: -1 });
@@ -953,7 +953,7 @@ class OrderService {
 
   async getCustomerOrders(customerId: string): Promise<IOrder[]> {
     return await Order.find({ customer: customerId })
-      .populate('restaurant', 'name address images image rating estimatedDeliveryTime isSponsored isSelfPickup hasDelivery location cuisine')
+      .populate('restaurant', 'name address images image rating estimatedDeliveryTime isSponsored isSelfPickup hasDelivery location cuisine businessPhone phone phoneNumber phoneContact')
       .populate('items.foodItem', 'name price image')
       .sort({ createdAt: -1 });
   }

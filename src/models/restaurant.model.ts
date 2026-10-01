@@ -65,6 +65,9 @@ export interface IRestaurant extends Document {
   lga?: string;
   deliveryRadius?: number; // in kilometers
   businessPhone?: string;
+  phone?: string;
+  phoneNumber?: string;
+  phoneContact?: string;
   businessEmail?: string;
   businessWebsite?: string;
   paystackSubaccountCode?: string;
@@ -277,6 +280,18 @@ const restaurantSchema = new Schema<IRestaurant>(
       type: String,
       trim: true,
     },
+    phone: {
+      type: String,
+      trim: true,
+    },
+    phoneNumber: {
+      type: String,
+      trim: true,
+    },
+    phoneContact: {
+      type: String,
+      trim: true,
+    },
     businessEmail: {
       type: String,
       trim: true,
@@ -361,9 +376,19 @@ const restaurantSchema = new Schema<IRestaurant>(
   }
 );
 
-// Auto-derive country & countryCode if not set or ambiguous
+// Auto-derive country & countryCode if not set or ambiguous, and sync phone fields
 restaurantSchema.pre('save', function (this: any) {
   const rest = this;
+
+  // Keep phone fields completely in sync across legacy and modern attributes
+  const phoneSync = rest.businessPhone || rest.phone || rest.phoneNumber || rest.phoneContact;
+  if (phoneSync) {
+    rest.businessPhone = phoneSync;
+    rest.phone = phoneSync;
+    rest.phoneNumber = phoneSync;
+    rest.phoneContact = phoneSync;
+  }
+
   const rawAddr = `${rest.address?.street || ''} ${rest.address?.city || ''} ${rest.address?.state || ''} ${rest.address?.country || ''}`.toLowerCase();
   const coords = rest.location?.coordinates;
   const lng = coords && Array.isArray(coords) ? coords[0] : 0;
