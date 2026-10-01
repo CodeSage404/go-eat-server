@@ -62,41 +62,16 @@ exports.applyForPartnership = (0, catchAsync_1.catchAsync)(async (req, res) => {
         cacUrl,
         status: 'pending',
     });
-    // Dispatch acknowledgement email to the applicant
+    // Dispatch acknowledgement email to the applicant using EJS template
     try {
-        const confirmationHtml = `
-      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 32px 24px; background-color: #ffffff; color: #1f2937; border-radius: 16px; border: 1px solid #f3f4f6;">
-        <div style="text-align: center; margin-bottom: 24px;">
-          <h1 style="color: #103E27; font-size: 26px; font-weight: 800; margin: 0;">GoEat Partner Portal</h1>
-          <p style="color: #6b7280; font-size: 14px; margin-top: 4px;">Application Received</p>
-        </div>
-        <div style="background-color: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 12px; padding: 20px; margin-bottom: 24px;">
-          <h2 style="color: #15803d; font-size: 18px; margin: 0 0 8px 0; font-weight: 700;">Hello ${resolvedOwnerName},</h2>
-          <p style="margin: 0; color: #166534; font-size: 14px; line-height: 1.5;">
-            Thank you for applying to partner with GoEat for <strong>${businessName}</strong>. We have received your application and it is now under review by our onboarding team.
-          </p>
-        </div>
-        <div style="background-color: #fafafa; border-radius: 12px; padding: 20px; margin-bottom: 24px;">
-          <h3 style="font-size: 13px; color: #374151; text-transform: uppercase; letter-spacing: 0.05em; margin: 0 0 12px 0;">Submitted Details:</h3>
-          <ul style="list-style: none; padding: 0; margin: 0; font-size: 14px; color: #4b5563; line-height: 1.8;">
-            <li><strong>Business Name:</strong> ${businessName}</li>
-            <li><strong>Business Type:</strong> ${resolvedBusinessType}</li>
-            <li><strong>Address:</strong> ${businessAddress}</li>
-            <li><strong>Contact Email:</strong> ${email}</li>
-            <li><strong>Phone Number:</strong> ${phoneNumber}</li>
-          </ul>
-        </div>
-        <p style="font-size: 14px; color: #4b5563; line-height: 1.6;">
-          <strong>What happens next?</strong><br />
-          Our merchant review team will inspect your application. Once approved, you will receive an onboarding confirmation email containing your Partner Portal access credentials (email and temporary password) so you can begin configuring your menu and accepting live orders.
-        </p>
-        <div style="margin-top: 32px; padding-top: 20px; border-top: 1px solid #e5e7eb; text-align: center; color: #9ca3af; font-size: 12px;">
-          <p style="margin: 0;">&copy; ${new Date().getFullYear()} GoEat. All rights reserved.</p>
-          <p style="margin: 4px 0 0 0;">This is an automated notification. Please do not reply directly to this email.</p>
-        </div>
-      </div>
-    `;
-        await email_service_1.default.sendEmail(email.toLowerCase().trim(), 'Your GoEat Partner Application has been received!', confirmationHtml, 'partners');
+        await email_service_1.default.sendPartnerApplicationReceived(email.toLowerCase().trim(), {
+            ownerName: resolvedOwnerName,
+            businessName,
+            businessType: resolvedBusinessType,
+            businessAddress,
+            email,
+            phoneNumber,
+        });
     }
     catch (err) {
         logger_1.default.warn(`Failed to dispatch partner application confirmation email to ${email}: ${err.message}`);

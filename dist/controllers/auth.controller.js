@@ -317,7 +317,7 @@ class AuthController {
             // Send welcome email if user has an email address
             if (user && user.email) {
                 try {
-                    await email_service_1.default.sendTemplateEmail(user.email, 'WELCOME_USER', 'Welcome to Go-Eat!', { name: user.name || 'User' });
+                    await email_service_1.default.sendTemplateEmail(user.email, 'WELCOME_USER', 'Welcome to GoEatOne!', { name: user.name || 'User' });
                 }
                 catch (err) {
                     logger_1.default.error(`Error sending welcome email to ${user.email}:`, err.message);

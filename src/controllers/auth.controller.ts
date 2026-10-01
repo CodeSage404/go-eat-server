@@ -391,7 +391,7 @@ class AuthController {
         await emailUtil.sendTemplateEmail(
           user.email,
           'WELCOME_USER',
-          'Welcome to Go-Eat!',
+          'Welcome to GoEatOne!',
           { name: user.name || 'User' }
         );
       } catch (err: any) {

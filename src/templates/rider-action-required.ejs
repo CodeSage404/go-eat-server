@@ -1,0 +1,22 @@
+<h2 style="color: #DC2626; margin-top: 0; font-weight: 800;">Action Required: Courier Verification ⚠️</h2>
+<p>Hello <strong><%= riderName %></strong>,</p>
+<p>Our compliance team reviewed your GoEatOne courier application, and some information or documents require your attention before we can activate your account.</p>
+
+<div class="highlight-box" style="border-left-color: #EF4444; background-color: #FEF2F2; font-family: inherit;">
+  <p style="margin: 0; color: #991B1B; font-size: 14px; font-weight: bold;">
+    Feedback from Compliance Team:
+  </p>
+  <p style="margin: 6px 0 0 0; color: #B91C1C; font-size: 13px; line-height: 1.5;">
+    <%= typeof reason !== 'undefined' ? reason : 'Please review and re-upload your verification documents.' %>
+  </p>
+</div>
+
+<p style="font-size: 14px; color: #4B5563; line-height: 1.6;">
+  Please open your <strong>GoEatOne Courier Hub</strong> mobile app, navigate to your verification screen, and update the requested documents as indicated above.
+</p>
+
+<div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #F3F4F6; text-align: center;">
+  <p style="font-size: 12px; color: #9CA3AF; margin: 0;">
+    Questions about this request? Reach out to us at <a href="mailto:support@goeatone.com" style="color: #0F3725; font-weight: bold;">support@goeatone.com</a>.
+  </p>
+</div>

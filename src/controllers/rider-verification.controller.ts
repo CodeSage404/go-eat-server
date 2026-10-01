@@ -3,6 +3,8 @@ import mongoose from 'mongoose';
 import RiderOnboarding from '../models/riderOnboarding.model';
 import User, { UserRole, UserStatus } from '../models/user.model';
 import notificationService from '../services/notification.service';
+import emailService from '../services/email.service';
+import { NotificationType } from '../models/userNotification.model';
 import { catchAsync } from '../utils/catchAsync';
 import AppError from '../utils/appError';
 import logger from '../utils/logger';
@@ -215,12 +217,47 @@ class RiderVerificationController {
       }
 
       profile.status = 'under_review';
-      await User.findByIdAndUpdate(userId, {
-        riderVerificationStatus: 'under_review',
-        hasSkippedRiderOnboarding: false,
-      });
+      const updatedUser = await User.findByIdAndUpdate(
+        userId,
+        {
+          riderVerificationStatus: 'under_review',
+          hasSkippedRiderOnboarding: false,
+        },
+        { new: true }
+      );
 
       logger.info(`📋 Courier ${userId} submitted verification for review [Vehicle: ${profile.deliveryMethod}]`);
+
+      // 📨 Dispatch In-App + Push Notification & Confirmation Email (24-48 hours review window)
+      const riderName = profile.fullName || updatedUser?.name || 'Courier';
+      const riderEmail = profile.emailAddress || updatedUser?.email;
+
+      // 1. In-App + FCM Push Notification
+      try {
+        await notificationService.sendNotification(
+          userId.toString(),
+          'Application Received & Under Review ⏳',
+          'Your courier verification documents have been received and are now under review. Our team will verify your details within the next 24 to 48 hours.',
+          {
+            type: 'RIDER_VERIFICATION_SUBMITTED',
+            status: 'under_review',
+            timeline: '24-48 hours',
+          },
+          NotificationType.SYSTEM
+        );
+      } catch (notifErr: any) {
+        logger.warn(`⚠️ Failed to send verification submission push/in-app notification: ${notifErr.message}`);
+      }
+
+      // 2. Email Notification using EJS template
+      if (riderEmail) {
+        emailService.sendRiderApplicationReceived(riderEmail, {
+          riderName,
+          timeline: '24 to 48 hours',
+        }).catch((emailErr: any) => {
+          logger.warn(`⚠️ Failed to dispatch application receipt confirmation email: ${emailErr.message}`);
+        });
+      }
     }
 
     await profile.save();
@@ -459,6 +496,16 @@ class RiderVerificationController {
       logger.warn('Failed to send rider approval notification:', notifErr.message);
     }
 
+    // Send email alert to courier via EJS template
+    const courierEmail = application.emailAddress || user?.email;
+    if (courierEmail) {
+      emailService.sendRiderApplicationApproved(courierEmail, {
+        riderName: application.fullName || user?.name || 'Courier',
+      }).catch((emailErr: any) => {
+        logger.warn('Failed to send rider approval email:', emailErr.message);
+      });
+    }
+
     logger.info(`✅ Admin ${req.user._id} approved courier application ${id} for user ${application.user}`);
 
     res.status(200).json({
@@ -531,6 +578,17 @@ class RiderVerificationController {
       }
     } catch (notifErr: any) {
       logger.warn('Failed to send rider action required notification:', notifErr.message);
+    }
+
+    // Send email alert to courier via EJS template
+    const courierEmail = application.emailAddress || user?.email;
+    if (courierEmail) {
+      emailService.sendRiderActionRequired(courierEmail, {
+        riderName: application.fullName || user?.name || 'Courier',
+        reason: rejectionReason,
+      }).catch((emailErr: any) => {
+        logger.warn('Failed to send rider action required email:', emailErr.message);
+      });
     }
 
     logger.info(`⚠️ Admin ${req.user._id} requested action on courier application ${id}: ${rejectionReason}`);

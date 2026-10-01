@@ -14,7 +14,11 @@ export type EmailTemplateType =
   | 'PASSWORD_RESET'
   | 'WELCOME_USER'
   | 'NEW_DEVICE_LOGIN'
-  | 'INACTIVITY_REENGAGEMENT';
+  | 'INACTIVITY_REENGAGEMENT'
+  | 'RIDER_APPLICATION_RECEIVED'
+  | 'RIDER_APPLICATION_APPROVED'
+  | 'RIDER_ACTION_REQUIRED'
+  | 'PARTNER_APPLICATION_RECEIVED';
 
 class EmailService {
   /**
@@ -27,12 +31,12 @@ class EmailService {
     const secureUser = (process.env.EMAIL_USER_SECURE || 'verify@goeatone.com').toLowerCase().trim();
 
     if (channel === 'partners') {
-      return { user: partnersUser, from: `"Go-Eat Partner Support" <${partnersUser}>` };
+      return { user: partnersUser, from: `"GoEatOne Partner Support" <${partnersUser}>` };
     }
     if (channel === 'secure') {
-      return { user: secureUser, from: `"Go-Eat Security" <${secureUser}>` };
+      return { user: secureUser, from: `"GoEatOne Security" <${secureUser}>` };
     }
-    return { user: defaultUser, from: `"Go-Eat Support" <${defaultUser}>` };
+    return { user: defaultUser, from: `"GoEatOne Support" <${defaultUser}>` };
   }
 
   /**
@@ -189,7 +193,7 @@ class EmailService {
    */
   public async sendOTP(email: string, otp: string): Promise<void> {
     const htmlContent = renderTemplate('OTP_VERIFICATION', { otpCode: otp, validTime: '10 minutes' });
-    this.sendEmail(email, 'Your Go-Eat Verification OTP Code', htmlContent, 'secure')
+    this.sendEmail(email, 'Your GoEatOne Verification OTP Code', htmlContent, 'secure')
       .catch(err => logger.error(`Background OTP send failed to ${email}:`, err?.message || err));
   }
 
@@ -222,7 +226,7 @@ class EmailService {
     }
   ): Promise<void> {
     const htmlContent = renderTemplate('NEW_DEVICE_LOGIN', data);
-    this.sendEmail(email, 'Security Alert: New device login on your Go-Eat account', htmlContent, 'secure')
+    this.sendEmail(email, 'Security Alert: New device login on your GoEatOne account', htmlContent, 'secure')
       .catch(err => logger.error(`Background new device alert email failed to ${email}:`, err?.message || err));
   }
 
@@ -237,8 +241,71 @@ class EmailService {
     }
   ): Promise<void> {
     const htmlContent = renderTemplate('INACTIVITY_REENGAGEMENT', data);
-    this.sendEmail(email, 'We miss you at Go-Eat! 🍽️ Craving something delicious?', htmlContent, 'default')
+    this.sendEmail(email, 'We miss you at GoEatOne! 🍽️ Craving something delicious?', htmlContent, 'default')
       .catch(err => logger.error(`Background inactivity email failed to ${email}:`, err?.message || err));
+  }
+
+  /**
+   * Sends courier verification application received email
+   */
+  public async sendRiderApplicationReceived(
+    email: string,
+    data: {
+      riderName: string;
+      timeline?: string;
+    }
+  ): Promise<void> {
+    const htmlContent = renderTemplate('RIDER_APPLICATION_RECEIVED', data);
+    this.sendEmail(email, 'Your GoEatOne Courier Application Has Been Received (Under Review)', htmlContent, 'default')
+      .catch(err => logger.error(`Background courier received email failed to ${email}:`, err?.message || err));
+  }
+
+  /**
+   * Sends courier verification approval notification email
+   */
+  public async sendRiderApplicationApproved(
+    email: string,
+    data: {
+      riderName: string;
+    }
+  ): Promise<void> {
+    const htmlContent = renderTemplate('RIDER_APPLICATION_APPROVED', data);
+    this.sendEmail(email, "You're Approved to Deliver on GoEatOne! 🚀", htmlContent, 'default')
+      .catch(err => logger.error(`Background courier approved email failed to ${email}:`, err?.message || err));
+  }
+
+  /**
+   * Sends courier verification correction required email
+   */
+  public async sendRiderActionRequired(
+    email: string,
+    data: {
+      riderName: string;
+      reason?: string;
+    }
+  ): Promise<void> {
+    const htmlContent = renderTemplate('RIDER_ACTION_REQUIRED', data);
+    this.sendEmail(email, 'Action Required: Your GoEatOne Courier Verification ⚠️', htmlContent, 'default')
+      .catch(err => logger.error(`Background courier correction email failed to ${email}:`, err?.message || err));
+  }
+
+  /**
+   * Sends partner merchant application acknowledgement email
+   */
+  public async sendPartnerApplicationReceived(
+    email: string,
+    data: {
+      ownerName: string;
+      businessName: string;
+      businessType?: string;
+      businessAddress: string;
+      email: string;
+      phoneNumber: string;
+    }
+  ): Promise<void> {
+    const htmlContent = renderTemplate('PARTNER_APPLICATION_RECEIVED', data);
+    this.sendEmail(email, 'GoEatOne Partner Application Received', htmlContent, 'partners')
+      .catch(err => logger.error(`Background partner received email failed to ${email}:`, err?.message || err));
   }
 
   /**
@@ -256,13 +323,13 @@ class EmailService {
     const htmlContent = `
       <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 580px; margin: 0 auto; background-color: #ffffff; border-radius: 16px; overflow: hidden; border: 1px solid #E5E7EB;">
         <div style="background-color: #004320; padding: 32px 24px; text-align: center;">
-          <h1 style="color: #ffffff; margin: 0; font-size: 26px; font-weight: 700; letter-spacing: -0.5px;">Go-Eat</h1>
+          <h1 style="color: #ffffff; margin: 0; font-size: 26px; font-weight: 700; letter-spacing: -0.5px;">GoEatOne</h1>
           <p style="color: #A7F3D0; margin: 8px 0 0 0; font-size: 14px; font-weight: 500;">Responsible Purchasing Safeguard</p>
         </div>
         <div style="padding: 32px 24px; color: #1F2937;">
           <h2 style="margin: 0 0 16px 0; font-size: 20px; color: #111827;">Hello ${data.buddyName},</h2>
           <p style="font-size: 15px; line-height: 24px; color: #4B5563; margin-bottom: 20px;">
-            <strong>${data.userName}</strong> has invited you to be their <strong>GoEatOne Buddy</strong> on Go-Eat.
+            <strong>${data.userName}</strong> has invited you to be their <strong>GoEatOne Buddy</strong> on GoEatOne.
           </p>
           <div style="background-color: #F0FDF4; border: 1px solid #BBF7D0; border-radius: 12px; padding: 18px; margin-bottom: 24px;">
             <p style="margin: 0; font-size: 14px; line-height: 22px; color: #166534;">
@@ -283,7 +350,7 @@ class EmailService {
           </p>
         </div>
         <div style="background-color: #F9FAFB; padding: 16px 24px; text-align: center; border-top: 1px solid #E5E7EB;">
-          <p style="margin: 0; font-size: 12px; color: #6B7280;">© ${new Date().getFullYear()} Go-Eat. All rights reserved.</p>
+          <p style="margin: 0; font-size: 12px; color: #6B7280;">© ${new Date().getFullYear()} GoEatOne. All rights reserved.</p>
         </div>
       </div>
     `;
