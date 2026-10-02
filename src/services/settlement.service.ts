@@ -2,6 +2,9 @@ import Order, { IOrder, OrderStatus } from '../models/order.model';
 import Restaurant from '../models/restaurant.model';
 import Wallet, { IWallet } from '../models/wallet.model';
 import Transaction, { TransactionType, TransactionStatus } from '../models/transaction.model';
+import { NotificationType } from '../models/userNotification.model';
+import { emitToUser } from '../io';
+import notificationService from './notification.service';
 import logger from '../utils/logger';
 import paymentService from './payment.service';
 
@@ -21,7 +24,9 @@ class SettlementService {
     const commissionRate = order.commissionRate || 0.15; // Default 15%
     const commissionAmount = Math.round(grossAmount * commissionRate * 100) / 100;
     const outletNetSettlement = Math.max(0, Math.round((grossAmount - commissionAmount) * 100) / 100);
-    const courierEarnings = (order.deliveryFee || 0) + (order.tipAmount || 0);
+    const courierEarnings = (order.courierEarnings && order.courierEarnings > 0)
+      ? order.courierEarnings
+      : ((order.deliveryFee || 0) + (order.tipAmount || 0) || 500);
 
     return {
       grossAmount,
@@ -93,23 +98,18 @@ class SettlementService {
    */
   public async processOrderCompleted(order: IOrder): Promise<void> {
     try {
-      // Idempotency check: verify order hasn't already been settled
-      const existingTx = await Transaction.findOne({
+      const breakdown = this.calculateOutletSettlement(order);
+      const restaurantId = (order.restaurant as any)?._id || order.restaurant;
+      const restaurant = restaurantId ? await Restaurant.findById(restaurantId) : null;
+      const shortId = order._id.toString().substring(0, 6).toUpperCase();
+
+      // 1. Process Outlet Settlement
+      const existingOutletTx = await Transaction.findOne({
         reference: order._id.toString(),
         type: TransactionType.SETTLEMENT,
       });
 
-      if (existingTx || order.status === OrderStatus.COMPLETED) {
-        logger.info(`ℹ️ Order #${order._id} already settled. Skipping duplicate completion processing.`);
-        return;
-      }
-
-      const breakdown = this.calculateOutletSettlement(order);
-      const restaurantId = (order.restaurant as any)?._id || order.restaurant;
-      const restaurant = restaurantId ? await Restaurant.findById(restaurantId) : null;
-
-      // 1. Process Outlet Settlement
-      if (restaurant && restaurant.owner) {
+      if (!existingOutletTx && restaurant && restaurant.owner) {
         let wallet = await Wallet.findOne({ user: restaurant.owner });
         if (!wallet) {
           wallet = await Wallet.create({ user: restaurant.owner });
@@ -127,8 +127,16 @@ class SettlementService {
           amount: breakdown.outletNetSettlement,
           type: TransactionType.SETTLEMENT,
           status: TransactionStatus.COMPLETED,
-          description: `Net settlement for completed order #${order._id.toString().substring(0, 6).toUpperCase()} (Gross: ${breakdown.grossAmount}, Commission 15%: -${breakdown.commissionAmount})`,
+          description: `Net settlement for completed order #${shortId} (Gross: ${breakdown.grossAmount}, Commission 15%: -${breakdown.commissionAmount})`,
           reference: order._id.toString(),
+        });
+
+        const ownerId = restaurant.owner.toString();
+        emitToUser(ownerId, 'walletBalanceUpdate', {
+          amount: breakdown.outletNetSettlement,
+          balance: wallet.balance,
+          availableBalance: wallet.availableBalance,
+          orderId: order._id.toString(),
         });
       }
 
@@ -138,29 +146,61 @@ class SettlementService {
           ? (order.rider as any)._id.toString()
           : order.rider?.toString?.() || String(order.rider);
 
-        let wallet = await Wallet.findOne({ user: riderId });
-        if (!wallet) {
-          wallet = await Wallet.create({ user: riderId });
-        }
-
-        const earnings = breakdown.courierEarnings;
-        wallet.pendingBalance = Math.max(0, wallet.pendingBalance - earnings);
-        wallet.balance += earnings;
-        wallet.availableBalance += earnings;
-        await wallet.save();
-
-        await Transaction.create({
-          wallet: wallet._id,
-          amount: earnings,
-          type: TransactionType.EARNING,
-          status: TransactionStatus.COMPLETED,
-          description: `Delivery fee for completed order #${order._id.toString().substring(0, 6).toUpperCase()}`,
+        const existingCourierTx = await Transaction.findOne({
           reference: order._id.toString(),
+          type: TransactionType.EARNING,
         });
+
+        if (!existingCourierTx) {
+          let wallet = await Wallet.findOne({ user: riderId });
+          if (!wallet) {
+            wallet = await Wallet.create({ user: riderId });
+          }
+
+          const earnings = breakdown.courierEarnings;
+          wallet.pendingBalance = Math.max(0, wallet.pendingBalance - earnings);
+          wallet.balance += earnings;
+          wallet.availableBalance += earnings;
+          await wallet.save();
+
+          await Transaction.create({
+            wallet: wallet._id,
+            amount: earnings,
+            type: TransactionType.EARNING,
+            status: TransactionStatus.COMPLETED,
+            description: `Delivery fee for completed order #${shortId}`,
+            reference: order._id.toString(),
+          });
+
+          logger.info(`💰 Credited rider ${riderId} with ${earnings} for order #${shortId}. New balance: ${wallet.balance}`);
+
+          // Emit real-time wallet update to courier
+          emitToUser(riderId, 'walletBalanceUpdate', {
+            amount: earnings,
+            balance: wallet.balance,
+            availableBalance: wallet.availableBalance,
+            orderId: order._id.toString(),
+          });
+
+          // Send in-app and push notification to courier
+          await notificationService.sendNotification(
+            riderId,
+            'Earnings Credited! 💰',
+            `₦${earnings.toLocaleString()} has been credited to your Go-Eat wallet for delivering order #${shortId}.`,
+            {
+              orderId: order._id.toString(),
+              type: 'WALLET_CREDIT',
+              amount: earnings,
+            },
+            NotificationType.WALLET
+          ).catch((e: any) => logger.warn('Failed to send wallet credit notification to rider:', e.message));
+        }
       }
 
-      order.status = OrderStatus.COMPLETED;
-      await order.save();
+      if (order.status !== OrderStatus.COMPLETED && order.status !== OrderStatus.DELIVERED) {
+        order.status = OrderStatus.COMPLETED;
+        await order.save();
+      }
     } catch (err) {
       logger.error('❌ Error processing order completion settlement:', err);
     }

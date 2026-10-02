@@ -56,6 +56,8 @@ router.get('/me', restrictTo(UserRole.RIDER, UserRole.VENDOR), walletController.
  *                 type: string
  *               accountName:
  *                 type: string
+ *               bankName:
+ *                 type: string
  *     responses:
  *       200:
  *         description: Success

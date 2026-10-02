@@ -33,6 +33,7 @@ class WalletController {
           pendingBalance: wallet.pendingBalance || 0,
           currency: wallet.currency,
           bankAccount: wallet.bankAccount,
+          bankDetails: wallet.bankAccount,
           isSettlementOnHold: wallet.isSettlementOnHold || false,
           holdReason: wallet.holdReason,
           lastPayoutDate: wallet.lastPayoutDate,
@@ -131,7 +132,7 @@ class WalletController {
    * Update Bank Details
    */
   public updateBankDetails = catchAsync(async (req: Request, res: Response) => {
-    const { accountNumber, bankCode, accountName } = req.body;
+    const { accountNumber, bankCode, accountName, bankName } = req.body;
 
     if (!accountNumber || !bankCode || !accountName) {
       throw new AppError('accountNumber, bankCode, and accountName are required', 400);
@@ -146,6 +147,7 @@ class WalletController {
       accountNumber,
       bankCode,
       accountName,
+      bankName: bankName || undefined,
       recipientCode: undefined // reset recipient code so it gets regenerated on next payout
     };
 
@@ -154,7 +156,12 @@ class WalletController {
     res.status(200).json({
       status: 'success',
       message: 'Bank details updated successfully',
-      data: wallet,
+      data: {
+        wallet: {
+          ...wallet.toObject(),
+          bankDetails: wallet.bankAccount,
+        },
+      },
     });
   });
 

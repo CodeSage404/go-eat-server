@@ -56,6 +56,8 @@ router.get('/me', (0, auth_middleware_1.restrictTo)(user_model_1.UserRole.RIDER,
  *                 type: string
  *               accountName:
  *                 type: string
+ *               bankName:
+ *                 type: string
  *     responses:
  *       200:
  *         description: Success

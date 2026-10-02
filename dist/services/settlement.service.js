@@ -40,6 +40,9 @@ const order_model_1 = require("../models/order.model");
 const restaurant_model_1 = __importDefault(require("../models/restaurant.model"));
 const wallet_model_1 = __importDefault(require("../models/wallet.model"));
 const transaction_model_1 = __importStar(require("../models/transaction.model"));
+const userNotification_model_1 = require("../models/userNotification.model");
+const io_1 = require("../io");
+const notification_service_1 = __importDefault(require("./notification.service"));
 const logger_1 = __importDefault(require("../utils/logger"));
 const payment_service_1 = __importDefault(require("./payment.service"));
 class SettlementService {
@@ -52,7 +55,9 @@ class SettlementService {
         const commissionRate = order.commissionRate || 0.15; // Default 15%
         const commissionAmount = Math.round(grossAmount * commissionRate * 100) / 100;
         const outletNetSettlement = Math.max(0, Math.round((grossAmount - commissionAmount) * 100) / 100);
-        const courierEarnings = (order.deliveryFee || 0) + (order.tipAmount || 0);
+        const courierEarnings = (order.courierEarnings && order.courierEarnings > 0)
+            ? order.courierEarnings
+            : ((order.deliveryFee || 0) + (order.tipAmount || 0) || 500);
         return {
             grossAmount,
             commissionRate,
@@ -116,20 +121,16 @@ class SettlementService {
      */
     async processOrderCompleted(order) {
         try {
-            // Idempotency check: verify order hasn't already been settled
-            const existingTx = await transaction_model_1.default.findOne({
-                reference: order._id.toString(),
-                type: transaction_model_1.TransactionType.SETTLEMENT,
-            });
-            if (existingTx || order.status === order_model_1.OrderStatus.COMPLETED) {
-                logger_1.default.info(`ℹ️ Order #${order._id} already settled. Skipping duplicate completion processing.`);
-                return;
-            }
             const breakdown = this.calculateOutletSettlement(order);
             const restaurantId = order.restaurant?._id || order.restaurant;
             const restaurant = restaurantId ? await restaurant_model_1.default.findById(restaurantId) : null;
+            const shortId = order._id.toString().substring(0, 6).toUpperCase();
             // 1. Process Outlet Settlement
-            if (restaurant && restaurant.owner) {
+            const existingOutletTx = await transaction_model_1.default.findOne({
+                reference: order._id.toString(),
+                type: transaction_model_1.TransactionType.SETTLEMENT,
+            });
+            if (!existingOutletTx && restaurant && restaurant.owner) {
                 let wallet = await wallet_model_1.default.findOne({ user: restaurant.owner });
                 if (!wallet) {
                     wallet = await wallet_model_1.default.create({ user: restaurant.owner });
@@ -145,8 +146,15 @@ class SettlementService {
                     amount: breakdown.outletNetSettlement,
                     type: transaction_model_1.TransactionType.SETTLEMENT,
                     status: transaction_model_1.TransactionStatus.COMPLETED,
-                    description: `Net settlement for completed order #${order._id.toString().substring(0, 6).toUpperCase()} (Gross: ${breakdown.grossAmount}, Commission 15%: -${breakdown.commissionAmount})`,
+                    description: `Net settlement for completed order #${shortId} (Gross: ${breakdown.grossAmount}, Commission 15%: -${breakdown.commissionAmount})`,
                     reference: order._id.toString(),
+                });
+                const ownerId = restaurant.owner.toString();
+                (0, io_1.emitToUser)(ownerId, 'walletBalanceUpdate', {
+                    amount: breakdown.outletNetSettlement,
+                    balance: wallet.balance,
+                    availableBalance: wallet.availableBalance,
+                    orderId: order._id.toString(),
                 });
             }
             // 2. Process Courier Settlement
@@ -154,26 +162,48 @@ class SettlementService {
                 const riderId = order.rider?._id
                     ? order.rider._id.toString()
                     : order.rider?.toString?.() || String(order.rider);
-                let wallet = await wallet_model_1.default.findOne({ user: riderId });
-                if (!wallet) {
-                    wallet = await wallet_model_1.default.create({ user: riderId });
-                }
-                const earnings = breakdown.courierEarnings;
-                wallet.pendingBalance = Math.max(0, wallet.pendingBalance - earnings);
-                wallet.balance += earnings;
-                wallet.availableBalance += earnings;
-                await wallet.save();
-                await transaction_model_1.default.create({
-                    wallet: wallet._id,
-                    amount: earnings,
-                    type: transaction_model_1.TransactionType.EARNING,
-                    status: transaction_model_1.TransactionStatus.COMPLETED,
-                    description: `Delivery fee for completed order #${order._id.toString().substring(0, 6).toUpperCase()}`,
+                const existingCourierTx = await transaction_model_1.default.findOne({
                     reference: order._id.toString(),
+                    type: transaction_model_1.TransactionType.EARNING,
                 });
+                if (!existingCourierTx) {
+                    let wallet = await wallet_model_1.default.findOne({ user: riderId });
+                    if (!wallet) {
+                        wallet = await wallet_model_1.default.create({ user: riderId });
+                    }
+                    const earnings = breakdown.courierEarnings;
+                    wallet.pendingBalance = Math.max(0, wallet.pendingBalance - earnings);
+                    wallet.balance += earnings;
+                    wallet.availableBalance += earnings;
+                    await wallet.save();
+                    await transaction_model_1.default.create({
+                        wallet: wallet._id,
+                        amount: earnings,
+                        type: transaction_model_1.TransactionType.EARNING,
+                        status: transaction_model_1.TransactionStatus.COMPLETED,
+                        description: `Delivery fee for completed order #${shortId}`,
+                        reference: order._id.toString(),
+                    });
+                    logger_1.default.info(`💰 Credited rider ${riderId} with ${earnings} for order #${shortId}. New balance: ${wallet.balance}`);
+                    // Emit real-time wallet update to courier
+                    (0, io_1.emitToUser)(riderId, 'walletBalanceUpdate', {
+                        amount: earnings,
+                        balance: wallet.balance,
+                        availableBalance: wallet.availableBalance,
+                        orderId: order._id.toString(),
+                    });
+                    // Send in-app and push notification to courier
+                    await notification_service_1.default.sendNotification(riderId, 'Earnings Credited! 💰', `₦${earnings.toLocaleString()} has been credited to your Go-Eat wallet for delivering order #${shortId}.`, {
+                        orderId: order._id.toString(),
+                        type: 'WALLET_CREDIT',
+                        amount: earnings,
+                    }, userNotification_model_1.NotificationType.WALLET).catch((e) => logger_1.default.warn('Failed to send wallet credit notification to rider:', e.message));
+                }
             }
-            order.status = order_model_1.OrderStatus.COMPLETED;
-            await order.save();
+            if (order.status !== order_model_1.OrderStatus.COMPLETED && order.status !== order_model_1.OrderStatus.DELIVERED) {
+                order.status = order_model_1.OrderStatus.COMPLETED;
+                await order.save();
+            }
         }
         catch (err) {
             logger_1.default.error('❌ Error processing order completion settlement:', err);
