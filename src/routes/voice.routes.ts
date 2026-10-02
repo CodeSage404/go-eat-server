@@ -15,17 +15,15 @@ const router = Router();
  *     security:
  *       - bearerAuth: []
  *     requestBody:
- *       required: true
+ *       required: false
  *       content:
  *         application/json:
  *           schema:
  *             type: object
- *             required:
- *               - orderId
  *             properties:
  *               orderId:
  *                 type: string
- *                 description: The MongoDB ObjectId of the active order
+ *                 description: The MongoDB ObjectId of the active order (optional for device registration)
  *               role:
  *                 type: string
  *                 enum: [customer, rider, vendor]

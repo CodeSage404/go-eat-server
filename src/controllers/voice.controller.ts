@@ -9,14 +9,11 @@ class VoiceController {
    */
   public getToken = catchAsync(async (req: Request, res: Response) => {
     const { orderId, role, platform, target } = req.body;
-    if (!orderId) {
-      throw new AppError('orderId is required', 400);
-    }
 
     const userId = req.user!._id.toString();
     const tokenData = await voiceService.generateVoiceToken(
       userId,
-      orderId,
+      orderId || undefined,
       role || (req.user!.role as any) || 'customer',
       (platform || 'ios') as 'ios' | 'android',
       target || 'customer'

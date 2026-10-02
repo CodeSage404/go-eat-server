@@ -42,7 +42,9 @@ const uploadLimiter = (0, express_rate_limit_1.default)({
 });
 const router = (0, express_1.Router)();
 router.use(uploadLimiter);
-router.use(auth_middleware_1.protect);
+// Use optionalAuth so that authenticated couriers/vendors have req.user populated,
+// while onboarding signups (before OTP/account creation) can also upload documents directly to Cloudinary.
+router.use(auth_middleware_1.optionalAuth);
 /**
  * @openapi
  * /api/v1/upload/image:

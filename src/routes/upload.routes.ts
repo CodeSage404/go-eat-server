@@ -2,7 +2,7 @@ import { Router, Request, Response } from 'express';
 import { v2 as cloudinary } from 'cloudinary';
 import multer from 'multer';
 import { upload, saveFileLocally } from '../utils/upload';
-import { protect } from '../middleware/auth.middleware';
+import { protect, optionalAuth } from '../middleware/auth.middleware';
 import { catchAsync } from '../utils/catchAsync';
 import AppError from '../utils/appError';
 
@@ -42,7 +42,9 @@ const uploadLimiter = rateLimit({
 const router = Router();
 
 router.use(uploadLimiter);
-router.use(protect);
+// Use optionalAuth so that authenticated couriers/vendors have req.user populated,
+// while onboarding signups (before OTP/account creation) can also upload documents directly to Cloudinary.
+router.use(optionalAuth);
 
 /**
  * @openapi

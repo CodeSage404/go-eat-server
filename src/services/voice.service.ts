@@ -80,21 +80,24 @@ class VoiceService {
   }
 
   /**
-   * Generate an in-app VoIP call token for an authenticated user and order
+   * Generate an in-app VoIP call token for an authenticated user and optional order
    */
   async generateVoiceToken(
     userId: string,
-    orderId: string,
+    orderId?: string,
     role: 'customer' | 'rider' | 'vendor' = 'customer',
     platform: 'ios' | 'android' = 'ios',
     target: 'customer' | 'rider' | 'restaurant' = 'customer'
   ): Promise<{ token: string; identity: string; recipientIdentity: string; orderId: string; rider?: any; customer?: any; restaurant?: any }> {
-    const order = await Order.findById(orderId)
-      .populate('rider', 'name phoneNumber profilePicture profileImage vehicleType')
-      .populate('customer', 'name phoneNumber profilePicture profileImage')
-      .populate('restaurant', 'name phoneContact businessPhone phone phoneNumber logo owner');
-    if (!order) {
-      throw new AppError('Order not found', 404);
+    let order: any = null;
+    if (orderId) {
+      order = await Order.findById(orderId)
+        .populate('rider', 'name phoneNumber profilePicture profileImage vehicleType')
+        .populate('customer', 'name phoneNumber profilePicture profileImage')
+        .populate('restaurant', 'name phoneContact businessPhone phone phoneNumber logo owner');
+      if (!order) {
+        throw new AppError('Order not found', 404);
+      }
     }
 
     const { keySid, keySecret } = await this.getOrCreateApiKey();
@@ -103,30 +106,32 @@ class VoiceService {
     let recipientIdentity = '';
     let recipientUserId: string | null = null;
 
-    if (role === 'vendor') {
-      if (target === 'rider') {
-        recipientIdentity = `rider_${order.rider ? (order.rider as any)._id : 'unassigned'}`;
-        recipientUserId = order.rider ? (order.rider as any)._id?.toString() : null;
+    if (order) {
+      if (role === 'vendor') {
+        if (target === 'rider') {
+          recipientIdentity = `rider_${order.rider ? (order.rider as any)._id : 'unassigned'}`;
+          recipientUserId = order.rider ? (order.rider as any)._id?.toString() : null;
+        } else {
+          recipientIdentity = `customer_${order.customer ? (order.customer as any)._id || order.customer : 'unknown'}`;
+          recipientUserId = order.customer ? ((order.customer as any)._id?.toString() || order.customer.toString()) : null;
+        }
+      } else if (role === 'customer') {
+        if (target === 'restaurant') {
+          recipientIdentity = `vendor_${(order.restaurant as any)?.owner || order.restaurant}`;
+          recipientUserId = (order.restaurant as any)?.owner ? (order.restaurant as any).owner.toString() : null;
+        } else {
+          recipientIdentity = `rider_${order.rider ? (order.rider as any)._id : 'unassigned'}`;
+          recipientUserId = order.rider ? (order.rider as any)._id?.toString() : null;
+        }
       } else {
-        recipientIdentity = `customer_${order.customer ? (order.customer as any)._id || order.customer : 'unknown'}`;
-        recipientUserId = order.customer ? ((order.customer as any)._id?.toString() || order.customer.toString()) : null;
-      }
-    } else if (role === 'customer') {
-      if (target === 'restaurant') {
-        recipientIdentity = `vendor_${(order.restaurant as any)?.owner || order.restaurant}`;
-        recipientUserId = (order.restaurant as any)?.owner ? (order.restaurant as any).owner.toString() : null;
-      } else {
-        recipientIdentity = `rider_${order.rider ? (order.rider as any)._id : 'unassigned'}`;
-        recipientUserId = order.rider ? (order.rider as any)._id?.toString() : null;
-      }
-    } else {
-      // rider calling
-      if (target === 'restaurant') {
-        recipientIdentity = `vendor_${(order.restaurant as any)?.owner || order.restaurant}`;
-        recipientUserId = (order.restaurant as any)?.owner ? (order.restaurant as any).owner.toString() : null;
-      } else {
-        recipientIdentity = `customer_${order.customer ? (order.customer as any)._id || order.customer : 'unknown'}`;
-        recipientUserId = order.customer ? ((order.customer as any)._id?.toString() || order.customer.toString()) : null;
+        // rider calling
+        if (target === 'restaurant') {
+          recipientIdentity = `vendor_${(order.restaurant as any)?.owner || order.restaurant}`;
+          recipientUserId = (order.restaurant as any)?.owner ? (order.restaurant as any).owner.toString() : null;
+        } else {
+          recipientIdentity = `customer_${order.customer ? (order.customer as any)._id || order.customer : 'unknown'}`;
+          recipientUserId = order.customer ? ((order.customer as any)._id?.toString() || order.customer.toString()) : null;
+        }
       }
     }
 
@@ -143,26 +148,26 @@ class VoiceService {
 
     const token = new AccessToken(this.accountSid, keySid, keySecret, {
       identity,
-      ttl: 3600, // 1 hour
+      ttl: orderId ? 3600 : 86400, // 24 hours for registration, 1 hour for active call
     });
 
     token.addGrant(voiceGrant);
 
-    const riderData = order.rider ? {
+    const riderData = order?.rider ? {
       name: (order.rider as any).name || 'Delivery Courier',
       phoneNumber: (order.rider as any).phoneNumber,
       profilePicture: (order.rider as any).profilePicture || (order.rider as any).profileImage,
       vehicleType: (order.rider as any).vehicleType || 'Motorcycle',
     } : null;
 
-    const customerData = order.customer ? {
+    const customerData = order?.customer ? {
       name: (order.customer as any).name || 'Customer',
       phoneNumber: (order.customer as any).phoneNumber,
       profilePicture: (order.customer as any).profilePicture || (order.customer as any).profileImage,
     } : null;
 
-    const restPhone = (order.restaurant as any)?.phoneContact || (order.restaurant as any)?.businessPhone || (order.restaurant as any)?.phoneNumber || (order.restaurant as any)?.phone;
-    const restaurantData = order.restaurant ? {
+    const restPhone = (order?.restaurant as any)?.phoneContact || (order?.restaurant as any)?.businessPhone || (order?.restaurant as any)?.phoneNumber || (order?.restaurant as any)?.phone;
+    const restaurantData = order?.restaurant ? {
       name: (order.restaurant as any).name || 'Restaurant Outlet',
       phoneContact: restPhone,
       businessPhone: restPhone,
@@ -172,7 +177,7 @@ class VoiceService {
     } : null;
 
     // Send Push & Real-time Notification to call recipient
-    if (recipientUserId) {
+    if (recipientUserId && order) {
       const callerUser = await User.findById(userId).select('name phoneNumber profileImage');
       let callerName = callerUser?.name || 'Go-Eat Partner';
       let callerImage = callerUser?.profileImage;
@@ -231,7 +236,7 @@ class VoiceService {
       token: token.toJwt(),
       identity,
       recipientIdentity,
-      orderId,
+      orderId: orderId || '',
       rider: riderData,
       customer: customerData,
       restaurant: restaurantData,
@@ -250,6 +255,7 @@ class VoiceService {
       const dial = response.dial({
         callerId: 'Go-Eat',
         answerOnBridge: true,
+        timeout: 35,
       });
       const client = dial.client(clientName);
       if (callerName) {
@@ -259,10 +265,10 @@ class VoiceService {
         client.parameter({ name: 'orderId', value: orderId });
       }
     } else if (to.startsWith('+') || /^\d+$/.test(to)) {
-      const dial = response.dial({ callerId: this.twilioPhoneNumber });
+      const dial = response.dial({ callerId: this.twilioPhoneNumber, timeout: 35 });
       dial.number(formatPhoneNumber(to));
     } else {
-      const dial = response.dial({ callerId: 'Go-Eat', answerOnBridge: true });
+      const dial = response.dial({ callerId: 'Go-Eat', answerOnBridge: true, timeout: 35 });
       const client = dial.client(to);
       if (callerName) client.parameter({ name: 'callerName', value: callerName });
       if (orderId) client.parameter({ name: 'orderId', value: orderId });
