@@ -35,6 +35,9 @@ class VoiceController {
 
     const twiml = voiceService.generateCallTwiml(to, callerName, orderId);
 
+    // Notify recipient in real time that an active call has arrived
+    voiceService.notifyRecipientOnCallInitiated(to, callerName, orderId).catch(() => {});
+
     res.type('text/xml');
     res.send(twiml);
   };

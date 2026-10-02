@@ -9,7 +9,6 @@ const appError_1 = __importDefault(require("../utils/appError"));
 const order_model_1 = __importDefault(require("../models/order.model"));
 const user_model_1 = __importDefault(require("../models/user.model"));
 const twilioVerify_util_1 = require("../utils/twilioVerify.util");
-const notification_service_1 = __importDefault(require("./notification.service"));
 const io_1 = require("../io");
 const voiceServiceLastCallPushMap = new Map();
 class VoiceService {
@@ -158,53 +157,6 @@ class VoiceService {
             phone: restPhone,
             logo: order.restaurant.logo,
         } : null;
-        // Send Push & Real-time Notification to call recipient
-        if (recipientUserId && order) {
-            const callerUser = await user_model_1.default.findById(userId).select('name phoneNumber profileImage');
-            let callerName = callerUser?.name || 'Go-Eat Partner';
-            let callerImage = callerUser?.profileImage;
-            let callerPhone = callerUser?.phoneNumber;
-            if (role === 'vendor') {
-                callerName = restaurantData?.name ? `${restaurantData.name} (Restaurant)` : (callerUser?.name || 'Restaurant Outlet');
-                callerImage = restaurantData?.logo || callerUser?.profileImage;
-                callerPhone = restaurantData?.phoneContact || callerUser?.phoneNumber;
-            }
-            else if (role === 'customer') {
-                callerName = callerUser?.name || customerData?.name || 'Customer';
-                callerImage = customerData?.profilePicture || callerUser?.profileImage;
-                callerPhone = customerData?.phoneNumber || callerUser?.phoneNumber;
-            }
-            else if (role === 'rider') {
-                callerName = riderData?.name || callerUser?.name || 'Delivery Courier';
-                callerImage = riderData?.profilePicture || callerUser?.profileImage;
-                callerPhone = riderData?.phoneNumber || callerUser?.phoneNumber;
-            }
-            const displayOrderId = order._id.toString().slice(-6).toUpperCase();
-            // Send Push & Real-time Notification to call recipient (with 45s cooldown to prevent notification spam)
-            const callCooldownKey = `${orderId}_${recipientUserId}`;
-            const now = Date.now();
-            const lastSentTime = voiceServiceLastCallPushMap.get(callCooldownKey) || 0;
-            if (now - lastSentTime > 45000) {
-                voiceServiceLastCallPushMap.set(callCooldownKey, now);
-                // Direct real-time socket event for immediate ringing UI
-                (0, io_1.emitToUser)(recipientUserId, 'incoming_call', {
-                    orderId,
-                    role,
-                    target,
-                    callerName,
-                    callerImage,
-                    callerPhone,
-                    displayOrderId,
-                });
-                // Notification Inbox and FCM push notification
-                notification_service_1.default.sendNotification(recipientUserId, 'Incoming Voice Call 📞', `${callerName} is calling you regarding Order #${displayOrderId}`, { type: 'incoming_call', orderId, role, target, callerName, callerImage, callerPhone, displayOrderId }).catch((err) => {
-                    logger_1.default.warn('Failed to dispatch call notification:', err);
-                });
-            }
-            else {
-                logger_1.default.info(`⏳ Skipping duplicate call push notification for ${recipientUserId} (cooldown active)`);
-            }
-        }
         return {
             token: token.toJwt(),
             identity,
@@ -214,6 +166,33 @@ class VoiceService {
             customer: customerData,
             restaurant: restaurantData,
         };
+    }
+    /**
+     * Notify recipient in real time when an active call is actually placed via TwiML
+     */
+    async notifyRecipientOnCallInitiated(to, callerName, orderId) {
+        if (!to)
+            return;
+        const recipientIdentity = to.replace('client:', '');
+        const parts = recipientIdentity.split('_');
+        if (parts.length < 2)
+            return;
+        const recipientUserId = parts[1];
+        if (!recipientUserId)
+            return;
+        const callCooldownKey = `${orderId || 'call'}_${recipientUserId}`;
+        const now = Date.now();
+        const lastSentTime = voiceServiceLastCallPushMap.get(callCooldownKey) || 0;
+        if (now - lastSentTime < 25000) {
+            return;
+        }
+        voiceServiceLastCallPushMap.set(callCooldownKey, now);
+        const displayOrderId = orderId ? orderId.slice(-6).toUpperCase() : '';
+        (0, io_1.emitToUser)(recipientUserId, 'incoming_call', {
+            orderId: orderId || '',
+            callerName: callerName || 'Go-Eat Partner',
+            displayOrderId,
+        });
     }
     /**
      * Generates TwiML for routing a call to a client identity or phone number
@@ -228,7 +207,8 @@ class VoiceService {
                 answerOnBridge: true,
                 timeout: 35,
             });
-            const client = dial.client(clientName);
+            const client = dial.client();
+            client.identity(clientName);
             if (callerName) {
                 client.parameter({ name: 'callerName', value: callerName });
             }
@@ -242,7 +222,8 @@ class VoiceService {
         }
         else {
             const dial = response.dial({ callerId: 'Go-Eat', answerOnBridge: true, timeout: 35 });
-            const client = dial.client(to);
+            const client = dial.client();
+            client.identity(to);
             if (callerName)
                 client.parameter({ name: 'callerName', value: callerName });
             if (orderId)

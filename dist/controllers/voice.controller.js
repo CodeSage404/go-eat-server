@@ -28,6 +28,8 @@ class VoiceController {
             const callerName = (req.body.callerName || req.query.callerName || '');
             const orderId = (req.body.orderId || req.query.orderId || '');
             const twiml = voice_service_1.default.generateCallTwiml(to, callerName, orderId);
+            // Notify recipient in real time that an active call has arrived
+            voice_service_1.default.notifyRecipientOnCallInitiated(to, callerName, orderId).catch(() => { });
             res.type('text/xml');
             res.send(twiml);
         };
