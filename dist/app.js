@@ -42,6 +42,7 @@ const staff_routes_1 = __importDefault(require("./routes/staff.routes"));
 const notification_routes_1 = __importDefault(require("./routes/notification.routes"));
 const activity_routes_1 = __importDefault(require("./routes/activity.routes"));
 const voice_routes_1 = __importDefault(require("./routes/voice.routes"));
+const zego_routes_1 = __importDefault(require("./routes/zego.routes"));
 const rider_verification_routes_1 = __importDefault(require("./routes/rider-verification.routes"));
 const partnerApplication_routes_1 = __importDefault(require("./routes/partnerApplication.routes"));
 const activity_service_1 = __importDefault(require("./services/activity.service"));
@@ -181,6 +182,7 @@ class App {
         this.app.use('/api/v1/notifications', notification_routes_1.default);
         this.app.use('/api/v1/activity', activity_routes_1.default);
         this.app.use('/api/v1/voice', voice_routes_1.default);
+        this.app.use('/api/v1/zego', zego_routes_1.default);
         this.app.use('/api/v1/riders', rider_verification_routes_1.default);
         this.app.use('/api/v1/partners', partnerApplication_routes_1.default);
         // Documentation Routes

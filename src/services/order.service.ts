@@ -475,6 +475,56 @@ class OrderService {
       }
     }
 
+    // Notify Assigned Courier / Rider via Push & In-app
+    const riderId = (order.rider as any)?._id
+      ? (order.rider as any)._id.toString()
+      : order.rider ? order.rider.toString() : null;
+
+    if (riderId) {
+      const riderTitles: Record<string, string> = {
+        [OrderStatus.READY]: `Order Ready for Pickup! 📦`,
+        [OrderStatus.READY_FOR_COLLECTION]: `Order Ready for Pickup! 📦`,
+        [OrderStatus.COURIER_COLLECTED]: `Order Collected 🛵`,
+        [OrderStatus.OUT_FOR_DELIVERY]: `On Delivery Route 🚀`,
+        [OrderStatus.DELIVERED]: `Delivery Completed! 🎉`,
+        [OrderStatus.CANCELLED]: `Delivery Cancelled ⚠️`,
+        [OrderStatus.CANCELLED_BY_CUSTOMER]: `Delivery Cancelled ⚠️`,
+        [OrderStatus.CANCELLED_BY_OUTLET]: `Delivery Cancelled ⚠️`,
+      };
+
+      const riderMessages: Record<string, string> = {
+        [OrderStatus.READY]: `Order #${shortId} is packaged and ready for pickup at the outlet!`,
+        [OrderStatus.READY_FOR_COLLECTION]: `Order #${shortId} is packaged and ready for pickup at the outlet!`,
+        [OrderStatus.COURIER_COLLECTED]: `You've collected order #${shortId}. Head to the customer's delivery destination.`,
+        [OrderStatus.OUT_FOR_DELIVERY]: `Order #${shortId} is marked as out for delivery.`,
+        [OrderStatus.DELIVERED]: `Great job! Order #${shortId} has been successfully delivered and completed.`,
+        [OrderStatus.CANCELLED]: `Order #${shortId} has been cancelled.`,
+        [OrderStatus.CANCELLED_BY_CUSTOMER]: `Customer cancelled order #${shortId}.`,
+        [OrderStatus.CANCELLED_BY_OUTLET]: `Outlet cancelled order #${shortId}.`,
+      };
+
+      if (riderTitles[status] || riderMessages[status]) {
+        await notificationService.sendNotification(
+          riderId,
+          riderTitles[status] || `Order Status Updated`,
+          riderMessages[status] || `Order #${shortId} status changed to ${status.replace('_', ' ')}.`,
+          {
+            orderId: order._id.toString(),
+            status,
+            type: 'ORDER_UPDATE',
+          },
+          NotificationType.ORDER_UPDATE
+        );
+      }
+
+      // Emit Real-time Socket Event to Rider
+      emitToUser(riderId, SOCKET_EVENTS.ORDER_STATUS_UPDATE, {
+        orderId: order._id.toString(),
+        status,
+        deliveryPin: order.deliveryPin,
+      });
+    }
+
     // Operational Policy Settlement Triggers
     if (status === OrderStatus.ACCEPTED) {
       await settlementService.processOrderAccepted(order);

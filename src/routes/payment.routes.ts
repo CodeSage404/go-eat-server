@@ -232,7 +232,7 @@ router.get('/vendor', restrictTo(UserRole.VENDOR), paymentController.getVendorPa
  *       200:
  *         description: Successfully fetched banks
  */
-router.get('/banks', restrictTo(UserRole.VENDOR), paymentController.getBanks);
+router.get('/banks', restrictTo(UserRole.VENDOR, UserRole.RIDER), paymentController.getBanks);
 
 /**
  * @openapi
@@ -262,7 +262,7 @@ router.get('/banks', restrictTo(UserRole.VENDOR), paymentController.getBanks);
  *       400:
  *         description: Invalid account details
  */
-router.get('/resolve-account', restrictTo(UserRole.VENDOR), paymentController.resolveAccountNumber);
+router.get('/resolve-account', restrictTo(UserRole.VENDOR, UserRole.RIDER), paymentController.resolveAccountNumber);
 
 /**
  * @openapi

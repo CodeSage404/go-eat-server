@@ -410,6 +410,45 @@ class OrderService {
                 this.schedulePrepTimeAlert(order._id.toString(), vendorUserId, order.estimatedPrepTime || 20, shortId);
             }
         }
+        // Notify Assigned Courier / Rider via Push & In-app
+        const riderId = order.rider?._id
+            ? order.rider._id.toString()
+            : order.rider ? order.rider.toString() : null;
+        if (riderId) {
+            const riderTitles = {
+                [order_model_1.OrderStatus.READY]: `Order Ready for Pickup! 📦`,
+                [order_model_1.OrderStatus.READY_FOR_COLLECTION]: `Order Ready for Pickup! 📦`,
+                [order_model_1.OrderStatus.COURIER_COLLECTED]: `Order Collected 🛵`,
+                [order_model_1.OrderStatus.OUT_FOR_DELIVERY]: `On Delivery Route 🚀`,
+                [order_model_1.OrderStatus.DELIVERED]: `Delivery Completed! 🎉`,
+                [order_model_1.OrderStatus.CANCELLED]: `Delivery Cancelled ⚠️`,
+                [order_model_1.OrderStatus.CANCELLED_BY_CUSTOMER]: `Delivery Cancelled ⚠️`,
+                [order_model_1.OrderStatus.CANCELLED_BY_OUTLET]: `Delivery Cancelled ⚠️`,
+            };
+            const riderMessages = {
+                [order_model_1.OrderStatus.READY]: `Order #${shortId} is packaged and ready for pickup at the outlet!`,
+                [order_model_1.OrderStatus.READY_FOR_COLLECTION]: `Order #${shortId} is packaged and ready for pickup at the outlet!`,
+                [order_model_1.OrderStatus.COURIER_COLLECTED]: `You've collected order #${shortId}. Head to the customer's delivery destination.`,
+                [order_model_1.OrderStatus.OUT_FOR_DELIVERY]: `Order #${shortId} is marked as out for delivery.`,
+                [order_model_1.OrderStatus.DELIVERED]: `Great job! Order #${shortId} has been successfully delivered and completed.`,
+                [order_model_1.OrderStatus.CANCELLED]: `Order #${shortId} has been cancelled.`,
+                [order_model_1.OrderStatus.CANCELLED_BY_CUSTOMER]: `Customer cancelled order #${shortId}.`,
+                [order_model_1.OrderStatus.CANCELLED_BY_OUTLET]: `Outlet cancelled order #${shortId}.`,
+            };
+            if (riderTitles[status] || riderMessages[status]) {
+                await notification_service_1.default.sendNotification(riderId, riderTitles[status] || `Order Status Updated`, riderMessages[status] || `Order #${shortId} status changed to ${status.replace('_', ' ')}.`, {
+                    orderId: order._id.toString(),
+                    status,
+                    type: 'ORDER_UPDATE',
+                }, userNotification_model_1.NotificationType.ORDER_UPDATE);
+            }
+            // Emit Real-time Socket Event to Rider
+            (0, io_1.emitToUser)(riderId, constants_1.SOCKET_EVENTS.ORDER_STATUS_UPDATE, {
+                orderId: order._id.toString(),
+                status,
+                deliveryPin: order.deliveryPin,
+            });
+        }
         // Operational Policy Settlement Triggers
         if (status === order_model_1.OrderStatus.ACCEPTED) {
             await settlement_service_1.default.processOrderAccepted(order);

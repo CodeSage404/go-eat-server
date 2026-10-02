@@ -223,7 +223,7 @@ router.get('/vendor', (0, auth_middleware_1.restrictTo)(user_model_1.UserRole.VE
  *       200:
  *         description: Successfully fetched banks
  */
-router.get('/banks', (0, auth_middleware_1.restrictTo)(user_model_1.UserRole.VENDOR), payment_controller_1.default.getBanks);
+router.get('/banks', (0, auth_middleware_1.restrictTo)(user_model_1.UserRole.VENDOR, user_model_1.UserRole.RIDER), payment_controller_1.default.getBanks);
 /**
  * @openapi
  * /api/v1/payments/resolve-account:
@@ -252,7 +252,7 @@ router.get('/banks', (0, auth_middleware_1.restrictTo)(user_model_1.UserRole.VEN
  *       400:
  *         description: Invalid account details
  */
-router.get('/resolve-account', (0, auth_middleware_1.restrictTo)(user_model_1.UserRole.VENDOR), payment_controller_1.default.resolveAccountNumber);
+router.get('/resolve-account', (0, auth_middleware_1.restrictTo)(user_model_1.UserRole.VENDOR, user_model_1.UserRole.RIDER), payment_controller_1.default.resolveAccountNumber);
 /**
  * @openapi
  * /api/v1/payments/subaccount:
