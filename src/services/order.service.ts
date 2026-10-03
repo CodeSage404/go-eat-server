@@ -265,12 +265,22 @@ class OrderService {
         OrderStatus.PREPARING,
         OrderStatus.READY,
         OrderStatus.READY_FOR_COLLECTION,
-        OrderStatus.OUT_FOR_DELIVERY,
-        OrderStatus.DELIVERED,
         OrderStatus.CANCELLED,
-        OrderStatus.CANCELLED_BY_OUTLET
+        OrderStatus.CANCELLED_BY_OUTLET,
       ];
+
       if (!allowedVendorStatuses.includes(status)) {
+        if (
+          status === OrderStatus.DELIVERED ||
+          status === OrderStatus.COMPLETED ||
+          status === OrderStatus.OUT_FOR_DELIVERY ||
+          status === OrderStatus.COURIER_COLLECTED
+        ) {
+          throw new AppError(
+            'Vendors and partner outlets cannot complete orders or mark them as delivered. Outlets stop at Ready for Pickup.',
+            400
+          );
+        }
         throw new AppError(`Outlets cannot set order status to ${status}`, 400);
       }
     } else if (role === 'rider') {
@@ -281,7 +291,24 @@ class OrderService {
         throw new AppError('You are not the assigned courier for this order', 403);
       }
 
-      const allowedRiderStatuses = [OrderStatus.OUT_FOR_DELIVERY, OrderStatus.COURIER_COLLECTED, OrderStatus.DELIVERED, OrderStatus.CANCELLED];
+      if (
+        status === OrderStatus.DELIVERED &&
+        order.deliveryPin &&
+        !order.deliveryPinVerified &&
+        order.orderType !== 'pickup'
+      ) {
+        throw new AppError(
+          'Delivery verification PIN must be verified with the customer to complete this order.',
+          400
+        );
+      }
+
+      const allowedRiderStatuses = [
+        OrderStatus.OUT_FOR_DELIVERY,
+        OrderStatus.COURIER_COLLECTED,
+        OrderStatus.DELIVERED,
+        OrderStatus.CANCELLED,
+      ];
       if (!allowedRiderStatuses.includes(status)) {
         throw new AppError(`Couriers cannot set order status to ${status}`, 400);
       }
