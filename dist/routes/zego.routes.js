@@ -129,4 +129,58 @@ router.post('/token', auth_middleware_1.protect, zego_controller_1.default.getTo
  *         description: Server error
  */
 router.post('/notify', auth_middleware_1.protect, zego_controller_1.default.notifyRecipient);
+/**
+ * @openapi
+ * /api/v1/zego/end-call:
+ *   post:
+ *     tags:
+ *       - Zego
+ *     summary: Notify call participant that call has ended
+ *     description: Emits a real-time Socket.IO call_ended event to the other party so their device immediately dismisses active call screens and cancels ringing.
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - orderId
+ *             properties:
+ *               orderId:
+ *                 type: string
+ *                 description: The MongoDB ObjectId of the active order
+ *               role:
+ *                 type: string
+ *                 enum: [customer, rider, vendor]
+ *                 default: customer
+ *                 description: Calling role who ended the call
+ *               target:
+ *                 type: string
+ *                 enum: [customer, rider, restaurant]
+ *                 default: customer
+ *                 description: Other party who should be notified of the call termination
+ *     responses:
+ *       200:
+ *         description: Call end notification dispatched successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: success
+ *                 message:
+ *                   type: string
+ *                   example: Call ended notification sent
+ *       400:
+ *         description: Missing orderId
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Server error
+ */
+router.post('/end-call', auth_middleware_1.protect, zego_controller_1.default.endCall);
 exports.default = router;

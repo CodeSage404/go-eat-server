@@ -172,12 +172,12 @@ class AuthService {
 
       if (!isAllowed) {
         const portalName = userRole === UserRole.VENDOR
-          ? 'Go-Eat Partner / Vendor'
+          ? 'GoEatOne Partner / Vendor'
           : userRole === UserRole.RIDER
-          ? 'Go-Eat Delivery'
+          ? 'GoEatOne Delivery'
           : userRole === UserRole.ADMIN
-          ? 'Go-Eat Admin'
-          : 'Go-Eat Customer';
+          ? 'GoEatOne Admin'
+          : 'GoEatOne Customer';
 
         throw new AppError(
           `Access denied. This account is registered as a ${userRole}. Please log in using the ${portalName} application.`,

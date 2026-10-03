@@ -163,16 +163,17 @@ exports.registerInterest = (0, catchAsync_1.catchAsync)(async (req, res) => {
     if (!Email) {
         throw new appError_1.default('Email is required', 400);
     }
-    const subject = `Go Eat Registration Received - ${type === 'vendor' ? 'Business' : 'Rider'}`;
+    const subject = `GoEatOne Registration Received - ${type === 'vendor' ? 'Business' : 'Rider'}`;
     const htmlContent = `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #333;">
       <h2 style="color: #103E27;">Thank you for your interest!</h2>
       <p>Hello,</p>
-      <p>We have successfully received your information to register as a <strong>${type === 'vendor' ? 'business' : 'rider'}</strong> on Go-Eat.</p>
+      <p>We have successfully received your information to register as a <strong>${type === 'vendor' ? 'business' : 'rider'}</strong> on GoEatOne.</p>
       <p>Your application is currently <strong>under review</strong>. Our team will get back to you shortly with the next steps.</p>
       <br />
       <p>Best regards,</p>
-      <p><strong>The Go-Eat Team</strong></p>
+      <p><strong>The GoEatOne Team</strong></p>
+      <p style="font-size: 13px; color: #666; margin-top: 15px;">Need help? Contact <a href="mailto:support@goeatone.com" style="color: #103E27; font-weight: bold;">GoEatOne Support</a></p>
       <hr style="border: 0; border-top: 1px solid #eee; margin-top: 20px;" />
       <p style="color: #999; font-size: 12px;">This is an automated message. Please do not reply directly to this email.</p>
     </div>

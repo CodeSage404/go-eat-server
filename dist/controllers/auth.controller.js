@@ -466,16 +466,37 @@ class AuthController {
   <body style="font-family: sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; background: #0F3D26; color: white;">
     <div style="text-align: center; padding: 20px;">
       <h2>Authenticated Successfully</h2>
-      <p>Returning you to Go-Eat...</p>
+      <p>Returning you to GoEatOne...</p>
       <a href="${targetUrl}" style="color: #FFC529; text-decoration: underline; font-weight: bold; font-size: 16px;">Tap here if not redirected automatically</a>
     </div>
   </body>
 </html>`);
         });
         this.getMe = (0, catchAsync_1.catchAsync)(async (req, res) => {
+            let user = req.user;
+            if (user && user.role === user_model_1.UserRole.RIDER) {
+                try {
+                    const onboarding = await riderOnboarding_model_1.default.findOne({ user: user._id }).lean();
+                    if (onboarding) {
+                        const photo = onboarding.profilePhotoUrl ||
+                            onboarding.documents?.riderPhoto ||
+                            onboarding.documents?.selfieVerification;
+                        if (photo && !user.profileImage) {
+                            user.profileImage = photo;
+                            await user_model_1.default.findByIdAndUpdate(user._id, { profileImage: photo });
+                        }
+                        if (onboarding.status) {
+                            user.riderVerificationStatus = onboarding.status;
+                        }
+                    }
+                }
+                catch (err) {
+                    // Fallback gracefully without breaking auth
+                }
+            }
             res.status(200).json({
                 status: 'success',
-                data: { user: req.user },
+                data: { user },
             });
         });
         this.updateMe = (0, catchAsync_1.catchAsync)(async (req, res) => {

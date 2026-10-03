@@ -191,12 +191,12 @@ class AuthService {
             }
             if (!isAllowed) {
                 const portalName = userRole === user_model_1.UserRole.VENDOR
-                    ? 'Go-Eat Partner / Vendor'
+                    ? 'GoEatOne Partner / Vendor'
                     : userRole === user_model_1.UserRole.RIDER
-                        ? 'Go-Eat Delivery'
+                        ? 'GoEatOne Delivery'
                         : userRole === user_model_1.UserRole.ADMIN
-                            ? 'Go-Eat Admin'
-                            : 'Go-Eat Customer';
+                            ? 'GoEatOne Admin'
+                            : 'GoEatOne Customer';
                 throw new appError_1.default(`Access denied. This account is registered as a ${userRole}. Please log in using the ${portalName} application.`, 403);
             }
         }

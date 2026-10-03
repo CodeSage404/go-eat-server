@@ -1100,7 +1100,7 @@ class AdminController {
             });
             // Send credentials email to the manually created user
             try {
-                await email_util_1.default.sendTemplateEmail(email.toLowerCase(), 'CREDENTIALS_ALERT', 'Your Go-Eat Account Access Credentials', {
+                await email_util_1.default.sendTemplateEmail(email.toLowerCase(), 'CREDENTIALS_ALERT', 'Your GoEatOne Account Access Credentials', {
                     name,
                     role,
                     customRole: targetCustomRole || role,
@@ -1147,7 +1147,7 @@ class AdminController {
             // If role or customRole was updated, send notification email
             if (req.body.role || req.body.customRole) {
                 try {
-                    await email_util_1.default.sendTemplateEmail(user.email, 'CREDENTIALS_ALERT', 'Your Go-Eat Account Access Role Has Been Updated', {
+                    await email_util_1.default.sendTemplateEmail(user.email, 'CREDENTIALS_ALERT', 'Your GoEatOne Account Access Role Has Been Updated', {
                         name: user.name,
                         role: user.role,
                         customRole: user.customRole || user.role,

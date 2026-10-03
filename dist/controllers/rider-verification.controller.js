@@ -217,10 +217,21 @@ class RiderVerificationController {
                     throw new appError_1.default('You must accept the Courier Agreements and Accuracy Declaration.', 400);
                 }
                 profile.status = 'under_review';
-                const updatedUser = await user_model_1.default.findByIdAndUpdate(userId, {
+                const userUpdates = {
                     riderVerificationStatus: 'under_review',
                     hasSkippedRiderOnboarding: false,
-                }, { new: true });
+                };
+                const candidatePhoto = profile.profilePhotoUrl || profile.documents?.riderPhoto || profile.documents?.selfieVerification;
+                if (candidatePhoto) {
+                    userUpdates.profileImage = candidatePhoto;
+                }
+                if (profile.fullName) {
+                    userUpdates.name = profile.fullName;
+                }
+                if (profile.deliveryMethod) {
+                    userUpdates.vehicleType = profile.deliveryMethod;
+                }
+                const updatedUser = await user_model_1.default.findByIdAndUpdate(userId, userUpdates, { new: true });
                 logger_1.default.info(`📋 Courier ${userId} submitted verification for review [Vehicle: ${profile.deliveryMethod}]`);
                 // 📨 Dispatch In-App + Push Notification & Confirmation Email (24-48 hours review window)
                 const riderName = profile.fullName || updatedUser?.name || 'Courier';

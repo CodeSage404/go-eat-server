@@ -230,5 +230,31 @@ class ZegoService {
             logger_1.default.warn('[ZegoService] Failed to send push notification:', err);
         });
     }
+    /**
+     * Dispatches a call ended event via Socket.IO to notify the other party immediately
+     */
+    async notifyCallEnded(callerUserId, orderId, role, target) {
+        const order = await order_model_1.default.findById(orderId);
+        if (!order)
+            return;
+        let recipientUserId = null;
+        if (role === 'rider') {
+            recipientUserId = order.customer ? (order.customer._id?.toString() || order.customer.toString()) : null;
+        }
+        else if (role === 'customer') {
+            recipientUserId = target === 'restaurant'
+                ? (order.restaurant ? order.restaurant._id?.toString() || order.restaurant.toString() : null)
+                : (order.rider ? order.rider._id?.toString() || order.rider.toString() : null);
+        }
+        else if (role === 'vendor') {
+            recipientUserId = order.customer ? (order.customer._id?.toString() || order.customer.toString()) : null;
+        }
+        if (recipientUserId) {
+            (0, io_1.emitToUser)(recipientUserId, 'zego_call_ended', {
+                orderId,
+                callerId: `${role}_${callerUserId}`,
+            });
+        }
+    }
 }
 exports.default = new ZegoService();

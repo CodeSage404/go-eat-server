@@ -120,7 +120,7 @@ class EmailService {
      */
     async sendEmail(to, subject, html, senderType = 'default') {
         const { user: senderEmail, from } = this.getSenderInfo(senderType);
-        const senderName = senderType === 'partners' ? 'Go-Eat Partner Support' : senderType === 'secure' ? 'Go-Eat Security' : 'Go-Eat Support';
+        const senderName = senderType === 'partners' ? 'GoEatOne Partner Support' : senderType === 'secure' ? 'GoEatOne Security' : 'GoEatOne Support';
         // 1. Try Brevo HTTPS API if key is present
         if (process.env.BREVO_API_KEY) {
             const ok = await this.sendViaBrevoHttp(to, subject, html, senderEmail, senderName, process.env.BREVO_API_KEY);

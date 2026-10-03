@@ -217,12 +217,24 @@ class RiderVerificationController {
       }
 
       profile.status = 'under_review';
+      const userUpdates: Record<string, any> = {
+        riderVerificationStatus: 'under_review',
+        hasSkippedRiderOnboarding: false,
+      };
+      const candidatePhoto = profile.profilePhotoUrl || profile.documents?.riderPhoto || profile.documents?.selfieVerification;
+      if (candidatePhoto) {
+        userUpdates.profileImage = candidatePhoto;
+      }
+      if (profile.fullName) {
+        userUpdates.name = profile.fullName;
+      }
+      if (profile.deliveryMethod) {
+        userUpdates.vehicleType = profile.deliveryMethod;
+      }
+
       const updatedUser = await User.findByIdAndUpdate(
         userId,
-        {
-          riderVerificationStatus: 'under_review',
-          hasSkippedRiderOnboarding: false,
-        },
+        userUpdates,
         { new: true }
       );
 

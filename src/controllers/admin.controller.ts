@@ -1286,7 +1286,7 @@ class AdminController {
       await emailUtil.sendTemplateEmail(
         email.toLowerCase(),
         'CREDENTIALS_ALERT',
-        'Your Go-Eat Account Access Credentials',
+        'Your GoEatOne Account Access Credentials',
         {
           name,
           role,
@@ -1350,7 +1350,7 @@ class AdminController {
         await emailUtil.sendTemplateEmail(
           user.email,
           'CREDENTIALS_ALERT',
-          'Your Go-Eat Account Access Role Has Been Updated',
+          'Your GoEatOne Account Access Role Has Been Updated',
           {
             name: user.name,
             role: user.role,
