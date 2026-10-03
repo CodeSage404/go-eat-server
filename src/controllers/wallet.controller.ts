@@ -4,6 +4,8 @@ import Transaction, { TransactionType, TransactionStatus } from '../models/trans
 import { catchAsync } from '../utils/catchAsync';
 import AppError from '../utils/appError';
 import paystackModule from '../services/payments/paystack.module';
+import stripeModule from '../services/payments/stripe.module';
+import { resolveRequestLocation } from '../utils/locationResolver';
 import notificationService from '../services/notification.service';
 
 class WalletController {
@@ -129,14 +131,28 @@ class WalletController {
   });
 
   /**
-   * Update Bank Details
+   * Update Bank Details (Multi-country support: Nigeria, UK, Italy, International)
    */
   public updateBankDetails = catchAsync(async (req: Request, res: Response) => {
-    const { accountNumber, bankCode, accountName, bankName } = req.body;
+    const {
+      accountNumber,
+      bankCode,
+      accountName,
+      bankName,
+      sortCode,
+      routingNumber,
+      iban,
+      countryCode,
+      provider,
+    } = req.body;
 
-    if (!accountNumber || !bankCode || !accountName) {
-      throw new AppError('accountNumber, bankCode, and accountName are required', 400);
+    if (!accountNumber || !accountName) {
+      throw new AppError('accountNumber and accountName are required', 400);
     }
+
+    const loc = resolveRequestLocation(req);
+    const activeCountry = (countryCode || loc.countryCode || 'NG').toUpperCase();
+    const effectiveBankCode = bankCode || sortCode || (iban ? iban.slice(5, 10) : 'INTERNATIONAL');
 
     let wallet = await Wallet.findOne({ user: req.user!._id });
     if (!wallet) {
@@ -144,11 +160,16 @@ class WalletController {
     }
 
     wallet.bankAccount = {
-      accountNumber,
-      bankCode,
-      accountName,
-      bankName: bankName || undefined,
-      recipientCode: undefined // reset recipient code so it gets regenerated on next payout
+      accountNumber: String(accountNumber).trim(),
+      bankCode: effectiveBankCode,
+      accountName: String(accountName).trim(),
+      bankName: bankName || (activeCountry === 'GB' ? 'UK Bank' : activeCountry === 'IT' ? 'Italian Bank' : undefined),
+      recipientCode: undefined, // reset recipient code so it gets regenerated on next payout
+      routingNumber: routingNumber ? String(routingNumber).trim() : undefined,
+      sortCode: sortCode ? String(sortCode).trim() : undefined,
+      iban: iban ? String(iban).trim() : undefined,
+      countryCode: activeCountry,
+      provider: provider || (activeCountry === 'NG' ? 'paystack' : 'stripe'),
     };
 
     await wallet.save();
@@ -166,10 +187,37 @@ class WalletController {
   });
 
   /**
-   * Get List of Supported Banks
+   * Get List of Supported Banks based on User Country / Region
    */
   public getBanks = catchAsync(async (req: Request, res: Response) => {
-    const banks = await paystackModule.getBanks();
+    const loc = resolveRequestLocation(req);
+    const countryCode = ((req.query.countryCode as string) || loc.countryCode || 'NG').toUpperCase();
+
+    if (countryCode === 'GB' || countryCode === 'UK') {
+      const banks = stripeModule.getBanksByCountry('GB');
+      return res.status(200).json({
+        status: 'success',
+        results: banks.length,
+        data: banks,
+      });
+    } else if (countryCode === 'IT') {
+      const banks = stripeModule.getBanksByCountry('IT');
+      return res.status(200).json({
+        status: 'success',
+        results: banks.length,
+        data: banks,
+      });
+    } else if (countryCode === 'US') {
+      const banks = stripeModule.getBanksByCountry('US');
+      return res.status(200).json({
+        status: 'success',
+        results: banks.length,
+        data: banks,
+      });
+    }
+
+    const country = (req.query.country as string) || (countryCode === 'GH' ? 'ghana' : 'nigeria');
+    const banks = await paystackModule.getBanks(country);
     res.status(200).json({
       status: 'success',
       results: banks.length,

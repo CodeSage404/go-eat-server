@@ -38,7 +38,7 @@ router.get('/me', restrictTo(UserRole.RIDER, UserRole.VENDOR), walletController.
  * @openapi
  * /api/v1/wallets/me/bank:
  *   put:
- *     summary: Update bank account details
+ *     summary: Update bank account details (Multi-Country: Nigeria, UK, Italy, International)
  *     tags:
  *       - Wallets
  *     security:
@@ -49,6 +49,7 @@ router.get('/me', restrictTo(UserRole.RIDER, UserRole.VENDOR), walletController.
  *         application/json:
  *           schema:
  *             type: object
+ *             required: [accountNumber, accountName]
  *             properties:
  *               accountNumber:
  *                 type: string
@@ -57,6 +58,16 @@ router.get('/me', restrictTo(UserRole.RIDER, UserRole.VENDOR), walletController.
  *               accountName:
  *                 type: string
  *               bankName:
+ *                 type: string
+ *               sortCode:
+ *                 type: string
+ *               routingNumber:
+ *                 type: string
+ *               iban:
+ *                 type: string
+ *               countryCode:
+ *                 type: string
+ *               provider:
  *                 type: string
  *     responses:
  *       200:
@@ -68,11 +79,19 @@ router.put('/me/bank', restrictTo(UserRole.RIDER, UserRole.VENDOR), walletContro
  * @openapi
  * /api/v1/wallets/banks:
  *   get:
- *     summary: Get list of supported banks
+ *     summary: Get list of supported banks by country / location
  *     tags:
  *       - Wallets
  *     security:
  *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: countryCode
+ *         required: false
+ *         schema:
+ *           type: string
+ *           example: GB
+ *         description: Optional country code (NG, GB, IT, US)
  *     responses:
  *       200:
  *         description: Success

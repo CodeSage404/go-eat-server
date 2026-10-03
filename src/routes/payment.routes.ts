@@ -221,13 +221,48 @@ router.get('/vendor', restrictTo(UserRole.VENDOR), paymentController.getVendorPa
 
 /**
  * @openapi
+ * /api/v1/payments/bank-config:
+ *   get:
+ *     tags:
+ *       - Payments
+ *     summary: Get active bank account verification configuration by country/region
+ *     description: Determines whether to use Paystack (Nigeria NUBAN) or Stripe (UK Sort Code / Italian IBAN) based on user location and platform admin settings.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: countryCode
+ *         required: false
+ *         schema:
+ *           type: string
+ *           example: GB
+ *         description: Optional 2-letter ISO country code override (NG, GB, IT, US)
+ *     responses:
+ *       200:
+ *         description: Active bank verification configuration and format requirements
+ *       401:
+ *         description: Unauthorized
+ */
+router.get('/bank-config', restrictTo(UserRole.VENDOR, UserRole.RIDER), paymentController.getBankVerificationConfig);
+
+/**
+ * @openapi
  * /api/v1/payments/banks:
  *   get:
  *     tags:
  *       - Payments
- *     summary: Fetch all supported Paystack banks
+ *     summary: Fetch supported banks by country / region
+ *     description: Retrieves the bank directory for the user's country (Nigeria via Paystack, UK / Italy / US via Stripe clearing directories).
  *     security:
  *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: countryCode
+ *         required: false
+ *         schema:
+ *           type: string
+ *           example: GB
+ *         description: Optional country code (NG, GB, IT, US)
  *     responses:
  *       200:
  *         description: Successfully fetched banks
@@ -240,7 +275,8 @@ router.get('/banks', restrictTo(UserRole.VENDOR, UserRole.RIDER), paymentControl
  *   get:
  *     tags:
  *       - Payments
- *     summary: Resolve and verify Nigerian bank account name
+ *     summary: Resolve and verify bank account details (Multi-Country: Paystack or Stripe)
+ *     description: Validates bank account numbers across regions. Uses Paystack for Nigerian NUBAN, and Stripe for UK Sort Codes / Account Numbers, Italian IBANs, and US Routing Numbers.
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -249,13 +285,26 @@ router.get('/banks', restrictTo(UserRole.VENDOR, UserRole.RIDER), paymentControl
  *         required: true
  *         schema:
  *           type: string
- *         description: 10-digit Nigerian NUBAN account number
+ *         description: Account number or IBAN
  *       - in: query
  *         name: bankCode
- *         required: true
+ *         required: false
  *         schema:
  *           type: string
- *         description: 3-digit CBN bank code
+ *         description: Bank code or sort code
+ *       - in: query
+ *         name: routingNumber
+ *         required: false
+ *         schema:
+ *           type: string
+ *         description: Routing number or UK Sort Code
+ *       - in: query
+ *         name: countryCode
+ *         required: false
+ *         schema:
+ *           type: string
+ *           example: GB
+ *         description: 2-letter ISO country code
  *     responses:
  *       200:
  *         description: Account successfully resolved and verified

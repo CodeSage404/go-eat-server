@@ -8,10 +8,15 @@ export interface IWallet extends Document {
   currency: string;
   bankAccount?: {
     accountNumber: string;
-    bankCode: string;
+    bankCode?: string;
     accountName: string;
     bankName?: string;
     recipientCode?: string;
+    routingNumber?: string;
+    sortCode?: string;
+    iban?: string;
+    countryCode?: string;
+    provider?: string;
   };
   lastPayoutDate?: Date;
   isSettlementOnHold: boolean;
@@ -54,6 +59,11 @@ const walletSchema = new Schema<IWallet>(
       accountName: { type: String, trim: true },
       bankName: { type: String, trim: true },
       recipientCode: { type: String, trim: true },
+      routingNumber: { type: String, trim: true },
+      sortCode: { type: String, trim: true },
+      iban: { type: String, trim: true },
+      countryCode: { type: String, trim: true },
+      provider: { type: String, trim: true },
     },
     lastPayoutDate: {
       type: Date,
