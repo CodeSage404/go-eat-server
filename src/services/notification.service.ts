@@ -81,13 +81,22 @@ class NotificationService {
           ? 'incoming_calls'
           : (isVendor && (data?.type === 'NEW_ORDER' || data?.type === 'ORDER_UPDATE'))
           ? 'order_alerts'
-          : (isRider && (data?.type === 'RIDER_JOB' || data?.type === 'NEW_ORDER'))
+          : (isRider && (data?.type === 'RIDER_JOB' || data?.type === 'NEW_ORDER' || data?.type === 'DELIVERY_ALERTS'))
           ? 'delivery_alerts'
           : 'default';
-        if (user.fcmToken.startsWith('ExponentPushToken') || user.fcmToken.startsWith('ExpoPushToken')) {
+
+        // Normalize Expo token in case of client typos or variations
+        const rawToken = user.fcmToken.trim();
+        const normalizedToken = rawToken.replace(/^Exponn+entPushToken/i, 'ExponentPushToken');
+        const isExpoToken =
+          /PushToken\[.*\]/i.test(normalizedToken) ||
+          normalizedToken.startsWith('ExponentPushToken') ||
+          normalizedToken.startsWith('ExpoPushToken');
+
+        if (isExpoToken) {
           // Send via Expo Push API with high priority, sound, and badge for iOS & Android
           const expoMessage: Record<string, any> = {
-            to: user.fcmToken,
+            to: normalizedToken,
             sound: 'default',
             title,
             body,
@@ -111,7 +120,7 @@ class NotificationService {
           if (ticket?.status === 'error') {
             logger.warn(`⚠️ Expo push notification delivery error for user ${userId}: ${ticket.message || 'Delivery error'} (${ticket.details?.error || 'Unknown'})`);
           } else {
-            logger.info(`📲 Expo push notification sent to user ${userId} (${user.email || user.phoneNumber}):`, expoResult);
+            logger.info(`📲 Expo push notification successfully dispatched to user ${userId} (${user.email || user.phoneNumber}):`, ticket || expoResult);
           }
         } else if (/^[0-9a-fA-F]{64}$/.test(user.fcmToken)) {
           // Raw 64-character APNs device token detected (sent from a legacy or misconfigured iOS client)
