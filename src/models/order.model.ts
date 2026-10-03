@@ -98,6 +98,9 @@ export interface IOrder extends Document {
   deliveryPinVerified?: boolean;
   deliveryPinVerifiedAt?: Date;
   failedPinAttempts?: number;
+  isInTraffic?: boolean;
+  trafficDelayMinutes?: number;
+  trafficReportedAt?: Date;
   cancellationInitiator?: 'customer' | 'outlet' | 'courier' | 'goeat';
   cancelReason?: string;
   refundAmount?: number;
@@ -287,6 +290,17 @@ const orderSchema = new Schema<IOrder>(
     failedPinAttempts: {
       type: Number,
       default: 0,
+    },
+    isInTraffic: {
+      type: Boolean,
+      default: false,
+    },
+    trafficDelayMinutes: {
+      type: Number,
+      default: 0,
+    },
+    trafficReportedAt: {
+      type: Date,
     },
     cancellationInitiator: {
       type: String,

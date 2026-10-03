@@ -303,6 +303,61 @@ class ZegoService {
       });
     }
   }
+
+  /**
+   * Dispatches a Missed Call notification and socket event when a call goes unanswered
+   */
+  async notifyMissedCall(
+    callerUserId: string,
+    orderId: string,
+    role: 'customer' | 'rider' | 'vendor',
+    target: 'customer' | 'rider' | 'restaurant'
+  ): Promise<void> {
+    const order = await Order.findById(orderId);
+    if (!order) return;
+
+    let recipientUserId: string | null = null;
+    if (role === 'rider') {
+      recipientUserId = order.customer ? ((order.customer as any)._id?.toString() || order.customer.toString()) : null;
+    } else if (role === 'customer') {
+      recipientUserId = target === 'restaurant'
+        ? (order.restaurant ? (order.restaurant as any)._id?.toString() || order.restaurant.toString() : null)
+        : (order.rider ? (order.rider as any)._id?.toString() || order.rider.toString() : null);
+    } else if (role === 'vendor') {
+      recipientUserId = order.customer ? ((order.customer as any)._id?.toString() || order.customer.toString()) : null;
+    }
+
+    if (!recipientUserId) return;
+
+    const callerUser = await User.findById(callerUserId).select('name');
+    const callerName = callerUser?.name || (role === 'rider' ? 'Delivery Courier' : 'Customer');
+    const displayOrderId = order._id.toString().slice(-6).toUpperCase();
+
+    // 1. Send push notification for missed call
+    notificationService.sendNotification(
+      recipientUserId,
+      'Missed Call 📞',
+      `You missed a call from ${callerName} regarding Order #${displayOrderId}.`,
+      {
+        type: 'missed_call',
+        orderId,
+        callerId: `${role}_${callerUserId}`,
+        callerName,
+        displayOrderId,
+      }
+    ).catch((err) => {
+      logger.warn('[ZegoService] Failed to send missed call push:', err);
+    });
+
+    // 2. Real-time socket event
+    emitToUser(recipientUserId, 'missed_call', {
+      orderId,
+      callerId: `${role}_${callerUserId}`,
+      callerName,
+      displayOrderId,
+      timestamp: new Date().toISOString(),
+    });
+  }
 }
 
 export default new ZegoService();

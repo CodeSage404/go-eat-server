@@ -1617,6 +1617,85 @@ class OrderService {
       refundAmount: calculatedRefund,
     };
   }
+
+  /**
+   * Updates traffic delay status for an active delivery order
+   */
+  async updateTrafficStatus(
+    orderId: string,
+    riderId: string,
+    isInTraffic: boolean,
+    additionalMinutes: number = 10
+  ) {
+    const order = await Order.findById(orderId)
+      .populate('customer', 'name phoneNumber email fcmToken')
+      .populate('rider', 'name phoneNumber vehicleType');
+
+    if (!order) {
+      throw new AppError('Order not found', 404);
+    }
+
+    if (order.rider && (order.rider as any)._id?.toString() !== riderId.toString()) {
+      throw new AppError('Unauthorized: You are not assigned to this delivery', 403);
+    }
+
+    order.isInTraffic = isInTraffic;
+    order.trafficDelayMinutes = isInTraffic ? additionalMinutes : 0;
+    order.trafficReportedAt = new Date();
+
+    let revisedEtaString = '';
+    if (order.estimatedDeliveryTime) {
+      const currentEta = new Date(order.estimatedDeliveryTime).getTime();
+      const adjustmentMs = (isInTraffic ? additionalMinutes : -additionalMinutes) * 60 * 1000;
+      const revisedEta = new Date(currentEta + adjustmentMs);
+      order.estimatedDeliveryTime = revisedEta;
+      revisedEtaString = revisedEta.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }
+
+    await order.save();
+
+    const shortId = order._id.toString().slice(-6).toUpperCase();
+    const customerId = (order.customer as any)?._id
+      ? (order.customer as any)._id.toString()
+      : order.customer?.toString?.();
+
+    if (customerId) {
+      const title = isInTraffic ? 'Courier Delayed in Traffic 🚦' : 'Traffic Cleared 🛵';
+      const body = isInTraffic
+        ? `Your courier is caught in traffic for order #${shortId}. Estimated delivery updated${revisedEtaString ? ` (~${revisedEtaString})` : ''} (+${additionalMinutes}m).`
+        : `Traffic has cleared for order #${shortId}! Your courier is moving smoothly towards you.`;
+
+      await notificationService.sendNotification(
+        customerId,
+        title,
+        body,
+        {
+          orderId: order._id.toString(),
+          type: 'ORDER_TRAFFIC_ALERT',
+          isInTraffic,
+          trafficDelayMinutes: isInTraffic ? additionalMinutes : 0,
+          estimatedDeliveryTime: order.estimatedDeliveryTime ? order.estimatedDeliveryTime.toISOString() : undefined,
+        },
+        NotificationType.ORDER_UPDATE
+      );
+
+      // Real-time socket event to customer
+      emitToUser(customerId, 'order_traffic_update', {
+        orderId: order._id.toString(),
+        isInTraffic,
+        trafficDelayMinutes: isInTraffic ? additionalMinutes : 0,
+        estimatedDeliveryTime: order.estimatedDeliveryTime,
+        message: body,
+      });
+    }
+
+    return {
+      orderId: order._id,
+      isInTraffic: order.isInTraffic,
+      trafficDelayMinutes: order.trafficDelayMinutes,
+      estimatedDeliveryTime: order.estimatedDeliveryTime,
+    };
+  }
 }
 
 export default new OrderService();
