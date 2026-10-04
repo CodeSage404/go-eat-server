@@ -162,6 +162,11 @@ class OrderService {
         ? Math.round(fixedFee)
         : Math.round(baseFee + (finalDistKm * feePerKm));
       data.distanceKm = finalDistKm;
+    } else if (!isPickup) {
+      const isFixedMode = setting?.deliveryFeeCalculationMode === 'fixed';
+      const fixedFee = setting?.fixedDeliveryFee ?? 500;
+      data.deliveryFee = isFixedMode ? Math.round(fixedFee) : Math.round(baseFee);
+      data.distanceKm = 0;
     } else {
       data.deliveryFee = 0;
       data.distanceKm = 0;
@@ -1337,7 +1342,8 @@ class OrderService {
       if (geocoded && geocoded.length >= 2) customerCoords = [geocoded[0], geocoded[1]];
     }
 
-    if (!customerCoords || customerCoords.length < 2 || (customerCoords[0] === 0 && customerCoords[1] === 0)) {
+    const hasValidCoords = customerCoords && customerCoords.length >= 2 && !(customerCoords[0] === 0 && customerCoords[1] === 0);
+    if (!hasValidCoords && !isFixedMode) {
       throw new AppError('Valid delivery coordinates or address are required to calculate delivery fees.', 400);
     }
 
@@ -1356,16 +1362,17 @@ class OrderService {
       }
 
       const restCoords = restDoc.location?.coordinates;
-      if (!restCoords || restCoords.length < 2) {
-        throw new AppError(`Location coordinates not configured for ${restDoc.name}`, 400);
-      }
-
-      const haversineDistKm = this.calculateHaversineDistanceKm(
-        restCoords[1], restCoords[0],
-        customerCoords[1], customerCoords[0]
-      );
+      let haversineDistKm = 0;
+      let withinRadius = true;
       const maxRadius = restDoc.deliveryRadius || maxGlobalRadius;
-      const withinRadius = haversineDistKm <= maxRadius;
+
+      if (customerCoords && customerCoords.length >= 2 && restCoords && restCoords.length >= 2) {
+        haversineDistKm = this.calculateHaversineDistanceKm(
+          restCoords[1], restCoords[0],
+          customerCoords[1], customerCoords[0]
+        );
+        withinRadius = haversineDistKm <= maxRadius;
+      }
 
       // Delivery fee computation: either fixed fee or dynamic distance (baseFee + distance * perKm)
       const singleTripFee = isFixedMode
@@ -1407,18 +1414,22 @@ class OrderService {
       // Pairwise distance between Outlet A and Outlet B
       const restA = outletQuotes[0];
       const restB = outletQuotes[1];
-      outletDistanceKm = Number(
-        this.calculateHaversineDistanceKm(
-          restA.coordinates[1], restA.coordinates[0],
-          restB.coordinates[1], restB.coordinates[0]
-        ).toFixed(2)
-      );
+      if (restA.coordinates && restB.coordinates && restA.coordinates.length >= 2 && restB.coordinates.length >= 2) {
+        outletDistanceKm = Number(
+          this.calculateHaversineDistanceKm(
+            restA.coordinates[1], restA.coordinates[0],
+            restB.coordinates[1], restB.coordinates[0]
+          ).toFixed(2)
+        );
+      }
 
       if (outletDistanceKm <= batchThresholdKm) {
         // Approach 1: Single Rider (Batched Pickup)
         routingMode = 'BATCHED_PICKUP';
         const totalBatchedDist = outletDistanceKm + Math.max(restA.distanceKm, restB.distanceKm);
-        totalDeliveryFee = Math.round(baseFee + (totalBatchedDist * feePerKm) + multiOutletExtraStopFee);
+        totalDeliveryFee = isFixedMode
+          ? Math.round(fixedFee + multiOutletExtraStopFee)
+          : Math.round(baseFee + (totalBatchedDist * feePerKm) + multiOutletExtraStopFee);
       } else {
         // Approach 2: Split Delivery (Multiple Riders)
         routingMode = 'SPLIT_DELIVERY';

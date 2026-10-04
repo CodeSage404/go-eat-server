@@ -300,12 +300,19 @@ class OrderController {
                 data: {
                     deliveryBaseFee: setting?.deliveryBaseFee ?? 500,
                     deliveryFeePerKm: setting?.deliveryFeePerKm ?? 100,
+                    deliveryFeeCalculationMode: setting?.deliveryFeeCalculationMode ?? 'dynamic_distance',
+                    fixedDeliveryFee: setting?.fixedDeliveryFee ?? 500,
                     serviceFee: setting?.serviceFee ?? 170,
                     smallOrderFee: setting?.smallOrderFee ?? 150,
                     smallOrderFeeThreshold: setting?.smallOrderFeeThreshold ?? 1000,
                     batchPickupThresholdKm: setting?.batchPickupThresholdKm ?? 3.0,
                     multiOutletExtraStopFee: setting?.multiOutletExtraStopFee ?? 300,
                     maxDeliveryDistance: setting?.maxDeliveryDistance ?? 15,
+                    firstBiteEnabled: (String(process.env.FIRST_BITE_FREE_ORDER_ENABLED || 'false').toLowerCase() === 'true') && (setting?.firstBiteEnabled === true),
+                    firstBiteCampaignTitle: setting?.firstBiteCampaignTitle || 'Your First Bite is on Us',
+                    firstBiteDescription: setting?.firstBiteDescription || 'Enjoy your first meal on us as a welcome gift from Go-Eat!',
+                    firstBiteIsTotallyFree: setting?.firstBiteIsTotallyFree !== false,
+                    firstBiteMaxFreeAmount: setting?.firstBiteMaxFreeAmount ?? 3000,
                 },
             });
         });

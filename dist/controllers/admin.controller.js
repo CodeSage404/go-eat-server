@@ -1264,7 +1264,8 @@ class AdminController {
             const allowed = [
                 'appName', 'supportEmail', 'commissionRate', 'maxDeliveryDistance',
                 'maintenanceMode', 'enableNotifications', 'minOrderAmount',
-                'deliveryBaseFee', 'deliveryFeePerKm', 'serviceFee', 'smallOrderFee',
+                'deliveryBaseFee', 'deliveryFeePerKm', 'deliveryFeeCalculationMode', 'fixedDeliveryFee',
+                'serviceFee', 'smallOrderFee',
                 'smallOrderFeeThreshold', 'batchPickupThresholdKm', 'multiOutletExtraStopFee',
                 'riderBasePayout', 'riderPerKmPayout', 'defaultPaymentProvider',
                 'enablePaystack', 'enableFlutterwave', 'enableStripe', 'forceGlobalPaymentProvider',

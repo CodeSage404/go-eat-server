@@ -77,7 +77,7 @@ router.get('/me/transactions/:id', (0, auth_middleware_1.restrictTo)(user_model_
  * @openapi
  * /api/v1/wallets/me/bank:
  *   put:
- *     summary: Update bank account details (Multi-Country: Nigeria, UK, Italy, International)
+ *     summary: "Update bank account details (Multi-Country: Nigeria, UK, Italy, International)"
  *     tags:
  *       - Wallets
  *     security:

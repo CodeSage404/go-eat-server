@@ -264,7 +264,7 @@ router.get('/banks', (0, auth_middleware_1.restrictTo)(user_model_1.UserRole.VEN
  *   get:
  *     tags:
  *       - Payments
- *     summary: Resolve and verify bank account details (Multi-Country: Paystack or Stripe)
+ *     summary: "Resolve and verify bank account details (Multi-Country: Paystack or Stripe)"
  *     description: Validates bank account numbers across regions. Uses Paystack for Nigerian NUBAN, and Stripe for UK Sort Codes / Account Numbers, Italian IBANs, and US Routing Numbers.
  *     security:
  *       - bearerAuth: []

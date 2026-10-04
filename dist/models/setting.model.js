@@ -44,6 +44,12 @@ const settingSchema = new mongoose_1.Schema({
     minOrderAmount: { type: Number, default: 500 },
     deliveryBaseFee: { type: Number, default: 500 },
     deliveryFeePerKm: { type: Number, default: 100 },
+    deliveryFeeCalculationMode: {
+        type: String,
+        enum: ['dynamic_distance', 'fixed'],
+        default: 'dynamic_distance',
+    },
+    fixedDeliveryFee: { type: Number, default: 500 },
     serviceFee: { type: Number, default: 170 },
     smallOrderFee: { type: Number, default: 150 },
     smallOrderFeeThreshold: { type: Number, default: 1000 },

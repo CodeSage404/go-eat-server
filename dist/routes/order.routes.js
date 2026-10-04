@@ -49,6 +49,13 @@ const quoteFeeLimiter = (0, express_rate_limit_1.default)({
  *                     deliveryFeePerKm:
  *                       type: number
  *                       example: 100
+ *                     deliveryFeeCalculationMode:
+ *                       type: string
+ *                       enum: [dynamic_distance, fixed]
+ *                       example: dynamic_distance
+ *                     fixedDeliveryFee:
+ *                       type: number
+ *                       example: 500
  *                     serviceFee:
  *                       type: number
  *                       example: 170
@@ -67,6 +74,21 @@ const quoteFeeLimiter = (0, express_rate_limit_1.default)({
  *                     maxDeliveryDistance:
  *                       type: number
  *                       example: 15
+ *                     firstBiteEnabled:
+ *                       type: boolean
+ *                       example: true
+ *                     firstBiteCampaignTitle:
+ *                       type: string
+ *                       example: Your First Bite is on Us
+ *                     firstBiteDescription:
+ *                       type: string
+ *                       example: Enjoy your first meal on us as a welcome gift from Go-Eat!
+ *                     firstBiteIsTotallyFree:
+ *                       type: boolean
+ *                       example: true
+ *                     firstBiteMaxFreeAmount:
+ *                       type: number
+ *                       example: 3000
  */
 router.get('/fees', order_controller_1.default.getPublicFees);
 /**

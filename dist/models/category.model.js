@@ -87,7 +87,5 @@ const categorySchema = new mongoose_1.Schema({
 });
 // Index for fast search
 categorySchema.index({ name: 1, isGlobal: 1 });
-categorySchema.index({ country: 1 });
-categorySchema.index({ countryCode: 1 });
 const Category = mongoose_1.default.model('Category', categorySchema);
 exports.default = Category;
