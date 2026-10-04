@@ -11,6 +11,8 @@ export interface IWallet extends Document {
     bankCode?: string;
     accountName: string;
     bankName?: string;
+    bankSlug?: string;
+    bankLogo?: string;
     recipientCode?: string;
     routingNumber?: string;
     sortCode?: string;
@@ -58,6 +60,8 @@ const walletSchema = new Schema<IWallet>(
       bankCode: { type: String, trim: true },
       accountName: { type: String, trim: true },
       bankName: { type: String, trim: true },
+      bankSlug: { type: String, trim: true },
+      bankLogo: { type: String, trim: true },
       recipientCode: { type: String, trim: true },
       routingNumber: { type: String, trim: true },
       sortCode: { type: String, trim: true },

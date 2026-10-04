@@ -634,10 +634,21 @@ class OrderService {
         }
       }
 
-      // Filter out couriers who have already declined this job offer
+      // Filter out couriers who have already declined or timed out on this job offer in the current round
+      let uncontactedRiders = candidateRiders;
       if (order.declinedRiders && order.declinedRiders.length > 0) {
         const declinedSet = new Set(order.declinedRiders.map((id: any) => id.toString()));
-        candidateRiders = candidateRiders.filter((r) => !declinedSet.has(r._id.toString()));
+        uncontactedRiders = candidateRiders.filter((r) => !declinedSet.has(r._id.toString()));
+      }
+
+      // Round-robin cycling: If all eligible riders have seen it and declined/timed out without accepting,
+      // reset declinedRiders so the offer cycles back to Rider A, B, etc. until an available rider accepts
+      if (uncontactedRiders.length === 0 && candidateRiders.length > 0) {
+        logger.info(`🔄 Proximity Dispatch: All nearby couriers timed out/declined on order #${order._id}. Resetting declined list to cycle back round-robin.`);
+        await Order.findByIdAndUpdate(order._id, { $set: { declinedRiders: [] } });
+        order.declinedRiders = [];
+      } else {
+        candidateRiders = uncontactedRiders;
       }
 
       if (!candidateRiders || candidateRiders.length === 0) {
@@ -695,8 +706,21 @@ class OrderService {
           `📡 Proximity Dispatch: Order #${order._id} assigned to closest ${isBusy ? 'busy' : 'available'} courier ${targetRider._id} (${selected.distKm.toFixed(2)}km)`
         );
 
-        // Send Push & In-app Notification
-        await notificationService.notifyRiderAvailableOrder(targetRider._id.toString(), order._id.toString());
+        // Send Push & In-app Notification to target rider
+        const payout = (populatedOrder as any)?.courierEarnings || (populatedOrder as any)?.deliveryFee || 1500;
+        const restName = (populatedOrder?.restaurant as any)?.name || 'a nearby outlet';
+        await notificationService.sendNotification(
+          targetRider._id.toString(),
+          'New Delivery Job Offer! 📦🛵',
+          `New order available from ${restName} (Payout: ₦${payout.toLocaleString()}). Tap to accept within 45s!`,
+          {
+            orderId: order._id.toString(),
+            type: 'RIDER_JOB',
+            payout,
+            restaurantName: restName,
+          },
+          NotificationType.NEW_ORDER
+        );
 
         // Emit Real-time Socket Event for instantaneous offer modal popup
         emitToUser(targetRider._id.toString(), 'NEW_DELIVERY_REQUEST', populatedOrder || order);

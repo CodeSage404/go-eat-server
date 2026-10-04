@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import Wallet from '../models/wallet.model';
+import User from '../models/user.model';
 import Transaction, { TransactionType, TransactionStatus } from '../models/transaction.model';
 import { catchAsync } from '../utils/catchAsync';
 import AppError from '../utils/appError';
@@ -19,6 +20,9 @@ class WalletController {
     if (!wallet) {
       wallet = await Wallet.create({ user: req.user!._id });
     }
+
+    const userDoc = await User.findById(req.user!._id).select('hasWithdrawalPin');
+    const hasWithdrawalPin = Boolean(userDoc?.hasWithdrawalPin);
 
     const transactions = await Transaction.find({ wallet: wallet._id })
       .sort({ createdAt: -1 })
@@ -40,9 +44,11 @@ class WalletController {
           holdReason: wallet.holdReason,
           lastPayoutDate: wallet.lastPayoutDate,
           isActive: wallet.isActive,
+          hasWithdrawalPin,
           createdAt: wallet.createdAt,
           updatedAt: wallet.updatedAt,
         },
+        hasWithdrawalPin,
         transactions,
       },
     });
@@ -55,10 +61,25 @@ class WalletController {
    * - Blocked if settlement is on hold.
    */
   public requestWithdrawal = catchAsync(async (req: Request, res: Response) => {
-    const { amount } = req.body;
+    const { amount, pin } = req.body;
 
     if (!amount || amount <= 0) {
       throw new AppError('A valid withdrawal amount is required', 400);
+    }
+
+    // Security Verification: Require 4-digit withdrawal PIN
+    const userDoc = await User.findById(req.user!._id).select('+withdrawalPin');
+    if (!userDoc || !userDoc.hasWithdrawalPin || !userDoc.withdrawalPin) {
+      throw new AppError('Please set up a withdrawal PIN before requesting a withdrawal', 403);
+    }
+
+    if (!pin || pin.toString().length !== 4) {
+      throw new AppError('Please enter your 4-digit withdrawal PIN', 400);
+    }
+
+    const isPinCorrect = await userDoc.compareWithdrawalPin!(pin.toString());
+    if (!isPinCorrect) {
+      throw new AppError('Incorrect withdrawal PIN. Please try again.', 401);
     }
 
     // Atomically check available balance and deduct in a single database operation to prevent race conditions
@@ -139,6 +160,8 @@ class WalletController {
       bankCode,
       accountName,
       bankName,
+      bankSlug,
+      bankLogo,
       sortCode,
       routingNumber,
       iban,
@@ -164,6 +187,8 @@ class WalletController {
       bankCode: effectiveBankCode,
       accountName: String(accountName).trim(),
       bankName: bankName || (activeCountry === 'GB' ? 'UK Bank' : activeCountry === 'IT' ? 'Italian Bank' : undefined),
+      bankSlug: bankSlug ? String(bankSlug).trim() : undefined,
+      bankLogo: bankLogo ? String(bankLogo).trim() : undefined,
       recipientCode: undefined, // reset recipient code so it gets regenerated on next payout
       routingNumber: routingNumber ? String(routingNumber).trim() : undefined,
       sortCode: sortCode ? String(sortCode).trim() : undefined,
@@ -222,6 +247,73 @@ class WalletController {
       status: 'success',
       results: banks.length,
       data: banks,
+    });
+  });
+
+  /**
+   * Check if authenticated user has set up a withdrawal PIN
+   */
+  public checkWithdrawalPin = catchAsync(async (req: Request, res: Response) => {
+    const user = await User.findById(req.user!._id).select('hasWithdrawalPin');
+    res.status(200).json({
+      status: 'success',
+      data: {
+        hasWithdrawalPin: Boolean(user?.hasWithdrawalPin),
+      },
+    });
+  });
+
+  /**
+   * Set or update withdrawal PIN
+   */
+  public setWithdrawalPin = catchAsync(async (req: Request, res: Response) => {
+    const { pin, currentPin } = req.body;
+
+    const pinStr = pin ? pin.toString().trim() : '';
+
+    if (!pinStr || pinStr.length !== 4 || !/^\d{4}$/.test(pinStr)) {
+      throw new AppError('Withdrawal PIN must be exactly 4 numeric digits', 400);
+    }
+
+    // Obvious / weak PIN check:
+    // 1. All 4 digits identical (e.g. 0000, 1111, 2222, 3333, 9999)
+    // 2. Sequential numbers ascending or descending (e.g. 0123, 1234, 2345, ..., 9876, 4321)
+    // 3. Three identical consecutive digits (e.g. 2000, 5444, 1112, 9000)
+    const isAllSame = /^(\d)\1{3}$/.test(pinStr);
+    const isSequentialAscending = '0123456789'.includes(pinStr);
+    const isSequentialDescending = '9876543210'.includes(pinStr);
+    const hasThreeConsecutiveSame = /^(\d)\1{2}\d$/.test(pinStr) || /^\d(\d)\1{2}$/.test(pinStr);
+
+    if (isAllSame || isSequentialAscending || isSequentialDescending || hasThreeConsecutiveSame) {
+      throw new AppError('This PIN is too simple or predictable (e.g. repeated or sequential digits). Please choose a stronger 4-digit PIN.', 400);
+    }
+
+    const user = await User.findById(req.user!._id).select('+withdrawalPin +password');
+    if (!user) {
+      throw new AppError('User not found', 404);
+    }
+
+    // If user already has a withdrawal PIN, require verification of the current PIN
+    if (user.hasWithdrawalPin && user.withdrawalPin) {
+      if (!currentPin) {
+        throw new AppError('Please provide your current 4-digit PIN to update your PIN', 400);
+      }
+      const isCurrentCorrect = await user.compareWithdrawalPin!(currentPin.toString());
+      if (!isCurrentCorrect) {
+        throw new AppError('Current withdrawal PIN is incorrect', 401);
+      }
+    }
+
+    user.withdrawalPin = pin.toString();
+    user.hasWithdrawalPin = true;
+    await user.save();
+
+    res.status(200).json({
+      status: 'success',
+      message: 'Withdrawal PIN configured successfully',
+      data: {
+        hasWithdrawalPin: true,
+      },
     });
   });
 }

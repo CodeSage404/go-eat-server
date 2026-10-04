@@ -41,6 +41,12 @@ export interface IUser extends Document {
   hasSkippedRiderOnboarding?: boolean;
   vehicleType?: string;
   vehicleNumber?: string;
+  vehicleSpecs?: {
+    topSpeed?: number;
+    deliveryRange?: number;
+    cargoCapacity?: number;
+    fuelCost?: number;
+  };
   location?: {
     type: 'Point';
     coordinates: [number, number];
@@ -119,9 +125,12 @@ export interface IUser extends Document {
       inviteToken?: string;
     };
   };
+  hasWithdrawalPin?: boolean;
+  withdrawalPin?: string;
   createdAt: Date;
   updatedAt: Date;
   comparePassword(password: string): Promise<boolean>;
+  compareWithdrawalPin?(pin: string): Promise<boolean>;
   hasChangedPasswordAfter?(jwtTimestamp: number): boolean;
 }
 
@@ -226,6 +235,12 @@ const userSchema = new Schema<IUser>(
     vehicleNumber: {
       type: String,
       trim: true,
+    },
+    vehicleSpecs: {
+      topSpeed: { type: Number },
+      deliveryRange: { type: Number },
+      cargoCapacity: { type: Number },
+      fuelCost: { type: Number },
     },
     location: {
       type: {
@@ -368,6 +383,14 @@ const userSchema = new Schema<IUser>(
         inviteToken: { type: String, index: true },
       },
     },
+    hasWithdrawalPin: {
+      type: Boolean,
+      default: false,
+    },
+    withdrawalPin: {
+      type: String,
+      select: false, // Don't return withdrawal pin hash by default
+    },
   },
   {
     timestamps: true,
@@ -385,6 +408,12 @@ userSchema.pre('save', async function () {
     const randomHex = crypto.randomBytes(3).toString('hex').toUpperCase();
     this.referralCode = `GE-${randomHex}`;
   }
+  // Hash withdrawal pin if modified
+  if (this.isModified('withdrawalPin') && this.withdrawalPin) {
+    this.withdrawalPin = await bcrypt.hash(this.withdrawalPin, 12);
+    this.hasWithdrawalPin = true;
+  }
+
   if (!this.isModified('password') || !this.password) return;
 
   // 12 rounds bcrypt hash for hardened security
@@ -398,6 +427,12 @@ userSchema.pre('save', async function () {
 // Instance method to compare password
 userSchema.methods.comparePassword = async function (candidatePassword: string): Promise<boolean> {
   return await bcrypt.compare(candidatePassword, this.password!);
+};
+
+// Instance method to compare withdrawal PIN
+userSchema.methods.compareWithdrawalPin = async function (candidatePin: string): Promise<boolean> {
+  if (!this.withdrawalPin) return false;
+  return await bcrypt.compare(candidatePin, this.withdrawalPin);
 };
 
 // Check if user changed password after JWT was issued

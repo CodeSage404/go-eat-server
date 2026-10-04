@@ -59,6 +59,10 @@ router.get('/me', restrictTo(UserRole.RIDER, UserRole.VENDOR), walletController.
  *                 type: string
  *               bankName:
  *                 type: string
+ *               bankSlug:
+ *                 type: string
+ *               bankLogo:
+ *                 type: string
  *               sortCode:
  *                 type: string
  *               routingNumber:
@@ -130,7 +134,7 @@ router.post('/request-payout', withdrawLimiter, restrictTo(UserRole.RIDER, UserR
  *     tags:
  *       - Wallets
  *     summary: Request a withdrawal from courier or vendor available balance
- *     description: Deducts requested funds from available balance and initiates payout processing. Enforces settlement hold rules and available balance checks.
+ *     description: Deducts requested funds from available balance and initiates payout processing. Enforces settlement hold rules, available balance checks, and 4-digit PIN verification.
  *     security:
  *       - bearerAuth: []
  *     requestBody:
@@ -139,22 +143,87 @@ router.post('/request-payout', withdrawLimiter, restrictTo(UserRole.RIDER, UserR
  *         application/json:
  *           schema:
  *             type: object
- *             required: [amount]
+ *             required: [amount, pin]
  *             properties:
  *               amount:
  *                 type: number
  *                 example: 5000
+ *               pin:
+ *                 type: string
+ *                 example: "1234"
  *     responses:
  *       200:
  *         description: Withdrawal requested successfully
  *       400:
- *         description: Invalid amount or insufficient balance
+ *         description: Invalid amount or missing PIN
  *       401:
- *         description: Unauthorized
+ *         description: Incorrect withdrawal PIN or unauthorized
  *       403:
  *         description: Forbidden, only riders or vendors can withdraw
  */
 router.post('/me/withdraw', withdrawLimiter, restrictTo(UserRole.RIDER, UserRole.VENDOR), walletController.requestWithdrawal);
+
+/**
+ * @openapi
+ * /api/v1/wallets/me/pin:
+ *   get:
+ *     tags:
+ *       - Wallets
+ *     summary: Check if withdrawal PIN is set up
+ *     description: Returns whether the authenticated rider or vendor has configured a 4-digit withdrawal security PIN.
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Withdrawal PIN setup status
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: success
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     hasWithdrawalPin:
+ *                       type: boolean
+ *                       example: true
+ *   post:
+ *     tags:
+ *       - Wallets
+ *     summary: Set or update 4-digit withdrawal PIN
+ *     description: Sets up a new 4-digit withdrawal security PIN or updates an existing one (with current PIN verification).
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [pin]
+ *             properties:
+ *               pin:
+ *                 type: string
+ *                 example: "1234"
+ *                 description: New 4-digit withdrawal PIN
+ *               currentPin:
+ *                 type: string
+ *                 example: "0000"
+ *                 description: Current 4-digit withdrawal PIN (required only if already configured)
+ *     responses:
+ *       200:
+ *         description: Withdrawal PIN updated successfully
+ *       400:
+ *         description: Invalid PIN format (must be 4 numeric digits)
+ *       401:
+ *         description: Current PIN is incorrect
+ */
+router.route('/me/pin')
+  .get(restrictTo(UserRole.RIDER, UserRole.VENDOR), walletController.checkWithdrawalPin)
+  .post(restrictTo(UserRole.RIDER, UserRole.VENDOR), walletController.setWithdrawalPin);
 
 export default router;
 

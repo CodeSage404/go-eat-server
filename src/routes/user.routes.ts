@@ -229,6 +229,27 @@ router.route('/favorites')
  *                 type: string
  *               profileImage:
  *                 type: string
+ *               vehicleType:
+ *                 type: string
+ *                 example: motorbike
+ *               vehicleNumber:
+ *                 type: string
+ *                 example: LAG-123-AB
+ *               vehicleSpecs:
+ *                 type: object
+ *                 properties:
+ *                   topSpeed:
+ *                     type: number
+ *                     example: 55
+ *                   deliveryRange:
+ *                     type: number
+ *                     example: 15
+ *                   cargoCapacity:
+ *                     type: number
+ *                     example: 6
+ *                   fuelCost:
+ *                     type: number
+ *                     example: 40
  *     responses:
  *       200:
  *         description: Profile updated successfully.
