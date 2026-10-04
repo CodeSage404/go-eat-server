@@ -183,4 +183,58 @@ router.post('/notify', auth_middleware_1.protect, zego_controller_1.default.noti
  *         description: Server error
  */
 router.post('/end-call', auth_middleware_1.protect, zego_controller_1.default.endCall);
+/**
+ * @openapi
+ * /api/v1/zego/missed-call:
+ *   post:
+ *     tags:
+ *       - Zego
+ *     summary: Notify call recipient that a call was missed
+ *     description: Emits a real-time Socket.IO missed_call event and sends a high-priority FCM push notification to the recipient alerting them of a missed voice call.
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - orderId
+ *             properties:
+ *               orderId:
+ *                 type: string
+ *                 description: The MongoDB ObjectId of the active order
+ *               role:
+ *                 type: string
+ *                 enum: [customer, rider, vendor]
+ *                 default: customer
+ *                 description: Calling role who dialed the call
+ *               target:
+ *                 type: string
+ *                 enum: [customer, rider, restaurant]
+ *                 default: customer
+ *                 description: Target party who missed the voice call
+ *     responses:
+ *       200:
+ *         description: Missed call notification dispatched successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: success
+ *                 message:
+ *                   type: string
+ *                   example: Missed call notification sent
+ *       400:
+ *         description: Missing orderId
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Server error
+ */
+router.post('/missed-call', auth_middleware_1.protect, zego_controller_1.default.missedCall);
 exports.default = router;

@@ -558,4 +558,70 @@ router.post('/:id/reorder', (0, auth_middleware_1.restrictTo)(user_model_1.UserR
  *         description: Order not found
  */
 router.post('/:id/verify-delivery', rateLimiter_1.pinVerificationLimiter, (0, auth_middleware_1.restrictTo)(user_model_1.UserRole.RIDER, user_model_1.UserRole.VENDOR, user_model_1.UserRole.ADMIN), order_controller_1.default.verifyDeliveryPin);
+/**
+ * @openapi
+ * /api/v1/orders/{id}/traffic-status:
+ *   post:
+ *     tags:
+ *       - Orders
+ *     summary: Update traffic delay status for an active delivery
+ *     description: Toggles courier traffic delay on an active order. Alerts the customer via push notification and real-time socket events, updates the estimated delivery arrival time (ETA), and logs traffic timestamps.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         description: The unique MongoDB ID of the order
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - isInTraffic
+ *             properties:
+ *               isInTraffic:
+ *                 type: boolean
+ *                 description: Whether the courier is currently caught in traffic delay
+ *                 example: true
+ *               additionalMinutes:
+ *                 type: number
+ *                 description: Estimated delay to add to ETA in minutes (default 10)
+ *                 example: 10
+ *     responses:
+ *       200:
+ *         description: Traffic status updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *               status:
+ *                 type: string
+ *                 example: success
+ *               data:
+ *                 type: object
+ *                 properties:
+ *                   orderId:
+ *                     type: string
+ *                   isInTraffic:
+ *                     type: boolean
+ *                   trafficDelayMinutes:
+ *                     type: number
+ *                   estimatedDeliveryTime:
+ *                     type: string
+ *       400:
+ *         description: Invalid request parameters
+ *       401:
+ *         description: Unauthorized, missing or invalid token
+ *       403:
+ *         description: Forbidden, user is not assigned courier for this order
+ *       404:
+ *         description: Order not found
+ */
+router.post('/:id/traffic-status', (0, auth_middleware_1.restrictTo)(user_model_1.UserRole.RIDER, user_model_1.UserRole.ADMIN), order_controller_1.default.updateTrafficStatus);
 exports.default = router;

@@ -604,6 +604,163 @@ class PaymentService {
             return null;
         }
     }
+    /**
+     * Determine the active bank account verification provider and format based on country / user and admin settings
+     */
+    async getBankVerificationConfig(userCountryCode, user) {
+        const setting = await setting_model_1.default.findOne();
+        // 1. Determine Country Code
+        let countryCode = (userCountryCode || user?.countryCode || '').toUpperCase().trim();
+        if (!countryCode) {
+            if (user?.isNigeria)
+                countryCode = 'NG';
+            else if (user?.isUk)
+                countryCode = 'GB';
+            else if (user?.isItaly)
+                countryCode = 'IT';
+            else
+                countryCode = 'NG'; // Default fallback
+        }
+        if (countryCode === 'UK')
+            countryCode = 'GB';
+        // 2. Check Provider Kill-Switches
+        const paystackEnabled = setting?.enableBankVerificationPaystack !== false;
+        const stripeEnabled = setting?.enableBankVerificationStripe !== false;
+        // 3. Check Admin Force Global Override
+        const forcedProvider = setting?.forceGlobalBankVerificationProvider || 'none';
+        if (forcedProvider === 'stripe' && stripeEnabled) {
+            return {
+                countryCode,
+                countryName: this.getCountryName(countryCode),
+                provider: 'stripe',
+                accountFormat: countryCode === 'GB' ? 'uk_sort_code' : countryCode === 'IT' ? 'iban' : countryCode === 'US' ? 'us_routing' : 'general',
+                currency: countryCode === 'GB' ? 'GBP' : countryCode === 'IT' ? 'EUR' : countryCode === 'NG' ? 'NGN' : 'USD',
+                requiresRoutingNumber: countryCode === 'GB' || countryCode === 'US',
+                routingNumberLabel: countryCode === 'GB' ? 'Sort Code' : 'Routing Number',
+                accountNumberLabel: countryCode === 'IT' ? 'IBAN' : 'Account Number',
+            };
+        }
+        else if (forcedProvider === 'paystack' && paystackEnabled) {
+            return {
+                countryCode,
+                countryName: this.getCountryName(countryCode),
+                provider: 'paystack',
+                accountFormat: 'nuban',
+                currency: 'NGN',
+                requiresRoutingNumber: false,
+                accountNumberLabel: 'NUBAN Account Number',
+            };
+        }
+        // 4. Check Admin Country-Specific Verification Rules
+        if (setting?.countryBankVerificationProviders && Array.isArray(setting.countryBankVerificationProviders)) {
+            const match = setting.countryBankVerificationProviders.find((c) => c.countryCode?.toUpperCase() === countryCode && c.isActive !== false);
+            if (match) {
+                const prov = match.provider;
+                if ((prov === 'paystack' && paystackEnabled) || (prov === 'stripe' && stripeEnabled)) {
+                    return {
+                        countryCode,
+                        countryName: match.countryName || this.getCountryName(countryCode),
+                        provider: prov,
+                        accountFormat: match.accountFormat || (countryCode === 'GB' ? 'uk_sort_code' : countryCode === 'IT' ? 'iban' : 'nuban'),
+                        currency: countryCode === 'GB' ? 'GBP' : countryCode === 'IT' ? 'EUR' : countryCode === 'NG' ? 'NGN' : 'USD',
+                        requiresRoutingNumber: match.accountFormat === 'uk_sort_code' || match.accountFormat === 'us_routing',
+                        routingNumberLabel: match.accountFormat === 'uk_sort_code' ? 'Sort Code' : 'Routing Number',
+                        accountNumberLabel: match.accountFormat === 'iban' ? 'IBAN' : 'Account Number',
+                    };
+                }
+            }
+        }
+        // 5. Default Regional Fallback
+        if (countryCode === 'NG' || countryCode === 'GH') {
+            return {
+                countryCode: 'NG',
+                countryName: 'Nigeria',
+                provider: paystackEnabled ? 'paystack' : 'stripe',
+                accountFormat: 'nuban',
+                currency: 'NGN',
+                requiresRoutingNumber: false,
+                accountNumberLabel: 'NUBAN Account Number',
+            };
+        }
+        if (countryCode === 'GB') {
+            return {
+                countryCode: 'GB',
+                countryName: 'United Kingdom',
+                provider: stripeEnabled ? 'stripe' : 'paystack',
+                accountFormat: 'uk_sort_code',
+                currency: 'GBP',
+                requiresRoutingNumber: true,
+                routingNumberLabel: 'Sort Code',
+                accountNumberLabel: 'Account Number',
+            };
+        }
+        if (countryCode === 'IT') {
+            return {
+                countryCode: 'IT',
+                countryName: 'Italy',
+                provider: stripeEnabled ? 'stripe' : 'paystack',
+                accountFormat: 'iban',
+                currency: 'EUR',
+                requiresRoutingNumber: false,
+                accountNumberLabel: 'IBAN',
+            };
+        }
+        // Default Foreign / International -> Stripe
+        return {
+            countryCode,
+            countryName: this.getCountryName(countryCode),
+            provider: stripeEnabled ? 'stripe' : 'paystack',
+            accountFormat: countryCode === 'US' ? 'us_routing' : 'general',
+            currency: countryCode === 'US' ? 'USD' : 'EUR',
+            requiresRoutingNumber: countryCode === 'US',
+            routingNumberLabel: countryCode === 'US' ? 'Routing Number' : undefined,
+            accountNumberLabel: 'Account Number',
+        };
+    }
+    getCountryName(code) {
+        const map = {
+            NG: 'Nigeria',
+            GB: 'United Kingdom',
+            UK: 'United Kingdom',
+            IT: 'Italy',
+            US: 'United States',
+            CA: 'Canada',
+            GH: 'Ghana',
+            KE: 'Kenya',
+        };
+        return map[code.toUpperCase()] || code;
+    }
+    /**
+     * Resolve and verify bank account across multi-country providers (Paystack or Stripe)
+     */
+    async resolveUnifiedBankAccount(params) {
+        const config = await this.getBankVerificationConfig(params.countryCode, params.user);
+        if (config.provider === 'stripe') {
+            const stripeRes = await stripe_module_1.default.resolveBankAccount({
+                accountNumber: params.accountNumber,
+                routingNumber: params.routingNumber || params.bankCode,
+                countryCode: config.countryCode,
+                accountHolderName: params.accountHolderName,
+                currency: config.currency,
+            });
+            return {
+                ...stripeRes,
+                provider: 'stripe',
+            };
+        }
+        // Default to Paystack
+        const cleanBankCode = params.bankCode || '044';
+        const paystackRes = await paystack_module_1.default.resolveAccountNumber(params.accountNumber, cleanBankCode);
+        return {
+            accountNumber: paystackRes.accountNumber,
+            accountName: paystackRes.accountName,
+            bankName: 'Nigerian Commercial Bank',
+            bankCode: cleanBankCode,
+            currency: 'NGN',
+            provider: 'paystack',
+            isVerified: true,
+        };
+    }
 }
 exports.PaymentService = PaymentService;
 exports.default = new PaymentService();

@@ -37,10 +37,13 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const wallet_model_1 = __importDefault(require("../models/wallet.model"));
+const user_model_1 = __importDefault(require("../models/user.model"));
 const transaction_model_1 = __importStar(require("../models/transaction.model"));
 const catchAsync_1 = require("../utils/catchAsync");
 const appError_1 = __importDefault(require("../utils/appError"));
 const paystack_module_1 = __importDefault(require("../services/payments/paystack.module"));
+const stripe_module_1 = __importDefault(require("../services/payments/stripe.module"));
+const locationResolver_1 = require("../utils/locationResolver");
 const notification_service_1 = __importDefault(require("../services/notification.service"));
 class WalletController {
     constructor() {
@@ -53,6 +56,8 @@ class WalletController {
             if (!wallet) {
                 wallet = await wallet_model_1.default.create({ user: req.user._id });
             }
+            const userDoc = await user_model_1.default.findById(req.user._id).select('hasWithdrawalPin');
+            const hasWithdrawalPin = Boolean(userDoc?.hasWithdrawalPin);
             const transactions = await transaction_model_1.default.find({ wallet: wallet._id })
                 .sort({ createdAt: -1 })
                 .limit(30);
@@ -72,9 +77,11 @@ class WalletController {
                         holdReason: wallet.holdReason,
                         lastPayoutDate: wallet.lastPayoutDate,
                         isActive: wallet.isActive,
+                        hasWithdrawalPin,
                         createdAt: wallet.createdAt,
                         updatedAt: wallet.updatedAt,
                     },
+                    hasWithdrawalPin,
                     transactions,
                 },
             });
@@ -86,9 +93,21 @@ class WalletController {
          * - Blocked if settlement is on hold.
          */
         this.requestWithdrawal = (0, catchAsync_1.catchAsync)(async (req, res) => {
-            const { amount } = req.body;
+            const { amount, pin } = req.body;
             if (!amount || amount <= 0) {
                 throw new appError_1.default('A valid withdrawal amount is required', 400);
+            }
+            // Security Verification: Require 4-digit withdrawal PIN
+            const userDoc = await user_model_1.default.findById(req.user._id).select('+withdrawalPin');
+            if (!userDoc || !userDoc.hasWithdrawalPin || !userDoc.withdrawalPin) {
+                throw new appError_1.default('Please set up a withdrawal PIN before requesting a withdrawal', 403);
+            }
+            if (!pin || pin.toString().length !== 4) {
+                throw new appError_1.default('Please enter your 4-digit withdrawal PIN', 400);
+            }
+            const isPinCorrect = await userDoc.compareWithdrawalPin(pin.toString());
+            if (!isPinCorrect) {
+                throw new appError_1.default('Incorrect withdrawal PIN. Please try again.', 401);
             }
             // Atomically check available balance and deduct in a single database operation to prevent race conditions
             const wallet = await wallet_model_1.default.findOneAndUpdate({
@@ -139,23 +158,33 @@ class WalletController {
             });
         });
         /**
-         * Update Bank Details
+         * Update Bank Details (Multi-country support: Nigeria, UK, Italy, International)
          */
         this.updateBankDetails = (0, catchAsync_1.catchAsync)(async (req, res) => {
-            const { accountNumber, bankCode, accountName, bankName } = req.body;
-            if (!accountNumber || !bankCode || !accountName) {
-                throw new appError_1.default('accountNumber, bankCode, and accountName are required', 400);
+            const { accountNumber, bankCode, accountName, bankName, bankSlug, bankLogo, sortCode, routingNumber, iban, countryCode, provider, } = req.body;
+            if (!accountNumber || !accountName) {
+                throw new appError_1.default('accountNumber and accountName are required', 400);
             }
+            const loc = (0, locationResolver_1.resolveRequestLocation)(req);
+            const activeCountry = (countryCode || loc.countryCode || 'NG').toUpperCase();
+            const effectiveBankCode = bankCode || sortCode || (iban ? iban.slice(5, 10) : 'INTERNATIONAL');
             let wallet = await wallet_model_1.default.findOne({ user: req.user._id });
             if (!wallet) {
                 wallet = await wallet_model_1.default.create({ user: req.user._id });
             }
             wallet.bankAccount = {
-                accountNumber,
-                bankCode,
-                accountName,
-                bankName: bankName || undefined,
-                recipientCode: undefined // reset recipient code so it gets regenerated on next payout
+                accountNumber: String(accountNumber).trim(),
+                bankCode: effectiveBankCode,
+                accountName: String(accountName).trim(),
+                bankName: bankName || (activeCountry === 'GB' ? 'UK Bank' : activeCountry === 'IT' ? 'Italian Bank' : undefined),
+                bankSlug: bankSlug ? String(bankSlug).trim() : undefined,
+                bankLogo: bankLogo ? String(bankLogo).trim() : undefined,
+                recipientCode: undefined, // reset recipient code so it gets regenerated on next payout
+                routingNumber: routingNumber ? String(routingNumber).trim() : undefined,
+                sortCode: sortCode ? String(sortCode).trim() : undefined,
+                iban: iban ? String(iban).trim() : undefined,
+                countryCode: activeCountry,
+                provider: provider || (activeCountry === 'NG' ? 'paystack' : 'stripe'),
             };
             await wallet.save();
             res.status(200).json({
@@ -170,14 +199,98 @@ class WalletController {
             });
         });
         /**
-         * Get List of Supported Banks
+         * Get List of Supported Banks based on User Country / Region
          */
         this.getBanks = (0, catchAsync_1.catchAsync)(async (req, res) => {
-            const banks = await paystack_module_1.default.getBanks();
+            const loc = (0, locationResolver_1.resolveRequestLocation)(req);
+            const countryCode = (req.query.countryCode || loc.countryCode || 'NG').toUpperCase();
+            if (countryCode === 'GB' || countryCode === 'UK') {
+                const banks = stripe_module_1.default.getBanksByCountry('GB');
+                return res.status(200).json({
+                    status: 'success',
+                    results: banks.length,
+                    data: banks,
+                });
+            }
+            else if (countryCode === 'IT') {
+                const banks = stripe_module_1.default.getBanksByCountry('IT');
+                return res.status(200).json({
+                    status: 'success',
+                    results: banks.length,
+                    data: banks,
+                });
+            }
+            else if (countryCode === 'US') {
+                const banks = stripe_module_1.default.getBanksByCountry('US');
+                return res.status(200).json({
+                    status: 'success',
+                    results: banks.length,
+                    data: banks,
+                });
+            }
+            const country = req.query.country || (countryCode === 'GH' ? 'ghana' : 'nigeria');
+            const banks = await paystack_module_1.default.getBanks(country);
             res.status(200).json({
                 status: 'success',
                 results: banks.length,
                 data: banks,
+            });
+        });
+        /**
+         * Check if authenticated user has set up a withdrawal PIN
+         */
+        this.checkWithdrawalPin = (0, catchAsync_1.catchAsync)(async (req, res) => {
+            const user = await user_model_1.default.findById(req.user._id).select('hasWithdrawalPin');
+            res.status(200).json({
+                status: 'success',
+                data: {
+                    hasWithdrawalPin: Boolean(user?.hasWithdrawalPin),
+                },
+            });
+        });
+        /**
+         * Set or update withdrawal PIN
+         */
+        this.setWithdrawalPin = (0, catchAsync_1.catchAsync)(async (req, res) => {
+            const { pin, currentPin } = req.body;
+            const pinStr = pin ? pin.toString().trim() : '';
+            if (!pinStr || pinStr.length !== 4 || !/^\d{4}$/.test(pinStr)) {
+                throw new appError_1.default('Withdrawal PIN must be exactly 4 numeric digits', 400);
+            }
+            // Obvious / weak PIN check:
+            // 1. All 4 digits identical (e.g. 0000, 1111, 2222, 3333, 9999)
+            // 2. Sequential numbers ascending or descending (e.g. 0123, 1234, 2345, ..., 9876, 4321)
+            // 3. Three identical consecutive digits (e.g. 2000, 5444, 1112, 9000)
+            const isAllSame = /^(\d)\1{3}$/.test(pinStr);
+            const isSequentialAscending = '0123456789'.includes(pinStr);
+            const isSequentialDescending = '9876543210'.includes(pinStr);
+            const hasThreeConsecutiveSame = /^(\d)\1{2}\d$/.test(pinStr) || /^\d(\d)\1{2}$/.test(pinStr);
+            if (isAllSame || isSequentialAscending || isSequentialDescending || hasThreeConsecutiveSame) {
+                throw new appError_1.default('This PIN is too simple or predictable (e.g. repeated or sequential digits). Please choose a stronger 4-digit PIN.', 400);
+            }
+            const user = await user_model_1.default.findById(req.user._id).select('+withdrawalPin +password');
+            if (!user) {
+                throw new appError_1.default('User not found', 404);
+            }
+            // If user already has a withdrawal PIN, require verification of the current PIN
+            if (user.hasWithdrawalPin && user.withdrawalPin) {
+                if (!currentPin) {
+                    throw new appError_1.default('Please provide your current 4-digit PIN to update your PIN', 400);
+                }
+                const isCurrentCorrect = await user.compareWithdrawalPin(currentPin.toString());
+                if (!isCurrentCorrect) {
+                    throw new appError_1.default('Current withdrawal PIN is incorrect', 401);
+                }
+            }
+            user.withdrawalPin = pin.toString();
+            user.hasWithdrawalPin = true;
+            await user.save();
+            res.status(200).json({
+                status: 'success',
+                message: 'Withdrawal PIN configured successfully',
+                data: {
+                    hasWithdrawalPin: true,
+                },
             });
         });
     }

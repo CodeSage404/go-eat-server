@@ -155,6 +155,13 @@ const userSchema = new mongoose_1.Schema({
         type: String,
         trim: true,
     },
+    vehicleSpecs: {
+        topSpeed: { type: Number },
+        deliveryRange: { type: Number },
+        cargoCapacity: { type: Number },
+        fuelCost: { type: Number },
+        batteryCapacity: { type: Number },
+    },
     location: {
         type: {
             type: String,
@@ -296,6 +303,14 @@ const userSchema = new mongoose_1.Schema({
             inviteToken: { type: String, index: true },
         },
     },
+    hasWithdrawalPin: {
+        type: Boolean,
+        default: false,
+    },
+    withdrawalPin: {
+        type: String,
+        select: false, // Don't return withdrawal pin hash by default
+    },
 }, {
     timestamps: true,
 });
@@ -310,6 +325,11 @@ userSchema.pre('save', async function () {
         const randomHex = crypto_1.default.randomBytes(3).toString('hex').toUpperCase();
         this.referralCode = `GE-${randomHex}`;
     }
+    // Hash withdrawal pin if modified
+    if (this.isModified('withdrawalPin') && this.withdrawalPin) {
+        this.withdrawalPin = await bcryptjs_1.default.hash(this.withdrawalPin, 12);
+        this.hasWithdrawalPin = true;
+    }
     if (!this.isModified('password') || !this.password)
         return;
     // 12 rounds bcrypt hash for hardened security
@@ -321,6 +341,12 @@ userSchema.pre('save', async function () {
 // Instance method to compare password
 userSchema.methods.comparePassword = async function (candidatePassword) {
     return await bcryptjs_1.default.compare(candidatePassword, this.password);
+};
+// Instance method to compare withdrawal PIN
+userSchema.methods.compareWithdrawalPin = async function (candidatePin) {
+    if (!this.withdrawalPin)
+        return false;
+    return await bcryptjs_1.default.compare(candidatePin, this.withdrawalPin);
 };
 // Check if user changed password after JWT was issued
 userSchema.methods.hasChangedPasswordAfter = function (jwtTimestamp) {

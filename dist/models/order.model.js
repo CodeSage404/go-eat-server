@@ -234,6 +234,17 @@ const orderSchema = new mongoose_1.Schema({
         type: Number,
         default: 0,
     },
+    isInTraffic: {
+        type: Boolean,
+        default: false,
+    },
+    trafficDelayMinutes: {
+        type: Number,
+        default: 0,
+    },
+    trafficReportedAt: {
+        type: Date,
+    },
     cancellationInitiator: {
         type: String,
         enum: ['customer', 'outlet', 'courier', 'goeat'],

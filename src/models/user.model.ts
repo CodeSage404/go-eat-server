@@ -46,6 +46,7 @@ export interface IUser extends Document {
     deliveryRange?: number;
     cargoCapacity?: number;
     fuelCost?: number;
+    batteryCapacity?: number;
   };
   location?: {
     type: 'Point';
@@ -241,6 +242,7 @@ const userSchema = new Schema<IUser>(
       deliveryRange: { type: Number },
       cargoCapacity: { type: Number },
       fuelCost: { type: Number },
+      batteryCapacity: { type: Number },
     },
     location: {
       type: {

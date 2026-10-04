@@ -241,12 +241,16 @@ class OrderService {
                 order_model_1.OrderStatus.PREPARING,
                 order_model_1.OrderStatus.READY,
                 order_model_1.OrderStatus.READY_FOR_COLLECTION,
-                order_model_1.OrderStatus.OUT_FOR_DELIVERY,
-                order_model_1.OrderStatus.DELIVERED,
                 order_model_1.OrderStatus.CANCELLED,
-                order_model_1.OrderStatus.CANCELLED_BY_OUTLET
+                order_model_1.OrderStatus.CANCELLED_BY_OUTLET,
             ];
             if (!allowedVendorStatuses.includes(status)) {
+                if (status === order_model_1.OrderStatus.DELIVERED ||
+                    status === order_model_1.OrderStatus.COMPLETED ||
+                    status === order_model_1.OrderStatus.OUT_FOR_DELIVERY ||
+                    status === order_model_1.OrderStatus.COURIER_COLLECTED) {
+                    throw new appError_1.default('Vendors and partner outlets cannot complete orders or mark them as delivered. Outlets stop at Ready for Pickup.', 400);
+                }
                 throw new appError_1.default(`Outlets cannot set order status to ${status}`, 400);
             }
         }
@@ -257,7 +261,18 @@ class OrderService {
             if (!assignedRiderId || assignedRiderId !== userId.toString()) {
                 throw new appError_1.default('You are not the assigned courier for this order', 403);
             }
-            const allowedRiderStatuses = [order_model_1.OrderStatus.OUT_FOR_DELIVERY, order_model_1.OrderStatus.COURIER_COLLECTED, order_model_1.OrderStatus.DELIVERED, order_model_1.OrderStatus.CANCELLED];
+            if (status === order_model_1.OrderStatus.DELIVERED &&
+                order.deliveryPin &&
+                !order.deliveryPinVerified &&
+                order.orderType !== 'pickup') {
+                throw new appError_1.default('Delivery verification PIN must be verified with the customer to complete this order.', 400);
+            }
+            const allowedRiderStatuses = [
+                order_model_1.OrderStatus.OUT_FOR_DELIVERY,
+                order_model_1.OrderStatus.COURIER_COLLECTED,
+                order_model_1.OrderStatus.DELIVERED,
+                order_model_1.OrderStatus.CANCELLED,
+            ];
             if (!allowedRiderStatuses.includes(status)) {
                 throw new appError_1.default(`Couriers cannot set order status to ${status}`, 400);
             }
@@ -526,10 +541,21 @@ class OrderService {
                     candidateRiders = allOnlineRiders;
                 }
             }
-            // Filter out couriers who have already declined this job offer
+            // Filter out couriers who have already declined or timed out on this job offer in the current round
+            let uncontactedRiders = candidateRiders;
             if (order.declinedRiders && order.declinedRiders.length > 0) {
                 const declinedSet = new Set(order.declinedRiders.map((id) => id.toString()));
-                candidateRiders = candidateRiders.filter((r) => !declinedSet.has(r._id.toString()));
+                uncontactedRiders = candidateRiders.filter((r) => !declinedSet.has(r._id.toString()));
+            }
+            // Round-robin cycling: If all eligible riders have seen it and declined/timed out without accepting,
+            // reset declinedRiders so the offer cycles back to Rider A, B, etc. until an available rider accepts
+            if (uncontactedRiders.length === 0 && candidateRiders.length > 0) {
+                logger_1.default.info(`🔄 Proximity Dispatch: All nearby couriers timed out/declined on order #${order._id}. Resetting declined list to cycle back round-robin.`);
+                await order_model_1.default.findByIdAndUpdate(order._id, { $set: { declinedRiders: [] } });
+                order.declinedRiders = [];
+            }
+            else {
+                candidateRiders = uncontactedRiders;
             }
             if (!candidateRiders || candidateRiders.length === 0) {
                 logger_1.default.info(`📡 Proximity Dispatch: No online eligible riders found near order #${order._id}`);
@@ -574,8 +600,15 @@ class OrderService {
                 const targetRider = selected.rider;
                 const isBusy = busyRiderIds.has(targetRider._id.toString());
                 logger_1.default.info(`📡 Proximity Dispatch: Order #${order._id} assigned to closest ${isBusy ? 'busy' : 'available'} courier ${targetRider._id} (${selected.distKm.toFixed(2)}km)`);
-                // Send Push & In-app Notification
-                await notification_service_1.default.notifyRiderAvailableOrder(targetRider._id.toString(), order._id.toString());
+                // Send Push & In-app Notification to target rider
+                const payout = populatedOrder?.courierEarnings || populatedOrder?.deliveryFee || 1500;
+                const restName = populatedOrder?.restaurant?.name || 'a nearby outlet';
+                await notification_service_1.default.sendNotification(targetRider._id.toString(), 'New Delivery Job Offer! 📦🛵', `New order available from ${restName} (Payout: ₦${payout.toLocaleString()}). Tap to accept within 45s!`, {
+                    orderId: order._id.toString(),
+                    type: 'RIDER_JOB',
+                    payout,
+                    restaurantName: restName,
+                }, userNotification_model_1.NotificationType.NEW_ORDER);
                 // Emit Real-time Socket Event for instantaneous offer modal popup
                 (0, io_1.emitToUser)(targetRider._id.toString(), 'NEW_DELIVERY_REQUEST', populatedOrder || order);
             }
@@ -1301,6 +1334,63 @@ class OrderService {
                 : `Your issue report has been submitted to support.`,
             issue: issueRecord,
             refundAmount: calculatedRefund,
+        };
+    }
+    /**
+     * Updates traffic delay status for an active delivery order
+     */
+    async updateTrafficStatus(orderId, riderId, isInTraffic, additionalMinutes = 10) {
+        const order = await order_model_1.default.findById(orderId)
+            .populate('customer', 'name phoneNumber email fcmToken')
+            .populate('rider', 'name phoneNumber vehicleType');
+        if (!order) {
+            throw new appError_1.default('Order not found', 404);
+        }
+        if (order.rider && order.rider._id?.toString() !== riderId.toString()) {
+            throw new appError_1.default('Unauthorized: You are not assigned to this delivery', 403);
+        }
+        order.isInTraffic = isInTraffic;
+        order.trafficDelayMinutes = isInTraffic ? additionalMinutes : 0;
+        order.trafficReportedAt = new Date();
+        let revisedEtaString = '';
+        if (order.estimatedDeliveryTime) {
+            const currentEta = new Date(order.estimatedDeliveryTime).getTime();
+            const adjustmentMs = (isInTraffic ? additionalMinutes : -additionalMinutes) * 60 * 1000;
+            const revisedEta = new Date(currentEta + adjustmentMs);
+            order.estimatedDeliveryTime = revisedEta;
+            revisedEtaString = revisedEta.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        }
+        await order.save();
+        const shortId = order._id.toString().slice(-6).toUpperCase();
+        const customerId = order.customer?._id
+            ? order.customer._id.toString()
+            : order.customer?.toString?.();
+        if (customerId) {
+            const title = isInTraffic ? 'Courier Delayed in Traffic 🚦' : 'Traffic Cleared 🛵';
+            const body = isInTraffic
+                ? `Your courier is caught in traffic for order #${shortId}. Estimated delivery updated${revisedEtaString ? ` (~${revisedEtaString})` : ''} (+${additionalMinutes}m).`
+                : `Traffic has cleared for order #${shortId}! Your courier is moving smoothly towards you.`;
+            await notification_service_1.default.sendNotification(customerId, title, body, {
+                orderId: order._id.toString(),
+                type: 'ORDER_TRAFFIC_ALERT',
+                isInTraffic,
+                trafficDelayMinutes: isInTraffic ? additionalMinutes : 0,
+                estimatedDeliveryTime: order.estimatedDeliveryTime ? order.estimatedDeliveryTime.toISOString() : undefined,
+            }, userNotification_model_1.NotificationType.ORDER_UPDATE);
+            // Real-time socket event to customer
+            (0, io_1.emitToUser)(customerId, 'order_traffic_update', {
+                orderId: order._id.toString(),
+                isInTraffic,
+                trafficDelayMinutes: isInTraffic ? additionalMinutes : 0,
+                estimatedDeliveryTime: order.estimatedDeliveryTime,
+                message: body,
+            });
+        }
+        return {
+            orderId: order._id,
+            isInTraffic: order.isInTraffic,
+            trafficDelayMinutes: order.trafficDelayMinutes,
+            estimatedDeliveryTime: order.estimatedDeliveryTime,
         };
     }
 }

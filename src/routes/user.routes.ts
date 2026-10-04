@@ -250,6 +250,9 @@ router.route('/favorites')
  *                   fuelCost:
  *                     type: number
  *                     example: 40
+ *                   batteryCapacity:
+ *                     type: number
+ *                     example: 120
  *     responses:
  *       200:
  *         description: Profile updated successfully.

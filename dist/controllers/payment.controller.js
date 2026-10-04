@@ -11,6 +11,8 @@ const restaurant_model_1 = __importDefault(require("../models/restaurant.model")
 const setting_model_1 = __importDefault(require("../models/setting.model"));
 const paystack_module_1 = __importDefault(require("../services/payments/paystack.module"));
 const stripe_module_1 = __importDefault(require("../services/payments/stripe.module"));
+const locationResolver_1 = require("../utils/locationResolver");
+const logger_1 = __importDefault(require("../utils/logger"));
 class PaymentController {
     constructor() {
         /**
@@ -239,10 +241,36 @@ class PaymentController {
             });
         });
         /**
-         * Fetch list of supported banks from Paystack
+         * Get bank verification configuration based on geo-location or user profile
+         */
+        this.getBankVerificationConfig = (0, catchAsync_1.catchAsync)(async (req, res) => {
+            const loc = (0, locationResolver_1.resolveRequestLocation)(req);
+            const countryCode = req.query.countryCode || loc.countryCode;
+            const config = await payment_service_1.default.getBankVerificationConfig(countryCode, req.user);
+            res.status(200).json({
+                status: 'success',
+                data: config,
+            });
+        });
+        /**
+         * Fetch list of supported banks by country / region
          */
         this.getBanks = (0, catchAsync_1.catchAsync)(async (req, res) => {
-            const country = req.query.country || 'nigeria';
+            const loc = (0, locationResolver_1.resolveRequestLocation)(req);
+            const countryCode = (req.query.countryCode || loc.countryCode || 'NG').toUpperCase();
+            if (countryCode === 'GB' || countryCode === 'UK') {
+                const banks = stripe_module_1.default.getBanksByCountry('GB');
+                return res.status(200).json({ status: 'success', data: banks });
+            }
+            else if (countryCode === 'IT') {
+                const banks = stripe_module_1.default.getBanksByCountry('IT');
+                return res.status(200).json({ status: 'success', data: banks });
+            }
+            else if (countryCode === 'US') {
+                const banks = stripe_module_1.default.getBanksByCountry('US');
+                return res.status(200).json({ status: 'success', data: banks });
+            }
+            const country = req.query.country || (countryCode === 'GH' ? 'ghana' : 'nigeria');
             const banks = await paystack_module_1.default.getBanks(country);
             res.status(200).json({
                 status: 'success',
@@ -250,14 +278,23 @@ class PaymentController {
             });
         });
         /**
-         * Resolve and verify Nigerian bank account number
+         * Resolve and verify bank account details (multi-country: Paystack or Stripe)
          */
         this.resolveAccountNumber = (0, catchAsync_1.catchAsync)(async (req, res) => {
-            const { accountNumber, bankCode } = req.query;
-            if (!accountNumber || !bankCode) {
-                throw new appError_1.default('accountNumber and bankCode query parameters are required', 400);
+            const { accountNumber, bankCode, routingNumber, accountHolderName, sortCode } = req.query;
+            if (!accountNumber) {
+                throw new appError_1.default('accountNumber query parameter is required', 400);
             }
-            const result = await paystack_module_1.default.resolveAccountNumber(String(accountNumber), String(bankCode));
+            const loc = (0, locationResolver_1.resolveRequestLocation)(req);
+            const countryCode = req.query.countryCode || loc.countryCode;
+            const result = await payment_service_1.default.resolveUnifiedBankAccount({
+                accountNumber: String(accountNumber),
+                bankCode: bankCode ? String(bankCode) : undefined,
+                routingNumber: (routingNumber || sortCode) ? String(routingNumber || sortCode) : undefined,
+                accountHolderName: accountHolderName ? String(accountHolderName) : undefined,
+                countryCode,
+                user: req.user,
+            });
             res.status(200).json({
                 status: 'success',
                 data: result,
@@ -279,17 +316,31 @@ class PaymentController {
             if (!restaurant) {
                 throw new appError_1.default('Restaurant not found', 404);
             }
-            // Default percentage charge is 0, since we will override with transaction_charge per order
-            const { subaccountCode } = await paystack_module_1.default.createSubaccount({
-                businessName: restaurant.name,
-                bankCode,
-                accountNumber,
-                percentageCharge: 0,
-            });
-            restaurant.paystackSubaccountCode = subaccountCode;
+            const loc = (0, locationResolver_1.resolveRequestLocation)(req);
+            const countryCode = (req.body.countryCode || loc.countryCode || 'NG').toUpperCase();
+            const isForeign = countryCode !== 'NG' && countryCode !== 'GH';
+            let subaccountCode = undefined;
+            if (!isForeign) {
+                try {
+                    // Default percentage charge is 0, since we will override with transaction_charge per order
+                    const subRes = await paystack_module_1.default.createSubaccount({
+                        businessName: restaurant.name,
+                        bankCode: String(bankCode),
+                        accountNumber: String(accountNumber),
+                        percentageCharge: 0,
+                    });
+                    subaccountCode = subRes.subaccountCode;
+                }
+                catch (err) {
+                    logger_1.default.warn(`Paystack subaccount creation skipped/fallback: ${err.message}`);
+                }
+            }
+            if (subaccountCode) {
+                restaurant.paystackSubaccountCode = subaccountCode;
+            }
             restaurant.bankDetails = {
                 bankName,
-                bankCode,
+                bankCode: bankCode || req.body.sortCode || (countryCode === 'IT' ? 'IBAN' : 'INTERNATIONAL'),
                 accountNumber,
                 accountName,
                 isVerified: true,
@@ -297,7 +348,7 @@ class PaymentController {
             await restaurant.save();
             res.status(200).json({
                 status: 'success',
-                message: 'Bank details and subaccount configured successfully',
+                message: 'Bank details configured successfully',
                 data: {
                     paystackSubaccountCode: subaccountCode,
                     bankDetails: restaurant.bankDetails,

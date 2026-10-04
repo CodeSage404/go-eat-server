@@ -1268,7 +1268,10 @@ class AdminController {
                 'smallOrderFeeThreshold', 'batchPickupThresholdKm', 'multiOutletExtraStopFee',
                 'riderBasePayout', 'riderPerKmPayout', 'defaultPaymentProvider',
                 'enablePaystack', 'enableFlutterwave', 'enableStripe', 'forceGlobalPaymentProvider',
-                'countryPaymentProviders'
+                'countryPaymentProviders',
+                'defaultBankVerificationProvider', 'enableBankVerificationPaystack',
+                'enableBankVerificationStripe', 'forceGlobalBankVerificationProvider',
+                'countryBankVerificationProviders'
             ];
             const update = {};
             allowed.forEach(key => {

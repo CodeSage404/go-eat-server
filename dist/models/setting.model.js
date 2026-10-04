@@ -79,6 +79,42 @@ const settingSchema = new mongoose_1.Schema({
             { countryCode: 'KE', countryName: 'Kenya', provider: 'flutterwave', isActive: true },
         ],
     },
+    defaultBankVerificationProvider: {
+        type: String,
+        enum: ['paystack', 'stripe', 'flutterwave'],
+        default: 'paystack',
+    },
+    enableBankVerificationPaystack: { type: Boolean, default: true },
+    enableBankVerificationStripe: { type: Boolean, default: true },
+    forceGlobalBankVerificationProvider: {
+        type: String,
+        enum: ['none', 'paystack', 'stripe', 'flutterwave'],
+        default: 'none',
+    },
+    countryBankVerificationProviders: {
+        type: [
+            {
+                countryCode: { type: String, uppercase: true },
+                countryName: { type: String },
+                provider: { type: String, enum: ['paystack', 'stripe', 'flutterwave'] },
+                accountFormat: {
+                    type: String,
+                    enum: ['nuban', 'uk_sort_code', 'iban', 'us_routing', 'general'],
+                    default: 'nuban',
+                },
+                isActive: { type: Boolean, default: true },
+            },
+        ],
+        default: [
+            { countryCode: 'NG', countryName: 'Nigeria', provider: 'paystack', accountFormat: 'nuban', isActive: true },
+            { countryCode: 'GB', countryName: 'United Kingdom', provider: 'stripe', accountFormat: 'uk_sort_code', isActive: true },
+            { countryCode: 'IT', countryName: 'Italy', provider: 'stripe', accountFormat: 'iban', isActive: true },
+            { countryCode: 'US', countryName: 'United States', provider: 'stripe', accountFormat: 'us_routing', isActive: true },
+            { countryCode: 'CA', countryName: 'Canada', provider: 'stripe', accountFormat: 'general', isActive: true },
+            { countryCode: 'GH', countryName: 'Ghana', provider: 'paystack', accountFormat: 'nuban', isActive: true },
+            { countryCode: 'KE', countryName: 'Kenya', provider: 'flutterwave', accountFormat: 'nuban', isActive: true },
+        ],
+    },
 }, { timestamps: true });
 const Setting = mongoose_1.default.model('Setting', settingSchema);
 exports.default = Setting;

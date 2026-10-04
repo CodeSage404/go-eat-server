@@ -136,7 +136,7 @@ class UserController {
          */
         this.updateProfile = (0, catchAsync_1.catchAsync)(async (req, res) => {
             // Filter out unwanted fields that shouldn't be manually updated here
-            const { name, email, phoneNumber, phone, profileImage } = req.body;
+            const { name, email, phoneNumber, phone, profileImage, vehicleType, vehicleNumber, vehicleSpecs } = req.body;
             const incomingPhone = phoneNumber !== undefined ? phoneNumber : phone;
             const updateData = {};
             if (name)
@@ -147,6 +147,22 @@ class UserController {
                 updateData.phoneNumber = incomingPhone.trim();
             if (profileImage)
                 updateData.profileImage = profileImage;
+            if (vehicleType)
+                updateData.vehicleType = vehicleType;
+            if (vehicleNumber !== undefined)
+                updateData.vehicleNumber = vehicleNumber;
+            if (vehicleSpecs !== undefined && typeof vehicleSpecs === 'object') {
+                if (vehicleSpecs.topSpeed !== undefined)
+                    updateData['vehicleSpecs.topSpeed'] = vehicleSpecs.topSpeed;
+                if (vehicleSpecs.deliveryRange !== undefined)
+                    updateData['vehicleSpecs.deliveryRange'] = vehicleSpecs.deliveryRange;
+                if (vehicleSpecs.cargoCapacity !== undefined)
+                    updateData['vehicleSpecs.cargoCapacity'] = vehicleSpecs.cargoCapacity;
+                if (vehicleSpecs.fuelCost !== undefined)
+                    updateData['vehicleSpecs.fuelCost'] = vehicleSpecs.fuelCost;
+                if (vehicleSpecs.batteryCapacity !== undefined)
+                    updateData['vehicleSpecs.batteryCapacity'] = vehicleSpecs.batteryCapacity;
+            }
             // If an explicitly empty string is sent for a unique field, unset it using $unset so it doesn't trigger E11000
             const unsetData = {};
             if (email !== undefined && email.trim() === '')
@@ -157,7 +173,7 @@ class UserController {
             if (Object.keys(unsetData).length > 0) {
                 updatePayload.$unset = unsetData;
             }
-            const user = await user_model_1.default.findByIdAndUpdate(req.user._id, updatePayload, { returnDocument: 'after', runValidators: true }).select('-password');
+            const user = await user_model_1.default.findByIdAndUpdate(req.user._id, updatePayload, { new: true, returnDocument: 'after', runValidators: true }).select('-password');
             if (!user) {
                 throw new appError_1.default('User not found', 404);
             }

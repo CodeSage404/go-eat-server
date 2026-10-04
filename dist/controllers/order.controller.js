@@ -338,6 +338,19 @@ class OrderController {
                 data: result,
             });
         });
+        /**
+         * Update traffic delay status on an active order (Rider action)
+         */
+        this.updateTrafficStatus = (0, catchAsync_1.catchAsync)(async (req, res) => {
+            const { id, orderId } = req.params;
+            const targetId = orderId || id;
+            const { isInTraffic, additionalMinutes } = req.body;
+            const result = await order_service_1.default.updateTrafficStatus(targetId, req.user._id, !!isInTraffic, typeof additionalMinutes === 'number' ? additionalMinutes : 10);
+            res.status(200).json({
+                status: 'success',
+                data: result,
+            });
+        });
     }
 }
 exports.default = new OrderController();

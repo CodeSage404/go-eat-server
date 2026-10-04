@@ -121,7 +121,13 @@ class UserController {
     if (profileImage) updateData.profileImage = profileImage;
     if (vehicleType) updateData.vehicleType = vehicleType;
     if (vehicleNumber !== undefined) updateData.vehicleNumber = vehicleNumber;
-    if (vehicleSpecs !== undefined) updateData.vehicleSpecs = vehicleSpecs;
+    if (vehicleSpecs !== undefined && typeof vehicleSpecs === 'object') {
+      if (vehicleSpecs.topSpeed !== undefined) updateData['vehicleSpecs.topSpeed'] = vehicleSpecs.topSpeed;
+      if (vehicleSpecs.deliveryRange !== undefined) updateData['vehicleSpecs.deliveryRange'] = vehicleSpecs.deliveryRange;
+      if (vehicleSpecs.cargoCapacity !== undefined) updateData['vehicleSpecs.cargoCapacity'] = vehicleSpecs.cargoCapacity;
+      if (vehicleSpecs.fuelCost !== undefined) updateData['vehicleSpecs.fuelCost'] = vehicleSpecs.fuelCost;
+      if (vehicleSpecs.batteryCapacity !== undefined) updateData['vehicleSpecs.batteryCapacity'] = vehicleSpecs.batteryCapacity;
+    }
 
     // If an explicitly empty string is sent for a unique field, unset it using $unset so it doesn't trigger E11000
     const unsetData: any = {};
@@ -136,7 +142,7 @@ class UserController {
     const user = await User.findByIdAndUpdate(
       req.user!._id,
       updatePayload,
-      { returnDocument: 'after', runValidators: true }
+      { new: true, returnDocument: 'after', runValidators: true }
     ).select('-password');
 
     if (!user) {
