@@ -25,6 +25,8 @@ export interface ISetting extends Document {
   minOrderAmount: number;
   deliveryBaseFee: number;
   deliveryFeePerKm: number;
+  deliveryFeeCalculationMode: 'dynamic_distance' | 'fixed';
+  fixedDeliveryFee: number;
   serviceFee: number;
   smallOrderFee: number;
   smallOrderFeeThreshold: number;
@@ -63,6 +65,12 @@ const settingSchema = new Schema<ISetting>(
     minOrderAmount: { type: Number, default: 500 },
     deliveryBaseFee: { type: Number, default: 500 },
     deliveryFeePerKm: { type: Number, default: 100 },
+    deliveryFeeCalculationMode: {
+      type: String,
+      enum: ['dynamic_distance', 'fixed'],
+      default: 'dynamic_distance',
+    },
+    fixedDeliveryFee: { type: Number, default: 500 },
     serviceFee: { type: Number, default: 170 },
     smallOrderFee: { type: Number, default: 150 },
     smallOrderFeeThreshold: { type: Number, default: 1000 },

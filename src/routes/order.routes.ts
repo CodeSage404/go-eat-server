@@ -47,6 +47,13 @@ const quoteFeeLimiter = rateLimit({
  *                     deliveryFeePerKm:
  *                       type: number
  *                       example: 100
+ *                     deliveryFeeCalculationMode:
+ *                       type: string
+ *                       enum: [dynamic_distance, fixed]
+ *                       example: dynamic_distance
+ *                     fixedDeliveryFee:
+ *                       type: number
+ *                       example: 500
  *                     serviceFee:
  *                       type: number
  *                       example: 170
@@ -65,6 +72,21 @@ const quoteFeeLimiter = rateLimit({
  *                     maxDeliveryDistance:
  *                       type: number
  *                       example: 15
+ *                     firstBiteEnabled:
+ *                       type: boolean
+ *                       example: true
+ *                     firstBiteCampaignTitle:
+ *                       type: string
+ *                       example: Your First Bite is on Us
+ *                     firstBiteDescription:
+ *                       type: string
+ *                       example: Enjoy your first meal on us as a welcome gift from Go-Eat!
+ *                     firstBiteIsTotallyFree:
+ *                       type: boolean
+ *                       example: true
+ *                     firstBiteMaxFreeAmount:
+ *                       type: number
+ *                       example: 3000
  */
 router.get('/fees', orderController.getPublicFees);
 

@@ -154,8 +154,13 @@ class OrderService {
 
       totalTimeInSeconds = (travelData.durationValue || Math.round(finalDistKm * 3 * 60)) + prepTimeInSeconds;
 
-      // Dynamic distance-based delivery fee calculation (enforced server-side)
-      data.deliveryFee = Math.round(baseFee + (finalDistKm * feePerKm));
+      // Delivery fee calculation: fixed vs dynamic distance
+      const isFixedMode = setting?.deliveryFeeCalculationMode === 'fixed';
+      const fixedFee = setting?.fixedDeliveryFee ?? 500;
+
+      data.deliveryFee = isFixedMode
+        ? Math.round(fixedFee)
+        : Math.round(baseFee + (finalDistKm * feePerKm));
       data.distanceKm = finalDistKm;
     } else {
       data.deliveryFee = 0;
@@ -1302,6 +1307,9 @@ class OrderService {
     const { outlets, deliveryCoordinates, deliveryAddressText, isPickup, customerId } = params;
     const setting = await Setting.findOne();
 
+    const isFixedMode = setting?.deliveryFeeCalculationMode === 'fixed';
+    const fixedFee = setting?.fixedDeliveryFee ?? 500;
+
     const baseFee = setting?.deliveryBaseFee ?? 500;
     const feePerKm = setting?.deliveryFeePerKm ?? 100;
     const serviceFee = setting?.serviceFee ?? 170;
@@ -1359,7 +1367,10 @@ class OrderService {
       const maxRadius = restDoc.deliveryRadius || maxGlobalRadius;
       const withinRadius = haversineDistKm <= maxRadius;
 
-      const singleTripFee = Math.round(baseFee + (haversineDistKm * feePerKm));
+      // Delivery fee computation: either fixed fee or dynamic distance (baseFee + distance * perKm)
+      const singleTripFee = isFixedMode
+        ? Math.round(fixedFee)
+        : Math.round(baseFee + (haversineDistKm * feePerKm));
 
       outletQuotes.push({
         restaurantId: outletItem.restaurantId,

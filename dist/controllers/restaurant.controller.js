@@ -75,6 +75,7 @@ const vendorUpdateRestaurantSchema = zod_1.z.object({
     }).optional(),
     autoAcceptOrders: zod_1.z.boolean().optional(),
     orderAlerts: zod_1.z.boolean().optional(),
+    isSelfPickup: zod_1.z.boolean().optional(),
     specialDays: zod_1.z.array(zod_1.z.object({
         name: zod_1.z.string(),
         date: zod_1.z.string(),

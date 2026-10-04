@@ -73,8 +73,6 @@ const categorySchema = new Schema<ICategory>(
 
 // Index for fast search
 categorySchema.index({ name: 1, isGlobal: 1 });
-categorySchema.index({ country: 1 });
-categorySchema.index({ countryCode: 1 });
 
 const Category = mongoose.model<ICategory>('Category', categorySchema);
 
