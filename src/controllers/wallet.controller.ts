@@ -79,7 +79,7 @@ class WalletController {
 
     const isPinCorrect = await userDoc.compareWithdrawalPin!(pin.toString());
     if (!isPinCorrect) {
-      throw new AppError('Incorrect withdrawal PIN. Please try again.', 401);
+      throw new AppError('Incorrect withdrawal PIN. Please try again.', 400);
     }
 
     // Atomically check available balance and deduct in a single database operation to prevent race conditions
@@ -300,7 +300,7 @@ class WalletController {
       }
       const isCurrentCorrect = await user.compareWithdrawalPin!(currentPin.toString());
       if (!isCurrentCorrect) {
-        throw new AppError('Current withdrawal PIN is incorrect', 401);
+        throw new AppError('Current withdrawal PIN is incorrect', 400);
       }
     }
 

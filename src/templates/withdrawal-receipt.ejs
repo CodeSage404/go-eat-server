@@ -1,0 +1,60 @@
+<h2 style="color: #0F3725; margin-top: 0; font-weight: 800;">Withdrawal Payout Receipt</h2>
+<p>Dear <strong><%= userName %></strong>,</p>
+<p>Your withdrawal payout request has been successfully submitted and processed. Below is your official transaction receipt for your records.</p>
+
+<div class="highlight-box" style="margin-top: 20px;">
+  <h3 style="margin-top: 0; color: #0F3725; border-bottom: 1px solid #E5E7EB; padding-bottom: 8px;">Transaction Summary</h3>
+  
+  <table style="width: 100%; border-collapse: collapse; margin-bottom: 16px; font-size: 14px;">
+    <tr>
+      <td style="padding: 10px 0; border-bottom: 1px solid #F3F4F6; color: #6B7280;">Transaction Reference:</td>
+      <td style="padding: 10px 0; border-bottom: 1px solid #F3F4F6; text-align: right; font-weight: 600; color: #111827; font-family: monospace;">
+        #<%= reference %>
+      </td>
+    </tr>
+    <tr>
+      <td style="padding: 10px 0; border-bottom: 1px solid #F3F4F6; color: #6B7280;">Date & Time:</td>
+      <td style="padding: 10px 0; border-bottom: 1px solid #F3F4F6; text-align: right; font-weight: 600; color: #111827;">
+        <%= date %>
+      </td>
+    </tr>
+    <tr>
+      <td style="padding: 10px 0; border-bottom: 1px solid #F3F4F6; color: #6B7280;">Destination Bank:</td>
+      <td style="padding: 10px 0; border-bottom: 1px solid #F3F4F6; text-align: right; font-weight: 600; color: #111827;">
+        <%= bankName %>
+      </td>
+    </tr>
+    <tr>
+      <td style="padding: 10px 0; border-bottom: 1px solid #F3F4F6; color: #6B7280;">Account Number:</td>
+      <td style="padding: 10px 0; border-bottom: 1px solid #F3F4F6; text-align: right; font-weight: 600; color: #111827;">
+        •••• <%= accountNumber.slice(-4) %>
+      </td>
+    </tr>
+    <tr>
+      <td style="padding: 10px 0; border-bottom: 1px solid #F3F4F6; color: #6B7280;">Account Name:</td>
+      <td style="padding: 10px 0; border-bottom: 1px solid #F3F4F6; text-align: right; font-weight: 600; color: #111827;">
+        <%= accountName %>
+      </td>
+    </tr>
+    <tr>
+      <td style="padding: 10px 0; border-bottom: 1px solid #F3F4F6; color: #6B7280;">Status:</td>
+      <td style="padding: 10px 0; border-bottom: 1px solid #F3F4F6; text-align: right; font-weight: 700; color: #059669;">
+        <%= status %>
+      </td>
+    </tr>
+  </table>
+
+  <table style="width: 100%; border-collapse: collapse; font-size: 15px;">
+    <tr>
+      <td style="padding: 8px 0; color: #4B5563;"><strong>Amount Withdrawn:</strong></td>
+      <td style="padding: 8px 0; text-align: right; font-weight: bold; color: #0F3725; font-size: 20px;">
+        <%= currencySymbol %><%= amount.toLocaleString() %>
+      </td>
+    </tr>
+  </table>
+</div>
+
+<p style="color: #4B5563; margin-top: 24px; font-size: 13px; line-height: 20px;">
+  Funds are typically credited to your verified bank account within a few minutes, subject to inter-bank clearing networks.
+  If you have questions regarding this transfer, please contact GoEatOne Support with your reference number.
+</p>

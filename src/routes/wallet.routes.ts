@@ -155,9 +155,9 @@ router.post('/request-payout', withdrawLimiter, restrictTo(UserRole.RIDER, UserR
  *       200:
  *         description: Withdrawal requested successfully
  *       400:
- *         description: Invalid amount or missing PIN
+ *         description: Invalid amount, missing PIN, or incorrect withdrawal PIN
  *       401:
- *         description: Incorrect withdrawal PIN or unauthorized
+ *         description: Unauthorized or missing authentication token
  *       403:
  *         description: Forbidden, only riders or vendors can withdraw
  */

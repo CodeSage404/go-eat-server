@@ -18,7 +18,8 @@ export type EmailTemplateType =
   | 'RIDER_APPLICATION_RECEIVED'
   | 'RIDER_APPLICATION_APPROVED'
   | 'RIDER_ACTION_REQUIRED'
-  | 'PARTNER_APPLICATION_RECEIVED';
+  | 'PARTNER_APPLICATION_RECEIVED'
+  | 'WITHDRAWAL_RECEIPT';
 
 class EmailService {
   /**
@@ -306,6 +307,28 @@ class EmailService {
     const htmlContent = renderTemplate('PARTNER_APPLICATION_RECEIVED', data);
     this.sendEmail(email, 'GoEatOne Partner Application Received', htmlContent, 'partners')
       .catch(err => logger.error(`Background partner received email failed to ${email}:`, err?.message || err));
+  }
+
+  /**
+   * Sends a withdrawal payout receipt email
+   */
+  public async sendWithdrawalReceipt(
+    email: string,
+    data: {
+      userName: string;
+      reference: string;
+      date: string;
+      bankName: string;
+      accountNumber: string;
+      accountName: string;
+      status: string;
+      currencySymbol: string;
+      amount: number;
+    }
+  ): Promise<void> {
+    const htmlContent = renderTemplate('WITHDRAWAL_RECEIPT', data);
+    this.sendEmail(email, `Receipt for your withdrawal payout #${data.reference}`, htmlContent, 'default')
+      .catch(err => logger.error(`Background withdrawal receipt email failed to ${email}:`, err?.message || err));
   }
 
   /**
