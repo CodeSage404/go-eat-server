@@ -36,6 +36,45 @@ router.use(auth_middleware_1.protect);
 router.get('/me', (0, auth_middleware_1.restrictTo)(user_model_1.UserRole.RIDER, user_model_1.UserRole.VENDOR), wallet_controller_1.default.getMyWallet);
 /**
  * @openapi
+ * /api/v1/wallets/me/transactions/{id}:
+ *   get:
+ *     tags:
+ *       - Wallets
+ *     summary: Get single transaction details / receipt
+ *     description: Retrieves complete receipt information for a transaction belonging to the authenticated rider or vendor, including populated order or payout bank details.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Transaction ID
+ *     responses:
+ *       200:
+ *         description: Transaction details retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: success
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     transaction:
+ *                       type: object
+ *       400:
+ *         description: Invalid transaction ID
+ *       404:
+ *         description: Transaction or wallet not found
+ */
+router.get('/me/transactions/:id', (0, auth_middleware_1.restrictTo)(user_model_1.UserRole.RIDER, user_model_1.UserRole.VENDOR), wallet_controller_1.default.getTransactionById);
+/**
+ * @openapi
  * /api/v1/wallets/me/bank:
  *   put:
  *     summary: Update bank account details (Multi-Country: Nigeria, UK, Italy, International)
@@ -152,9 +191,9 @@ router.post('/request-payout', withdrawLimiter, (0, auth_middleware_1.restrictTo
  *       200:
  *         description: Withdrawal requested successfully
  *       400:
- *         description: Invalid amount or missing PIN
+ *         description: Invalid amount, missing PIN, or incorrect withdrawal PIN
  *       401:
- *         description: Incorrect withdrawal PIN or unauthorized
+ *         description: Unauthorized or missing authentication token
  *       403:
  *         description: Forbidden, only riders or vendors can withdraw
  */

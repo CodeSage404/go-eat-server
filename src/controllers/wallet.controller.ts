@@ -8,6 +8,10 @@ import paystackModule from '../services/payments/paystack.module';
 import stripeModule from '../services/payments/stripe.module';
 import { resolveRequestLocation } from '../utils/locationResolver';
 import notificationService from '../services/notification.service';
+import emailService from '../services/email.service';
+import Order from '../models/order.model';
+import mongoose from 'mongoose';
+import logger from '../utils/logger';
 
 class WalletController {
   /**
@@ -125,7 +129,29 @@ class WalletController {
       type: TransactionType.WITHDRAWAL,
       status: TransactionStatus.PENDING,
       description: 'Payout to verified bank account',
+      reference: `WDR-${Date.now()}-${Math.floor(1000 + Math.random() * 9000)}`,
     });
+
+    // Send email receipt to user mailbox
+    if (req.user?.email) {
+      const userDoc = await User.findById(req.user._id);
+      const recipientName = userDoc?.name || 'Valued Partner';
+      const bankAcc = wallet.bankAccount;
+      
+      const currencySymbol = wallet.currency === 'GBP' ? '£' : wallet.currency === 'EUR' ? '€' : wallet.currency === 'USD' ? '$' : '₦';
+
+      emailService.sendWithdrawalReceipt(req.user.email, {
+        userName: recipientName,
+        reference: transaction.reference || transaction._id.toString().slice(-8).toUpperCase(),
+        date: new Date().toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' }),
+        bankName: bankAcc?.bankName || 'Verified Bank Account',
+        accountNumber: bankAcc?.accountNumber || '••••',
+        accountName: bankAcc?.accountName || recipientName,
+        status: 'Processing',
+        currencySymbol,
+        amount,
+      }).catch(err => logger.error('Failed to dispatch withdrawal receipt email:', err));
+    }
 
     // Notify user via In-App, Real-Time Socket, and Push Notification
     notificationService.notifyWalletTransaction(
@@ -313,6 +339,50 @@ class WalletController {
       message: 'Withdrawal PIN configured successfully',
       data: {
         hasWithdrawalPin: true,
+      },
+    });
+  });
+
+  /**
+   * Get single transaction details / receipt
+   */
+  public getTransactionById = catchAsync(async (req: Request, res: Response) => {
+    const id = req.params.id as string;
+
+    if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+      throw new AppError('Invalid transaction ID', 400);
+    }
+
+    const wallet = await Wallet.findOne({ user: req.user!._id });
+    if (!wallet) {
+      throw new AppError('Wallet not found', 404);
+    }
+
+    const transaction = await Transaction.findOne({ _id: id, wallet: wallet._id });
+    if (!transaction) {
+      throw new AppError('Transaction not found', 404);
+    }
+
+    // If transaction has reference and it could be an Order ID, attempt to populate linked order details
+    let orderDetails: any = null;
+    if (transaction.reference) {
+      const cleanRef = transaction.reference.trim();
+      if (mongoose.Types.ObjectId.isValid(cleanRef)) {
+        orderDetails = await Order.findById(cleanRef)
+          .populate('restaurant', 'name address phone logo coverImage')
+          .populate('customer', 'firstName lastName name phone')
+          .lean();
+      }
+    }
+
+    res.status(200).json({
+      status: 'success',
+      data: {
+        transaction: {
+          ...transaction.toObject(),
+          order: orderDetails,
+          bankAccount: wallet.bankAccount,
+        },
       },
     });
   });

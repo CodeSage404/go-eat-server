@@ -36,6 +36,46 @@ router.get('/me', restrictTo(UserRole.RIDER, UserRole.VENDOR), walletController.
 
 /**
  * @openapi
+ * /api/v1/wallets/me/transactions/{id}:
+ *   get:
+ *     tags:
+ *       - Wallets
+ *     summary: Get single transaction details / receipt
+ *     description: Retrieves complete receipt information for a transaction belonging to the authenticated rider or vendor, including populated order or payout bank details.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Transaction ID
+ *     responses:
+ *       200:
+ *         description: Transaction details retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: success
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     transaction:
+ *                       type: object
+ *       400:
+ *         description: Invalid transaction ID
+ *       404:
+ *         description: Transaction or wallet not found
+ */
+router.get('/me/transactions/:id', restrictTo(UserRole.RIDER, UserRole.VENDOR), walletController.getTransactionById);
+
+/**
+ * @openapi
  * /api/v1/wallets/me/bank:
  *   put:
  *     summary: Update bank account details (Multi-Country: Nigeria, UK, Italy, International)

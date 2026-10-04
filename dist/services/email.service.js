@@ -224,6 +224,14 @@ class EmailService {
             .catch(err => logger_1.default.error(`Background partner received email failed to ${email}:`, err?.message || err));
     }
     /**
+     * Sends a withdrawal payout receipt email
+     */
+    async sendWithdrawalReceipt(email, data) {
+        const htmlContent = (0, templateEngine_1.renderTemplate)('WITHDRAWAL_RECEIPT', data);
+        this.sendEmail(email, `Receipt for your withdrawal payout #${data.reference}`, htmlContent, 'default')
+            .catch(err => logger_1.default.error(`Background withdrawal receipt email failed to ${email}:`, err?.message || err));
+    }
+    /**
      * Sends a GoEatOne Buddy invitation email
      */
     async sendBuddyInvitation(to, data) {

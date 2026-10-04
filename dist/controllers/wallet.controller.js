@@ -45,6 +45,10 @@ const paystack_module_1 = __importDefault(require("../services/payments/paystack
 const stripe_module_1 = __importDefault(require("../services/payments/stripe.module"));
 const locationResolver_1 = require("../utils/locationResolver");
 const notification_service_1 = __importDefault(require("../services/notification.service"));
+const email_service_1 = __importDefault(require("../services/email.service"));
+const order_model_1 = __importDefault(require("../models/order.model"));
+const mongoose_1 = __importDefault(require("mongoose"));
+const logger_1 = __importDefault(require("../utils/logger"));
 class WalletController {
     constructor() {
         /**
@@ -107,7 +111,7 @@ class WalletController {
             }
             const isPinCorrect = await userDoc.compareWithdrawalPin(pin.toString());
             if (!isPinCorrect) {
-                throw new appError_1.default('Incorrect withdrawal PIN. Please try again.', 401);
+                throw new appError_1.default('Incorrect withdrawal PIN. Please try again.', 400);
             }
             // Atomically check available balance and deduct in a single database operation to prevent race conditions
             const wallet = await wallet_model_1.default.findOneAndUpdate({
@@ -140,7 +144,26 @@ class WalletController {
                 type: transaction_model_1.TransactionType.WITHDRAWAL,
                 status: transaction_model_1.TransactionStatus.PENDING,
                 description: 'Payout to verified bank account',
+                reference: `WDR-${Date.now()}-${Math.floor(1000 + Math.random() * 9000)}`,
             });
+            // Send email receipt to user mailbox
+            if (req.user?.email) {
+                const userDoc = await user_model_1.default.findById(req.user._id);
+                const recipientName = userDoc?.name || 'Valued Partner';
+                const bankAcc = wallet.bankAccount;
+                const currencySymbol = wallet.currency === 'GBP' ? '£' : wallet.currency === 'EUR' ? '€' : wallet.currency === 'USD' ? '$' : '₦';
+                email_service_1.default.sendWithdrawalReceipt(req.user.email, {
+                    userName: recipientName,
+                    reference: transaction.reference || transaction._id.toString().slice(-8).toUpperCase(),
+                    date: new Date().toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' }),
+                    bankName: bankAcc?.bankName || 'Verified Bank Account',
+                    accountNumber: bankAcc?.accountNumber || '••••',
+                    accountName: bankAcc?.accountName || recipientName,
+                    status: 'Processing',
+                    currencySymbol,
+                    amount,
+                }).catch(err => logger_1.default.error('Failed to dispatch withdrawal receipt email:', err));
+            }
             // Notify user via In-App, Real-Time Socket, and Push Notification
             notification_service_1.default.notifyWalletTransaction(req.user._id.toString(), 'Withdrawal Initiated 💸', `Your payout request of ₦${amount.toLocaleString()} has been received and processed.`, amount, transaction._id.toString()).catch(() => { });
             res.status(200).json({
@@ -279,7 +302,7 @@ class WalletController {
                 }
                 const isCurrentCorrect = await user.compareWithdrawalPin(currentPin.toString());
                 if (!isCurrentCorrect) {
-                    throw new appError_1.default('Current withdrawal PIN is incorrect', 401);
+                    throw new appError_1.default('Current withdrawal PIN is incorrect', 400);
                 }
             }
             user.withdrawalPin = pin.toString();
@@ -290,6 +313,44 @@ class WalletController {
                 message: 'Withdrawal PIN configured successfully',
                 data: {
                     hasWithdrawalPin: true,
+                },
+            });
+        });
+        /**
+         * Get single transaction details / receipt
+         */
+        this.getTransactionById = (0, catchAsync_1.catchAsync)(async (req, res) => {
+            const id = req.params.id;
+            if (!id || !mongoose_1.default.Types.ObjectId.isValid(id)) {
+                throw new appError_1.default('Invalid transaction ID', 400);
+            }
+            const wallet = await wallet_model_1.default.findOne({ user: req.user._id });
+            if (!wallet) {
+                throw new appError_1.default('Wallet not found', 404);
+            }
+            const transaction = await transaction_model_1.default.findOne({ _id: id, wallet: wallet._id });
+            if (!transaction) {
+                throw new appError_1.default('Transaction not found', 404);
+            }
+            // If transaction has reference and it could be an Order ID, attempt to populate linked order details
+            let orderDetails = null;
+            if (transaction.reference) {
+                const cleanRef = transaction.reference.trim();
+                if (mongoose_1.default.Types.ObjectId.isValid(cleanRef)) {
+                    orderDetails = await order_model_1.default.findById(cleanRef)
+                        .populate('restaurant', 'name address phone logo coverImage')
+                        .populate('customer', 'firstName lastName name phone')
+                        .lean();
+                }
+            }
+            res.status(200).json({
+                status: 'success',
+                data: {
+                    transaction: {
+                        ...transaction.toObject(),
+                        order: orderDetails,
+                        bankAccount: wallet.bankAccount,
+                    },
                 },
             });
         });
