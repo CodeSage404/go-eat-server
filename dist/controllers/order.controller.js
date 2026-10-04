@@ -8,6 +8,7 @@ const order_service_1 = __importDefault(require("../services/order.service"));
 const catchAsync_1 = require("../utils/catchAsync");
 const appError_1 = __importDefault(require("../utils/appError"));
 const order_model_1 = require("../models/order.model");
+const user_model_1 = __importDefault(require("../models/user.model"));
 const restaurant_model_1 = __importDefault(require("../models/restaurant.model"));
 const setting_model_1 = __importDefault(require("../models/setting.model"));
 const email_service_1 = __importDefault(require("../services/email.service"));
@@ -308,7 +309,7 @@ class OrderController {
                     batchPickupThresholdKm: setting?.batchPickupThresholdKm ?? 3.0,
                     multiOutletExtraStopFee: setting?.multiOutletExtraStopFee ?? 300,
                     maxDeliveryDistance: setting?.maxDeliveryDistance ?? 15,
-                    firstBiteEnabled: (String(process.env.FIRST_BITE_FREE_ORDER_ENABLED || 'false').toLowerCase() === 'true') && (setting?.firstBiteEnabled === true),
+                    firstBiteEnabled: (setting?.firstBiteEnabled === true) || (String(process.env.FIRST_BITE_FREE_ORDER_ENABLED || '').trim().toLowerCase().replace(/['"]/g, '') === 'true'),
                     firstBiteCampaignTitle: setting?.firstBiteCampaignTitle || 'Your First Bite is on Us',
                     firstBiteDescription: setting?.firstBiteDescription || 'Enjoy your first meal on us as a welcome gift from Go-Eat!',
                     firstBiteIsTotallyFree: setting?.firstBiteIsTotallyFree !== false,
@@ -358,6 +359,17 @@ class OrderController {
             res.status(200).json({
                 status: 'success',
                 data: result,
+            });
+        });
+        /**
+         * Reset First Bite free order promotion for authenticated customer (allows easy re-testing)
+         */
+        this.resetFirstBite = (0, catchAsync_1.catchAsync)(async (req, res) => {
+            const userId = req.user._id;
+            await user_model_1.default.findByIdAndUpdate(userId, { hasUsedFirstBiteFreeOrder: false });
+            res.status(200).json({
+                status: 'success',
+                message: 'First Bite promotion has been reset for your account. You can now test it again!',
             });
         });
     }

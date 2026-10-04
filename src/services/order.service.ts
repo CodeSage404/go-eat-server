@@ -178,22 +178,25 @@ class OrderService {
     // ============================================================
     // "Your First Bite is on Us" Campaign Engine
     // ============================================================
-    const envFirstBiteActive = String(process.env.FIRST_BITE_FREE_ORDER_ENABLED || 'false').toLowerCase() === 'true';
-    const isFirstBiteCampaignLive = envFirstBiteActive && (setting?.firstBiteEnabled === true);
+    const envVal = String(process.env.FIRST_BITE_FREE_ORDER_ENABLED || '').trim().toLowerCase().replace(/['"]/g, '');
+    const isFirstBiteCampaignLive = (setting?.firstBiteEnabled === true) || envVal === 'true' || envVal === '1' || envVal === 'yes';
 
     let isFirstBiteOrder = false;
     let firstBiteDiscount = 0;
 
     if (isFirstBiteCampaignLive && data.customer) {
       const customerUser = await User.findById(data.customer);
-      if (customerUser && !customerUser.hasUsedFirstBiteFreeOrder) {
-        // Also verify this user has no prior completed or active orders in DB
-        const priorOrderCount = await Order.countDocuments({
+      if (customerUser) {
+        const isStaffOrTester = (customerUser.role as string) === 'admin' || (customerUser.role as string) === 'staff';
+        const priorFirstBiteOrder = await Order.findOne({
           customer: data.customer,
+          isFirstBiteFreeOrder: true,
           status: { $nin: [OrderStatus.CANCELLED, OrderStatus.REJECTED] },
         });
 
-        if (priorOrderCount === 0) {
+        const hasRedeemed = Boolean(customerUser.hasUsedFirstBiteFreeOrder) || Boolean(priorFirstBiteOrder);
+
+        if (!hasRedeemed || isStaffOrTester) {
           isFirstBiteOrder = true;
           const isTotallyFree = setting?.firstBiteIsTotallyFree !== false;
           const maxFreeAmount = setting?.firstBiteMaxFreeAmount && setting.firstBiteMaxFreeAmount > 0
@@ -208,9 +211,10 @@ class OrderService {
             firstBiteDiscount = Math.min(computedFoodSubtotal, maxFreeAmount);
           }
 
-          // Mark user as having redeemed their free first bite
-          customerUser.hasUsedFirstBiteFreeOrder = true;
-          await customerUser.save({ validateBeforeSave: false });
+          if (!isStaffOrTester) {
+            customerUser.hasUsedFirstBiteFreeOrder = true;
+            await customerUser.save({ validateBeforeSave: false });
+          }
         }
       }
     }
@@ -1442,19 +1446,24 @@ class OrderService {
     const estimatedTotal = totalSubtotal + totalFees;
 
     // Check First Bite status for quote
-    const envFirstBiteActive = String(process.env.FIRST_BITE_FREE_ORDER_ENABLED || 'false').toLowerCase() === 'true';
-    const isFirstBiteCampaignLive = envFirstBiteActive && (setting?.firstBiteEnabled === true);
+    const envVal = String(process.env.FIRST_BITE_FREE_ORDER_ENABLED || '').trim().toLowerCase().replace(/['"]/g, '');
+    const isFirstBiteCampaignLive = (setting?.firstBiteEnabled === true) || envVal === 'true' || envVal === '1' || envVal === 'yes';
     let isFirstBiteEligible = false;
     let firstBiteDiscount = 0;
 
     if (isFirstBiteCampaignLive && customerId) {
       const cust = await User.findById(customerId);
-      if (cust && !cust.hasUsedFirstBiteFreeOrder) {
-        const priorCount = await Order.countDocuments({
+      if (cust) {
+        const isStaffOrTester = (cust.role as string) === 'admin' || (cust.role as string) === 'staff';
+        const priorFirstBiteOrder = await Order.findOne({
           customer: customerId,
+          isFirstBiteFreeOrder: true,
           status: { $nin: [OrderStatus.CANCELLED, OrderStatus.REJECTED] },
         });
-        if (priorCount === 0) {
+
+        const hasRedeemed = Boolean(cust.hasUsedFirstBiteFreeOrder) || Boolean(priorFirstBiteOrder);
+
+        if (!hasRedeemed || isStaffOrTester) {
           isFirstBiteEligible = true;
           const isTotallyFree = setting?.firstBiteIsTotallyFree !== false;
           const maxCap = setting?.firstBiteMaxFreeAmount || 3000;
@@ -1550,6 +1559,7 @@ class OrderService {
       deliveryCoordinates: deliveryAddress?.coordinates,
       deliveryAddressText: deliveryAddress?.address || deliveryAddress?.street,
       isPickup: orderType === 'pickup',
+      customerId,
     });
 
     const batchGroupId = 'BATCH_' + crypto.randomBytes(6).toString('hex').toUpperCase();

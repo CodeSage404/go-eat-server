@@ -139,8 +139,25 @@ router.get('/fees', order_controller_1.default.getPublicFees);
  *       400:
  *         description: Invalid coordinates or address outside delivery radius.
  */
-router.post('/quote-fee', quoteFeeLimiter, order_controller_1.default.quoteFees);
+router.post('/quote-fee', quoteFeeLimiter, auth_middleware_1.optionalAuth, order_controller_1.default.quoteFees);
 router.use(auth_middleware_1.protect);
+/**
+ * @openapi
+ * /api/v1/orders/reset-first-bite:
+ *   post:
+ *     tags:
+ *       - Orders
+ *     summary: Reset First Bite promotion eligibility for testing
+ *     description: Resets the authenticated user's hasUsedFirstBiteFreeOrder flag back to false so the user can test the promotion again.
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: First Bite status reset successfully.
+ *       401:
+ *         description: Unauthorized.
+ */
+router.post('/reset-first-bite', order_controller_1.default.resetFirstBite);
 // Customer routes
 /**
  * @openapi

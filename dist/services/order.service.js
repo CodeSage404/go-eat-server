@@ -182,19 +182,21 @@ class OrderService {
         // ============================================================
         // "Your First Bite is on Us" Campaign Engine
         // ============================================================
-        const envFirstBiteActive = String(process.env.FIRST_BITE_FREE_ORDER_ENABLED || 'false').toLowerCase() === 'true';
-        const isFirstBiteCampaignLive = envFirstBiteActive && (setting?.firstBiteEnabled === true);
+        const envVal = String(process.env.FIRST_BITE_FREE_ORDER_ENABLED || '').trim().toLowerCase().replace(/['"]/g, '');
+        const isFirstBiteCampaignLive = (setting?.firstBiteEnabled === true) || envVal === 'true' || envVal === '1' || envVal === 'yes';
         let isFirstBiteOrder = false;
         let firstBiteDiscount = 0;
         if (isFirstBiteCampaignLive && data.customer) {
             const customerUser = await user_model_1.default.findById(data.customer);
-            if (customerUser && !customerUser.hasUsedFirstBiteFreeOrder) {
-                // Also verify this user has no prior completed or active orders in DB
-                const priorOrderCount = await order_model_1.default.countDocuments({
+            if (customerUser) {
+                const isStaffOrTester = customerUser.role === 'admin' || customerUser.role === 'staff';
+                const priorFirstBiteOrder = await order_model_1.default.findOne({
                     customer: data.customer,
+                    isFirstBiteFreeOrder: true,
                     status: { $nin: [order_model_1.OrderStatus.CANCELLED, order_model_1.OrderStatus.REJECTED] },
                 });
-                if (priorOrderCount === 0) {
+                const hasRedeemed = Boolean(customerUser.hasUsedFirstBiteFreeOrder) || Boolean(priorFirstBiteOrder);
+                if (!hasRedeemed || isStaffOrTester) {
                     isFirstBiteOrder = true;
                     const isTotallyFree = setting?.firstBiteIsTotallyFree !== false;
                     const maxFreeAmount = setting?.firstBiteMaxFreeAmount && setting.firstBiteMaxFreeAmount > 0
@@ -208,9 +210,10 @@ class OrderService {
                         // Food only free: Covers food cost up to max cap, customer still pays delivery/service
                         firstBiteDiscount = Math.min(computedFoodSubtotal, maxFreeAmount);
                     }
-                    // Mark user as having redeemed their free first bite
-                    customerUser.hasUsedFirstBiteFreeOrder = true;
-                    await customerUser.save({ validateBeforeSave: false });
+                    if (!isStaffOrTester) {
+                        customerUser.hasUsedFirstBiteFreeOrder = true;
+                        await customerUser.save({ validateBeforeSave: false });
+                    }
                 }
             }
         }
@@ -1179,18 +1182,21 @@ class OrderService {
         const totalFees = totalDeliveryFee + serviceFee + appliedSmallOrderFee;
         const estimatedTotal = totalSubtotal + totalFees;
         // Check First Bite status for quote
-        const envFirstBiteActive = String(process.env.FIRST_BITE_FREE_ORDER_ENABLED || 'false').toLowerCase() === 'true';
-        const isFirstBiteCampaignLive = envFirstBiteActive && (setting?.firstBiteEnabled === true);
+        const envVal = String(process.env.FIRST_BITE_FREE_ORDER_ENABLED || '').trim().toLowerCase().replace(/['"]/g, '');
+        const isFirstBiteCampaignLive = (setting?.firstBiteEnabled === true) || envVal === 'true' || envVal === '1' || envVal === 'yes';
         let isFirstBiteEligible = false;
         let firstBiteDiscount = 0;
         if (isFirstBiteCampaignLive && customerId) {
             const cust = await user_model_1.default.findById(customerId);
-            if (cust && !cust.hasUsedFirstBiteFreeOrder) {
-                const priorCount = await order_model_1.default.countDocuments({
+            if (cust) {
+                const isStaffOrTester = cust.role === 'admin' || cust.role === 'staff';
+                const priorFirstBiteOrder = await order_model_1.default.findOne({
                     customer: customerId,
+                    isFirstBiteFreeOrder: true,
                     status: { $nin: [order_model_1.OrderStatus.CANCELLED, order_model_1.OrderStatus.REJECTED] },
                 });
-                if (priorCount === 0) {
+                const hasRedeemed = Boolean(cust.hasUsedFirstBiteFreeOrder) || Boolean(priorFirstBiteOrder);
+                if (!hasRedeemed || isStaffOrTester) {
                     isFirstBiteEligible = true;
                     const isTotallyFree = setting?.firstBiteIsTotallyFree !== false;
                     const maxCap = setting?.firstBiteMaxFreeAmount || 3000;
@@ -1261,6 +1267,7 @@ class OrderService {
             deliveryCoordinates: deliveryAddress?.coordinates,
             deliveryAddressText: deliveryAddress?.address || deliveryAddress?.street,
             isPickup: orderType === 'pickup',
+            customerId,
         });
         const batchGroupId = 'BATCH_' + crypto_1.default.randomBytes(6).toString('hex').toUpperCase();
         const isBatched = quote.routingMode === 'BATCHED_PICKUP';
