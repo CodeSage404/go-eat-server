@@ -304,17 +304,20 @@ class OrderController {
   /**
    * Calculate dynamic checkout fees (delivery fee, service fee, small order fee)
    */
-  public quoteFees = catchAsync(async (req: Request, res: Response) => {
+  public quoteFees = catchAsync(async (req: any, res: Response) => {
     const { outlets, deliveryCoordinates, deliveryAddressText, isPickup } = req.body;
     if (!outlets || !Array.isArray(outlets) || outlets.length === 0) {
       throw new AppError('Outlets array is required for fee quotation', 400);
     }
+
+    const customerId = req.user?._id?.toString() || (req.body.customerId ? String(req.body.customerId) : undefined);
 
     const quote = await orderService.quoteCheckoutFees({
       outlets,
       deliveryCoordinates,
       deliveryAddressText,
       isPickup: Boolean(isPickup),
+      customerId,
     });
 
     res.status(200).json({

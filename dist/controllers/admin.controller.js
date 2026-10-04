@@ -1271,7 +1271,9 @@ class AdminController {
                 'countryPaymentProviders',
                 'defaultBankVerificationProvider', 'enableBankVerificationPaystack',
                 'enableBankVerificationStripe', 'forceGlobalBankVerificationProvider',
-                'countryBankVerificationProviders'
+                'countryBankVerificationProviders',
+                'firstBiteEnabled', 'firstBiteCampaignTitle', 'firstBiteDescription',
+                'firstBiteIsTotallyFree', 'firstBiteMaxFreeAmount'
             ];
             const update = {};
             allowed.forEach(key => {

@@ -168,7 +168,45 @@ class OrderService {
             data.distanceKm = 0;
         }
         data.serviceFee = serviceFee;
-        data.totalAmount = computedFoodSubtotal + (data.deliveryFee || 0) + (data.serviceFee || 0) + (Number(data.tipAmount) || 0);
+        const standardTotal = computedFoodSubtotal + (data.deliveryFee || 0) + (data.serviceFee || 0) + (Number(data.tipAmount) || 0);
+        // ============================================================
+        // "Your First Bite is on Us" Campaign Engine
+        // ============================================================
+        const envFirstBiteActive = String(process.env.FIRST_BITE_FREE_ORDER_ENABLED || 'false').toLowerCase() === 'true';
+        const isFirstBiteCampaignLive = envFirstBiteActive && (setting?.firstBiteEnabled === true);
+        let isFirstBiteOrder = false;
+        let firstBiteDiscount = 0;
+        if (isFirstBiteCampaignLive && data.customer) {
+            const customerUser = await user_model_1.default.findById(data.customer);
+            if (customerUser && !customerUser.hasUsedFirstBiteFreeOrder) {
+                // Also verify this user has no prior completed or active orders in DB
+                const priorOrderCount = await order_model_1.default.countDocuments({
+                    customer: data.customer,
+                    status: { $nin: [order_model_1.OrderStatus.CANCELLED, order_model_1.OrderStatus.REJECTED] },
+                });
+                if (priorOrderCount === 0) {
+                    isFirstBiteOrder = true;
+                    const isTotallyFree = setting?.firstBiteIsTotallyFree !== false;
+                    const maxFreeAmount = setting?.firstBiteMaxFreeAmount && setting.firstBiteMaxFreeAmount > 0
+                        ? setting.firstBiteMaxFreeAmount
+                        : 3000;
+                    if (isTotallyFree) {
+                        // Totally free: Covers entire order (food + delivery + service fees) up to max cap, or full if order <= cap
+                        firstBiteDiscount = Math.min(standardTotal, maxFreeAmount);
+                    }
+                    else {
+                        // Food only free: Covers food cost up to max cap, customer still pays delivery/service
+                        firstBiteDiscount = Math.min(computedFoodSubtotal, maxFreeAmount);
+                    }
+                    // Mark user as having redeemed their free first bite
+                    customerUser.hasUsedFirstBiteFreeOrder = true;
+                    await customerUser.save({ validateBeforeSave: false });
+                }
+            }
+        }
+        data.isFirstBiteFreeOrder = isFirstBiteOrder;
+        data.firstBiteDiscount = firstBiteDiscount;
+        data.totalAmount = Math.max(0, standardTotal - firstBiteDiscount);
         data.estimatedDeliveryTime = new Date(Date.now() + totalTimeInSeconds * 1000);
         // Auto-generate unique 4-digit Delivery Verification PIN if not provided
         if (!data.deliveryPin) {
@@ -176,14 +214,21 @@ class OrderService {
         }
         data.deliveryPinVerified = false;
         // Ensure proper initial order & payment status:
-        // Cash orders enter PENDING immediately.
-        // Card/online orders enter PAYMENT_PENDING until verified by the payment gateway.
-        const isCashOrder = String(data.paymentMethod || '').toLowerCase() === 'cash';
-        if (!data.status) {
-            data.status = isCashOrder ? order_model_1.OrderStatus.PENDING : order_model_1.OrderStatus.PAYMENT_PENDING;
+        // If order total is 0 (100% free First Bite), mark payment completed and enter PENDING immediately!
+        const isTotallyFreeFirstBite = isFirstBiteOrder && data.totalAmount === 0;
+        const isCashOrder = String(data.paymentMethod || '').toLowerCase() === 'cash' || isTotallyFreeFirstBite;
+        if (isTotallyFreeFirstBite) {
+            data.status = order_model_1.OrderStatus.PENDING;
+            data.paymentStatus = 'completed';
+            data.paymentMethod = order_model_1.PaymentMethod.CARD; // or promo
         }
-        if (!data.paymentStatus) {
-            data.paymentStatus = 'pending';
+        else {
+            if (!data.status) {
+                data.status = isCashOrder ? order_model_1.OrderStatus.PENDING : order_model_1.OrderStatus.PAYMENT_PENDING;
+            }
+            if (!data.paymentStatus) {
+                data.paymentStatus = 'pending';
+            }
         }
         // Create the order
         const order = await order_model_1.default.create(data);
@@ -865,6 +910,7 @@ class OrderService {
     async getCustomerOrders(customerId) {
         return await order_model_1.default.find({ customer: customerId })
             .populate('restaurant', 'name address images image rating estimatedDeliveryTime isSponsored isSelfPickup hasDelivery location cuisine businessPhone phone phoneNumber phoneContact')
+            .populate('rider', 'name phoneNumber profileImage vehicleType vehicleSpecs vehicleNumber')
             .populate('items.foodItem', 'name price image')
             .sort({ createdAt: -1 });
     }
@@ -881,11 +927,19 @@ class OrderService {
         if (order.rider) {
             try {
                 const riderId = order.rider._id || order.rider;
-                const onboarding = await riderOnboarding_model_1.default.findOne({ user: riderId }).select('vehicle');
                 const riderObj = order.rider.toObject ? order.rider.toObject() : { ...order.rider };
-                riderObj.vehicleType = onboarding?.vehicle?.vehicleType || 'motorcycle';
-                riderObj.vehicle = onboarding?.vehicle;
+                const onboarding = await riderOnboarding_model_1.default.findOne({ user: riderId }).select('vehicle deliveryMethod');
+                // Prioritize rider user's own profile vehicleType, then onboarding vehicle/deliveryMethod, then default motorcycle
+                const userVehicleType = riderObj.vehicleType || riderObj.vehicle?.vehicleType;
+                const onboardingVehicleType = onboarding?.vehicle?.vehicleType || onboarding?.deliveryMethod;
+                const resolvedVehicle = userVehicleType || onboardingVehicleType || 'motorcycle';
+                riderObj.vehicleType = resolvedVehicle;
+                riderObj.vehicle = {
+                    ...(onboarding?.vehicle || {}),
+                    vehicleType: resolvedVehicle,
+                };
                 order.rider = riderObj;
+                order.courierVehicle = resolvedVehicle;
             }
             catch (err) {
                 logger_1.default.warn('Failed to load rider onboarding vehicle details:', err);
@@ -908,12 +962,17 @@ class OrderService {
             status: { $ne: order_model_1.OrderStatus.PAYMENT_PENDING },
         })
             .populate('customer', 'name phoneNumber email')
-            .populate('rider', 'name phoneNumber profileImage')
+            .populate('rider', 'name phoneNumber profileImage vehicleType vehicleSpecs vehicleNumber')
             .populate('items.foodItem', 'name price image')
             .sort({ createdAt: -1 });
     }
     async getRiderOrders(riderId) {
-        return await order_model_1.default.find({ rider: riderId }).sort({ createdAt: -1 });
+        return await order_model_1.default.find({ rider: riderId })
+            .populate('restaurant', 'name address images image rating estimatedDeliveryTime location businessPhone phone phoneNumber phoneContact')
+            .populate('customer', 'name phoneNumber email profileImage')
+            .populate('rider', 'name phoneNumber profileImage vehicleType vehicleSpecs vehicleNumber')
+            .populate('items.foodItem', 'name price image')
+            .sort({ createdAt: -1 });
     }
     async reorder(orderId, customerId) {
         const originalOrder = await order_model_1.default.findById(orderId);
@@ -1000,7 +1059,7 @@ class OrderService {
      * Calculate real-time fee quote for single or multi-outlet carts
      */
     async quoteCheckoutFees(params) {
-        const { outlets, deliveryCoordinates, deliveryAddressText, isPickup } = params;
+        const { outlets, deliveryCoordinates, deliveryAddressText, isPickup, customerId } = params;
         const setting = await setting_model_1.default.findOne();
         const baseFee = setting?.deliveryBaseFee ?? 500;
         const feePerKm = setting?.deliveryFeePerKm ?? 100;
@@ -1097,6 +1156,32 @@ class OrderService {
         }
         const appliedSmallOrderFee = totalSubtotal < smallOrderThreshold ? smallOrderFee : 0;
         const totalFees = totalDeliveryFee + serviceFee + appliedSmallOrderFee;
+        const estimatedTotal = totalSubtotal + totalFees;
+        // Check First Bite status for quote
+        const envFirstBiteActive = String(process.env.FIRST_BITE_FREE_ORDER_ENABLED || 'false').toLowerCase() === 'true';
+        const isFirstBiteCampaignLive = envFirstBiteActive && (setting?.firstBiteEnabled === true);
+        let isFirstBiteEligible = false;
+        let firstBiteDiscount = 0;
+        if (isFirstBiteCampaignLive && customerId) {
+            const cust = await user_model_1.default.findById(customerId);
+            if (cust && !cust.hasUsedFirstBiteFreeOrder) {
+                const priorCount = await order_model_1.default.countDocuments({
+                    customer: customerId,
+                    status: { $nin: [order_model_1.OrderStatus.CANCELLED, order_model_1.OrderStatus.REJECTED] },
+                });
+                if (priorCount === 0) {
+                    isFirstBiteEligible = true;
+                    const isTotallyFree = setting?.firstBiteIsTotallyFree !== false;
+                    const maxCap = setting?.firstBiteMaxFreeAmount || 3000;
+                    if (isTotallyFree) {
+                        firstBiteDiscount = Math.min(estimatedTotal, maxCap);
+                    }
+                    else {
+                        firstBiteDiscount = Math.min(totalSubtotal, maxCap);
+                    }
+                }
+            }
+        }
         return {
             isPickup: false,
             routingMode,
@@ -1106,7 +1191,12 @@ class OrderService {
             serviceFee,
             smallOrderFee: appliedSmallOrderFee,
             totalFees,
-            estimatedTotal: totalSubtotal + totalFees,
+            estimatedTotal: Math.max(0, estimatedTotal - firstBiteDiscount),
+            originalTotal: estimatedTotal,
+            isFirstBiteEligible,
+            firstBiteDiscount,
+            firstBiteCampaignTitle: setting?.firstBiteCampaignTitle || 'Your First Bite is on Us',
+            firstBiteDescription: setting?.firstBiteDescription || 'Enjoy your first meal on us as a welcome gift from Go-Eat!',
             outlets: outletQuotes,
         };
     }

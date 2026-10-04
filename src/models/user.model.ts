@@ -37,6 +37,7 @@ export interface IUser extends Document {
   appleId?: string;
   isVerified: boolean;
   isOnline: boolean;
+  hasUsedFirstBiteFreeOrder?: boolean;
   riderVerificationStatus?: 'pending' | 'unsubmitted' | 'under_review' | 'action_required' | 'approved' | 'rejected' | 'suspended';
   hasSkippedRiderOnboarding?: boolean;
   vehicleType?: string;
@@ -217,6 +218,10 @@ const userSchema = new Schema<IUser>(
       sparse: true,
     },
     isOnline: {
+      type: Boolean,
+      default: false,
+    },
+    hasUsedFirstBiteFreeOrder: {
       type: Boolean,
       default: false,
     },

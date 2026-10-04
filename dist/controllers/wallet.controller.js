@@ -168,6 +168,7 @@ class WalletController {
             notification_service_1.default.notifyWalletTransaction(req.user._id.toString(), 'Withdrawal Initiated 💸', `Your payout request of ₦${amount.toLocaleString()} has been received and processed.`, amount, transaction._id.toString()).catch(() => { });
             res.status(200).json({
                 status: 'success',
+                message: 'Withdrawal successful',
                 data: {
                     wallet: {
                         _id: wallet._id,

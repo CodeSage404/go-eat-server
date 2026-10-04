@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import crypto from 'crypto';
 import User, { UserRole } from '../models/user.model';
+import RiderOnboarding from '../models/riderOnboarding.model';
 import { catchAsync } from '../utils/catchAsync';
 import AppError from '../utils/appError';
 import emailService from '../services/email.service';
@@ -147,6 +148,34 @@ class UserController {
 
     if (!user) {
       throw new AppError('User not found', 404);
+    }
+
+    // Keep RiderOnboarding in sync if courier updates vehicle or photo
+    if (user.role === UserRole.RIDER) {
+      try {
+        const onboardingUpdate: any = {};
+        if (vehicleType) {
+          const normMethod = vehicleType === 'motorbike' ? 'motorcycle' : vehicleType;
+          onboardingUpdate.deliveryMethod = normMethod;
+          onboardingUpdate['vehicle.vehicleType'] = normMethod;
+        }
+        if (vehicleNumber !== undefined) {
+          onboardingUpdate['vehicle.registrationNumber'] = vehicleNumber;
+        }
+        if (profileImage) {
+          onboardingUpdate.profilePhotoUrl = profileImage;
+          onboardingUpdate['documents.riderPhoto'] = profileImage;
+        }
+        if (Object.keys(onboardingUpdate).length > 0) {
+          await RiderOnboarding.findOneAndUpdate(
+            { user: user._id },
+            { $set: onboardingUpdate },
+            { upsert: false }
+          );
+        }
+      } catch (onboardingErr: any) {
+        logger.warn('Failed to sync RiderOnboarding on profile update:', onboardingErr?.message);
+      }
     }
 
     res.status(200).json({

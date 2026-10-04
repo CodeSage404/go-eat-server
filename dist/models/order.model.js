@@ -130,6 +130,14 @@ const orderSchema = new mongoose_1.Schema({
         type: Number,
         default: 0,
     },
+    isFirstBiteFreeOrder: {
+        type: Boolean,
+        default: false,
+    },
+    firstBiteDiscount: {
+        type: Number,
+        default: 0,
+    },
     distanceKm: {
         type: Number,
         default: 0,

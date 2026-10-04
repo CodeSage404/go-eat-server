@@ -44,6 +44,12 @@ export interface ISetting extends Document {
   enableBankVerificationStripe: boolean;
   forceGlobalBankVerificationProvider: 'none' | 'paystack' | 'stripe' | 'flutterwave';
   countryBankVerificationProviders: ICountryBankVerificationProvider[];
+  // First Bite Free Order Campaign Configuration
+  firstBiteEnabled: boolean;
+  firstBiteCampaignTitle: string;
+  firstBiteDescription: string;
+  firstBiteIsTotallyFree: boolean;
+  firstBiteMaxFreeAmount: number;
 }
 
 const settingSchema = new Schema<ISetting>(
@@ -127,6 +133,27 @@ const settingSchema = new Schema<ISetting>(
         { countryCode: 'GH', countryName: 'Ghana', provider: 'paystack', accountFormat: 'nuban', isActive: true },
         { countryCode: 'KE', countryName: 'Kenya', provider: 'flutterwave', accountFormat: 'nuban', isActive: true },
       ],
+    },
+    // First Bite Free Order Campaign Configuration
+    firstBiteEnabled: {
+      type: Boolean,
+      default: false,
+    },
+    firstBiteCampaignTitle: {
+      type: String,
+      default: 'Your First Bite is on Us',
+    },
+    firstBiteDescription: {
+      type: String,
+      default: 'Enjoy your first meal on us as a welcome gift from Go-Eat!',
+    },
+    firstBiteIsTotallyFree: {
+      type: Boolean,
+      default: true,
+    },
+    firstBiteMaxFreeAmount: {
+      type: Number,
+      default: 3000,
     },
   },
   { timestamps: true }

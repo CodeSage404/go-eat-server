@@ -51,8 +51,13 @@ class SettlementService {
      * Net Settlement = Gross Order Value - (Gross Order Value * Commission Rate [15%])
      */
     calculateOutletSettlement(order) {
-        const grossAmount = order.totalAmount || 0;
-        const commissionRate = order.commissionRate || 0.15; // Default 15%
+        // For First Bite Free orders, the platform subsidizes the food cost, so gross food value is preserved
+        const foodSubtotal = (order.items || []).reduce((sum, item) => sum + (Number(item.price) || 0) * (Number(item.quantity) || 1), 0);
+        const grossAmount = (order.isFirstBiteFreeOrder && foodSubtotal > 0)
+            ? foodSubtotal
+            : (order.grossAmount && order.grossAmount > 0 ? order.grossAmount : (order.totalAmount || 0));
+        // When subsidized under first bite free order campaign, platform gives restaurant 100% of food value (0% commission deduction)
+        const commissionRate = order.isFirstBiteFreeOrder ? 0 : (order.commissionRate ?? 0.15); // Default 15%
         const commissionAmount = Math.round(grossAmount * commissionRate * 100) / 100;
         const outletNetSettlement = Math.max(0, Math.round((grossAmount - commissionAmount) * 100) / 100);
         const courierEarnings = (order.courierEarnings && order.courierEarnings > 0)
@@ -141,12 +146,15 @@ class SettlementService {
                 wallet.availableBalance += breakdown.outletNetSettlement;
                 await wallet.save();
                 // Create transaction records
+                const txDesc = order.isFirstBiteFreeOrder
+                    ? `Net settlement for completed order #${shortId} (Platform Subsidized "First Bite" Free Order: ₦${breakdown.outletNetSettlement})`
+                    : `Net settlement for completed order #${shortId} (Gross: ${breakdown.grossAmount}, Commission ${Math.round(breakdown.commissionRate * 100)}%: -${breakdown.commissionAmount})`;
                 await transaction_model_1.default.create({
                     wallet: wallet._id,
                     amount: breakdown.outletNetSettlement,
                     type: transaction_model_1.TransactionType.SETTLEMENT,
                     status: transaction_model_1.TransactionStatus.COMPLETED,
-                    description: `Net settlement for completed order #${shortId} (Gross: ${breakdown.grossAmount}, Commission 15%: -${breakdown.commissionAmount})`,
+                    description: txDesc,
                     reference: order._id.toString(),
                 });
                 const ownerId = restaurant.owner.toString();

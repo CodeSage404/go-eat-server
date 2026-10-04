@@ -115,6 +115,27 @@ const settingSchema = new mongoose_1.Schema({
             { countryCode: 'KE', countryName: 'Kenya', provider: 'flutterwave', accountFormat: 'nuban', isActive: true },
         ],
     },
+    // First Bite Free Order Campaign Configuration
+    firstBiteEnabled: {
+        type: Boolean,
+        default: false,
+    },
+    firstBiteCampaignTitle: {
+        type: String,
+        default: 'Your First Bite is on Us',
+    },
+    firstBiteDescription: {
+        type: String,
+        default: 'Enjoy your first meal on us as a welcome gift from Go-Eat!',
+    },
+    firstBiteIsTotallyFree: {
+        type: Boolean,
+        default: true,
+    },
+    firstBiteMaxFreeAmount: {
+        type: Number,
+        default: 3000,
+    },
 }, { timestamps: true });
 const Setting = mongoose_1.default.model('Setting', settingSchema);
 exports.default = Setting;

@@ -65,6 +65,30 @@ class AnalyticsController {
                     },
                 },
             ]);
+            // Aggregate completed orders for genuine real-time completion rate
+            const completedStats = await order_model_1.default.aggregate([
+                {
+                    $match: {
+                        restaurant: restaurantId,
+                        ...dateMatch
+                    },
+                },
+                {
+                    $group: {
+                        _id: null,
+                        total: { $sum: 1 },
+                        delivered: {
+                            $sum: {
+                                $cond: [{ $in: ['$status', ['delivered', 'completed']] }, 1, 0]
+                            }
+                        }
+                    }
+                }
+            ]);
+            const totalOrdersCount = completedStats.length > 0 ? completedStats[0].total : 0;
+            const deliveredCount = completedStats.length > 0 ? completedStats[0].delivered : 0;
+            const rawRate = totalOrdersCount > 0 ? (deliveredCount / totalOrdersCount) * 100 : 100;
+            const completionRate = Math.round(rawRate * 10) / 10;
             // Aggregate top selling items
             const topItems = await order_model_1.default.aggregate([
                 {
@@ -85,13 +109,97 @@ class AnalyticsController {
                 { $sort: { totalQuantitySold: -1 } },
                 { $limit: 5 },
             ]);
-            // For now, generate a mock responsive chart data array from the backend, 
-            // ideally this would group by day using $dayOfWeek or similar
-            const chartData = [0, 12000, 8000, 20000, 16000, 25000, stats.length > 0 ? stats[0].totalRevenue : 32000];
+            // Aggregate real-time grouped chart distribution based on timeframe
+            let chartData = [];
+            if (timeframe === 'thismonth') {
+                // 4 Weeks in month
+                const weeklyBuckets = await order_model_1.default.aggregate([
+                    {
+                        $match: {
+                            restaurant: restaurantId,
+                            status: { $in: activeStatuses },
+                            ...dateMatch,
+                        },
+                    },
+                    {
+                        $group: {
+                            _id: {
+                                $min: [4, { $ceil: { $divide: [{ $dayOfMonth: '$createdAt' }, 7] } }]
+                            },
+                            revenue: { $sum: '$totalAmount' },
+                        },
+                    },
+                ]);
+                const weekMap = {};
+                weeklyBuckets.forEach((b) => { weekMap[b._id] = b.revenue; });
+                chartData = [1, 2, 3, 4].map((w) => weekMap[w] || 0);
+            }
+            else if (timeframe === 'thisyear') {
+                // 4 Quarters in year
+                const quarterBuckets = await order_model_1.default.aggregate([
+                    {
+                        $match: {
+                            restaurant: restaurantId,
+                            status: { $in: activeStatuses },
+                            ...dateMatch,
+                        },
+                    },
+                    {
+                        $group: {
+                            _id: {
+                                $ceil: { $divide: [{ $month: '$createdAt' }, 3] }
+                            },
+                            revenue: { $sum: '$totalAmount' },
+                        },
+                    },
+                ]);
+                const quarterMap = {};
+                quarterBuckets.forEach((b) => { quarterMap[b._id] = b.revenue; });
+                chartData = [1, 2, 3, 4].map((q) => quarterMap[q] || 0);
+            }
+            else {
+                // Default: Days of the week (Mon to Sun: index 0 to 6)
+                // Mongo $dayOfWeek returns 1 for Sunday, 2 for Monday ... 7 for Saturday
+                const dailyBuckets = await order_model_1.default.aggregate([
+                    {
+                        $match: {
+                            restaurant: restaurantId,
+                            status: { $in: activeStatuses },
+                            ...dateMatch,
+                        },
+                    },
+                    {
+                        $group: {
+                            _id: { $dayOfWeek: '$createdAt' },
+                            revenue: { $sum: '$totalAmount' },
+                        },
+                    },
+                ]);
+                // Map Mongo dayOfWeek (1=Sun, 2=Mon... 7=Sat) to Mon..Sun
+                const dayMap = {};
+                dailyBuckets.forEach((b) => { dayMap[b._id] = b.revenue; });
+                chartData = [
+                    dayMap[2] || 0, // Mon
+                    dayMap[3] || 0, // Tue
+                    dayMap[4] || 0, // Wed
+                    dayMap[5] || 0, // Thu
+                    dayMap[6] || 0, // Fri
+                    dayMap[7] || 0, // Sat
+                    dayMap[1] || 0, // Sun
+                ];
+            }
+            const calculatedStats = stats.length > 0
+                ? {
+                    totalRevenue: stats[0].totalRevenue,
+                    totalOrders: stats[0].totalOrders,
+                    averageOrderValue: Math.round(stats[0].averageOrderValue || 0),
+                    completionRate
+                }
+                : { totalRevenue: 0, totalOrders: 0, averageOrderValue: 0, completionRate };
             res.status(200).json({
                 status: 'success',
                 data: {
-                    stats: stats.length > 0 ? stats[0] : { totalRevenue: 0, totalOrders: 0, averageOrderValue: 0 },
+                    stats: calculatedStats,
                     topItems,
                     chartData
                 },

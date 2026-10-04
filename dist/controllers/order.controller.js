@@ -252,11 +252,13 @@ class OrderController {
             if (!outlets || !Array.isArray(outlets) || outlets.length === 0) {
                 throw new appError_1.default('Outlets array is required for fee quotation', 400);
             }
+            const customerId = req.user?._id?.toString() || (req.body.customerId ? String(req.body.customerId) : undefined);
             const quote = await order_service_1.default.quoteCheckoutFees({
                 outlets,
                 deliveryCoordinates,
                 deliveryAddressText,
                 isPickup: Boolean(isPickup),
+                customerId,
             });
             res.status(200).json({
                 status: 'success',

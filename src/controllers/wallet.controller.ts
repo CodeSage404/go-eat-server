@@ -164,6 +164,7 @@ class WalletController {
 
     res.status(200).json({
       status: 'success',
+      message: 'Withdrawal successful',
       data: {
         wallet: {
           _id: wallet._id,

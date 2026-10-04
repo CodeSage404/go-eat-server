@@ -146,6 +146,49 @@ export class PaymentService {
     const reference = `ORD_${order._id}_${Date.now()}`;
     const amount = orders.reduce((sum, o) => sum + (o.totalAmount || 0), 0);
 
+    // If order is completely free (e.g. First Bite Free Order Campaign), auto-complete without hitting payment gateways
+    if (amount === 0) {
+      for (const ord of orders) {
+        ord.paymentStatus = 'completed';
+        ord.status = OrderStatus.PENDING;
+        ord.paymentResult = {
+          id: reference,
+          status: 'success',
+          update_time: new Date().toISOString(),
+          email_address: safeEmail,
+          provider: 'first_bite_free',
+        } as any;
+        await ord.save();
+
+        // Notify Restaurant & Customer
+        try {
+          const restaurantId = (ord.restaurant as any)?._id || ord.restaurant;
+          const restaurant = restaurantId ? await Restaurant.findById(restaurantId) : null;
+          const shortId = ord._id.toString().slice(-6).toUpperCase();
+          if (restaurant && restaurant.owner) {
+            await notificationService.notifyNewOrder(restaurant.owner.toString(), ord._id.toString());
+          }
+          if (ord.customer) {
+            await notificationService.sendNotification(
+              userId,
+              `Your First Bite is on Us! 🎁🎉`,
+              `Your first order #${shortId} is 100% free! It has been placed successfully and sent to ${restaurant?.name || 'the kitchen'}.`,
+              { orderId: ord._id.toString(), status: 'pending', type: 'ORDER_UPDATE' },
+              NotificationType.ORDER_UPDATE
+            );
+          }
+        } catch (err: any) {
+          logger.warn('Error sending notifications for free first bite order:', err);
+        }
+      }
+
+      return {
+        authorizationUrl: '',
+        reference,
+        provider: 'stripe',
+      };
+    }
+
     const serverBaseUrl = (process.env.RENDER_EXTERNAL_URL || 'https://go-eat-server-z96s.onrender.com').replace(/\/$/, '');
     const defaultCallbackUrl = `${serverBaseUrl}/api/v1/payments/callback?reference=${reference}`;
 

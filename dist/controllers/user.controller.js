@@ -38,6 +38,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const crypto_1 = __importDefault(require("crypto"));
 const user_model_1 = __importStar(require("../models/user.model"));
+const riderOnboarding_model_1 = __importDefault(require("../models/riderOnboarding.model"));
 const catchAsync_1 = require("../utils/catchAsync");
 const appError_1 = __importDefault(require("../utils/appError"));
 const email_service_1 = __importDefault(require("../services/email.service"));
@@ -176,6 +177,30 @@ class UserController {
             const user = await user_model_1.default.findByIdAndUpdate(req.user._id, updatePayload, { new: true, returnDocument: 'after', runValidators: true }).select('-password');
             if (!user) {
                 throw new appError_1.default('User not found', 404);
+            }
+            // Keep RiderOnboarding in sync if courier updates vehicle or photo
+            if (user.role === user_model_1.UserRole.RIDER) {
+                try {
+                    const onboardingUpdate = {};
+                    if (vehicleType) {
+                        const normMethod = vehicleType === 'motorbike' ? 'motorcycle' : vehicleType;
+                        onboardingUpdate.deliveryMethod = normMethod;
+                        onboardingUpdate['vehicle.vehicleType'] = normMethod;
+                    }
+                    if (vehicleNumber !== undefined) {
+                        onboardingUpdate['vehicle.registrationNumber'] = vehicleNumber;
+                    }
+                    if (profileImage) {
+                        onboardingUpdate.profilePhotoUrl = profileImage;
+                        onboardingUpdate['documents.riderPhoto'] = profileImage;
+                    }
+                    if (Object.keys(onboardingUpdate).length > 0) {
+                        await riderOnboarding_model_1.default.findOneAndUpdate({ user: user._id }, { $set: onboardingUpdate }, { upsert: false });
+                    }
+                }
+                catch (onboardingErr) {
+                    logger_1.default.warn('Failed to sync RiderOnboarding on profile update:', onboardingErr?.message);
+                }
             }
             res.status(200).json({
                 status: 'success',

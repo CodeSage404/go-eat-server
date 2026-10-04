@@ -61,6 +61,8 @@ export interface IOrder extends Document {
   courierEarnings?: number;
   deliveryFee: number;
   serviceFee?: number;
+  isFirstBiteFreeOrder?: boolean;
+  firstBiteDiscount?: number;
   distanceKm?: number;
   batchGroupId?: string;
   isBatchedDelivery?: boolean;
@@ -184,6 +186,14 @@ const orderSchema = new Schema<IOrder>(
       default: 0,
     },
     serviceFee: {
+      type: Number,
+      default: 0,
+    },
+    isFirstBiteFreeOrder: {
+      type: Boolean,
+      default: false,
+    },
+    firstBiteDiscount: {
       type: Number,
       default: 0,
     },

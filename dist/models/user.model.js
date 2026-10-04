@@ -138,6 +138,10 @@ const userSchema = new mongoose_1.Schema({
         type: Boolean,
         default: false,
     },
+    hasUsedFirstBiteFreeOrder: {
+        type: Boolean,
+        default: false,
+    },
     riderVerificationStatus: {
         type: String,
         enum: ['pending', 'unsubmitted', 'under_review', 'action_required', 'approved', 'rejected', 'suspended'],
