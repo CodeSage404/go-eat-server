@@ -161,7 +161,8 @@ class WalletController {
                     throw new appError_1.default(`Settlement is temporarily on hold: ${existingWallet.holdReason || 'Account investigation or dispute'}`, 400);
                 }
                 const currentAvailable = existingWallet.availableBalance ?? existingWallet.balance ?? 0;
-                throw new appError_1.default(`Insufficient available balance. Available: ₦${currentAvailable.toLocaleString()}, Requested: ₦${amount.toLocaleString()}. (Note: Pending funds cannot be withdrawn until order completion).`, 400);
+                const currencySymbol = existingWallet.currency === 'GBP' ? '£' : existingWallet.currency === 'EUR' ? '€' : existingWallet.currency === 'USD' ? '$' : '₦';
+                throw new appError_1.default(`Insufficient available balance. Available: ${currencySymbol}${currentAvailable.toLocaleString()}, Requested: ${currencySymbol}${amount.toLocaleString()}. (Note: Pending funds cannot be withdrawn until order completion).`, 400);
             }
             // Create withdrawal transaction
             const transaction = await transaction_model_1.default.create({
@@ -172,12 +173,12 @@ class WalletController {
                 description: 'Payout to verified bank account',
                 reference: `WDR-${Date.now()}-${Math.floor(1000 + Math.random() * 9000)}`,
             });
+            const currencySymbol = wallet.currency === 'GBP' ? '£' : wallet.currency === 'EUR' ? '€' : wallet.currency === 'USD' ? '$' : '₦';
             // Send email receipt to user mailbox
             if (req.user?.email) {
                 const userDoc = await user_model_1.default.findById(req.user._id);
                 const recipientName = userDoc?.name || 'Valued Partner';
                 const bankAcc = wallet.bankAccount;
-                const currencySymbol = wallet.currency === 'GBP' ? '£' : wallet.currency === 'EUR' ? '€' : wallet.currency === 'USD' ? '$' : '₦';
                 email_service_1.default.sendWithdrawalReceipt(req.user.email, {
                     userName: recipientName,
                     reference: transaction.reference || transaction._id.toString().slice(-8).toUpperCase(),
@@ -191,7 +192,7 @@ class WalletController {
                 }).catch(err => logger_1.default.error('Failed to dispatch withdrawal receipt email:', err));
             }
             // Notify user via In-App, Real-Time Socket, and Push Notification
-            notification_service_1.default.notifyWalletTransaction(req.user._id.toString(), 'Withdrawal Initiated 💸', `Your payout request of ₦${amount.toLocaleString()} has been received and processed.`, amount, transaction._id.toString()).catch(() => { });
+            notification_service_1.default.notifyWalletTransaction(req.user._id.toString(), 'Withdrawal Initiated 💸', `Your payout request of ${currencySymbol}${amount.toLocaleString()} has been received and processed.`, amount, transaction._id.toString()).catch(() => { });
             res.status(200).json({
                 status: 'success',
                 message: 'Withdrawal successful',
