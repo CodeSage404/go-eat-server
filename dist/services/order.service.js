@@ -125,7 +125,17 @@ class OrderService {
                 throw new appError_1.default(`Item "${food.name}" is currently sold out or unavailable`, 400);
             }
             const qty = Math.max(1, Number(item.quantity) || 1);
-            const verifiedPrice = Number(food.price);
+            let verifiedPrice = Number(food.price);
+            let activeSalePrice = undefined;
+            if (food.salePrice !== undefined && food.salePrice !== null && food.salePrice > 0 && food.salePrice < food.price) {
+                const now = new Date();
+                const startOk = !food.saleStartDate || new Date(food.saleStartDate) <= now;
+                const endOk = !food.saleEndDate || new Date(food.saleEndDate) >= now;
+                if (startOk && endOk) {
+                    verifiedPrice = Number(food.salePrice);
+                    activeSalePrice = Number(food.salePrice);
+                }
+            }
             const addonsTotal = (item.selectedAddons || []).reduce((acc, addon) => acc + (Number(addon.price) || 0), 0);
             const verifiedUnitPrice = verifiedPrice + addonsTotal;
             computedFoodSubtotal += verifiedUnitPrice * qty;
@@ -133,9 +143,13 @@ class OrderService {
                 foodItem: food._id,
                 name: food.name,
                 price: verifiedUnitPrice,
+                originalPrice: Number(food.price),
+                salePrice: activeSalePrice,
                 quantity: qty,
                 image: food.image || item.image || '',
                 selectedAddons: item.selectedAddons || [],
+                selectedRemovals: item.selectedRemovals || [],
+                notes: item.notes || '',
             });
         }
         data.items = validatedItems;

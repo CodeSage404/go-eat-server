@@ -188,9 +188,70 @@ const restaurantSchema = new mongoose_1.Schema({
     },
     outletType: {
         type: String,
-        enum: ['Restaurant', 'Smokey Wheel', 'Grocery', 'Specialty Store', 'Health & Wellness', 'Convenience', 'Lifestyle'],
+        enum: [
+            'Restaurant',
+            'Smokey-Wheels',
+            'Smokey Wheel',
+            'Signature Chef',
+            'Grocery',
+            'Convenience',
+            'Specialty Store',
+            'Health & Wellness',
+            'Pet Shop',
+            'Flower Shop',
+            'Lifestyle',
+        ],
         default: 'Restaurant',
+        index: true,
     },
+    specialtySubcategory: {
+        type: String,
+        trim: true,
+        index: true,
+    },
+    sellingModel: {
+        type: String,
+        enum: ['FOOD_MENU', 'RETAIL_PRODUCT'],
+        default: 'FOOD_MENU',
+        index: true,
+    },
+    categoryCode: {
+        type: String,
+        trim: true,
+        uppercase: true,
+        index: true,
+    },
+    isSignatureChef: {
+        type: Boolean,
+        default: false,
+        index: true,
+    },
+    chefProfile: {
+        bio: { type: String, trim: true },
+        experienceYears: { type: Number, default: 0 },
+        specialties: [{ type: String, trim: true }],
+    },
+    buildYourOwnMealEnabled: {
+        type: Boolean,
+        default: false,
+    },
+    availableBases: [
+        {
+            name: { type: String, required: true },
+            price: { type: Number, default: 0 },
+            available: { type: Boolean, default: true },
+            image: { type: String },
+        },
+    ],
+    ingredients: [
+        {
+            name: { type: String, required: true },
+            category: { type: String, required: true }, // e.g. Meat, Seafood, Vegetables, Dairy, Spices
+            price: { type: Number, default: 0 },
+            available: { type: Boolean, default: true },
+            image: { type: String },
+        },
+    ],
     tradingName: {
         type: String,
         trim: true,

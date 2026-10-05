@@ -88,9 +88,13 @@ const orderSchema = new mongoose_1.Schema({
             foodItem: { type: mongoose_1.Schema.Types.ObjectId, ref: 'FoodItem', required: true },
             name: { type: String, required: true },
             price: { type: Number, required: true },
+            originalPrice: { type: Number },
+            salePrice: { type: Number },
             quantity: { type: Number, required: true, min: 1 },
             image: { type: String },
             selectedAddons: { type: [mongoose_1.Schema.Types.Mixed], default: [] },
+            selectedRemovals: { type: [String], default: [] },
+            notes: { type: String },
         },
     ],
     totalAmount: {

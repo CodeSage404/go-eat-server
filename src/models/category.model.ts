@@ -1,5 +1,7 @@
 import mongoose, { Schema, Document } from 'mongoose';
 
+export type SellingModel = 'FOOD_MENU' | 'RETAIL_PRODUCT';
+
 export interface ICategory extends Document {
   name: string;
   slug?: string;
@@ -8,8 +10,13 @@ export interface ICategory extends Document {
   restaurant?: mongoose.Types.ObjectId;
   description?: string;
   order: number;
+  sortOrder?: number;
   isGlobal?: boolean;
   isActive?: boolean;
+  systemCode?: string;
+  sellingModel?: SellingModel;
+  parentId?: mongoose.Types.ObjectId | null;
+  isSystemPermanent?: boolean;
   country?: string;
   countryCode?: string;
   createdAt: Date;
@@ -49,6 +56,33 @@ const categorySchema = new Schema<ICategory>(
       type: Number,
       default: 0,
     },
+    sortOrder: {
+      type: Number,
+      default: 0,
+    },
+    systemCode: {
+      type: String,
+      trim: true,
+      uppercase: true,
+      index: true,
+    },
+    sellingModel: {
+      type: String,
+      enum: ['FOOD_MENU', 'RETAIL_PRODUCT'],
+      default: 'FOOD_MENU',
+      index: true,
+    },
+    parentId: {
+      type: Schema.Types.ObjectId,
+      ref: 'Category',
+      default: null,
+      index: true,
+    },
+    isSystemPermanent: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
     isGlobal: {
       type: Boolean,
       default: true,
@@ -73,6 +107,8 @@ const categorySchema = new Schema<ICategory>(
 
 // Index for fast search
 categorySchema.index({ name: 1, isGlobal: 1 });
+categorySchema.index({ systemCode: 1 }, { unique: false, sparse: true });
+categorySchema.index({ parentId: 1 });
 
 const Category = mongoose.model<ICategory>('Category', categorySchema);
 

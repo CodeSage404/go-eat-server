@@ -113,6 +113,33 @@ const foodItemSchema = zod_1.z.object({
     prepTime: zod_1.z.coerce.number().optional(),
     originalPrice: zod_1.z.coerce.number().optional().nullable(),
     discountPercentage: zod_1.z.coerce.number().min(0).max(100).optional(),
+    sellingModel: zod_1.z.enum(['FOOD_MENU', 'RETAIL_PRODUCT']).optional().default('FOOD_MENU'),
+    sku: zod_1.z.string().optional(),
+    brand: zod_1.z.string().optional(),
+    variantName: zod_1.z.string().optional(),
+    stockQuantity: zod_1.z.coerce.number().optional().default(100),
+    inStock: zod_1.z.union([zod_1.z.boolean(), zod_1.z.enum(['true', 'false', '']).transform(val => val === 'true')]).optional().default(true),
+    salePrice: zod_1.z.coerce.number().optional().nullable(),
+    saleStartDate: zod_1.z.coerce.date().optional().nullable(),
+    saleEndDate: zod_1.z.coerce.date().optional().nullable(),
+    removals: zod_1.z.union([
+        zod_1.z.array(zod_1.z.object({
+            name: zod_1.z.string().min(1, 'Removal name is required'),
+            price: zod_1.z.coerce.number().optional().default(0),
+        })),
+        zod_1.z.string().transform(val => {
+            try {
+                const parsed = JSON.parse(val);
+                if (Array.isArray(parsed)) {
+                    return parsed.map((item) => typeof item === 'string' ? { name: item, price: 0 } : item);
+                }
+            }
+            catch { }
+            return val.split(',').map(s => ({ name: s.trim(), price: 0 })).filter(x => Boolean(x.name));
+        })
+    ]).optional(),
+    isChefSpecial: zod_1.z.union([zod_1.z.boolean(), zod_1.z.enum(['true', 'false', '']).transform(val => val === 'true')]).optional(),
+    chefMealType: zod_1.z.string().optional(),
     allergens: zod_1.z.union([
         zod_1.z.array(zod_1.z.string()),
         zod_1.z.string().transform(val => {
@@ -220,6 +247,14 @@ class MenuController {
             if (!validatedData.success) {
                 throw new appError_1.default(validatedData.error.issues.map(i => i.message).join(', '), 400);
             }
+            if (validatedData.data.salePrice !== undefined && validatedData.data.salePrice !== null) {
+                if (validatedData.data.salePrice <= 0) {
+                    throw new appError_1.default('Sale Price must be greater than zero', 400);
+                }
+                if (validatedData.data.salePrice >= validatedData.data.price) {
+                    throw new appError_1.default('Sale Price must be lower than Product Price', 400);
+                }
+            }
             const foodItemData = {
                 ...validatedData.data,
                 category: validatedData.data.category,
@@ -250,7 +285,25 @@ class MenuController {
         this.updateFoodItem = (0, catchAsync_1.catchAsync)(async (req, res) => {
             const { restaurantId, id } = req.params;
             await this.checkRestaurantOwnership(restaurantId, req.user._id, req.user.role);
+            const existingItem = await foodItem_model_1.default.findById(id);
+            if (!existingItem) {
+                throw new appError_1.default('Food item not found', 404);
+            }
             const updateData = { ...req.body };
+            const effectivePrice = updateData.price !== undefined ? Number(updateData.price) : existingItem.price;
+            if (updateData.salePrice !== undefined && updateData.salePrice !== null && updateData.salePrice !== '') {
+                const saleVal = Number(updateData.salePrice);
+                if (saleVal <= 0) {
+                    throw new appError_1.default('Sale Price must be greater than zero', 400);
+                }
+                if (saleVal >= effectivePrice) {
+                    throw new appError_1.default('Sale Price must be lower than Product Price', 400);
+                }
+                updateData.salePrice = saleVal;
+            }
+            else if (updateData.salePrice === '' || updateData.salePrice === null) {
+                updateData.salePrice = null;
+            }
             if (req.file?.path) {
                 updateData.image = req.file.path;
             }

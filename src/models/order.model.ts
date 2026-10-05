@@ -37,6 +37,8 @@ export interface IOrderItem {
   foodItem: mongoose.Types.ObjectId;
   name: string;
   price: number;
+  originalPrice?: number;
+  salePrice?: number;
   quantity: number;
   image?: string;
   selectedAddons?: Array<{
@@ -45,6 +47,8 @@ export interface IOrderItem {
     quantity?: number;
     [key: string]: any;
   }>;
+  selectedRemovals?: string[];
+  notes?: string;
 }
 
 export interface IOrder extends Document {
@@ -147,9 +151,13 @@ const orderSchema = new Schema<IOrder>(
         foodItem: { type: Schema.Types.ObjectId, ref: 'FoodItem', required: true },
         name: { type: String, required: true },
         price: { type: Number, required: true },
+        originalPrice: { type: Number },
+        salePrice: { type: Number },
         quantity: { type: Number, required: true, min: 1 },
         image: { type: String },
         selectedAddons: { type: [Schema.Types.Mixed], default: [] },
+        selectedRemovals: { type: [String], default: [] },
+        notes: { type: String },
       },
     ],
     totalAmount: {

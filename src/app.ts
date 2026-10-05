@@ -43,6 +43,7 @@ import zegoRoutes from './routes/zego.routes';
 import riderVerificationRoutes from './routes/rider-verification.routes';
 import partnerApplicationRoutes from './routes/partnerApplication.routes';
 import incidentRoutes from './routes/incident.routes';
+import customMealRequestRoutes from './routes/customMealRequest.routes';
 import activityService from './services/activity.service';
 import { startKeepAlivePing } from './utils/keepAlive';
 
@@ -212,6 +213,7 @@ class App {
     this.app.use('/api/v1/riders', riderVerificationRoutes);
     this.app.use('/api/v1/partners', partnerApplicationRoutes);
     this.app.use('/api/v1/incidents', incidentRoutes);
+    this.app.use('/api/v1/custom-requests', customMealRequestRoutes);
 
     // Documentation Routes
     this.app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));

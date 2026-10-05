@@ -7,6 +7,7 @@ const mongoose_1 = __importDefault(require("mongoose"));
 const logger_1 = __importDefault(require("../utils/logger"));
 const dotenv_1 = __importDefault(require("dotenv"));
 const restaurant_service_1 = require("../services/restaurant.service");
+const categoryTree_service_1 = require("../services/categoryTree.service");
 dotenv_1.default.config();
 const mongodbUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/go-eat';
 const connectDB = async () => {
@@ -58,6 +59,13 @@ const connectDB = async () => {
             }
             catch (syncErr) {
                 logger_1.default.warn('Could not sync restaurant live promo status:', syncErr.message);
+            }
+            // Automatically sync permanent GoEatOne category tree
+            try {
+                await (0, categoryTree_service_1.syncPermanentCategoryTree)();
+            }
+            catch (catTreeErr) {
+                logger_1.default.warn('Could not sync permanent category tree:', catTreeErr.message);
             }
         }
         catch (migErr) {

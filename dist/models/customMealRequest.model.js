@@ -34,87 +34,55 @@ var __importStar = (this && this.__importStar) || (function () {
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
 const mongoose_1 = __importStar(require("mongoose"));
-const categorySchema = new mongoose_1.Schema({
-    name: {
-        type: String,
-        required: [true, 'Category name is required'],
-        trim: true,
-    },
-    slug: {
-        type: String,
-        trim: true,
-        lowercase: true,
-    },
-    image: {
-        type: String,
-        trim: true,
-    },
-    icon: {
-        type: String,
-        trim: true,
+const customMealRequestSchema = new mongoose_1.Schema({
+    customer: {
+        type: mongoose_1.Schema.Types.ObjectId,
+        ref: 'User',
+        required: [true, 'Customer is required'],
+        index: true,
     },
     restaurant: {
         type: mongoose_1.Schema.Types.ObjectId,
         ref: 'Restaurant',
-        required: false,
+        required: [true, 'Restaurant/Chef is required'],
+        index: true,
     },
-    description: {
+    requestText: {
+        type: String,
+        required: [true, 'Request text is required'],
+        trim: true,
+    },
+    photos: {
+        type: [String],
+        default: [],
+    },
+    specialNotes: {
         type: String,
         trim: true,
+        default: '',
+    },
+    status: {
+        type: String,
+        enum: ['pending', 'priced', 'accepted', 'rejected', 'completed', 'cancelled'],
+        default: 'pending',
+        index: true,
+    },
+    quote: {
+        itemName: { type: String, trim: true },
+        price: { type: Number },
+        deliveryFee: { type: Number },
+        total: { type: Number },
+        chefMessage: { type: String, trim: true },
+        quotedAt: { type: Date },
     },
     order: {
-        type: Number,
-        default: 0,
-    },
-    sortOrder: {
-        type: Number,
-        default: 0,
-    },
-    systemCode: {
-        type: String,
-        trim: true,
-        uppercase: true,
-        index: true,
-    },
-    sellingModel: {
-        type: String,
-        enum: ['FOOD_MENU', 'RETAIL_PRODUCT'],
-        default: 'FOOD_MENU',
-        index: true,
-    },
-    parentId: {
         type: mongoose_1.Schema.Types.ObjectId,
-        ref: 'Category',
-        default: null,
-        index: true,
-    },
-    isSystemPermanent: {
-        type: Boolean,
-        default: false,
-        index: true,
-    },
-    isGlobal: {
-        type: Boolean,
-        default: true,
-    },
-    isActive: {
-        type: Boolean,
-        default: true,
-    },
-    country: {
-        type: String,
-        index: true,
-    },
-    countryCode: {
-        type: String,
-        index: true,
+        ref: 'Order',
     },
 }, {
     timestamps: true,
 });
-// Index for fast search
-categorySchema.index({ name: 1, isGlobal: 1 });
-categorySchema.index({ systemCode: 1 }, { unique: false, sparse: true });
-categorySchema.index({ parentId: 1 });
-const Category = mongoose_1.default.model('Category', categorySchema);
-exports.default = Category;
+customMealRequestSchema.index({ restaurant: 1, status: 1 });
+customMealRequestSchema.index({ customer: 1, createdAt: -1 });
+const CustomMealRequest = mongoose_1.default.model('CustomMealRequest', customMealRequestSchema);
+exports.default = CustomMealRequest;

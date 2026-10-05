@@ -15,15 +15,32 @@ class CategoryController {
    */
   public getAllCategories = catchAsync(async (req: Request, res: Response) => {
     const { country, countryCode } = resolveRequestLocation(req);
-    const { restaurant, onlyMine } = req.query;
+    const { restaurant, onlyMine, sellingModel, parentId, isSystemPermanent, includeCounts } = req.query;
 
     let filter: any = {};
+
+    if (sellingModel) {
+      filter.sellingModel = sellingModel;
+    }
+
+    if (parentId !== undefined) {
+      if (parentId === 'null' || parentId === 'root') {
+        filter.parentId = null;
+      } else if (mongoose.Types.ObjectId.isValid(parentId as string)) {
+        filter.parentId = new mongoose.Types.ObjectId(parentId as string);
+      }
+    }
+
+    if (isSystemPermanent !== undefined) {
+      filter.isSystemPermanent = isSystemPermanent === 'true';
+    }
 
     if (restaurant && mongoose.Types.ObjectId.isValid(restaurant as string)) {
       const restObjId = new mongoose.Types.ObjectId(restaurant as string);
       if (onlyMine === 'true') {
         // Return ONLY categories created by this specific restaurant
-        filter = { restaurant: restObjId, isGlobal: false };
+        filter.restaurant = restObjId;
+        filter.isGlobal = false;
       } else {
         // Return global categories + this restaurant's custom categories
         filter.$or = [
@@ -56,7 +73,9 @@ class CategoryController {
       filter.$or = orConditions;
     }
 
-    let categories = await Category.find(filter).sort({ order: 1, name: 1 });
+    let categories = await Category.find(filter)
+      .populate('parentId', 'name systemCode')
+      .sort({ order: 1, sortOrder: 1, name: 1 });
 
     // Check and remove any duplicate categories (case-insensitive per scope)
     const seen = new Map<string, any>();
@@ -64,6 +83,9 @@ class CategoryController {
     const replaceMap = new Map<string, string>(); // dupId -> primaryId
 
     for (const cat of categories) {
+      // Don't auto-delete permanent system categories
+      if (cat.isSystemPermanent) continue;
+
       const nameKey = (cat.name || '').trim().toLowerCase();
       const scopeKey = cat.restaurant ? cat.restaurant.toString() : 'global';
       const key = `${nameKey}___${scopeKey}`;
@@ -94,14 +116,48 @@ class CategoryController {
       await Category.deleteMany({ _id: { $in: toDeleteIds } });
 
       // Refresh categories after deduplication
-      categories = await Category.find().sort({ order: 1, name: 1 });
+      categories = await Category.find(filter)
+        .populate('parentId', 'name systemCode')
+        .sort({ order: 1, sortOrder: 1, name: 1 });
+    }
+
+    // Optionally attach outlet counts and item counts for Admin monitoring
+    let categoryResults: any[] = categories;
+    if (includeCounts === 'true') {
+      const catIds = categories.map((c) => c._id);
+      
+      const itemCountsAgg = await FoodItem.aggregate([
+        { $match: { category: { $in: catIds } } },
+        { $group: { _id: '$category', count: { $sum: 1 }, activeCount: { $sum: { $cond: ['$isAvailable', 1, 0] } } } },
+      ]);
+      const itemCountMap = new Map(itemCountsAgg.map((a: any) => [a._id.toString(), a]));
+
+      // For outlets: count by categoryCode or cuisine or direct association
+      const restaurantsAgg = await Restaurant.aggregate([
+        { $group: { _id: '$outletType', count: { $sum: 1 } } },
+      ]);
+      const outletTypeMap = new Map(restaurantsAgg.map((r: any) => [(r._id || '').toLowerCase(), r.count]));
+
+      categoryResults = categories.map((cat) => {
+        const catObj = cat.toObject();
+        const itemData = itemCountMap.get(cat._id.toString());
+        const catNameLower = (cat.name || '').toLowerCase();
+        const outletCount = outletTypeMap.get(catNameLower) || 0;
+
+        return {
+          ...catObj,
+          itemCount: itemData?.count || 0,
+          activeItemCount: itemData?.activeCount || 0,
+          outletCount,
+        };
+      });
     }
 
     res.status(200).json({
       status: 'success',
-      results: categories.length,
+      results: categoryResults.length,
       data: {
-        categories,
+        categories: categoryResults,
       },
     });
   });
@@ -230,7 +286,19 @@ class CategoryController {
       req.body.isGlobal = false;
     }
 
-    const { name, restaurant } = req.body;
+    const { name, restaurant, systemCode, parentId, sellingModel } = req.body;
+
+    if (systemCode) {
+      req.body.systemCode = String(systemCode).trim().toUpperCase();
+      const existingCode = await Category.findOne({ systemCode: req.body.systemCode });
+      if (existingCode) {
+        throw new AppError(
+          `Permanent category code "${req.body.systemCode}" already exists.`,
+          409
+        );
+      }
+    }
+
     if (name) {
       const trimmedName = String(name).trim();
       const existingQuery: any = {
@@ -241,13 +309,32 @@ class CategoryController {
           ),
         },
       };
+
+      if (parentId) {
+        existingQuery.parentId = parentId;
+      } else {
+        existingQuery.$or = [
+          { parentId: { $exists: false } },
+          { parentId: null },
+        ];
+      }
+
       if (restaurant) {
         existingQuery.restaurant = restaurant;
       } else {
-        existingQuery.$or = [
+        const restCondition = [
           { restaurant: { $exists: false } },
           { restaurant: null },
         ];
+        if (existingQuery.$or) {
+          existingQuery.$and = [
+            { $or: existingQuery.$or },
+            { $or: restCondition },
+          ];
+          delete existingQuery.$or;
+        } else {
+          existingQuery.$or = restCondition;
+        }
       }
 
       const existing = await Category.findOne(existingQuery);
@@ -299,11 +386,27 @@ class CategoryController {
       // Prevent vendor from altering ownership or converting to global
       delete req.body.isGlobal;
       delete req.body.restaurant;
+      delete req.body.isSystemPermanent;
+    }
+
+    // Permanent System Category Lock: prevent modifying systemCode or sellingModel
+    if (targetCategory.isSystemPermanent) {
+      if (req.body.systemCode && req.body.systemCode !== targetCategory.systemCode) {
+        throw new AppError('System code of permanent categories cannot be altered.', 400);
+      }
+      if (req.body.sellingModel && req.body.sellingModel !== targetCategory.sellingModel) {
+        throw new AppError('Selling model of permanent categories cannot be altered.', 400);
+      }
+      delete req.body.systemCode;
+      delete req.body.sellingModel;
+      delete req.body.isSystemPermanent;
     }
 
     if (req.body.name) {
       const trimmedName = String(req.body.name).trim();
       const restId = req.body.restaurant || targetCategory.restaurant;
+      const parentId = req.body.parentId !== undefined ? req.body.parentId : targetCategory.parentId;
+
       const existingQuery: any = {
         _id: { $ne: req.params.id },
         name: {
@@ -313,13 +416,32 @@ class CategoryController {
           ),
         },
       };
+
+      if (parentId) {
+        existingQuery.parentId = parentId;
+      } else {
+        existingQuery.$or = [
+          { parentId: { $exists: false } },
+          { parentId: null },
+        ];
+      }
+
       if (restId) {
         existingQuery.restaurant = restId;
       } else {
-        existingQuery.$or = [
+        const restCondition = [
           { restaurant: { $exists: false } },
           { restaurant: null },
         ];
+        if (existingQuery.$or) {
+          existingQuery.$and = [
+            { $or: existingQuery.$or },
+            { $or: restCondition },
+          ];
+          delete existingQuery.$or;
+        } else {
+          existingQuery.$or = restCondition;
+        }
       }
 
       const existing = await Category.findOne(existingQuery);
@@ -360,6 +482,31 @@ class CategoryController {
     const targetCategory = await Category.findById(req.params.id);
     if (!targetCategory) {
       throw new AppError('Category not found with that ID', 404);
+    }
+
+    if (targetCategory.isSystemPermanent) {
+      throw new AppError(
+        'Permanent system categories cannot be deleted. You can deactivate them instead.',
+        400
+      );
+    }
+
+    // Block deletion if any items are assigned to this category
+    const itemsCount = await FoodItem.countDocuments({ category: req.params.id });
+    if (itemsCount > 0) {
+      throw new AppError(
+        `Category cannot be deleted because it is assigned to ${itemsCount} menu or retail item(s). Please deactivate or reassign them first.`,
+        400
+      );
+    }
+
+    // Block deletion if any subcategories are linked
+    const subCatsCount = await Category.countDocuments({ parentId: req.params.id });
+    if (subCatsCount > 0) {
+      throw new AppError(
+        `Category cannot be deleted because it has ${subCatsCount} child subcategories. Please reassign or delete subcategories first.`,
+        400
+      );
     }
 
     const user = (req as any).user;

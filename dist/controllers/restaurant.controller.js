@@ -90,6 +90,25 @@ const vendorUpdateRestaurantSchema = zod_1.z.object({
     allowStampCards: zod_1.z.boolean().optional(),
     allowFreeGift: zod_1.z.boolean().optional(),
     promos: zod_1.z.array(zod_1.z.any()).optional(),
+    isSignatureChef: zod_1.z.boolean().optional(),
+    chefProfile: zod_1.z.object({
+        bio: zod_1.z.string().optional(),
+        culinaryBackground: zod_1.z.string().optional(),
+        specialties: zod_1.z.array(zod_1.z.string()).optional(),
+        minimumLeadTimeHours: zod_1.z.number().optional(),
+        profilePhoto: zod_1.z.string().optional(),
+        bannerImage: zod_1.z.string().optional(),
+    }).optional(),
+    buildYourOwnMealEnabled: zod_1.z.boolean().optional(),
+    availableBases: zod_1.z.array(zod_1.z.object({
+        name: zod_1.z.string(),
+        price: zod_1.z.number(),
+    })).optional(),
+    ingredients: zod_1.z.array(zod_1.z.object({
+        name: zod_1.z.string(),
+        category: zod_1.z.enum(['protein', 'side', 'sauce', 'extra']),
+        price: zod_1.z.number(),
+    })).optional(),
 });
 class RestaurantController {
     constructor() {

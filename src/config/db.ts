@@ -2,6 +2,7 @@ import mongoose from 'mongoose';
 import logger from '../utils/logger';
 import dotenv from 'dotenv';
 import { syncAllRestaurantsPromoStatus } from '../services/restaurant.service';
+import { syncPermanentCategoryTree } from '../services/categoryTree.service';
 
 dotenv.config();
 
@@ -67,6 +68,13 @@ const connectDB = async (): Promise<void> => {
         logger.info('✅ Verified & synced live promo status across restaurants.');
       } catch (syncErr: any) {
         logger.warn('Could not sync restaurant live promo status:', syncErr.message);
+      }
+
+      // Automatically sync permanent GoEatOne category tree
+      try {
+        await syncPermanentCategoryTree();
+      } catch (catTreeErr: any) {
+        logger.warn('Could not sync permanent category tree:', catTreeErr.message);
       }
     } catch (migErr: any) {
       logger.warn('Could not migrate restaurant fields (collection may not exist yet):', migErr.message);

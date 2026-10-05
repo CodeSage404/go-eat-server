@@ -74,6 +74,32 @@ const foodItemSchema = z.object({
   prepTime: z.coerce.number().optional(),
   originalPrice: z.coerce.number().optional().nullable(),
   discountPercentage: z.coerce.number().min(0).max(100).optional(),
+  sellingModel: z.enum(['FOOD_MENU', 'RETAIL_PRODUCT']).optional().default('FOOD_MENU'),
+  sku: z.string().optional(),
+  brand: z.string().optional(),
+  variantName: z.string().optional(),
+  stockQuantity: z.coerce.number().optional().default(100),
+  inStock: z.union([z.boolean(), z.enum(['true', 'false', '']).transform(val => val === 'true')]).optional().default(true),
+  salePrice: z.coerce.number().optional().nullable(),
+  saleStartDate: z.coerce.date().optional().nullable(),
+  saleEndDate: z.coerce.date().optional().nullable(),
+  removals: z.union([
+    z.array(z.object({
+      name: z.string().min(1, 'Removal name is required'),
+      price: z.coerce.number().optional().default(0),
+    })),
+    z.string().transform(val => {
+      try {
+        const parsed = JSON.parse(val);
+        if (Array.isArray(parsed)) {
+          return parsed.map((item: any) => typeof item === 'string' ? { name: item, price: 0 } : item);
+        }
+      } catch {}
+      return val.split(',').map(s => ({ name: s.trim(), price: 0 })).filter(x => Boolean(x.name));
+    })
+  ]).optional(),
+  isChefSpecial: z.union([z.boolean(), z.enum(['true', 'false', '']).transform(val => val === 'true')]).optional(),
+  chefMealType: z.string().optional(),
   allergens: z.union([
     z.array(z.string()),
     z.string().transform(val => {
@@ -210,6 +236,15 @@ class MenuController {
       throw new AppError(validatedData.error.issues.map(i => i.message).join(', '), 400);
     }
 
+    if (validatedData.data.salePrice !== undefined && validatedData.data.salePrice !== null) {
+      if (validatedData.data.salePrice <= 0) {
+        throw new AppError('Sale Price must be greater than zero', 400);
+      }
+      if (validatedData.data.salePrice >= validatedData.data.price) {
+        throw new AppError('Sale Price must be lower than Product Price', 400);
+      }
+    }
+
     const foodItemData: any = {
       ...validatedData.data,
       category: validatedData.data.category as any,
@@ -247,7 +282,26 @@ class MenuController {
     const { restaurantId, id } = req.params;
     await this.checkRestaurantOwnership(restaurantId as string, req.user._id, req.user.role);
 
+    const existingItem = await FoodItem.findById(id);
+    if (!existingItem) {
+      throw new AppError('Food item not found', 404);
+    }
+
     const updateData: any = { ...req.body };
+
+    const effectivePrice = updateData.price !== undefined ? Number(updateData.price) : existingItem.price;
+    if (updateData.salePrice !== undefined && updateData.salePrice !== null && updateData.salePrice !== '') {
+      const saleVal = Number(updateData.salePrice);
+      if (saleVal <= 0) {
+        throw new AppError('Sale Price must be greater than zero', 400);
+      }
+      if (saleVal >= effectivePrice) {
+        throw new AppError('Sale Price must be lower than Product Price', 400);
+      }
+      updateData.salePrice = saleVal;
+    } else if (updateData.salePrice === '' || updateData.salePrice === null) {
+      updateData.salePrice = null;
+    }
     if (req.file?.path) {
       updateData.image = req.file.path;
     }

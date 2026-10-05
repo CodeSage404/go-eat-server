@@ -146,6 +146,57 @@ const foodItemSchema = new mongoose_1.Schema({
         type: [String],
         default: [],
     },
+    sellingModel: {
+        type: String,
+        enum: ['FOOD_MENU', 'RETAIL_PRODUCT'],
+        default: 'FOOD_MENU',
+    },
+    sku: {
+        type: String,
+        trim: true,
+    },
+    brand: {
+        type: String,
+        trim: true,
+    },
+    variantName: {
+        type: String,
+        trim: true,
+    },
+    stockQuantity: {
+        type: Number,
+        default: 100,
+    },
+    inStock: {
+        type: Boolean,
+        default: true,
+    },
+    salePrice: {
+        type: Number,
+        default: null,
+    },
+    saleStartDate: {
+        type: Date,
+        default: null,
+    },
+    saleEndDate: {
+        type: Date,
+        default: null,
+    },
+    removals: [
+        {
+            name: { type: String, required: true },
+            price: { type: Number, default: 0 },
+        },
+    ],
+    isChefSpecial: {
+        type: Boolean,
+        default: false,
+    },
+    chefMealType: {
+        type: String,
+        default: 'regular',
+    },
 }, {
     timestamps: true,
 });
