@@ -47,6 +47,7 @@ const locationResolver_1 = require("../utils/locationResolver");
 const notification_service_1 = __importDefault(require("../services/notification.service"));
 const email_service_1 = __importDefault(require("../services/email.service"));
 const order_model_1 = __importDefault(require("../models/order.model"));
+const restaurant_model_1 = __importDefault(require("../models/restaurant.model"));
 const mongoose_1 = __importDefault(require("mongoose"));
 const logger_1 = __importDefault(require("../utils/logger"));
 class WalletController {
@@ -56,12 +57,36 @@ class WalletController {
          */
         this.getMyWallet = (0, catchAsync_1.catchAsync)(async (req, res) => {
             let wallet = await wallet_model_1.default.findOne({ user: req.user._id });
+            const userDoc = await user_model_1.default.findById(req.user._id);
+            const hasWithdrawalPin = Boolean(userDoc?.hasWithdrawalPin);
+            // Auto-resolve wallet currency based on vendor outlet or courier country
+            let resolvedCurrency = 'NGN';
+            const vendorRestaurant = await restaurant_model_1.default.findOne({ owner: req.user._id });
+            if (vendorRestaurant?.baseCurrency) {
+                resolvedCurrency = vendorRestaurant.baseCurrency;
+            }
+            else {
+                const cCode = String(userDoc?.countryCode || userDoc?.country || '').toUpperCase();
+                const isUk = Boolean(userDoc?.isUk || cCode === 'GB' || cCode === 'UK');
+                const isItaly = Boolean(userDoc?.isItaly || cCode === 'IT');
+                if (isUk) {
+                    resolvedCurrency = 'GBP';
+                }
+                else if (isItaly) {
+                    resolvedCurrency = 'EUR';
+                }
+                else {
+                    resolvedCurrency = 'NGN';
+                }
+            }
             // Auto-create wallet if it doesn't exist
             if (!wallet) {
-                wallet = await wallet_model_1.default.create({ user: req.user._id });
+                wallet = await wallet_model_1.default.create({ user: req.user._id, currency: resolvedCurrency });
             }
-            const userDoc = await user_model_1.default.findById(req.user._id).select('hasWithdrawalPin');
-            const hasWithdrawalPin = Boolean(userDoc?.hasWithdrawalPin);
+            else if (wallet.currency !== resolvedCurrency && resolvedCurrency !== 'NGN') {
+                wallet.currency = resolvedCurrency;
+                await wallet.save();
+            }
             const transactions = await transaction_model_1.default.find({ wallet: wallet._id })
                 .sort({ createdAt: -1 })
                 .limit(30);
@@ -75,6 +100,7 @@ class WalletController {
                         availableBalance: wallet.availableBalance || wallet.balance,
                         pendingBalance: wallet.pendingBalance || 0,
                         currency: wallet.currency,
+                        currencySymbol: wallet.currency === 'GBP' ? '£' : wallet.currency === 'EUR' ? '€' : wallet.currency === 'USD' ? '$' : '₦',
                         bankAccount: wallet.bankAccount,
                         bankDetails: wallet.bankAccount,
                         isSettlementOnHold: wallet.isSettlementOnHold || false,

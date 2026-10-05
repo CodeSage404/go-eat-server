@@ -95,7 +95,33 @@ class RestaurantService {
    * Create a new restaurant
    */
   async createRestaurant(data: Partial<IRestaurant>): Promise<IRestaurant> {
-    return await Restaurant.create(data);
+    const payload = { ...data };
+    const cCode = String(payload.countryCode || payload.address?.countryCode || '').toUpperCase();
+    const cName = String(payload.country || payload.address?.country || '').toLowerCase();
+
+    if (cCode === 'GB' || cCode === 'UK' || cName.includes('united kingdom') || cName.includes('britain') || cName.includes('england')) {
+      payload.countryCode = 'GB';
+      payload.country = 'United Kingdom';
+      payload.baseCurrency = payload.baseCurrency || 'GBP';
+      payload.isUk = true;
+      payload.isNigeria = false;
+      payload.isItaly = false;
+    } else if (cCode === 'IT' || cName.includes('italy') || cName.includes('italia')) {
+      payload.countryCode = 'IT';
+      payload.country = 'Italy';
+      payload.baseCurrency = payload.baseCurrency || 'EUR';
+      payload.isItaly = true;
+      payload.isNigeria = false;
+      payload.isUk = false;
+    } else if (cCode === 'NG' || cName.includes('nigeria')) {
+      payload.countryCode = 'NG';
+      payload.country = 'Nigeria';
+      payload.baseCurrency = payload.baseCurrency || 'NGN';
+      payload.isNigeria = true;
+      payload.isUk = false;
+      payload.isItaly = false;
+    }
+    return await Restaurant.create(payload);
   }
 
   /**

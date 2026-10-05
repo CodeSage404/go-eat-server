@@ -10,6 +10,7 @@ import { resolveRequestLocation } from '../utils/locationResolver';
 import notificationService from '../services/notification.service';
 import emailService from '../services/email.service';
 import Order from '../models/order.model';
+import Restaurant from '../models/restaurant.model';
 import mongoose from 'mongoose';
 import logger from '../utils/logger';
 
@@ -20,13 +21,34 @@ class WalletController {
   public getMyWallet = catchAsync(async (req: Request, res: Response) => {
     let wallet = await Wallet.findOne({ user: req.user!._id });
 
-    // Auto-create wallet if it doesn't exist
-    if (!wallet) {
-      wallet = await Wallet.create({ user: req.user!._id });
+    const userDoc = await User.findById(req.user!._id);
+    const hasWithdrawalPin = Boolean(userDoc?.hasWithdrawalPin);
+
+    // Auto-resolve wallet currency based on vendor outlet or courier country
+    let resolvedCurrency = 'NGN';
+    const vendorRestaurant = await Restaurant.findOne({ owner: req.user!._id });
+    if (vendorRestaurant?.baseCurrency) {
+      resolvedCurrency = vendorRestaurant.baseCurrency;
+    } else {
+      const cCode = String(userDoc?.countryCode || (userDoc as any)?.country || '').toUpperCase();
+      const isUk = Boolean((userDoc as any)?.isUk || cCode === 'GB' || cCode === 'UK');
+      const isItaly = Boolean((userDoc as any)?.isItaly || cCode === 'IT');
+      if (isUk) {
+        resolvedCurrency = 'GBP';
+      } else if (isItaly) {
+        resolvedCurrency = 'EUR';
+      } else {
+        resolvedCurrency = 'NGN';
+      }
     }
 
-    const userDoc = await User.findById(req.user!._id).select('hasWithdrawalPin');
-    const hasWithdrawalPin = Boolean(userDoc?.hasWithdrawalPin);
+    // Auto-create wallet if it doesn't exist
+    if (!wallet) {
+      wallet = await Wallet.create({ user: req.user!._id, currency: resolvedCurrency });
+    } else if (wallet.currency !== resolvedCurrency && resolvedCurrency !== 'NGN') {
+      wallet.currency = resolvedCurrency;
+      await wallet.save();
+    }
 
     const transactions = await Transaction.find({ wallet: wallet._id })
       .sort({ createdAt: -1 })
@@ -42,6 +64,7 @@ class WalletController {
           availableBalance: wallet.availableBalance || wallet.balance,
           pendingBalance: wallet.pendingBalance || 0,
           currency: wallet.currency,
+          currencySymbol: wallet.currency === 'GBP' ? '£' : wallet.currency === 'EUR' ? '€' : wallet.currency === 'USD' ? '$' : '₦',
           bankAccount: wallet.bankAccount,
           bankDetails: wallet.bankAccount,
           isSettlementOnHold: wallet.isSettlementOnHold || false,
