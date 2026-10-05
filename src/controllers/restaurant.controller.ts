@@ -117,18 +117,27 @@ class RestaurantController {
    * Get all active restaurants with optional filters
    */
   public getAllRestaurants = catchAsync(async (req: Request, res: Response) => {
-    const { cuisine, search, dist, isTopSpot, tags, sort } = req.query;
+    const { cuisine, search, dist, isTopSpot, tags, sort, shuffle } = req.query;
     const { country, countryCode, lat, lng } = resolveRequestLocation(req);
 
     let restaurants;
 
     if (lat !== undefined && lng !== undefined) {
-      // Find nearby if lat/lng are provided, filtered by country/countryCode if detected
+      // Find nearby if lat/lng are provided, filtered by country/countryCode if detected.
+      // Automatically shuffle nearby outlets for fair exposure across user sessions unless explicitly disabled.
+      const shouldShuffle = shuffle !== undefined 
+        ? (shuffle === 'true' || shuffle === '1') 
+        : true;
+
       restaurants = await restaurantService.findNearbyRestaurants(
         lng,
         lat,
         dist ? parseInt(dist as string) : 10000,
-        { country, countryCode }
+        { country, countryCode },
+        { 
+          sort: sort as string,
+          shuffle: shouldShuffle 
+        }
       );
     } else {
       restaurants = await restaurantService.getAllRestaurants({ 
@@ -138,7 +147,8 @@ class RestaurantController {
         tags: tags ? (Array.isArray(tags) ? tags : [tags]) : undefined,
         sort: sort as string,
         country,
-        countryCode
+        countryCode,
+        shuffle: shuffle === 'true' || shuffle === '1'
       });
     }
 

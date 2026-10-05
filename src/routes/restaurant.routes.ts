@@ -56,6 +56,24 @@ const router = Router();
  *           type: number
  *           default: 5
  *         description: Search radius in kilometers
+ *       - in: query
+ *         name: dist
+ *         schema:
+ *           type: number
+ *           default: 10000
+ *         description: Search radius in meters (e.g. 25000 for 25km)
+ *       - in: query
+ *         name: sort
+ *         schema:
+ *           type: string
+ *           enum: [Rating, 'Delivery time', 'Delivery fee', Distance]
+ *         description: Explicit sorting order for returned restaurants
+ *       - in: query
+ *         name: shuffle
+ *         schema:
+ *           type: boolean
+ *           default: true
+ *         description: When true (default for nearby outlets), applies randomized rotation to give all nearby outlets fair exposure across sessions
  *     responses:
  *       200:
  *         description: List of restaurants

@@ -180,12 +180,43 @@ class RestaurantService {
                 sortQuery = { deliveryFee: 1 };
         }
         const restaurants = await restaurant_model_1.default.find(query).sort(sortQuery);
-        return await this.attachLivePromoDetails(restaurants);
+        const augmented = await this.attachLivePromoDetails(restaurants);
+        if (filters.shuffle && !filters.sort && augmented.length > 1) {
+            return this.shuffleRestaurants(augmented);
+        }
+        return augmented;
+    }
+    /**
+     * Helper to perform a randomized Fisher-Yates shuffle on a restaurant array,
+     * keeping sponsored restaurants prioritized at the top (shuffled amongst themselves).
+     */
+    shuffleRestaurants(restaurants) {
+        if (!restaurants || restaurants.length <= 1)
+            return restaurants;
+        const sponsored = [];
+        const regular = [];
+        for (const r of restaurants) {
+            if (r.isSponsored) {
+                sponsored.push(r);
+            }
+            else {
+                regular.push(r);
+            }
+        }
+        const shuffleArray = (arr) => {
+            const cloned = [...arr];
+            for (let i = cloned.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [cloned[i], cloned[j]] = [cloned[j], cloned[i]];
+            }
+            return cloned;
+        };
+        return [...shuffleArray(sponsored), ...shuffleArray(regular)];
     }
     /**
      * Find nearby restaurants using GeoJSON
      */
-    async findNearbyRestaurants(lng, lat, maxDistanceInMeters = 5000, countryFilters) {
+    async findNearbyRestaurants(lng, lat, maxDistanceInMeters = 5000, countryFilters, options = {}) {
         const geoQuery = { status: restaurant_model_1.RestaurantStatus.ACTIVE };
         if (countryFilters?.country || countryFilters?.countryCode) {
             const countryFilter = (0, locationResolver_1.buildCountryFilter)(countryFilters.country, countryFilters.countryCode);
@@ -220,7 +251,28 @@ class RestaurantService {
                 id: restaurant._id,
             };
         });
-        return await this.attachLivePromoDetails(mappedResults);
+        const augmented = await this.attachLivePromoDetails(mappedResults);
+        // Apply explicit sorting if provided by client
+        if (options.sort) {
+            if (options.sort === 'Rating') {
+                augmented.sort((a, b) => ((b.ratingsAverage || b.rating || 0) - (a.ratingsAverage || a.rating || 0)));
+            }
+            else if (options.sort === 'Delivery time') {
+                augmented.sort((a, b) => ((a.estimatedDeliveryTime || 0) - (b.estimatedDeliveryTime || 0)));
+            }
+            else if (options.sort === 'Delivery fee') {
+                augmented.sort((a, b) => ((a.deliveryFee || 0) - (b.deliveryFee || 0)));
+            }
+            else if (options.sort === 'Distance') {
+                augmented.sort((a, b) => ((a.calculatedDistance || 0) - (b.calculatedDistance || 0)));
+            }
+            return augmented;
+        }
+        // Default: Shuffle nearby outlets for dynamic exposure across user sessions
+        if (options.shuffle !== false && augmented.length > 1) {
+            return this.shuffleRestaurants(augmented);
+        }
+        return augmented;
     }
     /**
      * Get restaurant by ID
