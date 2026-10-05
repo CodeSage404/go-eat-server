@@ -1,40 +1,85 @@
-<h2 style="color: #0F3725; margin-top: 0; font-weight: 800;">New Order Received! 🍔</h2>
-<p>Dear <strong><%= typeof outletName !== 'undefined' ? outletName : 'Partner' %></strong>,</p>
-<p>You have received a new order <strong>#<%= orderId.toString().slice(-6).toUpperCase() %></strong> from <strong><%= typeof customerName !== 'undefined' ? customerName : 'a customer' %></strong>.</p>
+<!-- New Order Received Hero Section -->
+<div style="text-align: center; margin: 10px 0 14px;">
+  <img src="https://res.cloudinary.com/dqtjja88b/image/upload/v1791211867/go_eat_email/email_order_accepted_bag.png" alt="New Order" style="width: 110px; height: auto; display: block; margin: 0 auto;" />
+</div>
 
-<div class="highlight-box" style="margin-top: 20px;">
-  <h3 style="margin-top: 0; color: #0F3725; border-bottom: 1px solid #E5E7EB; padding-bottom: 8px;">Order Summary</h3>
-  
-  <table style="width: 100%; border-collapse: collapse; margin-bottom: 16px;">
-    <% if (typeof items !== 'undefined' && items && items.length > 0) { %>
-      <% items.forEach(function(itemObj) { 
+<!-- Title & Accent Bar -->
+<div style="text-align: center;">
+  <h1 style="margin: 0; font-size: 22px; font-weight: 800; color: #133824; letter-spacing: -0.3px;">
+    New Order Received! 🍔
+  </h1>
+  <div style="width: 38px; height: 3px; background-color: #F59E0B; border-radius: 2px; margin: 10px auto 16px;"></div>
+</div>
+
+<!-- Greeting & Message -->
+<div style="text-align: center; max-width: 440px; margin: 0 auto 20px;">
+  <p style="font-size: 14px; font-weight: 700; color: #1F2937; margin: 0 0 6px;">
+    Dear <%= typeof outletName !== 'undefined' && outletName ? outletName : 'Partner' %>,
+  </p>
+  <p style="font-size: 13px; line-height: 1.5; color: #4B5563; margin: 0;">
+    You have received a new order <strong>#<%= String(typeof orderId !== 'undefined' ? orderId : 'GE12345678').slice(-8).toUpperCase() %></strong> from <strong><%= typeof customerName !== 'undefined' && customerName ? customerName : 'a valued customer' %></strong>.
+  </p>
+</div>
+
+<!-- Order Summary Box -->
+<% 
+  var curr = typeof currencySymbol !== 'undefined' ? currencySymbol : '₦';
+  var orderItems = (typeof items !== 'undefined' && items) ? items : [];
+  var totalAmount = typeof total !== 'undefined' ? total : 0;
+%>
+<div style="border: 1px solid #E5E7EB; border-radius: 18px; padding: 18px 20px; background-color: #FFFFFF; margin-bottom: 22px;">
+  <div style="font-size: 12px; font-weight: 800; color: #133824; margin-bottom: 12px; border-bottom: 1px solid #F3F4F6; padding-bottom: 8px;">
+    Order Items
+  </div>
+
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+    <% if (orderItems.length > 0) { %>
+      <% orderItems.forEach(function(itemObj) { 
            var fItem = itemObj.foodItem || itemObj;
            var qty = itemObj.quantity || 1;
            var price = itemObj.price || fItem.price || 0;
-           var imgUrl = fItem.image || 'https://via.placeholder.com/150';
+           var name = fItem.name || itemObj.name || 'Delicious Meal';
+           var img = fItem.image || itemObj.image || 'https://res.cloudinary.com/dqtjja88b/image/upload/v1791211867/go_eat_email/email_order_accepted_bag.png';
       %>
       <tr>
-        <td style="padding: 10px 0; border-bottom: 1px solid #F3F4F6; width: 60px;">
-          <img src="<%= imgUrl %>" style="width: 48px; height: 48px; border-radius: 24px; object-fit: cover; background-color: #E8F5E9; display: block;" alt="Food item">
+        <td style="padding: 10px 0; border-bottom: 1px solid #F3F4F6; vertical-align: middle;">
+          <table role="presentation" cellpadding="0" cellspacing="0">
+            <tr>
+              <td style="width: 44px; padding-right: 12px; vertical-align: middle;">
+                <img src="<%= img %>" alt="<%= name %>" style="width: 42px; height: 42px; border-radius: 50%; object-fit: cover; display: block; border: 1px solid #E5E7EB;" />
+              </td>
+              <td style="vertical-align: middle;">
+                <div style="font-size: 13px; font-weight: 700; color: #111827;"><%= name %></div>
+                <div style="font-size: 11px; color: #6B7280; margin-top: 2px;">Qty: <%= qty %></div>
+              </td>
+            </tr>
+          </table>
         </td>
-        <td style="padding: 10px; border-bottom: 1px solid #F3F4F6;">
-          <div style="font-weight: 600; color: #111827; font-size: 15px;"><%= fItem.name || itemObj.name || 'Item' %></div>
-          <div style="color: #6B7280; font-size: 13px; margin-top: 2px;">Qty: <%= qty %></div>
-        </td>
-        <td style="padding: 10px 0; border-bottom: 1px solid #F3F4F6; text-align: right; font-weight: 600; color: #111827;">
-          ₦<%= (price * qty).toLocaleString() %>
+        <td align="right" style="padding: 10px 0; border-bottom: 1px solid #F3F4F6; vertical-align: middle; font-size: 13px; font-weight: 700; color: #111827;">
+          <%= curr %><%= Number(price * qty).toLocaleString() %>
         </td>
       </tr>
       <% }); %>
     <% } %>
   </table>
 
-  <table style="width: 100%; border-collapse: collapse; font-size: 15px;">
+  <!-- Total Order Value -->
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top: 14px;">
     <tr>
-      <td style="padding: 8px 0; color: #4B5563;"><strong>Total Order Value:</strong></td>
-      <td style="padding: 8px 0; text-align: right; font-weight: bold; color: #0F3725; font-size: 18px;">₦<%= total.toLocaleString() %></td>
+      <td style="font-size: 13.5px; font-weight: 700; color: #4B5563;">Total Order Value:</td>
+      <td align="right" style="font-size: 18px; font-weight: 800; color: #133824;">
+        <%= curr %><%= Number(totalAmount).toLocaleString() %>
+      </td>
     </tr>
   </table>
 </div>
 
-<p style="color: #4B5563; margin-top: 24px;">Please open your GoEatOne Vendor App to accept the order and specify the estimated preparation time!</p>
+<!-- CTA to Open Vendor Partner App -->
+<div style="text-align: center; margin-top: 10px;">
+  <p style="font-size: 12.5px; color: #4B5563; margin: 0 0 14px;">
+    Please open your GoEat Partner App to accept the order and specify the estimated preparation time.
+  </p>
+  <a href="https://goeatone.com" target="_blank" style="display: inline-block; background-color: #133824; color: #FFFFFF !important; font-weight: 700; font-size: 13px; padding: 12px 32px; border-radius: 999px; text-decoration: none;">
+    Open Partner App
+  </a>
+</div>

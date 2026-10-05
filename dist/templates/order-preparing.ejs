@@ -1,12 +1,175 @@
-<h2 style="color: #0F3725; margin-top: 0; font-weight: 800;">Your Order is Being Prepared! 🧑‍🍳</h2>
-<p>Dear <strong><%= customerName %></strong>,</p>
-<p>Great news! The restaurant has accepted your order <strong>#<%= orderId.toString().slice(-6).toUpperCase() %></strong> and is currently preparing your meal.</p>
+<!-- Steaming Cooking Pot Hero Illustration -->
+<div style="text-align: center; margin: 10px 0 14px;">
+  <img src="https://res.cloudinary.com/dqtjja88b/image/upload/v1791211865/go_eat_email/email_order_preparing_pot.png" alt="Order Preparing" style="width: 130px; height: auto; display: block; margin: 0 auto;" />
+</div>
 
-<div class="highlight-box" style="margin-top: 20px;">
-  <h3 style="margin-top: 0; color: #0F3725; border-bottom: 1px solid #E5E7EB; padding-bottom: 8px;">Estimated Prep Time</h3>
-  <p style="font-size: 18px; font-weight: bold; color: #16A34A; margin: 8px 0;">
-    ⏱️ <%= typeof estimatedPrepTime !== 'undefined' ? estimatedPrepTime : 20 %> minutes
+<!-- Title & Accent Bar -->
+<div style="text-align: center;">
+  <h1 style="margin: 0; font-size: 22px; font-weight: 800; color: #133824; letter-spacing: -0.3px;">
+    Your order is being prepared
+  </h1>
+  <div style="width: 38px; height: 3px; background-color: #F59E0B; border-radius: 2px; margin: 10px auto 16px;"></div>
+</div>
+
+<!-- Greeting & Message -->
+<div style="text-align: center; max-width: 440px; margin: 0 auto 20px;">
+  <p style="font-size: 14px; font-weight: 700; color: #1F2937; margin: 0 0 6px;">
+    Hi <%= typeof customerName !== 'undefined' && customerName ? customerName : 'there' %>,
+  </p>
+  <p style="font-size: 13px; line-height: 1.5; color: #4B5563; margin: 0;">
+    We're preparing your items with care. We'll notify you once it's on the way to your doorstep.
   </p>
 </div>
 
-<p style="color: #4B5563; margin-top: 24px;">We'll send you another update as soon as your order is ready for pickup or delivery!</p>
+<!-- Live Order Progress Stepper -->
+<div style="background-color: #F9FAFB; border: 1px solid #F3F4F6; border-radius: 18px; padding: 18px 14px; margin-bottom: 20px;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+    <tr>
+      <!-- Step 1: Kitchen (Active) -->
+      <td align="center" style="vertical-align: top; width: 22%; text-align: center;">
+        <div style="width: 32px; height: 32px; border-radius: 50%; background-color: #059669; color: #FFFFFF; text-align: center; line-height: 32px; font-size: 14px; margin: 0 auto 6px;">
+          🍳
+        </div>
+        <div style="font-size: 11px; font-weight: 800; color: #059669;">Kitchen</div>
+        <div style="font-size: 9.5px; color: #059669; margin-top: 1px;">
+          (<%= typeof estimatedPrepTime !== 'undefined' ? (estimatedPrepTime + ' mins') : 'In Prep' %>)
+        </div>
+      </td>
+
+      <!-- Step 1-2 Connector -->
+      <td align="center" style="vertical-align: middle; width: 4%; color: #D1D5DB; font-size: 11px; padding-bottom: 18px;">
+        ···
+      </td>
+
+      <!-- Step 2: Picked up -->
+      <td align="center" style="vertical-align: top; width: 22%; text-align: center;">
+        <div style="width: 32px; height: 32px; border-radius: 50%; background-color: #E5E7EB; color: #6B7280; text-align: center; line-height: 32px; font-size: 14px; margin: 0 auto 6px;">
+          🛍️
+        </div>
+        <div style="font-size: 11px; font-weight: 600; color: #6B7280;">Picked up</div>
+      </td>
+
+      <!-- Step 2-3 Connector -->
+      <td align="center" style="vertical-align: middle; width: 4%; color: #D1D5DB; font-size: 11px; padding-bottom: 18px;">
+        ···
+      </td>
+
+      <!-- Step 3: In-transit -->
+      <td align="center" style="vertical-align: top; width: 22%; text-align: center;">
+        <div style="width: 32px; height: 32px; border-radius: 50%; background-color: #E5E7EB; color: #6B7280; text-align: center; line-height: 32px; font-size: 14px; margin: 0 auto 6px;">
+          🛵
+        </div>
+        <div style="font-size: 11px; font-weight: 600; color: #6B7280;">In-transit</div>
+      </td>
+
+      <!-- Step 3-4 Connector -->
+      <td align="center" style="vertical-align: middle; width: 4%; color: #D1D5DB; font-size: 11px; padding-bottom: 18px;">
+        ···
+      </td>
+
+      <!-- Step 4: Arrived -->
+      <td align="center" style="vertical-align: top; width: 22%; text-align: center;">
+        <div style="width: 32px; height: 32px; border-radius: 50%; background-color: #E5E7EB; color: #6B7280; text-align: center; line-height: 32px; font-size: 14px; margin: 0 auto 6px;">
+          📍
+        </div>
+        <div style="font-size: 11px; font-weight: 600; color: #6B7280;">Arrived</div>
+      </td>
+    </tr>
+  </table>
+</div>
+
+<!-- Order Summary Quick Card -->
+<% 
+  var curr = typeof currencySymbol !== 'undefined' ? currencySymbol : '₦';
+  var totalAmount = typeof total !== 'undefined' ? total : 0;
+  var count = typeof itemsCount !== 'undefined' ? itemsCount : (typeof items !== 'undefined' && items ? items.length : 1);
+%>
+<div style="border: 1px solid #E5E7EB; border-radius: 18px; padding: 16px 20px; background-color: #FFFFFF; margin-bottom: 18px;">
+  <div style="font-size: 12px; font-weight: 800; color: #133824; margin-bottom: 12px;">Order Summary</div>
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+    <tr>
+      <td style="vertical-align: middle; width: 50px; padding-right: 12px;">
+        <div style="position: relative; width: 44px; height: 44px;">
+          <img src="https://res.cloudinary.com/dqtjja88b/image/upload/v1791211867/go_eat_email/email_order_accepted_bag.png" alt="Meal" style="width: 44px; height: 44px; border-radius: 50%; object-fit: cover; display: block; border: 1px solid #E5E7EB;" />
+          <div style="position: absolute; top: -3px; right: -3px; background-color: #DC2626; color: #FFFFFF; font-size: 9px; font-weight: 800; border-radius: 50%; width: 16px; height: 16px; text-align: center; line-height: 16px;">
+            <%= count %>
+          </div>
+        </div>
+      </td>
+      <td style="vertical-align: middle;">
+        <div style="font-size: 13.5px; font-weight: 800; color: #111827;">
+          <%= count %> <%= count === 1 ? 'Item' : 'Items' %>
+        </div>
+        <div style="font-size: 11px; color: #6B7280; margin-top: 2px;">
+          View order details &gt;
+        </div>
+      </td>
+      <td align="right" style="vertical-align: middle;">
+        <div style="font-size: 10px; color: #6B7280; text-transform: uppercase;">Total Paid</div>
+        <div style="font-size: 16px; font-weight: 800; color: #111827; margin-top: 1px;">
+          <%= curr %><%= Number(totalAmount).toLocaleString() %>
+        </div>
+      </td>
+    </tr>
+  </table>
+</div>
+
+<!-- Order Meta Strip -->
+<div style="background-color: #F9FAFB; border: 1px solid #F3F4F6; border-radius: 16px; padding: 14px 18px; margin-bottom: 20px;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+    <tr>
+      <td style="vertical-align: top; width: 33.33%; padding-right: 8px;">
+        <div style="font-size: 11px; font-weight: 600; color: #6B7280; margin-bottom: 3px;">
+          📄 Order ID
+        </div>
+        <div style="font-size: 12.5px; font-weight: 800; color: #111827;">
+          #<%= String(typeof orderId !== 'undefined' ? orderId : 'GE12345678').slice(-8).toUpperCase() %>
+        </div>
+      </td>
+      <td style="vertical-align: top; width: 33.33%; padding: 0 8px;">
+        <div style="font-size: 11px; font-weight: 600; color: #6B7280; margin-bottom: 3px;">
+          🕒 Order On
+        </div>
+        <div style="font-size: 12px; font-weight: 700; color: #111827;">
+          <%= typeof orderDate !== 'undefined' && orderDate ? orderDate : (new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) + ' • ' + new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })) %>
+        </div>
+      </td>
+      <td style="vertical-align: top; width: 33.33%; padding-left: 8px;">
+        <div style="font-size: 11px; font-weight: 600; color: #6B7280; margin-bottom: 3px;">
+          📍 Delivery to
+        </div>
+        <div style="font-size: 11.5px; font-weight: 600; color: #374151; line-height: 1.3;">
+          <%= typeof deliveryAddress !== 'undefined' && deliveryAddress ? deliveryAddress : 'Customer Delivery Address' %>
+        </div>
+      </td>
+    </tr>
+  </table>
+</div>
+
+<!-- Cross-Sell Upsell Card -->
+<div style="background-color: #ECFDF5; border: 1px solid #A7F3D0; border-radius: 18px; padding: 16px 20px; margin-bottom: 22px;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+    <tr>
+      <td style="vertical-align: middle; padding-right: 14px;">
+        <div style="font-size: 13.5px; font-weight: 800; color: #064E3B; margin-bottom: 2px;">
+          Need anything else?
+        </div>
+        <div style="font-size: 11.5px; color: #047857; line-height: 1.4;">
+          Explore groceries, essentials, pharmacy items and more on GoEat
+        </div>
+      </td>
+      <td align="right" style="vertical-align: middle; width: 110px;">
+        <a href="https://goeatone.com" target="_blank" style="display: inline-block; background-color: #133824; color: #FFFFFF !important; font-size: 12px; font-weight: 700; text-decoration: none; padding: 10px 18px; border-radius: 999px; text-align: center; white-space: nowrap;">
+          Shop Now
+        </a>
+      </td>
+    </tr>
+  </table>
+</div>
+
+<!-- Signoff -->
+<div style="text-align: center; margin-top: 10px;">
+  <p style="font-size: 12.5px; font-weight: 600; color: #4B5563; margin: 0;">
+    Thank you for ordering with <strong style="color: #133824;">GO<span style="color: #F59E0B;">EAT</span></strong>
+  </p>
+</div>

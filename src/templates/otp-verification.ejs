@@ -1,7 +1,53 @@
-<h2 style="color: #0F3725; margin-top: 0; font-weight: 800;">Email Verification OTP</h2>
-<p>Hello,</p>
-<p>Please use the following 6-digit One-Time Password (OTP) to complete your account or email address verification. This code is valid for <strong><%= validTime %></strong>.</p>
-<div style="text-align: center; margin: 30px 0;">
-  <span style="font-size: 32px; font-weight: 900; letter-spacing: 6px; color: #0F3725; background-color: #F3F4F6; padding: 12px 30px; border-radius: 12px; border: 1px solid #E5E7EB; font-family: monospace;"><%= otpCode %></span>
+<!-- Envelope Hero Illustration -->
+<div style="text-align: center; margin: 10px 0 16px;">
+  <img src="https://res.cloudinary.com/dqtjja88b/image/upload/v1791211861/go_eat_email/email_otp_envelope.png" alt="Email Verification" style="width: 135px; height: auto; display: block; margin: 0 auto;" />
 </div>
-<p style="color: #EF4444; font-weight: bold;">Do not share this code with anyone. GoEatOne support staff will never ask for your OTP.</p>
+
+<!-- Title & Accent Bar -->
+<div style="text-align: center;">
+  <h1 style="margin: 0; font-size: 24px; font-weight: 800; color: #133824; letter-spacing: -0.3px;">
+    Verify your email address
+  </h1>
+  <div style="width: 38px; height: 3px; background-color: #F59E0B; border-radius: 2px; margin: 10px auto 18px;"></div>
+</div>
+
+<!-- Message Body -->
+<div style="text-align: center; max-width: 440px; margin: 0 auto 26px;">
+  <p style="font-size: 14px; font-weight: 700; color: #1F2937; margin: 0 0 8px;">
+    Hi <%= typeof name !== 'undefined' && name ? name : 'there' %>,
+  </p>
+  <p style="font-size: 13px; line-height: 1.6; color: #4B5563; margin: 0;">
+    Thanks for creating your GoEat account. Please verify your email address using the One-Time Password (OTP) below.
+  </p>
+</div>
+
+<!-- OTP Section -->
+<div style="text-align: center; margin-bottom: 24px;">
+  <div style="font-size: 13px; font-weight: 700; color: #133824; margin-bottom: 14px;">
+    Your One-Time Password (OTP)
+  </div>
+
+  <% 
+    var rawOtp = String(typeof otpCode !== 'undefined' ? otpCode : '123456');
+    var digits = rawOtp.split('');
+  %>
+
+  <center>
+    <table role="presentation" cellpadding="0" cellspacing="0" style="margin: 0 auto;">
+      <tr>
+        <% digits.forEach(function(digit, idx) { %>
+          <td align="center" style="width: 46px; height: 50px; background-color: #FFFFFF; border: 1.5px solid #E5E7EB; border-radius: 12px; font-size: 24px; font-weight: 800; color: #111827; text-align: center; line-height: 50px; font-family: -apple-system, BlinkMacSystemFont, monospace; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
+            <%= digit %>
+          </td>
+          <% if (idx < digits.length - 1) { %>
+            <td style="width: 8px;"></td>
+          <% } %>
+        <% }); %>
+      </tr>
+    </table>
+  </center>
+
+  <p style="font-size: 12.5px; color: #4B5563; margin: 20px 0 0;">
+    This code is valid for <strong style="color: #F59E0B;"><%= typeof validTime !== 'undefined' ? validTime : '10 mins' %></strong>
+  </p>
+</div>

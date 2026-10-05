@@ -1,60 +1,84 @@
-<h2 style="color: #0F3725; margin-top: 0; font-weight: 800;">Withdrawal Payout Receipt</h2>
-<p>Dear <strong><%= userName %></strong>,</p>
-<p>Your withdrawal payout request has been successfully submitted and processed. Below is your official transaction receipt for your records.</p>
+<!-- Bank Withdrawal Hero Illustration -->
+<div style="text-align: center; margin: 10px 0 14px;">
+  <div style="width: 72px; height: 72px; border-radius: 50%; background-color: #ECFDF5; border: 2px solid #A7F3D0; margin: 0 auto; text-align: center; line-height: 72px; font-size: 30px;">
+    🏦
+  </div>
+</div>
 
-<div class="highlight-box" style="margin-top: 20px;">
-  <h3 style="margin-top: 0; color: #0F3725; border-bottom: 1px solid #E5E7EB; padding-bottom: 8px;">Transaction Summary</h3>
-  
-  <table style="width: 100%; border-collapse: collapse; margin-bottom: 16px; font-size: 14px;">
+<!-- Title & Accent Bar -->
+<div style="text-align: center;">
+  <h1 style="margin: 0; font-size: 24px; font-weight: 800; color: #133824; letter-spacing: -0.3px;">
+    Withdrawal Payout Receipt
+  </h1>
+  <div style="width: 38px; height: 3px; background-color: #F59E0B; border-radius: 2px; margin: 10px auto 16px;"></div>
+</div>
+
+<!-- Greeting & Intro -->
+<div style="text-align: center; max-width: 440px; margin: 0 auto 22px;">
+  <p style="font-size: 14px; font-weight: 700; color: #1F2937; margin: 0 0 6px;">
+    Dear <%= typeof userName !== 'undefined' && userName ? userName : 'Valued Partner' %>,
+  </p>
+  <p style="font-size: 13px; line-height: 1.5; color: #4B5563; margin: 0;">
+    Your withdrawal payout request has been successfully submitted and processed. Below is your official transaction receipt for your records.
+  </p>
+</div>
+
+<!-- Transaction Summary Card -->
+<div style="border: 1px solid #E5E7EB; border-radius: 18px; padding: 20px; background-color: #FFFFFF; margin-bottom: 22px;">
+  <div style="font-size: 12px; font-weight: 800; color: #133824; margin-bottom: 12px; border-bottom: 1px solid #F3F4F6; padding-bottom: 8px;">
+    Transaction Details
+  </div>
+
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-bottom: 14px; font-size: 13px;">
     <tr>
-      <td style="padding: 10px 0; border-bottom: 1px solid #F3F4F6; color: #6B7280;">Transaction Reference:</td>
-      <td style="padding: 10px 0; border-bottom: 1px solid #F3F4F6; text-align: right; font-weight: 600; color: #111827; font-family: monospace;">
-        #<%= reference %>
+      <td style="padding: 8px 0; border-bottom: 1px solid #F3F4F6; color: #6B7280;">Transaction Reference</td>
+      <td style="padding: 8px 0; border-bottom: 1px solid #F3F4F6; text-align: right; font-weight: 700; color: #111827; font-family: -apple-system, BlinkMacSystemFont, monospace;">
+        #<%= typeof reference !== 'undefined' ? reference : 'WDR-000000' %>
       </td>
     </tr>
     <tr>
-      <td style="padding: 10px 0; border-bottom: 1px solid #F3F4F6; color: #6B7280;">Date & Time:</td>
-      <td style="padding: 10px 0; border-bottom: 1px solid #F3F4F6; text-align: right; font-weight: 600; color: #111827;">
-        <%= date %>
+      <td style="padding: 8px 0; border-bottom: 1px solid #F3F4F6; color: #6B7280;">Date & Time</td>
+      <td style="padding: 8px 0; border-bottom: 1px solid #F3F4F6; text-align: right; font-weight: 600; color: #111827;">
+        <%= typeof date !== 'undefined' ? date : new Date().toLocaleString() %>
       </td>
     </tr>
     <tr>
-      <td style="padding: 10px 0; border-bottom: 1px solid #F3F4F6; color: #6B7280;">Destination Bank:</td>
-      <td style="padding: 10px 0; border-bottom: 1px solid #F3F4F6; text-align: right; font-weight: 600; color: #111827;">
-        <%= bankName %>
+      <td style="padding: 8px 0; border-bottom: 1px solid #F3F4F6; color: #6B7280;">Destination Bank</td>
+      <td style="padding: 8px 0; border-bottom: 1px solid #F3F4F6; text-align: right; font-weight: 600; color: #111827;">
+        <%= typeof bankName !== 'undefined' ? bankName : 'Verified Bank' %>
       </td>
     </tr>
     <tr>
-      <td style="padding: 10px 0; border-bottom: 1px solid #F3F4F6; color: #6B7280;">Account Number:</td>
-      <td style="padding: 10px 0; border-bottom: 1px solid #F3F4F6; text-align: right; font-weight: 600; color: #111827;">
-        •••• <%= accountNumber.slice(-4) %>
+      <td style="padding: 8px 0; border-bottom: 1px solid #F3F4F6; color: #6B7280;">Account Number</td>
+      <td style="padding: 8px 0; border-bottom: 1px solid #F3F4F6; text-align: right; font-weight: 600; color: #111827;">
+        •••• <%= typeof accountNumber !== 'undefined' ? String(accountNumber).slice(-4) : '••••' %>
       </td>
     </tr>
     <tr>
-      <td style="padding: 10px 0; border-bottom: 1px solid #F3F4F6; color: #6B7280;">Account Name:</td>
-      <td style="padding: 10px 0; border-bottom: 1px solid #F3F4F6; text-align: right; font-weight: 600; color: #111827;">
-        <%= accountName %>
+      <td style="padding: 8px 0; border-bottom: 1px solid #F3F4F6; color: #6B7280;">Account Name</td>
+      <td style="padding: 8px 0; border-bottom: 1px solid #F3F4F6; text-align: right; font-weight: 600; color: #111827;">
+        <%= typeof accountName !== 'undefined' ? accountName : 'Partner' %>
       </td>
     </tr>
     <tr>
-      <td style="padding: 10px 0; border-bottom: 1px solid #F3F4F6; color: #6B7280;">Status:</td>
-      <td style="padding: 10px 0; border-bottom: 1px solid #F3F4F6; text-align: right; font-weight: 700; color: #059669;">
-        <%= status %>
+      <td style="padding: 8px 0; border-bottom: 1px solid #F3F4F6; color: #6B7280;">Status</td>
+      <td style="padding: 8px 0; border-bottom: 1px solid #F3F4F6; text-align: right; font-weight: 700; color: #059669;">
+        <%= typeof status !== 'undefined' ? status : 'Processing' %>
       </td>
     </tr>
   </table>
 
-  <table style="width: 100%; border-collapse: collapse; font-size: 15px;">
+  <!-- Amount Withdrawn -->
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top: 10px;">
     <tr>
-      <td style="padding: 8px 0; color: #4B5563;"><strong>Amount Withdrawn:</strong></td>
-      <td style="padding: 8px 0; text-align: right; font-weight: bold; color: #0F3725; font-size: 20px;">
-        <%= currencySymbol %><%= amount.toLocaleString() %>
+      <td style="font-size: 13.5px; font-weight: 700; color: #374151;">Amount Withdrawn:</td>
+      <td align="right" style="font-size: 20px; font-weight: 800; color: #133824;">
+        <%= typeof currencySymbol !== 'undefined' ? currencySymbol : '₦' %><%= typeof amount !== 'undefined' ? Number(amount).toLocaleString() : '0' %>
       </td>
     </tr>
   </table>
 </div>
 
-<p style="color: #4B5563; margin-top: 24px; font-size: 13px; line-height: 20px;">
+<p style="color: #6B7280; font-size: 12px; line-height: 1.6; text-align: center; margin: 0 auto; max-width: 460px;">
   Funds are typically credited to your verified bank account within a few minutes, subject to inter-bank clearing networks.
-  If you have questions regarding this transfer, please contact GoEatOne Support with your reference number.
 </p>
