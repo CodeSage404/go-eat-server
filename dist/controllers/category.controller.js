@@ -468,6 +468,27 @@ class CategoryController {
                 data: null,
             });
         });
+        /**
+         * Reorder categories in bulk (Admin only)
+         * Receives ordered list of category IDs: { orderedIds: string[] }
+         */
+        this.reorderCategories = (0, catchAsync_1.catchAsync)(async (req, res) => {
+            const { orderedIds } = req.body;
+            if (!Array.isArray(orderedIds) || orderedIds.length === 0) {
+                throw new appError_1.default('Please provide an array of ordered category IDs.', 400);
+            }
+            const bulkOps = orderedIds.map((id, index) => ({
+                updateOne: {
+                    filter: { _id: new mongoose_1.default.Types.ObjectId(id) },
+                    update: { $set: { order: index, sortOrder: index } },
+                },
+            }));
+            await category_model_1.default.bulkWrite(bulkOps);
+            res.status(200).json({
+                status: 'success',
+                message: 'Categories reordered successfully.',
+            });
+        });
     }
 }
 exports.default = new CategoryController();

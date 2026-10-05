@@ -128,6 +128,42 @@ router.post('/', restrictTo(UserRole.ADMIN, UserRole.VENDOR), upload.single('ima
 
 /**
  * @openapi
+ * /api/v1/categories/reorder:
+ *   put:
+ *     tags:
+ *       - Categories
+ *     summary: Reorder categories in bulk (Admin only)
+ *     description: Updates the order and sortOrder sequence for an array of category IDs.
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - orderedIds
+ *             properties:
+ *               orderedIds:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                 description: Array of category IDs in the desired order
+ *     responses:
+ *       200:
+ *         description: Categories reordered successfully.
+ *       400:
+ *         description: Invalid ordered IDs array.
+ *       401:
+ *         description: Unauthorized.
+ *       403:
+ *         description: Forbidden - Admin only.
+ */
+router.put('/reorder', restrictTo(UserRole.ADMIN), categoryController.reorderCategories);
+
+/**
+ * @openapi
  * /api/v1/categories/{id}:
  *   patch:
  *     tags:
