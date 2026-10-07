@@ -23,6 +23,8 @@ export interface IPartnerApplication extends Document {
   ninUrl?: string;
   foodHygieneUrl?: string;
   cacUrl?: string;
+  businessImageUrl?: string;
+  coverImageUrl?: string;
   status: PartnerApplicationStatus;
   adminNotes?: string;
   reviewedBy?: mongoose.Types.ObjectId;
@@ -98,6 +100,14 @@ const partnerApplicationSchema = new Schema<IPartnerApplication>(
       default: '',
     },
     cacUrl: {
+      type: String,
+      default: '',
+    },
+    businessImageUrl: {
+      type: String,
+      default: '',
+    },
+    coverImageUrl: {
       type: String,
       default: '',
     },

@@ -34,6 +34,8 @@ export const applyForPartnership = catchAsync(async (req: Request, res: Response
   let ninUrl = req.body.ninUrl || req.body['ninUrl'] || '';
   let foodHygieneUrl = req.body.foodHygieneUrl || req.body['foodHygieneUrl'] || '';
   let cacUrl = req.body.cacUrl || req.body['cacUrl'] || '';
+  let businessImageUrl = req.body.businessImageUrl || req.body['businessImageUrl'] || '';
+  let coverImageUrl = req.body.coverImageUrl || req.body['coverImageUrl'] || '';
 
   if (files) {
     if (files['nin'] && files['nin'][0]) {
@@ -44,6 +46,12 @@ export const applyForPartnership = catchAsync(async (req: Request, res: Response
     }
     if (files['cac'] && files['cac'][0]) {
       cacUrl = files['cac'][0].path;
+    }
+    if (files['businessImage'] && files['businessImage'][0]) {
+      businessImageUrl = files['businessImage'][0].path;
+    }
+    if (files['coverImage'] && files['coverImage'][0]) {
+      coverImageUrl = files['coverImage'][0].path;
     }
   }
 
@@ -134,6 +142,10 @@ export const applyForPartnership = catchAsync(async (req: Request, res: Response
         phone: normalizedPhone,
         phoneNumber: normalizedPhone,
         phoneContact: normalizedPhone,
+        images: {
+          logo: businessImageUrl || '',
+          cover: coverImageUrl || '',
+        },
         verificationDocuments: {
           ninUrl: ninUrl || '',
           foodHygieneUrl: foodHygieneUrl || '',
@@ -164,6 +176,8 @@ export const applyForPartnership = catchAsync(async (req: Request, res: Response
       ninUrl,
       foodHygieneUrl,
       cacUrl,
+      businessImageUrl,
+      coverImageUrl,
       status: 'pending',
     });
 
@@ -216,6 +230,8 @@ export const applyForPartnership = catchAsync(async (req: Request, res: Response
     ninUrl,
     foodHygieneUrl,
     cacUrl,
+    businessImageUrl,
+    coverImageUrl,
     status: 'pending',
   });
 
