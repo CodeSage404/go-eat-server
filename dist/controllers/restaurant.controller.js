@@ -1,4 +1,37 @@
 "use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
@@ -7,7 +40,8 @@ const zod_1 = require("zod");
 const restaurant_service_1 = __importDefault(require("../services/restaurant.service"));
 const catchAsync_1 = require("../utils/catchAsync");
 const appError_1 = __importDefault(require("../utils/appError"));
-const restaurant_model_1 = __importDefault(require("../models/restaurant.model"));
+const restaurant_model_1 = __importStar(require("../models/restaurant.model"));
+const partnerApplication_model_1 = __importDefault(require("../models/partnerApplication.model"));
 const locationResolver_1 = require("../utils/locationResolver");
 const daySchedule = zod_1.z.object({
     isOpen: zod_1.z.boolean(),
@@ -217,6 +251,106 @@ class RestaurantController {
             res.status(200).json({
                 status: 'success',
                 data: { restaurant: updatedRestaurant },
+            });
+        });
+        /**
+         * Get logged in vendor's verification status
+         */
+        this.getMyVerificationStatus = (0, catchAsync_1.catchAsync)(async (req, res) => {
+            const restaurant = await restaurant_model_1.default.findOne({ owner: req.user._id });
+            if (!restaurant) {
+                throw new appError_1.default('No restaurant profile found for this user', 404);
+            }
+            const isVerified = restaurant.complianceStatus === 'approved' &&
+                restaurant.status === restaurant_model_1.RestaurantStatus.ACTIVE;
+            const hasSubmittedDocuments = Boolean(restaurant.verificationDocuments?.ninUrl &&
+                restaurant.verificationDocuments?.foodHygieneUrl);
+            res.status(200).json({
+                status: 'success',
+                data: {
+                    isVerified,
+                    complianceStatus: restaurant.complianceStatus || 'pending',
+                    status: restaurant.status,
+                    hasSubmittedDocuments,
+                    documents: restaurant.verificationDocuments || {},
+                    ninVerification: restaurant.ninVerification || {},
+                },
+            });
+        });
+        /**
+         * Upload or submit verification documents for vendor's restaurant
+         */
+        this.uploadVerificationDocuments = (0, catchAsync_1.catchAsync)(async (req, res) => {
+            const restaurant = await restaurant_model_1.default.findOne({ owner: req.user._id });
+            if (!restaurant) {
+                throw new appError_1.default('No restaurant profile found for this user', 404);
+            }
+            const files = req.files;
+            let ninUrl = req.body.ninUrl || restaurant.verificationDocuments?.ninUrl || '';
+            let foodHygieneUrl = req.body.foodHygieneUrl || restaurant.verificationDocuments?.foodHygieneUrl || '';
+            let cacUrl = req.body.cacUrl || restaurant.verificationDocuments?.cacUrl || '';
+            const idNumber = req.body.idNumber || req.body.nin || restaurant.verificationDocuments?.idNumber || '';
+            if (files) {
+                if (files['nin'] && files['nin'][0]) {
+                    ninUrl = files['nin'][0].path;
+                }
+                if (files['foodHygiene'] && files['foodHygiene'][0]) {
+                    foodHygieneUrl = files['foodHygiene'][0].path;
+                }
+                if (files['cac'] && files['cac'][0]) {
+                    cacUrl = files['cac'][0].path;
+                }
+            }
+            if (!ninUrl && !foodHygieneUrl) {
+                throw new appError_1.default('Please provide at least one verification document (NIN or Food Hygiene Certificate)', 400);
+            }
+            restaurant.verificationDocuments = {
+                ninUrl,
+                foodHygieneUrl,
+                cacUrl,
+                idNumber,
+                submittedAt: new Date(),
+            };
+            if (idNumber) {
+                restaurant.ninVerification = {
+                    ...(restaurant.ninVerification || {}),
+                    nin: idNumber,
+                    identityStatus: 'pending',
+                };
+            }
+            restaurant.complianceStatus = 'pending';
+            await restaurant.save();
+            // Also update any matching PartnerApplication
+            try {
+                await partnerApplication_model_1.default.findOneAndUpdate({
+                    $or: [
+                        { onboardedRestaurant: restaurant._id },
+                        { email: req.user.email?.toLowerCase() },
+                    ],
+                }, {
+                    $set: {
+                        ninUrl,
+                        foodHygieneUrl,
+                        cacUrl,
+                        'documents.ninUrl': ninUrl,
+                        'documents.foodHygieneUrl': foodHygieneUrl,
+                        'documents.cacUrl': cacUrl,
+                        'documents.idNumber': idNumber,
+                        status: 'under_review',
+                    },
+                });
+            }
+            catch (appErr) {
+                // non-blocking
+            }
+            res.status(200).json({
+                status: 'success',
+                message: 'Verification documents submitted successfully. Our team will review them promptly.',
+                data: {
+                    restaurant,
+                    verificationDocuments: restaurant.verificationDocuments,
+                    complianceStatus: restaurant.complianceStatus,
+                },
             });
         });
         /**

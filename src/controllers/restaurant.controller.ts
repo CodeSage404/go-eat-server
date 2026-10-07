@@ -4,6 +4,7 @@ import restaurantService from '../services/restaurant.service';
 import { catchAsync } from '../utils/catchAsync';
 import AppError from '../utils/appError';
 import Restaurant, { RestaurantStatus } from '../models/restaurant.model';
+import PartnerApplication from '../models/partnerApplication.model';
 import { resolveRequestLocation } from '../utils/locationResolver';
 
 const daySchedule = z.object({
@@ -244,6 +245,126 @@ class RestaurantController {
     res.status(200).json({
       status: 'success',
       data: { restaurant: updatedRestaurant },
+    });
+  });
+
+  /**
+   * Get logged in vendor's verification status
+   */
+  public getMyVerificationStatus = catchAsync(async (req: any, res: Response) => {
+    const restaurant = await Restaurant.findOne({ owner: req.user._id });
+
+    if (!restaurant) {
+      throw new AppError('No restaurant profile found for this user', 404);
+    }
+
+    const isVerified =
+      restaurant.complianceStatus === 'approved' &&
+      restaurant.status === RestaurantStatus.ACTIVE;
+
+    const hasSubmittedDocuments = Boolean(
+      restaurant.verificationDocuments?.ninUrl &&
+      restaurant.verificationDocuments?.foodHygieneUrl
+    );
+
+    res.status(200).json({
+      status: 'success',
+      data: {
+        isVerified,
+        complianceStatus: restaurant.complianceStatus || 'pending',
+        status: restaurant.status,
+        hasSubmittedDocuments,
+        documents: restaurant.verificationDocuments || {},
+        ninVerification: restaurant.ninVerification || {},
+      },
+    });
+  });
+
+  /**
+   * Upload or submit verification documents for vendor's restaurant
+   */
+  public uploadVerificationDocuments = catchAsync(async (req: any, res: Response) => {
+    const restaurant = await Restaurant.findOne({ owner: req.user._id });
+
+    if (!restaurant) {
+      throw new AppError('No restaurant profile found for this user', 404);
+    }
+
+    const files = req.files as { [fieldname: string]: Express.Multer.File[] } | undefined;
+    let ninUrl = req.body.ninUrl || restaurant.verificationDocuments?.ninUrl || '';
+    let foodHygieneUrl = req.body.foodHygieneUrl || restaurant.verificationDocuments?.foodHygieneUrl || '';
+    let cacUrl = req.body.cacUrl || restaurant.verificationDocuments?.cacUrl || '';
+    const idNumber = req.body.idNumber || req.body.nin || restaurant.verificationDocuments?.idNumber || '';
+
+    if (files) {
+      if (files['nin'] && files['nin'][0]) {
+        ninUrl = files['nin'][0].path;
+      }
+      if (files['foodHygiene'] && files['foodHygiene'][0]) {
+        foodHygieneUrl = files['foodHygiene'][0].path;
+      }
+      if (files['cac'] && files['cac'][0]) {
+        cacUrl = files['cac'][0].path;
+      }
+    }
+
+    if (!ninUrl && !foodHygieneUrl) {
+      throw new AppError('Please provide at least one verification document (NIN or Food Hygiene Certificate)', 400);
+    }
+
+    restaurant.verificationDocuments = {
+      ninUrl,
+      foodHygieneUrl,
+      cacUrl,
+      idNumber,
+      submittedAt: new Date(),
+    };
+
+    if (idNumber) {
+      restaurant.ninVerification = {
+        ...(restaurant.ninVerification || {}),
+        nin: idNumber,
+        identityStatus: 'pending',
+      };
+    }
+
+    restaurant.complianceStatus = 'pending';
+    await restaurant.save();
+
+    // Also update any matching PartnerApplication
+    try {
+      await PartnerApplication.findOneAndUpdate(
+        {
+          $or: [
+            { onboardedRestaurant: restaurant._id },
+            { email: req.user.email?.toLowerCase() },
+          ],
+        },
+        {
+          $set: {
+            ninUrl,
+            foodHygieneUrl,
+            cacUrl,
+            'documents.ninUrl': ninUrl,
+            'documents.foodHygieneUrl': foodHygieneUrl,
+            'documents.cacUrl': cacUrl,
+            'documents.idNumber': idNumber,
+            status: 'under_review',
+          },
+        }
+      );
+    } catch (appErr) {
+      // non-blocking
+    }
+
+    res.status(200).json({
+      status: 'success',
+      message: 'Verification documents submitted successfully. Our team will review them promptly.',
+      data: {
+        restaurant,
+        verificationDocuments: restaurant.verificationDocuments,
+        complianceStatus: restaurant.complianceStatus,
+      },
     });
   });
 

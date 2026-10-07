@@ -114,6 +114,13 @@ export interface IRestaurant extends Document {
     cacNumber?: string;
     cacCertificateUrl?: string;
   };
+  verificationDocuments?: {
+    ninUrl?: string;
+    foodHygieneUrl?: string;
+    cacUrl?: string;
+    idNumber?: string;
+    submittedAt?: Date;
+  };
   complianceStatus?: 'pending' | 'approved' | 'rejected' | 'expired';
   baseCurrency: string;
   autoAcceptOrders: boolean;
@@ -412,6 +419,13 @@ const restaurantSchema = new Schema<IRestaurant>(
       isRegisteredBusiness: { type: Boolean, default: false },
       cacNumber: { type: String },
       cacCertificateUrl: { type: String },
+    },
+    verificationDocuments: {
+      ninUrl: { type: String, default: '' },
+      foodHygieneUrl: { type: String, default: '' },
+      cacUrl: { type: String, default: '' },
+      idNumber: { type: String, default: '' },
+      submittedAt: { type: Date },
     },
     complianceStatus: {
       type: String,

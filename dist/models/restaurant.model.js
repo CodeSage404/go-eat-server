@@ -321,6 +321,13 @@ const restaurantSchema = new mongoose_1.Schema({
         cacNumber: { type: String },
         cacCertificateUrl: { type: String },
     },
+    verificationDocuments: {
+        ninUrl: { type: String, default: '' },
+        foodHygieneUrl: { type: String, default: '' },
+        cacUrl: { type: String, default: '' },
+        idNumber: { type: String, default: '' },
+        submittedAt: { type: Date },
+    },
     complianceStatus: {
         type: String,
         enum: ['pending', 'approved', 'rejected', 'expired'],

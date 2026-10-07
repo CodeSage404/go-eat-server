@@ -74,6 +74,16 @@ const partnerApplicationSchema = new mongoose_1.Schema({
         trim: true,
         default: '',
     },
+    applicationType: {
+        type: String,
+        enum: ['quick', 'full'],
+        default: 'full',
+        index: true,
+    },
+    hasAccessGranted: {
+        type: Boolean,
+        default: false,
+    },
     documents: {
         ninUrl: { type: String, default: '' },
         foodHygieneUrl: { type: String, default: '' },

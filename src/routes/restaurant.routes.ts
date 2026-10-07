@@ -2,6 +2,7 @@ import { Router } from 'express';
 import restaurantController from '../controllers/restaurant.controller';
 import { protect, restrictTo } from '../middleware/auth.middleware';
 import { UserRole } from '../models/user.model';
+import { upload } from '../utils/upload';
 
 const router = Router();
 
@@ -145,6 +146,98 @@ router.patch(
   protect,
   restrictTo(UserRole.VENDOR),
   restaurantController.updateMyRestaurant
+);
+
+/**
+ * @openapi
+ * /api/v1/restaurants/me/verification-status:
+ *   get:
+ *     tags:
+ *       - Restaurants
+ *     summary: Get vendor restaurant verification and document compliance status
+ *     description: Returns current verification compliance status, whether documents have been submitted, and details for NIN and Food Hygiene certificates.
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Verification status details
+ *       404:
+ *         description: Restaurant not found
+ */
+router.get(
+  '/me/verification-status',
+  protect,
+  restrictTo(UserRole.VENDOR),
+  restaurantController.getMyVerificationStatus
+);
+router.get(
+  '/my-restaurant/verification-status',
+  protect,
+  restrictTo(UserRole.VENDOR),
+  restaurantController.getMyVerificationStatus
+);
+
+/**
+ * @openapi
+ * /api/v1/restaurants/me/verification-documents:
+ *   post:
+ *     tags:
+ *       - Restaurants
+ *     summary: Upload or update vendor restaurant verification documents
+ *     description: Allows vendors to upload their NIN document, Food Hygiene certificate, and optional CAC certificate from within the vendor mobile app.
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               nin:
+ *                 type: string
+ *                 format: binary
+ *                 description: NIN slip or card document
+ *               foodHygiene:
+ *                 type: string
+ *                 format: binary
+ *                 description: Food hygiene certificate
+ *               cac:
+ *                 type: string
+ *                 format: binary
+ *                 description: CAC registration certificate (optional)
+ *               idNumber:
+ *                 type: string
+ *                 description: National identification number string
+ *     responses:
+ *       200:
+ *         description: Verification documents successfully submitted
+ *       400:
+ *         description: Missing required documents
+ *       404:
+ *         description: Restaurant not found
+ */
+router.post(
+  '/me/verification-documents',
+  protect,
+  restrictTo(UserRole.VENDOR),
+  upload.fields([
+    { name: 'nin', maxCount: 1 },
+    { name: 'foodHygiene', maxCount: 1 },
+    { name: 'cac', maxCount: 1 },
+  ]),
+  restaurantController.uploadVerificationDocuments
+);
+router.post(
+  '/my-restaurant/verification-documents',
+  protect,
+  restrictTo(UserRole.VENDOR),
+  upload.fields([
+    { name: 'nin', maxCount: 1 },
+    { name: 'foodHygiene', maxCount: 1 },
+    { name: 'cac', maxCount: 1 },
+  ]),
+  restaurantController.uploadVerificationDocuments
 );
 
 /**

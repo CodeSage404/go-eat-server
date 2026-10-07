@@ -1,6 +1,6 @@
 <!-- Envelope Hero Illustration -->
 <div style="text-align: center; margin: 10px 0 16px;">
-  <img src="https://res.cloudinary.com/dqtjja88b/image/upload/v1791211861/go_eat_email/email_otp_envelope.png" alt="Email Verification" style="width: 135px; height: auto; display: block; margin: 0 auto;" />
+  <img src="https://res.cloudinary.com/dqtjja88b/image/upload/v1791211861/go_eat_email/email_otp_envelope.png" alt="Email Verification" style="width: 135px; max-width: 100%; height: auto; display: block; margin: 0 auto;" />
 </div>
 
 <!-- Title & Accent Bar -->
@@ -12,7 +12,7 @@
 </div>
 
 <!-- Message Body -->
-<div style="text-align: center; max-width: 440px; margin: 0 auto 26px;">
+<div style="text-align: center; max-width: 440px; margin: 0 auto 24px;">
   <p style="font-size: 14px; font-weight: 700; color: #1F2937; margin: 0 0 8px;">
     Hi <%= typeof name !== 'undefined' && name ? name : 'there' %>,
   </p>
@@ -36,18 +36,18 @@
     <table role="presentation" cellpadding="0" cellspacing="0" style="margin: 0 auto;">
       <tr>
         <% digits.forEach(function(digit, idx) { %>
-          <td align="center" style="width: 46px; height: 50px; background-color: #FFFFFF; border: 1.5px solid #E5E7EB; border-radius: 12px; font-size: 24px; font-weight: 800; color: #111827; text-align: center; line-height: 50px; font-family: -apple-system, BlinkMacSystemFont, monospace; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
+          <td align="center" class="otp-digit-td" style="width: 44px; height: 48px; background-color: #FFFFFF; border: 1.5px solid #E5E7EB; border-radius: 12px; font-size: 22px; font-weight: 800; color: #111827; text-align: center; line-height: 48px; font-family: -apple-system, BlinkMacSystemFont, monospace; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
             <%= digit %>
           </td>
           <% if (idx < digits.length - 1) { %>
-            <td style="width: 8px;"></td>
+            <td class="otp-digit-gap" style="width: 6px;"></td>
           <% } %>
         <% }); %>
       </tr>
     </table>
   </center>
 
-  <p style="font-size: 12.5px; color: #4B5563; margin: 20px 0 0;">
+  <p style="font-size: 12.5px; color: #4B5563; margin: 18px 0 0;">
     This code is valid for <strong style="color: #F59E0B;"><%= typeof validTime !== 'undefined' ? validTime : '10 mins' %></strong>
   </p>
 </div>

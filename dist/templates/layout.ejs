@@ -1,191 +1,261 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="x-apple-disable-message-reformatting">
+  <meta name="format-detection" content="telephone=no,address=no,email=no,date=no,url=no">
   <title>GoEat</title>
   <!--[if mso]>
   <style type="text/css">
-    body, table, td, h1, h2, h3, p, a, span { font-family: Arial, sans-serif !important; }
+    body, table, td, h1, h2, h3, p, a, span { font-family: -apple-system, BlinkMacSystemFont, Arial, sans-serif !important; }
   </style>
   <![endif]-->
-  <style>
-    body {
-      margin: 0;
-      padding: 0;
+  <style type="text/css">
+    html, body {
+      margin: 0 auto !important;
+      padding: 0 !important;
+      height: 100% !important;
+      width: 100% !important;
       background-color: #F4F6F5;
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
       color: #1F2937;
       -webkit-font-smoothing: antialiased;
+      -ms-text-size-adjust: 100%;
+      -webkit-text-size-adjust: 100%;
     }
-    table {
-      border-collapse: collapse;
-      mso-table-lspace: 0pt;
-      mso-table-rspace: 0pt;
+    table, td {
+      mso-table-lspace: 0pt !important;
+      mso-table-rspace: 0pt !important;
+      border-collapse: collapse !important;
     }
     img {
+      -ms-interpolation-mode: bicubic;
       border: 0;
+      height: auto;
+      line-height: 100%;
       outline: none;
       text-decoration: none;
-      -ms-interpolation-mode: bicubic;
+      max-width: 100%;
     }
-    .email-container {
-      max-width: 600px;
-      margin: 24px auto;
-      background-color: #FFFFFF;
-      border-radius: 20px;
-      overflow: hidden;
-      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
-      border: 1px solid #E5E7EB;
-    }
-    .email-header {
-      padding: 24px 28px 16px;
-      background-color: #FFFFFF;
-      border-bottom: 1px solid #F3F4F6;
-    }
-    .email-body {
-      padding: 28px 28px 36px;
-      background-color: #FFFFFF;
-    }
-    .btn-primary {
-      display: inline-block;
-      background-color: #133824;
-      color: #FFFFFF !important;
-      text-decoration: none;
-      font-weight: 700;
-      font-size: 14px;
-      padding: 13px 32px;
-      border-radius: 999px;
-      text-align: center;
-    }
-    .accent-bar {
-      width: 40px;
-      height: 3px;
-      background-color: #F59E0B;
-      border-radius: 2px;
-      margin: 10px auto 18px;
-    }
+    /* Mobile-Specific Responsive Overrides */
     @media only screen and (max-width: 600px) {
+      .email-wrapper {
+        padding: 0 !important;
+      }
       .email-container {
-        margin: 0 !important;
-        border-radius: 0 !important;
         width: 100% !important;
+        max-width: 100% !important;
+        border-radius: 0 !important;
+        border-left: none !important;
+        border-right: none !important;
       }
       .email-header {
-        padding: 18px 20px 14px !important;
+        padding: 16px 14px 14px !important;
+      }
+      .email-header-slogan {
+        font-size: 13px !important;
       }
       .email-body {
-        padding: 20px 18px 28px !important;
+        padding: 22px 14px 30px !important;
       }
-      .footer-col {
+      /* Responsive Fluid Stacking Columns */
+      .fluid-stack-col {
         display: block !important;
         width: 100% !important;
-        padding: 12px 0 !important;
+        max-width: 100% !important;
         text-align: center !important;
+        padding-left: 0 !important;
+        padding-right: 0 !important;
       }
-      .footer-divider {
+      .fluid-stack-left {
+        display: block !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        text-align: left !important;
+        padding-left: 0 !important;
+        padding-right: 0 !important;
+        margin-bottom: 20px !important;
+      }
+      .fluid-stack-img {
+        display: block !important;
+        margin: 0 auto !important;
+        max-width: 220px !important;
+      }
+      /* 3-Column Feature Cards Stacking */
+      .feature-col {
+        display: block !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        padding: 10px 0 !important;
+        border-bottom: 1px solid #F3F4F6 !important;
+      }
+      .feature-col:last-child {
+        border-bottom: none !important;
+      }
+      /* Order Meta Stacking */
+      .meta-box-col {
+        display: block !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        padding: 8px 0 !important;
+        border-bottom: 1px solid #E5E7EB !important;
+      }
+      .meta-box-col:last-child {
+        border-bottom: none !important;
+      }
+      /* OTP Digits scaling on small screens */
+      .otp-digit-td {
+        width: 38px !important;
+        height: 44px !important;
+        font-size: 20px !important;
+        line-height: 44px !important;
+      }
+      .otp-digit-gap {
+        width: 4px !important;
+      }
+      /* Stepper Stacking on small screens */
+      .stepper-step {
+        width: 25% !important;
+        font-size: 9.5px !important;
+      }
+      /* Footer Stacking */
+      .footer-stack-col {
+        display: block !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        text-align: center !important;
+        padding: 12px 0 !important;
+      }
+      .footer-divider-col {
         display: none !important;
       }
       .footer-help-table {
         margin: 0 auto !important;
       }
+      .footer-store-badges {
+        margin-top: 8px !important;
+        text-align: center !important;
+      }
     }
   </style>
 </head>
-<body style="margin: 0; padding: 0; background-color: #F4F6F5;">
-  <center style="width: 100%; background-color: #F4F6F5; padding: 20px 0;">
-    <div class="email-container" style="max-width: 600px; margin: 0 auto; background-color: #FFFFFF; border-radius: 20px; overflow: hidden; border: 1px solid #E5E7EB;">
-      
-      <!-- Top Brand Header Bar -->
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" class="email-header" style="background-color: #FFFFFF; border-bottom: 1px solid #F3F4F6;">
+<body style="margin: 0; padding: 0; background-color: #F4F6F5; -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%;">
+  <table role="presentation" width="100%" border="0" cellpadding="0" cellspacing="0" class="email-wrapper" style="background-color: #F4F6F5; width: 100% !important; margin: 0; padding: 24px 8px;">
+    <tr>
+      <td align="center" style="vertical-align: top; padding: 0;">
+        
+        <!--[if (gte mso 9)|(IE)]>
+        <table align="center" border="0" cellspacing="0" cellpadding="0" width="600" style="width: 600px;">
         <tr>
-          <td align="left" style="vertical-align: middle;">
-            <a href="https://goeatone.com" target="_blank" style="text-decoration: none; display: inline-block;">
-              <img src="https://res.cloudinary.com/dqtjja88b/image/upload/v1791211128/logo_hdst3i.png" alt="GoEat" style="height: 36px; max-height: 36px; width: auto; display: block; border: 0;" />
-            </a>
-          </td>
-          <td align="right" style="vertical-align: middle;">
-            <span style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 15px; font-weight: 800; color: #133824; letter-spacing: -0.2px;">
-              One App. Every Craving.
-            </span>
-          </td>
-        </tr>
-      </table>
+        <td align="center" valign="top" width="600">
+        <![endif]-->
 
-      <!-- Dynamic Email Content Body -->
-      <div class="email-body">
-        <%- body %>
-      </div>
-
-      <!-- Unified Dark Forest Green Footer -->
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color: #133824; color: #FFFFFF;">
-        <tr>
-          <td style="padding: 28px 24px 20px;">
-            <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
-              <tr>
-                <!-- Left: Support & Social Media -->
-                <td class="footer-col" style="vertical-align: top; width: 50%; padding-right: 16px;">
-                  <table role="presentation" cellpadding="0" cellspacing="0" class="footer-help-table">
-                    <tr>
-                      <td style="vertical-align: top; padding-right: 10px;">
-                        <div style="width: 32px; height: 32px; border-radius: 50%; background-color: #FFFFFF; text-align: center; line-height: 32px; display: inline-block;">
-                          <span style="font-size: 16px; color: #133824;">✉</span>
-                        </div>
-                      </td>
-                      <td style="vertical-align: top;">
-                        <div style="font-size: 13px; font-weight: 700; color: #FFFFFF; line-height: 1.2;">Need help?</div>
-                        <div style="font-size: 11px; color: #A3C2B0; margin-top: 2px;">We're here for you.</div>
-                        <div style="margin-top: 3px;">
-                          <a href="mailto:Support@goeatone.com" style="color: #F59E0B; text-decoration: none; font-size: 11.5px; font-weight: 700;">
-                            Support@goeatone.com
-                          </a>
-                        </div>
-                      </td>
-                    </tr>
-                  </table>
-
-                  <!-- Follow Us Row -->
-                  <div style="margin-top: 18px;">
-                    <span style="font-size: 11px; font-weight: 600; color: #FFFFFF; vertical-align: middle;">Follow us</span>
-                    <img src="https://res.cloudinary.com/dqtjja88b/image/upload/v1791211923/go_eat_email/email_badge_socials.png" alt="Social Links" style="height: 18px; vertical-align: middle; margin-left: 8px; display: inline-block;" />
-                  </div>
-                </td>
-
-                <!-- Divider -->
-                <td class="footer-divider" style="width: 1px; background-color: #235237; padding: 0;"></td>
-
-                <!-- Right: Download Badges -->
-                <td class="footer-col" style="vertical-align: top; width: 50%; padding-left: 20px;">
-                  <div style="font-size: 12px; font-weight: 700; color: #FFFFFF; margin-bottom: 8px;">
-                    Download the Go Eat app
-                  </div>
-                  <div>
-                    <a href="https://play.google.com" target="_blank" style="text-decoration: none; display: inline-block; margin-right: 6px; margin-bottom: 6px;">
-                      <img src="https://res.cloudinary.com/dqtjja88b/image/upload/v1791211919/go_eat_email/email_badge_google_play.png" alt="Get it on Google Play" style="height: 28px; width: auto; display: block; border: 0;" />
+        <table role="presentation" class="email-container" border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 600px; width: 100%; background-color: #FFFFFF; border-radius: 20px; overflow: hidden; border: 1px solid #E5E7EB; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05); margin: 0 auto;">
+          
+          <!-- Top Brand Header Bar -->
+          <tr>
+            <td style="padding: 0;">
+              <table role="presentation" width="100%" border="0" cellpadding="0" cellspacing="0" class="email-header" style="background-color: #FFFFFF; border-bottom: 1px solid #F3F4F6; padding: 22px 28px 16px;">
+                <tr>
+                  <td align="left" style="vertical-align: middle;">
+                    <a href="https://goeatone.com" target="_blank" style="text-decoration: none; display: inline-block;">
+                      <img src="https://res.cloudinary.com/dqtjja88b/image/upload/v1791211128/logo_hdst3i.png" alt="GoEat" style="height: 36px; max-height: 36px; width: auto; display: block; border: 0;" />
                     </a>
-                    <a href="https://apple.com" target="_blank" style="text-decoration: none; display: inline-block; margin-bottom: 6px;">
-                      <img src="https://res.cloudinary.com/dqtjja88b/image/upload/v1791211921/go_eat_email/email_badge_app_store.png" alt="Download on App Store" style="height: 28px; width: auto; display: block; border: 0;" />
-                    </a>
-                  </div>
-                </td>
-              </tr>
-            </table>
+                  </td>
+                  <td align="right" style="vertical-align: middle;">
+                    <span class="email-header-slogan" style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 15px; font-weight: 800; color: #133824; letter-spacing: -0.2px; white-space: nowrap;">
+                      One App. Every Craving.
+                    </span>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
 
-            <!-- Bottom Copyright & Disclaimer -->
-            <div style="margin-top: 24px; padding-top: 14px; border-top: 1px solid #1C482F; text-align: center;">
-              <p style="margin: 0 0 4px; font-size: 11px; color: #A3C2B0;">
-                @ <%= typeof year !== 'undefined' ? year : 2026 %> GoEat. All rights reserved
-              </p>
-              <p style="margin: 0; font-size: 9.5px; color: #7B9B88;">
-                You received this email because you created an account with GoEat.
-              </p>
-            </div>
-          </td>
+          <!-- Dynamic Email Content Body -->
+          <tr>
+            <td class="email-body" style="padding: 28px 28px 36px; background-color: #FFFFFF;">
+              <%- body %>
+            </td>
+          </tr>
+
+          <!-- Unified Dark Forest Green Responsive Footer -->
+          <tr>
+            <td style="background-color: #133824; color: #FFFFFF; padding: 28px 24px 22px;">
+              <table role="presentation" width="100%" border="0" cellpadding="0" cellspacing="0">
+                <tr>
+                  <!-- Left: Need Help & Social Links -->
+                  <td class="footer-stack-col" style="vertical-align: top; width: 50%; padding-right: 14px;">
+                    <table role="presentation" cellpadding="0" cellspacing="0" class="footer-help-table">
+                      <tr>
+                        <td style="vertical-align: top; padding-right: 10px;">
+                          <div style="width: 32px; height: 32px; border-radius: 50%; background-color: #FFFFFF; text-align: center; line-height: 32px; display: inline-block;">
+                            <span style="font-size: 16px; color: #133824;">✉</span>
+                          </div>
+                        </td>
+                        <td style="vertical-align: top;">
+                          <div style="font-size: 13px; font-weight: 700; color: #FFFFFF; line-height: 1.2;">Need help?</div>
+                          <div style="font-size: 11px; color: #A3C2B0; margin-top: 2px;">We're here for you.</div>
+                          <div style="margin-top: 3px;">
+                            <a href="mailto:Support@goeatone.com" style="color: #F59E0B; text-decoration: none; font-size: 11.5px; font-weight: 700;">
+                              Support@goeatone.com
+                            </a>
+                          </div>
+                        </td>
+                      </tr>
+                    </table>
+
+                    <!-- Follow Us Row -->
+                    <div style="margin-top: 16px;">
+                      <span style="font-size: 11px; font-weight: 600; color: #FFFFFF; vertical-align: middle;">Follow us</span>
+                      <img src="https://res.cloudinary.com/dqtjja88b/image/upload/v1791211923/go_eat_email/email_badge_socials.png" alt="Social Links" style="height: 18px; width: auto; vertical-align: middle; margin-left: 8px; display: inline-block; border: 0;" />
+                    </div>
+                  </td>
+
+                  <!-- Vertical Separator Divider (Hidden on mobile stack) -->
+                  <td class="footer-divider-col" style="width: 1px; background-color: #235237; padding: 0;"></td>
+
+                  <!-- Right: App Download Badges -->
+                  <td class="footer-stack-col" style="vertical-align: top; width: 50%; padding-left: 18px;">
+                    <div style="font-size: 12px; font-weight: 700; color: #FFFFFF; margin-bottom: 8px;">
+                      Download the Go Eat app
+                    </div>
+                    <div class="footer-store-badges">
+                      <a href="https://play.google.com" target="_blank" style="text-decoration: none; display: inline-block; margin-right: 6px; margin-bottom: 6px;">
+                        <img src="https://res.cloudinary.com/dqtjja88b/image/upload/v1791211919/go_eat_email/email_badge_google_play.png" alt="Get it on Google Play" style="height: 28px; width: auto; display: inline-block; border: 0;" />
+                      </a>
+                      <a href="https://apple.com" target="_blank" style="text-decoration: none; display: inline-block; margin-bottom: 6px;">
+                        <img src="https://res.cloudinary.com/dqtjja88b/image/upload/v1791211921/go_eat_email/email_badge_app_store.png" alt="Download on App Store" style="height: 28px; width: auto; display: inline-block; border: 0;" />
+                      </a>
+                    </div>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Bottom Copyright & Account Notice -->
+              <div style="margin-top: 24px; padding-top: 14px; border-top: 1px solid #1C482F; text-align: center;">
+                <p style="margin: 0 0 4px; font-size: 11px; color: #A3C2B0;">
+                  @ <%= typeof year !== 'undefined' ? year : 2026 %> GoEat. All rights reserved
+                </p>
+                <p style="margin: 0; font-size: 9.5px; color: #7B9B88;">
+                  You received this email because you created an account with GoEat.
+                </p>
+              </div>
+            </td>
+          </tr>
+
+        </table>
+
+        <!--[if (gte mso 9)|(IE)]>
+        </td>
         </tr>
-      </table>
+        </table>
+        <![endif]-->
 
-    </div>
-  </center>
+      </td>
+    </tr>
+  </table>
 </body>
 </html>

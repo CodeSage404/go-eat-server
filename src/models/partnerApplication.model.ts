@@ -17,6 +17,8 @@ export interface IPartnerApplication extends Document {
   email: string;
   phoneNumber: string;
   city?: string;
+  applicationType?: 'quick' | 'full';
+  hasAccessGranted?: boolean;
   documents?: IPartnerDocuments;
   ninUrl?: string;
   foodHygieneUrl?: string;
@@ -70,6 +72,16 @@ const partnerApplicationSchema = new Schema<IPartnerApplication>(
       type: String,
       trim: true,
       default: '',
+    },
+    applicationType: {
+      type: String,
+      enum: ['quick', 'full'],
+      default: 'full',
+      index: true,
+    },
+    hasAccessGranted: {
+      type: Boolean,
+      default: false,
     },
     documents: {
       ninUrl: { type: String, default: '' },

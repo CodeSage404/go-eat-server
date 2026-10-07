@@ -7,6 +7,7 @@ const express_1 = require("express");
 const restaurant_controller_1 = __importDefault(require("../controllers/restaurant.controller"));
 const auth_middleware_1 = require("../middleware/auth.middleware");
 const user_model_1 = require("../models/user.model");
+const upload_1 = require("../utils/upload");
 const router = (0, express_1.Router)();
 // Public routes
 /**
@@ -136,6 +137,74 @@ router.get('/my-restaurant', auth_middleware_1.protect, (0, auth_middleware_1.re
  *         description: No restaurant found
  */
 router.patch('/my-restaurant', auth_middleware_1.protect, (0, auth_middleware_1.restrictTo)(user_model_1.UserRole.VENDOR), restaurant_controller_1.default.updateMyRestaurant);
+/**
+ * @openapi
+ * /api/v1/restaurants/me/verification-status:
+ *   get:
+ *     tags:
+ *       - Restaurants
+ *     summary: Get vendor restaurant verification and document compliance status
+ *     description: Returns current verification compliance status, whether documents have been submitted, and details for NIN and Food Hygiene certificates.
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Verification status details
+ *       404:
+ *         description: Restaurant not found
+ */
+router.get('/me/verification-status', auth_middleware_1.protect, (0, auth_middleware_1.restrictTo)(user_model_1.UserRole.VENDOR), restaurant_controller_1.default.getMyVerificationStatus);
+router.get('/my-restaurant/verification-status', auth_middleware_1.protect, (0, auth_middleware_1.restrictTo)(user_model_1.UserRole.VENDOR), restaurant_controller_1.default.getMyVerificationStatus);
+/**
+ * @openapi
+ * /api/v1/restaurants/me/verification-documents:
+ *   post:
+ *     tags:
+ *       - Restaurants
+ *     summary: Upload or update vendor restaurant verification documents
+ *     description: Allows vendors to upload their NIN document, Food Hygiene certificate, and optional CAC certificate from within the vendor mobile app.
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               nin:
+ *                 type: string
+ *                 format: binary
+ *                 description: NIN slip or card document
+ *               foodHygiene:
+ *                 type: string
+ *                 format: binary
+ *                 description: Food hygiene certificate
+ *               cac:
+ *                 type: string
+ *                 format: binary
+ *                 description: CAC registration certificate (optional)
+ *               idNumber:
+ *                 type: string
+ *                 description: National identification number string
+ *     responses:
+ *       200:
+ *         description: Verification documents successfully submitted
+ *       400:
+ *         description: Missing required documents
+ *       404:
+ *         description: Restaurant not found
+ */
+router.post('/me/verification-documents', auth_middleware_1.protect, (0, auth_middleware_1.restrictTo)(user_model_1.UserRole.VENDOR), upload_1.upload.fields([
+    { name: 'nin', maxCount: 1 },
+    { name: 'foodHygiene', maxCount: 1 },
+    { name: 'cac', maxCount: 1 },
+]), restaurant_controller_1.default.uploadVerificationDocuments);
+router.post('/my-restaurant/verification-documents', auth_middleware_1.protect, (0, auth_middleware_1.restrictTo)(user_model_1.UserRole.VENDOR), upload_1.upload.fields([
+    { name: 'nin', maxCount: 1 },
+    { name: 'foodHygiene', maxCount: 1 },
+    { name: 'cac', maxCount: 1 },
+]), restaurant_controller_1.default.uploadVerificationDocuments);
 /**
  * @openapi
  * /api/v1/restaurants/{id}:

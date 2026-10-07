@@ -248,4 +248,52 @@ router.get('/applications/:id', auth_middleware_1.protect, (0, auth_middleware_1
  *         description: Application not found
  */
 router.patch('/applications/:id', auth_middleware_1.protect, (0, auth_middleware_1.restrictTo)(user_model_1.UserRole.ADMIN), partnerApplication_controller_1.updatePartnerApplicationStatus);
+/**
+ * @openapi
+ * /api/v1/partners/applications/{id}/grant-access:
+ *   post:
+ *     tags:
+ *       - Partners
+ *     summary: Grant vendor app access without waiting for document review (Admin only)
+ *     description: Provisions a vendor user and restaurant profile in pending verification state, generates secure credentials, and emails them to the applicant immediately.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Application ID
+ *     responses:
+ *       200:
+ *         description: Vendor access granted and credentials emailed
+ *       404:
+ *         description: Application not found
+ */
+router.post('/applications/:id/grant-access', auth_middleware_1.protect, (0, auth_middleware_1.restrictTo)(user_model_1.UserRole.ADMIN), partnerApplication_controller_1.adminGrantAccess);
+/**
+ * @openapi
+ * /api/v1/partners/applications/{id}/approve:
+ *   post:
+ *     tags:
+ *       - Partners
+ *     summary: Approve partner application and activate restaurant (Admin only)
+ *     description: Fully approves the partner application and activates the vendor's restaurant, allowing them to take live orders.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Application ID
+ *     responses:
+ *       200:
+ *         description: Application approved and restaurant activated
+ *       404:
+ *         description: Application not found
+ */
+router.post('/applications/:id/approve', auth_middleware_1.protect, (0, auth_middleware_1.restrictTo)(user_model_1.UserRole.ADMIN), partnerApplication_controller_1.adminApproveApplication);
 exports.default = router;

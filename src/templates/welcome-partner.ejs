@@ -1,14 +1,64 @@
-<h2 style="color: #0F3725; margin-top: 0; font-weight: 800;">Welcome to GoEatOne Partners!</h2>
-<p>Dear <strong><%= partnerName %></strong>,</p>
-<p>Congratulations! Your business, <strong><%= restaurantName %></strong>, is officially onboarded and activated on the GoEatOne Platform.</p>
-<p>You can now manage your menus, orders, payouts, and customer reviews through your partner dashboard.</p>
-<p>Below are your vendor portal credentials:</p>
-<div class="highlight-box">
-  <p style="margin: 4px 0;"><strong>Dashboard Link:</strong> <a href="<%= loginUrl %>" style="color: #0F3725;">GoEatOne Partner Portal</a></p>
-  <p style="margin: 4px 0;"><strong>Username / Email:</strong> <%= email %></p>
-  <p style="margin: 4px 0;"><strong>Password:</strong> <%= password %></p>
+<!-- Store Partner Hero Icon -->
+<div style="text-align: center; margin: 10px 0 16px;">
+  <div style="width: 72px; height: 72px; border-radius: 50%; background-color: #ECFDF5; border: 2px solid #A7F3D0; margin: 0 auto; text-align: center; line-height: 72px; font-size: 32px;">
+    🏪
+  </div>
 </div>
-<p style="color: #4B5563;">For security reasons, we strongly recommend logging in and changing your password immediately.</p>
+
+<!-- Title & Accent Bar -->
 <div style="text-align: center;">
-  <a href="<%= loginUrl %>" class="btn">Access Partner Dashboard</a>
+  <h1 style="margin: 0; font-size: 24px; font-weight: 800; color: #133824; letter-spacing: -0.3px;">
+    Welcome to GoEat Partners!
+  </h1>
+  <div style="width: 38px; height: 3px; background-color: #F59E0B; border-radius: 2px; margin: 10px auto 18px;"></div>
+</div>
+
+<!-- Greeting & Message -->
+<div style="text-align: center; max-width: 440px; margin: 0 auto 24px;">
+  <p style="font-size: 14px; font-weight: 700; color: #1F2937; margin: 0 0 8px;">
+    Dear <%= typeof partnerName !== 'undefined' && partnerName ? partnerName : 'Partner' %>,
+  </p>
+  <p style="font-size: 13px; line-height: 1.6; color: #4B5563; margin: 0;">
+    Congratulations! Your partner account for <strong><%= typeof restaurantName !== 'undefined' && restaurantName ? restaurantName : 'Your Outlet' %></strong> has been created on the GoEat platform.
+  </p>
+</div>
+
+<!-- Credentials Card -->
+<div style="background-color: #F9FAFB; border: 1px solid #E5E7EB; border-radius: 18px; padding: 20px 22px; max-width: 480px; margin: 0 auto 24px;">
+  <div style="font-size: 12px; font-weight: 800; color: #133824; margin-bottom: 12px; border-bottom: 1px solid #E5E7EB; padding-bottom: 8px;">
+    Your Vendor App Login Credentials
+  </div>
+
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="font-size: 13px;">
+    <tr>
+      <td style="padding: 6px 0; color: #6B7280; width: 120px;">Email / Username:</td>
+      <td style="padding: 6px 0; font-weight: 700; color: #111827; font-family: -apple-system, BlinkMacSystemFont, monospace;">
+        <%= email %>
+      </td>
+    </tr>
+    <tr>
+      <td style="padding: 6px 0; color: #6B7280;">Temporary Password:</td>
+      <td style="padding: 6px 0; font-weight: 700; color: #059669; font-family: -apple-system, BlinkMacSystemFont, monospace;">
+        <%= password %>
+      </td>
+    </tr>
+  </table>
+
+  <div style="margin-top: 14px; padding-top: 10px; border-top: 1px solid #E5E7EB; font-size: 11.5px; color: #6B7280; line-height: 1.5;">
+    💡 <strong>Next Step:</strong> Log in to the <strong>Go-Eat Partner App</strong> to set up your menu, operating hours, and complete your business verification documents to start accepting customer orders!
+  </div>
+</div>
+
+<!-- Action CTA Button -->
+<div style="text-align: center; margin-bottom: 24px;">
+  <a href="<%= typeof loginUrl !== 'undefined' && loginUrl ? loginUrl : 'https://goeatone.com' %>" target="_blank" style="display: inline-block; background-color: #133824; color: #FFFFFF !important; font-weight: 700; font-size: 13.5px; padding: 13px 36px; border-radius: 999px; text-decoration: none; text-align: center;">
+    Open Vendor Partner App
+  </a>
+</div>
+
+<!-- Security Advice -->
+<div style="text-align: center;">
+  <p style="font-size: 11.5px; color: #9CA3AF; margin: 0;">
+    For your account security, please change your password after your first login.
+  </p>
 </div>
