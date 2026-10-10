@@ -131,14 +131,31 @@ class App {
     this.app.use(
       cors({
         origin: (origin, callback) => {
-          if (isOriginAllowed(origin)) {
-            return callback(null, true);
+          // If CORS enforcement is not strictly enabled, allow any calling origin
+          if (process.env.ENFORCE_CORS !== 'true' || !origin || isOriginAllowed(origin)) {
+            return callback(null, origin || true);
           }
           return callback(new Error('Blocked by CORS policy'));
         },
         credentials: true,
-        methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-        allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'x-country-code', 'x-platform', 'stripe-signature', 'x-paystack-signature', 'verif-hash'],
+        methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS', 'HEAD'],
+        allowedHeaders: [
+          'Content-Type',
+          'Authorization',
+          'X-Requested-With',
+          'Accept',
+          'Origin',
+          'x-country',
+          'x-country-code',
+          'x-region',
+          'x-region-code',
+          'x-latitude',
+          'x-longitude',
+          'x-platform',
+          'stripe-signature',
+          'x-paystack-signature',
+          'verif-hash',
+        ],
       })
     );
 

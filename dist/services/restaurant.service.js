@@ -113,12 +113,16 @@ class RestaurantService {
                 const mergedPromos = Array.isArray(doc.promos) && doc.promos.length > 0
                     ? doc.promos
                     : attachedPromos;
+                const isVerified = Boolean(doc.isVerified === true || (doc.status === restaurant_model_1.RestaurantStatus.ACTIVE && doc.isVerified !== false));
+                const isComingSoon = Boolean(doc.status === restaurant_model_1.RestaurantStatus.PENDING || !isVerified);
                 return {
                     ...doc,
                     hasPromo: effectiveHasPromo,
                     acceptsPromos: Boolean(doc.acceptsPromos || attachedPromos.length > 0),
                     promoText: effectivePromoText || '',
                     promos: mergedPromos,
+                    isVerified,
+                    isComingSoon,
                 };
             });
         }
@@ -164,7 +168,9 @@ class RestaurantService {
      * Get all restaurants with filters
      */
     async getAllRestaurants(filters = {}) {
-        const query = { status: restaurant_model_1.RestaurantStatus.ACTIVE };
+        const query = {
+            status: filters.status || { $in: [restaurant_model_1.RestaurantStatus.ACTIVE, restaurant_model_1.RestaurantStatus.PENDING] }
+        };
         // Country / Location filter
         if (filters.country || filters.countryCode) {
             const countryFilter = (0, locationResolver_1.buildCountryFilter)(filters.country, filters.countryCode);
@@ -244,7 +250,9 @@ class RestaurantService {
      * Find nearby restaurants using GeoJSON
      */
     async findNearbyRestaurants(lng, lat, maxDistanceInMeters = 5000, countryFilters, options = {}) {
-        const geoQuery = { status: restaurant_model_1.RestaurantStatus.ACTIVE };
+        const geoQuery = {
+            status: { $in: [restaurant_model_1.RestaurantStatus.ACTIVE, restaurant_model_1.RestaurantStatus.PENDING] }
+        };
         if (countryFilters?.country || countryFilters?.countryCode) {
             const countryFilter = (0, locationResolver_1.buildCountryFilter)(countryFilters.country, countryFilters.countryCode);
             if (countryFilter.$or && countryFilter.$or.length > 0) {

@@ -213,7 +213,8 @@ class PaymentService {
             };
         }
         const serverBaseUrl = (process.env.RENDER_EXTERNAL_URL || 'https://go-eat-server-z96s.onrender.com').replace(/\/$/, '');
-        const defaultCallbackUrl = `${serverBaseUrl}/api/v1/payments/callback?reference=${reference}`;
+        const webRedirectDestination = callbackUrl || 'https://goeatone.com/checkout?status=success';
+        const serverCallbackUrl = `${serverBaseUrl}/api/v1/payments/callback?reference=${encodeURIComponent(reference)}&redirect_url=${encodeURIComponent(webRedirectDestination)}`;
         if (activeProvider.toLowerCase() === 'flutterwave') {
             const result = await flutterwave_module_1.default.initializePayment({
                 email: safeEmail,
@@ -221,7 +222,7 @@ class PaymentService {
                 reference,
                 customerName: user.name,
                 customerPhone: user.phoneNumber,
-                redirectUrl: callbackUrl || `${defaultCallbackUrl}&provider=flutterwave`,
+                redirectUrl: `${serverCallbackUrl}&provider=flutterwave`,
                 metadata: {
                     orderId: order._id.toString(),
                     customerId: user._id.toString(),
@@ -250,7 +251,7 @@ class PaymentService {
                 amount,
                 reference,
                 currency: stripeCurrency,
-                redirectUrl: callbackUrl || `${defaultCallbackUrl}&provider=stripe`,
+                redirectUrl: `${serverCallbackUrl}&provider=stripe`,
                 metadata: {
                     orderId: order._id.toString(),
                     orderIds: orderIdList.join(','),
@@ -281,7 +282,7 @@ class PaymentService {
                 email: safeEmail,
                 amount,
                 reference,
-                callbackUrl: callbackUrl || `${defaultCallbackUrl}&provider=paystack`,
+                callbackUrl: `${serverCallbackUrl}&provider=paystack`,
                 metadata: {
                     orderId: order._id.toString(),
                     orderIds: orderIdList.join(','),

@@ -181,6 +181,11 @@ const restaurantSchema = new mongoose_1.Schema({
         type: Number,
         default: 0,
     },
+    isVerified: {
+        type: Boolean,
+        default: false,
+        index: true,
+    },
     status: {
         type: String,
         enum: Object.values(RestaurantStatus),

@@ -362,11 +362,77 @@ class PaymentController {
         this.handlePaymentCallback = (0, catchAsync_1.catchAsync)(async (req, res) => {
             const reference = (req.query.reference || req.query.trxref || req.query.tx_ref || req.query.session_id || '');
             const provider = String(req.query.provider || 'paystack');
+            const customRedirect = (req.query.redirect_url || req.query.redirectUrl || req.query.return_url || '');
+            let orderId = '';
+            let isVerified = false;
+            // 1. Verify transaction with gateway immediately
+            if (reference) {
+                try {
+                    const verifyRes = await payment_service_1.default.verifyPayment(reference, provider);
+                    const orderList = verifyRes?.orders || (verifyRes?.order ? [verifyRes.order] : []);
+                    if (orderList.length > 0) {
+                        orderId = orderList[0]._id?.toString?.() || '';
+                        isVerified = true;
+                    }
+                    else {
+                        isVerified = true;
+                    }
+                }
+                catch (verifyErr) {
+                    logger_1.default.warn(`Payment callback auto-verification notice: ${verifyErr.message}`);
+                    try {
+                        const matchedOrder = await order_model_1.default.findOne({
+                            $or: [
+                                { 'paymentResult.id': reference },
+                                { _id: reference.includes('_') ? reference.split('_')[1] : reference },
+                            ],
+                        });
+                        if (matchedOrder) {
+                            orderId = matchedOrder._id.toString();
+                            isVerified = matchedOrder.paymentStatus === 'completed';
+                        }
+                    }
+                    catch { }
+                }
+            }
+            // 2. Resolve target Web App Redirect URL (support https://goeatone.com and https://go-eat-webapp.vercel.app)
+            let targetBaseUrl = 'https://goeatone.com';
+            const referer = String(req.headers.referer || req.headers.origin || '').toLowerCase();
+            if (customRedirect) {
+                try {
+                    const parsed = new URL(customRedirect);
+                    if (parsed.hostname.includes('goeatone.com') ||
+                        parsed.hostname.includes('vercel.app') ||
+                        parsed.hostname.includes('localhost')) {
+                        targetBaseUrl = parsed.origin;
+                    }
+                }
+                catch {
+                    if (customRedirect.startsWith('http://') || customRedirect.startsWith('https://')) {
+                        targetBaseUrl = customRedirect.replace(/\/$/, '');
+                    }
+                }
+            }
+            else if (referer.includes('vercel.app')) {
+                targetBaseUrl = 'https://go-eat-webapp.vercel.app';
+            }
+            else if (referer.includes('goeatone.com')) {
+                targetBaseUrl = 'https://goeatone.com';
+            }
+            else if (referer.includes('localhost')) {
+                targetBaseUrl = 'http://localhost:3000';
+            }
+            const cleanBase = targetBaseUrl.replace(/\/$/, '');
+            const queryParams = `status=success&reference=${encodeURIComponent(reference)}${orderId ? `&orderId=${encodeURIComponent(orderId)}` : ''}&provider=${encodeURIComponent(provider)}`;
+            const targetRedirectUrl = `${cleanBase}/checkout?${queryParams}`;
+            const vercelRedirectUrl = `https://go-eat-webapp.vercel.app/checkout?${queryParams}`;
+            const goeatoneRedirectUrl = `https://goeatone.com/checkout?${queryParams}`;
             const html = `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta http-equiv="refresh" content="2;url=${targetRedirectUrl}">
   <title>Payment Completed - Go-Eat</title>
   <style>
     * { box-sizing: border-box; }
@@ -386,45 +452,99 @@ class PaymentController {
     .card {
       background: rgba(255, 255, 255, 0.08);
       border: 1px solid rgba(255, 255, 255, 0.16);
-      border-radius: 24px;
-      padding: 36px 24px;
+      border-radius: 28px;
+      padding: 40px 28px;
       width: 100%;
-      max-width: 360px;
-      backdrop-filter: blur(12px);
-      box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+      max-width: 420px;
+      backdrop-filter: blur(14px);
+      box-shadow: 0 24px 48px rgba(0,0,0,0.35);
     }
     .icon-badge {
-      width: 64px;
-      height: 64px;
-      border-radius: 32px;
+      width: 68px;
+      height: 68px;
+      border-radius: 34px;
       background: #10B981;
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      font-size: 32px;
+      font-size: 34px;
       margin-bottom: 20px;
-      box-shadow: 0 10px 20px rgba(16, 185, 129, 0.3);
+      box-shadow: 0 10px 24px rgba(16, 185, 129, 0.35);
     }
     h1 {
-      font-size: 22px;
+      font-size: 24px;
       margin: 0 0 10px;
-      font-weight: 700;
+      font-weight: 800;
+      letter-spacing: -0.5px;
     }
     p {
-      margin: 0 0 16px;
+      margin: 0 0 18px;
       font-size: 14px;
       color: #D1D5DB;
-      line-height: 1.5;
+      line-height: 1.55;
     }
     .ref-chip {
       display: inline-block;
-      background: rgba(0,0,0,0.25);
-      border: 1px solid rgba(255,255,255,0.1);
-      padding: 6px 14px;
+      background: rgba(0,0,0,0.3);
+      border: 1px solid rgba(255,255,255,0.12);
+      padding: 7px 16px;
       border-radius: 12px;
       font-family: monospace;
-      font-size: 12px;
+      font-size: 11px;
       color: #34D399;
+      margin-bottom: 24px;
+      word-break: break-all;
+    }
+    .progress-bar-container {
+      width: 100%;
+      height: 4px;
+      background: rgba(255, 255, 255, 0.12);
+      border-radius: 2px;
+      overflow: hidden;
+      margin-bottom: 22px;
+    }
+    .progress-bar {
+      width: 100%;
+      height: 100%;
+      background: #10B981;
+      animation: fillProgress 1.6s ease-in-out infinite;
+    }
+    @keyframes fillProgress {
+      0% { transform: translateX(-100%); }
+      100% { transform: translateX(100%); }
+    }
+    .btn-return {
+      display: block;
+      width: 100%;
+      background: #10B981;
+      color: #FFFFFF;
+      font-weight: 700;
+      font-size: 14px;
+      padding: 14px 20px;
+      border-radius: 16px;
+      text-decoration: none;
+      transition: background 0.2s, transform 0.1s;
+      margin-bottom: 14px;
+    }
+    .btn-return:hover {
+      background: #059669;
+    }
+    .btn-return:active {
+      transform: scale(0.98);
+    }
+    .alt-links {
+      font-size: 11px;
+      color: #9CA3AF;
+      margin-top: 10px;
+    }
+    .alt-links a {
+      color: #34D399;
+      text-decoration: none;
+      font-weight: 600;
+      margin: 0 4px;
+    }
+    .alt-links a:hover {
+      text-decoration: underline;
     }
   </style>
 </head>
@@ -432,9 +552,42 @@ class PaymentController {
   <div class="card">
     <div class="icon-badge">✓</div>
     <h1>Payment Completed</h1>
-    <p>Your transaction has been processed by ${provider.toUpperCase()}. Returning you to Go-Eat to view your order...</p>
+    <p>Your payment has been successfully processed by ${provider.toUpperCase()}. Redirecting you back to Go-Eat to confirm your order...</p>
+    
     ${reference ? `<div class="ref-chip">Ref: ${reference}</div>` : ''}
+
+    <div class="progress-bar-container">
+      <div class="progress-bar"></div>
+    </div>
+
+    <a href="${targetRedirectUrl}" class="btn-return">
+      Return to Go-Eat Web App →
+    </a>
+
+    <div class="alt-links">
+      <span>Alternative Web Links:</span><br>
+      <a href="${goeatoneRedirectUrl}">goeatone.com</a> |
+      <a href="${vercelRedirectUrl}">go-eat-webapp.vercel.app</a>
+    </div>
   </div>
+
+  <script>
+    // Automatic redirection
+    const redirectUrl = "${targetRedirectUrl}";
+    const orderId = "${orderId}";
+
+    // Deep link attempt for mobile app webviews
+    if (orderId && /mobile|android|iphone/i.test(navigator.userAgent)) {
+      try {
+        window.location.href = "goeat://order-tracking/" + orderId;
+      } catch (e) {}
+    }
+
+    // Web browser redirection
+    setTimeout(function() {
+      window.location.replace(redirectUrl);
+    }, 1200);
+  </script>
 </body>
 </html>`;
             res.setHeader('Content-Type', 'text/html');

@@ -77,12 +77,17 @@ class RestaurantService {
           ? doc.promos 
           : attachedPromos;
 
+        const isVerified = Boolean(doc.isVerified === true || (doc.status === RestaurantStatus.ACTIVE && doc.isVerified !== false));
+        const isComingSoon = Boolean(doc.status === RestaurantStatus.PENDING || !isVerified);
+
         return {
           ...doc,
           hasPromo: effectiveHasPromo,
           acceptsPromos: Boolean(doc.acceptsPromos || attachedPromos.length > 0),
           promoText: effectivePromoText || '',
           promos: mergedPromos,
+          isVerified,
+          isComingSoon,
         };
       });
     } catch (err) {
@@ -128,7 +133,9 @@ class RestaurantService {
    * Get all restaurants with filters
    */
   async getAllRestaurants(filters: any = {}): Promise<any[]> {
-    const query: any = { status: RestaurantStatus.ACTIVE };
+    const query: any = { 
+      status: filters.status || { $in: [RestaurantStatus.ACTIVE, RestaurantStatus.PENDING] } 
+    };
 
     // Country / Location filter
     if (filters.country || filters.countryCode) {
@@ -223,7 +230,9 @@ class RestaurantService {
     countryFilters?: { country?: string; countryCode?: string },
     options: { sort?: string; shuffle?: boolean } = {}
   ): Promise<any[]> {
-    const geoQuery: any = { status: RestaurantStatus.ACTIVE };
+    const geoQuery: any = { 
+      status: { $in: [RestaurantStatus.ACTIVE, RestaurantStatus.PENDING] } 
+    };
     if (countryFilters?.country || countryFilters?.countryCode) {
       const countryFilter = buildCountryFilter(countryFilters.country, countryFilters.countryCode);
       if (countryFilter.$or && countryFilter.$or.length > 0) {

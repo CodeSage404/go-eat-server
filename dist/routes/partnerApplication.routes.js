@@ -114,6 +114,14 @@ const router = (0, express_1.Router)();
  *               cacUrl:
  *                 type: string
  *                 example: https://res.cloudinary.com/demo/image/upload/cac.jpg
+ *               businessImageUrl:
+ *                 type: string
+ *                 description: Optional business profile or logo image URL
+ *                 example: https://res.cloudinary.com/demo/image/upload/logo.jpg
+ *               coverImageUrl:
+ *                 type: string
+ *                 description: Optional restaurant cover or storefront banner image URL
+ *                 example: https://res.cloudinary.com/demo/image/upload/cover.jpg
  *     responses:
  *       201:
  *         description: Application submitted successfully
@@ -122,25 +130,27 @@ const router = (0, express_1.Router)();
  *             schema:
  *               type: object
  *               properties:
- *                 status:
- *                   type: string
- *                   example: success
- *                 message:
- *                   type: string
- *                 data:
- *                   type: object
- *                   properties:
- *                     application:
- *                       type: object
+ *               status:
+ *                 type: string
+ *                 example: success
+ *               message:
+ *                 type: string
+ *               data:
+ *                 type: object
+ *                 properties:
+ *                   application:
+ *                     type: object
  *       400:
  *         description: Validation error or missing required fields
- *       500:
- *         description: Internal server error
+ *         500:
+ *           description: Internal server error
  */
 router.post('/apply', upload_1.upload.fields([
     { name: 'nin', maxCount: 1 },
     { name: 'foodHygiene', maxCount: 1 },
     { name: 'cac', maxCount: 1 },
+    { name: 'businessImage', maxCount: 1 },
+    { name: 'coverImage', maxCount: 1 },
 ]), partnerApplication_controller_1.applyForPartnership);
 /**
  * @openapi

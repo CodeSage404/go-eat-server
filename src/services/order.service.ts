@@ -1,7 +1,7 @@
 import crypto from 'crypto';
 import mongoose from 'mongoose';
 import Order, { IOrder, OrderStatus, PaymentMethod } from '../models/order.model';
-import Restaurant from '../models/restaurant.model';
+import Restaurant, { RestaurantStatus } from '../models/restaurant.model';
 import FoodItem from '../models/foodItem.model';
 import Setting from '../models/setting.model';
 import User, { UserRole, UserStatus } from '../models/user.model';
@@ -27,6 +27,13 @@ class OrderService {
     const restaurant = await Restaurant.findById(data.restaurant);
     if (!restaurant) {
       throw new AppError('Restaurant not found', 404);
+    }
+
+    if (restaurant.status !== RestaurantStatus.ACTIVE || (restaurant as any).isVerified === false) {
+      throw new AppError(
+        `${restaurant.name} is coming soon and is not currently accepting orders. Checkout will be enabled once the outlet is verified by admin.`,
+        400
+      );
     }
 
     const isPickup = data.orderType === 'pickup';
@@ -168,13 +175,18 @@ class OrderService {
 
       totalTimeInSeconds = (travelData.durationValue || Math.round(finalDistKm * 3 * 60)) + prepTimeInSeconds;
 
-      // Delivery fee calculation: fixed vs dynamic distance
+      // Delivery fee calculation: fixed vs dynamic distance (capped to max delivery distance to prevent fee spikes)
       const isFixedMode = setting?.deliveryFeeCalculationMode === 'fixed';
       const fixedFee = setting?.fixedDeliveryFee ?? 500;
-
-      data.deliveryFee = isFixedMode
+      const maxDistanceCap = Number(setting?.maxDeliveryDistance) || 25;
+      const effectiveDistKm = Math.min(finalDistKm, maxDistanceCap);
+      const calculatedFee = isFixedMode
         ? Math.round(fixedFee)
-        : Math.round(baseFee + (finalDistKm * feePerKm));
+        : Math.round(baseFee + (effectiveDistKm * feePerKm));
+
+      // Absolute safety cap on single-outlet delivery fee (max ₦2,500 or maxDistanceCap * feePerKm)
+      const maxDeliveryFeeCap = Math.max(2500, Math.round(baseFee + (maxDistanceCap * feePerKm)));
+      data.deliveryFee = Math.min(calculatedFee, maxDeliveryFeeCap);
       data.distanceKm = finalDistKm;
     } else if (!isPickup) {
       const isFixedMode = setting?.deliveryFeeCalculationMode === 'fixed';
@@ -1379,6 +1391,13 @@ class OrderService {
         throw new AppError(`Restaurant not found: ${outletItem.restaurantId}`, 404);
       }
 
+      if (restDoc.status !== RestaurantStatus.ACTIVE || (restDoc as any).isVerified === false) {
+        throw new AppError(
+          `${restDoc.name} is coming soon and is not currently accepting orders. Checkout will be enabled once the outlet is verified by admin.`,
+          400
+        );
+      }
+
       const restCoords = restDoc.location?.coordinates;
       let haversineDistKm = 0;
       let withinRadius = true;
@@ -1393,9 +1412,13 @@ class OrderService {
       }
 
       // Delivery fee computation: either fixed fee or dynamic distance (baseFee + distance * perKm)
-      const singleTripFee = isFixedMode
+      const maxDistanceCap = Number(setting?.maxDeliveryDistance) || 25;
+      const effectiveDistKm = Math.min(haversineDistKm, maxDistanceCap);
+      const computedFee = isFixedMode
         ? Math.round(fixedFee)
-        : Math.round(baseFee + (haversineDistKm * feePerKm));
+        : Math.round(baseFee + (effectiveDistKm * feePerKm));
+      const maxDeliveryFeeCap = Math.max(2500, Math.round(baseFee + (maxDistanceCap * feePerKm)));
+      const singleTripFee = Math.min(computedFee, maxDeliveryFeeCap);
 
       outletQuotes.push({
         restaurantId: outletItem.restaurantId,

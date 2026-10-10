@@ -58,6 +58,7 @@ export interface IRestaurant extends Document {
   isTopSpot: boolean;
   isSponsored: boolean;
   popularityScore: number;
+  isVerified?: boolean;
   status: RestaurantStatus;
   outletType: 'Restaurant' | 'Smokey-Wheels' | 'Smokey Wheel' | 'Signature Chef' | 'Grocery' | 'Convenience' | 'Specialty Store' | 'Health & Wellness' | 'Pet Shop' | 'Flower Shop' | 'Lifestyle';
   specialtySubcategory?: 'Health & Wellness' | 'Pet Shop' | 'Flower Shop' | string;
@@ -279,6 +280,11 @@ const restaurantSchema = new Schema<IRestaurant>(
     popularityScore: {
       type: Number,
       default: 0,
+    },
+    isVerified: {
+      type: Boolean,
+      default: false,
+      index: true,
     },
     status: {
       type: String,

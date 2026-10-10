@@ -39,7 +39,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const crypto_1 = __importDefault(require("crypto"));
 const mongoose_1 = __importDefault(require("mongoose"));
 const order_model_1 = __importStar(require("../models/order.model"));
-const restaurant_model_1 = __importDefault(require("../models/restaurant.model"));
+const restaurant_model_1 = __importStar(require("../models/restaurant.model"));
 const foodItem_model_1 = __importDefault(require("../models/foodItem.model"));
 const setting_model_1 = __importDefault(require("../models/setting.model"));
 const user_model_1 = __importStar(require("../models/user.model"));
@@ -62,6 +62,9 @@ class OrderService {
         const restaurant = await restaurant_model_1.default.findById(data.restaurant);
         if (!restaurant) {
             throw new appError_1.default('Restaurant not found', 404);
+        }
+        if (restaurant.status !== restaurant_model_1.RestaurantStatus.ACTIVE || restaurant.isVerified === false) {
+            throw new appError_1.default(`${restaurant.name} is coming soon and is not currently accepting orders. Checkout will be enabled once the outlet is verified by admin.`, 400);
         }
         const isPickup = data.orderType === 'pickup';
         // 1. Resolve and Validate Coordinates
@@ -173,12 +176,17 @@ class OrderService {
             }
             */
             totalTimeInSeconds = (travelData.durationValue || Math.round(finalDistKm * 3 * 60)) + prepTimeInSeconds;
-            // Delivery fee calculation: fixed vs dynamic distance
+            // Delivery fee calculation: fixed vs dynamic distance (capped to max delivery distance to prevent fee spikes)
             const isFixedMode = setting?.deliveryFeeCalculationMode === 'fixed';
             const fixedFee = setting?.fixedDeliveryFee ?? 500;
-            data.deliveryFee = isFixedMode
+            const maxDistanceCap = Number(setting?.maxDeliveryDistance) || 25;
+            const effectiveDistKm = Math.min(finalDistKm, maxDistanceCap);
+            const calculatedFee = isFixedMode
                 ? Math.round(fixedFee)
-                : Math.round(baseFee + (finalDistKm * feePerKm));
+                : Math.round(baseFee + (effectiveDistKm * feePerKm));
+            // Absolute safety cap on single-outlet delivery fee (max ₦2,500 or maxDistanceCap * feePerKm)
+            const maxDeliveryFeeCap = Math.max(2500, Math.round(baseFee + (maxDistanceCap * feePerKm)));
+            data.deliveryFee = Math.min(calculatedFee, maxDeliveryFeeCap);
             data.distanceKm = finalDistKm;
         }
         else if (!isPickup) {
@@ -1130,6 +1138,9 @@ class OrderService {
             if (!restDoc) {
                 throw new appError_1.default(`Restaurant not found: ${outletItem.restaurantId}`, 404);
             }
+            if (restDoc.status !== restaurant_model_1.RestaurantStatus.ACTIVE || restDoc.isVerified === false) {
+                throw new appError_1.default(`${restDoc.name} is coming soon and is not currently accepting orders. Checkout will be enabled once the outlet is verified by admin.`, 400);
+            }
             const restCoords = restDoc.location?.coordinates;
             let haversineDistKm = 0;
             let withinRadius = true;
@@ -1139,9 +1150,13 @@ class OrderService {
                 withinRadius = haversineDistKm <= maxRadius;
             }
             // Delivery fee computation: either fixed fee or dynamic distance (baseFee + distance * perKm)
-            const singleTripFee = isFixedMode
+            const maxDistanceCap = Number(setting?.maxDeliveryDistance) || 25;
+            const effectiveDistKm = Math.min(haversineDistKm, maxDistanceCap);
+            const computedFee = isFixedMode
                 ? Math.round(fixedFee)
-                : Math.round(baseFee + (haversineDistKm * feePerKm));
+                : Math.round(baseFee + (effectiveDistKm * feePerKm));
+            const maxDeliveryFeeCap = Math.max(2500, Math.round(baseFee + (maxDistanceCap * feePerKm)));
+            const singleTripFee = Math.min(computedFee, maxDeliveryFeeCap);
             outletQuotes.push({
                 restaurantId: outletItem.restaurantId,
                 restaurantName: restDoc.name,

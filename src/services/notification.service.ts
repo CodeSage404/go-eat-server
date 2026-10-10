@@ -74,10 +74,11 @@ class NotificationService {
       const user = await User.findById(userId);
       const pushAllowed = user && user.fcmToken && user.notificationsEnabled !== false && user.notificationPreferences?.push !== false;
       if (pushAllowed && user && user.fcmToken) {
-        const isCallNotif = data?.type === 'incoming_call' || data?.isVoip;
+        const isCallNotif = data?.type === 'incoming_call' || data?.type === 'incoming_zego_call' || data?.isVoip;
+        const isMissedCall = data?.type === 'missed_call';
         const isVendor = user.role === 'vendor';
         const isRider = user.role === 'rider';
-        const channelId = isCallNotif
+        const channelId = (isCallNotif || isMissedCall)
           ? 'incoming_calls'
           : (isVendor && (data?.type === 'NEW_ORDER' || data?.type === 'ORDER_UPDATE'))
           ? 'order_alerts'
@@ -105,6 +106,7 @@ class NotificationService {
             channelId,
             badge: 1,
             _displayInForeground: true,
+            ...(isCallNotif ? { categoryId: 'INCOMING_CALL' } : (isMissedCall ? { categoryId: 'MISSED_CALL' } : {})),
           };
           const response = await fetch('https://exp.host/--/api/v2/push/send', {
             method: 'POST',
@@ -127,7 +129,9 @@ class NotificationService {
           logger.warn(`⚠️ User ${userId} has a raw 64-char APNs token (${user.fcmToken.substring(0, 8)}...). Firebase Admin cannot deliver directly to raw APNs tokens without FCM mapping. Client must register with ExpoPushToken.`);
         } else if (admin.apps?.length) {
           // Ensure all data values are strictly strings for FCM specifications
-          const stringifiedData: Record<string, string> = { click_action: 'FLUTTER_NOTIFICATION_CLICK' };
+          const stringifiedData: Record<string, string> = {
+            click_action: isCallNotif ? 'INCOMING_CALL' : (isMissedCall ? 'MISSED_CALL' : 'FLUTTER_NOTIFICATION_CLICK'),
+          };
           if (data && typeof data === 'object') {
             for (const [k, v] of Object.entries(data)) {
               if (v !== undefined && v !== null) {
@@ -143,7 +147,12 @@ class NotificationService {
             token: user.fcmToken,
             android: {
               priority: 'high',
-              notification: { sound: 'default', channelId, priority: 'max' },
+              notification: {
+                sound: 'default',
+                channelId,
+                priority: 'max',
+                ...(isCallNotif ? { clickAction: 'INCOMING_CALL' } : {}),
+              },
             },
             apns: {
               payload: {
@@ -151,6 +160,7 @@ class NotificationService {
                   sound: 'default',
                   badge: 1,
                   'content-available': 1,
+                  ...(isCallNotif ? { category: 'INCOMING_CALL' } : {}),
                 },
               },
             },

@@ -16,6 +16,7 @@ const router = Router();
  *     tags:
  *       - Payments
  *     summary: Payment Gateway Redirect Callback Page
+ *     description: Handles incoming customer redirect from Paystack, Flutterwave, or Stripe, verifies payment status, updates order records, and redirects customer back to the web application (goeatone.com or go-eat-webapp.vercel.app).
  *     parameters:
  *       - in: query
  *         name: reference
@@ -23,13 +24,23 @@ const router = Router();
  *           type: string
  *         description: Transaction reference
  *       - in: query
+ *         name: trxref
+ *         schema:
+ *           type: string
+ *         description: Alternative Paystack transaction reference
+ *       - in: query
+ *         name: redirect_url
+ *         schema:
+ *           type: string
+ *         description: Destination URL to redirect back to (e.g. https://goeatone.com or https://go-eat-webapp.vercel.app)
+ *       - in: query
  *         name: provider
  *         schema:
  *           type: string
  *         description: Payment provider (paystack, flutterwave, stripe)
  *     responses:
  *       200:
- *         description: Rendered HTML callback confirmation page
+ *         description: Rendered HTML callback confirmation page with automatic meta/JS redirect
  */
 router.get('/callback', paymentController.handlePaymentCallback);
 

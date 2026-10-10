@@ -102,6 +102,14 @@ const partnerApplicationSchema = new mongoose_1.Schema({
         type: String,
         default: '',
     },
+    businessImageUrl: {
+        type: String,
+        default: '',
+    },
+    coverImageUrl: {
+        type: String,
+        default: '',
+    },
     status: {
         type: String,
         enum: ['pending', 'under_review', 'approved', 'rejected'],

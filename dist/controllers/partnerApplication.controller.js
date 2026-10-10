@@ -57,6 +57,8 @@ exports.applyForPartnership = (0, catchAsync_1.catchAsync)(async (req, res) => {
     let ninUrl = req.body.ninUrl || req.body['ninUrl'] || '';
     let foodHygieneUrl = req.body.foodHygieneUrl || req.body['foodHygieneUrl'] || '';
     let cacUrl = req.body.cacUrl || req.body['cacUrl'] || '';
+    let businessImageUrl = req.body.businessImageUrl || req.body['businessImageUrl'] || '';
+    let coverImageUrl = req.body.coverImageUrl || req.body['coverImageUrl'] || '';
     if (files) {
         if (files['nin'] && files['nin'][0]) {
             ninUrl = files['nin'][0].path;
@@ -66,6 +68,12 @@ exports.applyForPartnership = (0, catchAsync_1.catchAsync)(async (req, res) => {
         }
         if (files['cac'] && files['cac'][0]) {
             cacUrl = files['cac'][0].path;
+        }
+        if (files['businessImage'] && files['businessImage'][0]) {
+            businessImageUrl = files['businessImage'][0].path;
+        }
+        if (files['coverImage'] && files['coverImage'][0]) {
+            coverImageUrl = files['coverImage'][0].path;
         }
     }
     const resolvedOwnerName = ownerName || `${firstName || ''} ${lastName || ''}`.trim() || 'Valued Partner';
@@ -133,6 +141,10 @@ exports.applyForPartnership = (0, catchAsync_1.catchAsync)(async (req, res) => {
                 phone: normalizedPhone,
                 phoneNumber: normalizedPhone,
                 phoneContact: normalizedPhone,
+                images: {
+                    logo: businessImageUrl || '',
+                    cover: coverImageUrl || '',
+                },
                 verificationDocuments: {
                     ninUrl: ninUrl || '',
                     foodHygieneUrl: foodHygieneUrl || '',
@@ -161,6 +173,8 @@ exports.applyForPartnership = (0, catchAsync_1.catchAsync)(async (req, res) => {
             ninUrl,
             foodHygieneUrl,
             cacUrl,
+            businessImageUrl,
+            coverImageUrl,
             status: 'pending',
         });
         // Dispatch Welcome Partner email with generated credentials
@@ -205,6 +219,8 @@ exports.applyForPartnership = (0, catchAsync_1.catchAsync)(async (req, res) => {
         ninUrl,
         foodHygieneUrl,
         cacUrl,
+        businessImageUrl,
+        coverImageUrl,
         status: 'pending',
     });
     // Dispatch acknowledgement email to the applicant using EJS template

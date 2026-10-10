@@ -95,6 +95,115 @@ class ZegoService {
   }
 
   /**
+   * Dynamically resolves the communication recipient according to the order lifecycle:
+   * - Kitchen / Prep stage: Customer <-> Restaurant/Vendor
+   * - Courier stage: Customer <-> Delivery Courier (Rider)
+   * - Explicit target requests are preserved.
+   */
+  private resolveOrderCommunication(
+    order: any,
+    role: 'customer' | 'rider' | 'vendor',
+    explicitTarget?: 'customer' | 'rider' | 'restaurant'
+  ): { target: 'customer' | 'rider' | 'restaurant'; recipientUserId: string | null; recipientIdentity: string; restaurantId: string | null } {
+    if (!order) {
+      return { target: 'customer', recipientUserId: null, recipientIdentity: '', restaurantId: null };
+    }
+
+    const riderUserId = order.rider ? ((order.rider as any)._id?.toString() || order.rider.toString()) : null;
+    const customerUserId = order.customer ? ((order.customer as any)._id?.toString() || order.customer.toString()) : null;
+
+    let vendorUserId: string | null = null;
+    let restaurantId: string | null = null;
+    if (order.restaurant) {
+      restaurantId = (order.restaurant as any)._id?.toString() || order.restaurant.toString();
+      const owner = (order.restaurant as any).owner;
+      if (owner) {
+        vendorUserId = (owner as any)._id?.toString() || owner.toString();
+      } else {
+        vendorUserId = restaurantId;
+      }
+    }
+
+    const orderStatus = String(order.status || '').toLowerCase();
+    const isCourierStage = [
+      'courier_assigned',
+      'courier_collected',
+      'out_for_delivery',
+      'delivered',
+      'completed',
+      'in_transit',
+      'on_the_way',
+    ].includes(orderStatus) || !!riderUserId;
+
+    let target = explicitTarget;
+
+    if (role === 'customer') {
+      if (!target || (target as string) === 'auto') {
+        target = isCourierStage ? 'rider' : 'restaurant';
+      }
+
+      if (target === 'restaurant') {
+        return {
+          target: 'restaurant',
+          recipientUserId: vendorUserId,
+          recipientIdentity: `vendor_${vendorUserId || restaurantId || 'unknown'}`,
+          restaurantId,
+        };
+      } else {
+        return {
+          target: 'rider',
+          recipientUserId: riderUserId,
+          recipientIdentity: `rider_${riderUserId || 'unassigned'}`,
+          restaurantId,
+        };
+      }
+    }
+
+    if (role === 'vendor') {
+      if (!target || (target as string) === 'auto') {
+        target = 'customer';
+      }
+
+      if (target === 'rider') {
+        return {
+          target: 'rider',
+          recipientUserId: riderUserId,
+          recipientIdentity: `rider_${riderUserId || 'unassigned'}`,
+          restaurantId,
+        };
+      } else {
+        return {
+          target: 'customer',
+          recipientUserId: customerUserId,
+          recipientIdentity: `customer_${customerUserId || 'unknown'}`,
+          restaurantId,
+        };
+      }
+    }
+
+    // role === 'rider'
+    if (!target || (target as string) === 'auto') {
+      target = 'customer';
+    }
+
+    if (target === 'restaurant') {
+      return {
+        target: 'restaurant',
+        recipientUserId: vendorUserId,
+        recipientIdentity: `vendor_${vendorUserId || restaurantId || 'unknown'}`,
+        restaurantId,
+      };
+    } else {
+      return {
+        target: 'customer',
+        recipientUserId: customerUserId,
+        recipientIdentity: `customer_${customerUserId || 'unknown'}`,
+        restaurantId,
+      };
+    }
+  }
+
+  /**
    * Generates a ZEGOCLOUD Call token and session metadata for an order call
    */
   async generateCallToken(
@@ -115,38 +224,13 @@ class ZegoService {
     }
 
     const callerIdentity = `${role}_${userId}`;
-    let recipientIdentity = '';
-    let recipientUserId: string | null = null;
     const roomId = orderId ? `goeat_order_${orderId}` : `goeat_user_${userId}`;
 
-    if (order) {
-      if (role === 'vendor') {
-        if (target === 'rider') {
-          recipientIdentity = `rider_${order.rider ? (order.rider as any)._id : 'unassigned'}`;
-          recipientUserId = order.rider ? (order.rider as any)._id?.toString() : null;
-        } else {
-          recipientIdentity = `customer_${order.customer ? (order.customer as any)._id || order.customer : 'unknown'}`;
-          recipientUserId = order.customer ? ((order.customer as any)._id?.toString() || order.customer.toString()) : null;
-        }
-      } else if (role === 'customer') {
-        if (target === 'restaurant') {
-          recipientIdentity = `vendor_${(order.restaurant as any)?.owner || order.restaurant}`;
-          recipientUserId = (order.restaurant as any)?.owner ? (order.restaurant as any).owner.toString() : null;
-        } else {
-          recipientIdentity = `rider_${order.rider ? (order.rider as any)._id : 'unassigned'}`;
-          recipientUserId = order.rider ? (order.rider as any)._id?.toString() : null;
-        }
-      } else {
-        // rider calling
-        if (target === 'restaurant') {
-          recipientIdentity = `vendor_${(order.restaurant as any)?.owner || order.restaurant}`;
-          recipientUserId = (order.restaurant as any)?.owner ? (order.restaurant as any).owner.toString() : null;
-        } else {
-          recipientIdentity = `customer_${order.customer ? (order.customer as any)._id || order.customer : 'unknown'}`;
-          recipientUserId = order.customer ? ((order.customer as any)._id?.toString() || order.customer.toString()) : null;
-        }
-      }
-    }
+    const { target: resolvedTarget, recipientUserId, recipientIdentity } = this.resolveOrderCommunication(
+      order,
+      role,
+      target
+    );
 
     const riderData = order?.rider ? {
       name: (order.rider as any).name || 'Delivery Courier',
@@ -181,8 +265,11 @@ class ZegoService {
       JSON.stringify({ room_id: roomId })
     );
 
+    let callerName = role === 'vendor' ? (order?.restaurant?.name || 'Restaurant Outlet') : (role === 'rider' ? 'Delivery Courier' : 'Customer');
     const callerUser = await User.findById(userId).select('name phoneNumber profileImage');
-    const callerName = callerUser?.name || (role === 'rider' ? 'Delivery Courier' : 'Customer');
+    if (callerUser?.name) {
+      callerName = role === 'vendor' ? (order?.restaurant?.name || callerUser.name) : callerUser.name;
+    }
 
     return {
       token,
@@ -193,6 +280,7 @@ class ZegoService {
       userName: callerName,
       recipientIdentity,
       recipientUserId,
+      resolvedTarget,
       orderId: orderId || '',
       rider: riderData,
       customer: customerData,
@@ -212,65 +300,100 @@ class ZegoService {
     const order = await Order.findById(orderId)
       .populate('rider', 'name phoneNumber profilePicture profileImage')
       .populate('customer', 'name phoneNumber profilePicture profileImage')
-      .populate('restaurant', 'name phoneContact logo owner');
+      .populate('restaurant', 'name phoneContact businessPhone logo owner');
     if (!order) return;
 
-    let recipientUserId: string | null = null;
-    let recipientIdentity = '';
+    const { target: resolvedTarget, recipientUserId, restaurantId } = this.resolveOrderCommunication(
+      order,
+      role,
+      target
+    );
 
-    if (role === 'rider') {
-      recipientUserId = order.customer ? ((order.customer as any)._id?.toString() || order.customer.toString()) : null;
-      recipientIdentity = `customer_${recipientUserId}`;
-    } else if (role === 'customer') {
-      recipientUserId = order.rider ? (order.rider as any)._id?.toString() : null;
-      recipientIdentity = `rider_${recipientUserId}`;
+    if (!recipientUserId && !restaurantId) {
+      logger.warn(`[ZegoService] No recipient resolved for order ${orderId}, role: ${role}, target: ${target}`);
+      return;
     }
 
-    if (!recipientUserId) return;
-
-    const cooldownKey = `zego_${orderId}_${recipientUserId}`;
+    // Debounce duplicate rapid taps (2 seconds), NOT 20 seconds, to prevent dropping retry calls
+    const cooldownKey = `zego_${orderId}_${callerUserId}_${recipientUserId}`;
     const now = Date.now();
     const lastSent = zegoLastNotificationMap.get(cooldownKey) || 0;
-    if (now - lastSent < 20000) return;
+    if (now - lastSent < 2000) return;
     zegoLastNotificationMap.set(cooldownKey, now);
 
-    const callerUser = await User.findById(callerUserId).select('name phoneNumber profileImage');
-    const callerName = callerUser?.name || (role === 'rider' ? 'Delivery Courier' : 'Customer');
-    const callerImage = callerUser?.profileImage;
-    const callerPhone = callerUser?.phoneNumber;
+    let callerName = 'Go-Eat Connection';
+    let callerImage: string | undefined;
+    let callerPhone: string | undefined;
+
+    if (role === 'vendor') {
+      callerName = (order.restaurant as any)?.name || 'Restaurant Outlet';
+      callerImage = (order.restaurant as any)?.logo;
+      callerPhone = (order.restaurant as any)?.phoneContact || (order.restaurant as any)?.businessPhone;
+    } else if (role === 'rider') {
+      callerName = (order.rider as any)?.name || 'Delivery Courier';
+      callerImage = (order.rider as any)?.profilePicture || (order.rider as any)?.profileImage;
+      callerPhone = (order.rider as any)?.phoneNumber;
+    } else {
+      callerName = (order.customer as any)?.name || 'Customer';
+      callerImage = (order.customer as any)?.profilePicture || (order.customer as any)?.profileImage;
+      callerPhone = (order.customer as any)?.phoneNumber;
+    }
+
+    if (!callerName || callerName === 'Go-Eat Connection') {
+      const callerUser = await User.findById(callerUserId).select('name phoneNumber profileImage');
+      if (callerUser?.name) callerName = callerUser.name;
+      if (callerUser?.profileImage) callerImage = callerUser.profileImage;
+      if (callerUser?.phoneNumber) callerPhone = callerUser.phoneNumber;
+    }
+
     const displayOrderId = order._id.toString().slice(-6).toUpperCase();
     const roomId = `goeat_order_${orderId}`;
 
-    // Real-time socket event for immediate ringing UI
-    emitToUser(recipientUserId, 'incoming_zego_call', {
+    const callPayload = {
       orderId,
       roomId,
       role,
-      target,
+      target: resolvedTarget,
       callerId: `${role}_${callerUserId}`,
       callerName,
       callerImage,
       callerPhone,
       displayOrderId,
-    });
+      timestamp: now,
+    };
 
-    // FCM Push Notification fallback
-    notificationService.sendNotification(
-      recipientUserId,
-      'Incoming Voice Call 📞',
-      `${callerName} is calling you regarding Order #${displayOrderId}`,
-      {
-        type: 'incoming_zego_call',
-        orderId,
-        roomId,
-        callerId: `${role}_${callerUserId}`,
-        callerName,
-        callerImage,
-        displayOrderId,
-      }
-    ).catch((err) => {
-      logger.warn('[ZegoService] Failed to send push notification:', err);
-    });
+    // Real-time socket event for immediate ringing UI
+    if (recipientUserId) {
+      emitToUser(recipientUserId, 'incoming_zego_call', callPayload);
+      emitToUser(recipientUserId, 'incoming_call', callPayload);
+    }
+    // If recipient is a restaurant/vendor, also emit to restaurant room to cover staff/tablet sockets
+    if (resolvedTarget === 'restaurant' && restaurantId && restaurantId !== recipientUserId) {
+      emitToUser(restaurantId, 'incoming_zego_call', callPayload);
+      emitToUser(restaurantId, 'incoming_call', callPayload);
+    }
+
+    // High Priority Push Notification fallback with VoIP flag
+    if (recipientUserId) {
+      notificationService.sendNotification(
+        recipientUserId,
+        'Incoming Voice Call 📞',
+        `${callerName} is calling you regarding Order #${displayOrderId}`,
+        {
+          type: 'incoming_zego_call',
+          isVoip: true,
+          orderId,
+          roomId,
+          callerId: `${role}_${callerUserId}`,
+          callerName,
+          callerImage,
+          displayOrderId,
+          target: resolvedTarget,
+        }
+      ).catch((err) => {
+        logger.warn('[ZegoService] Failed to send push notification:', err);
+      });
+    }
   }
 
   /**
@@ -282,22 +405,30 @@ class ZegoService {
     role: 'customer' | 'rider' | 'vendor',
     target: 'customer' | 'rider' | 'restaurant'
   ): Promise<void> {
-    const order = await Order.findById(orderId);
+    const order = await Order.findById(orderId)
+      .populate('rider', '_id')
+      .populate('customer', '_id')
+      .populate('restaurant', 'owner');
     if (!order) return;
 
-    let recipientUserId: string | null = null;
-    if (role === 'rider') {
-      recipientUserId = order.customer ? ((order.customer as any)._id?.toString() || order.customer.toString()) : null;
-    } else if (role === 'customer') {
-      recipientUserId = target === 'restaurant'
-        ? (order.restaurant ? (order.restaurant as any)._id?.toString() || order.restaurant.toString() : null)
-        : (order.rider ? (order.rider as any)._id?.toString() || order.rider.toString() : null);
-    } else if (role === 'vendor') {
-      recipientUserId = order.customer ? ((order.customer as any)._id?.toString() || order.customer.toString()) : null;
+    const { target: resolvedTarget, recipientUserId, restaurantId } = this.resolveOrderCommunication(
+      order,
+      role,
+      target
+    );
+
+    // Clear debounce maps when call ends so next call connects instantly
+    if (recipientUserId) {
+      zegoLastNotificationMap.delete(`zego_${orderId}_${callerUserId}_${recipientUserId}`);
+      zegoLastNotificationMap.delete(`zego_${orderId}_${recipientUserId}_${callerUserId}`);
+      emitToUser(recipientUserId, 'zego_call_ended', {
+        orderId,
+        callerId: `${role}_${callerUserId}`,
+      });
     }
 
-    if (recipientUserId) {
-      emitToUser(recipientUserId, 'zego_call_ended', {
+    if (resolvedTarget === 'restaurant' && restaurantId && restaurantId !== recipientUserId) {
+      emitToUser(restaurantId, 'zego_call_ended', {
         orderId,
         callerId: `${role}_${callerUserId}`,
       });
@@ -313,50 +444,71 @@ class ZegoService {
     role: 'customer' | 'rider' | 'vendor',
     target: 'customer' | 'rider' | 'restaurant'
   ): Promise<void> {
-    const order = await Order.findById(orderId);
+    const order = await Order.findById(orderId)
+      .populate('rider', 'name phoneNumber profilePicture profileImage')
+      .populate('customer', 'name phoneNumber profilePicture profileImage')
+      .populate('restaurant', 'name owner logo');
     if (!order) return;
 
-    let recipientUserId: string | null = null;
-    if (role === 'rider') {
-      recipientUserId = order.customer ? ((order.customer as any)._id?.toString() || order.customer.toString()) : null;
-    } else if (role === 'customer') {
-      recipientUserId = target === 'restaurant'
-        ? (order.restaurant ? (order.restaurant as any)._id?.toString() || order.restaurant.toString() : null)
-        : (order.rider ? (order.rider as any)._id?.toString() || order.rider.toString() : null);
-    } else if (role === 'vendor') {
-      recipientUserId = order.customer ? ((order.customer as any)._id?.toString() || order.customer.toString()) : null;
-    }
+    const { target: resolvedTarget, recipientUserId, restaurantId } = this.resolveOrderCommunication(
+      order,
+      role,
+      target
+    );
 
-    if (!recipientUserId) return;
+    if (!recipientUserId && !restaurantId) return;
 
+    let callerName = role === 'vendor' ? (order.restaurant as any)?.name || 'Restaurant Outlet' : (role === 'rider' ? 'Delivery Courier' : 'Customer');
     const callerUser = await User.findById(callerUserId).select('name');
-    const callerName = callerUser?.name || (role === 'rider' ? 'Delivery Courier' : 'Customer');
+    if (callerUser?.name) {
+      callerName = role === 'vendor' ? (order.restaurant as any)?.name || callerUser.name : callerUser.name;
+    }
     const displayOrderId = order._id.toString().slice(-6).toUpperCase();
 
+    const callbackTarget = role === 'vendor' ? 'restaurant' : role;
+
     // 1. Send push notification for missed call
-    notificationService.sendNotification(
-      recipientUserId,
-      'Missed Call 📞',
-      `You missed a call from ${callerName} regarding Order #${displayOrderId}.`,
-      {
-        type: 'missed_call',
+    if (recipientUserId) {
+      notificationService.sendNotification(
+        recipientUserId,
+        'Missed Call 📞',
+        `You missed a call from ${callerName} regarding Order #${displayOrderId}. Tap to call back.`,
+        {
+          type: 'missed_call',
+          orderId,
+          callerId: `${role}_${callerUserId}`,
+          callerName,
+          callerRole: role,
+          target: callbackTarget,
+          displayOrderId,
+        }
+      ).catch((err) => {
+        logger.warn('[ZegoService] Failed to send missed call push:', err);
+      });
+
+      // 2. Real-time socket event
+      emitToUser(recipientUserId, 'missed_call', {
         orderId,
         callerId: `${role}_${callerUserId}`,
         callerName,
+        callerRole: role,
+        target: callbackTarget,
         displayOrderId,
-      }
-    ).catch((err) => {
-      logger.warn('[ZegoService] Failed to send missed call push:', err);
-    });
+        timestamp: new Date().toISOString(),
+      });
+    }
 
-    // 2. Real-time socket event
-    emitToUser(recipientUserId, 'missed_call', {
-      orderId,
-      callerId: `${role}_${callerUserId}`,
-      callerName,
-      displayOrderId,
-      timestamp: new Date().toISOString(),
-    });
+    if (resolvedTarget === 'restaurant' && restaurantId && restaurantId !== recipientUserId) {
+      emitToUser(restaurantId, 'missed_call', {
+        orderId,
+        callerId: `${role}_${callerUserId}`,
+        callerName,
+        callerRole: role,
+        target: callbackTarget,
+        displayOrderId,
+        timestamp: new Date().toISOString(),
+      });
+    }
   }
 }
 
