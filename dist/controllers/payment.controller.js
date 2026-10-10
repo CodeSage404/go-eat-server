@@ -102,7 +102,11 @@ class PaymentController {
          * Verify Payment by Reference (Paystack or Flutterwave)
          */
         this.verifyPayment = (0, catchAsync_1.catchAsync)(async (req, res) => {
-            const refStr = Array.isArray(req.params.reference) ? req.params.reference[0] : String(req.params.reference || '');
+            let rawRef = Array.isArray(req.params.reference) ? req.params.reference[0] : String(req.params.reference || '');
+            if (rawRef.includes(',')) {
+                rawRef = rawRef.split(',')[0].trim();
+            }
+            const refStr = rawRef.trim();
             const provider = req.query.provider || 'paystack';
             if (!refStr) {
                 throw new appError_1.default('Payment reference is required', 400);
@@ -360,7 +364,11 @@ class PaymentController {
          * Served when Paystack / Flutterwave / Stripe redirects the WebView after payment.
          */
         this.handlePaymentCallback = (0, catchAsync_1.catchAsync)(async (req, res) => {
-            const reference = (req.query.reference || req.query.trxref || req.query.tx_ref || req.query.session_id || '');
+            let rawRef = (req.query.reference || req.query.trxref || req.query.tx_ref || req.query.session_id || '');
+            if (Array.isArray(rawRef))
+                rawRef = rawRef[0];
+            const refStr = String(rawRef || '').trim();
+            const reference = refStr.includes(',') ? refStr.split(',')[0].trim() : refStr;
             const provider = String(req.query.provider || 'paystack');
             const customRedirect = (req.query.redirect_url || req.query.redirectUrl || req.query.return_url || '');
             let orderId = '';
@@ -394,6 +402,9 @@ class PaymentController {
                     }
                     catch { }
                 }
+            }
+            if (orderId && orderId.includes(',')) {
+                orderId = orderId.split(',')[0].trim();
             }
             // 2. Resolve target Web App Redirect URL (support https://goeatone.com and https://go-eat-webapp.vercel.app)
             let targetBaseUrl = 'https://goeatone.com';
@@ -440,8 +451,8 @@ class PaymentController {
       margin: 0;
       padding: 24px;
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-      background: #0B291B;
-      color: #FFFFFF;
+      background: #FDFCF9;
+      color: #111827;
       min-height: 100vh;
       display: flex;
       flex-direction: column;
@@ -450,64 +461,69 @@ class PaymentController {
       text-align: center;
     }
     .card {
-      background: rgba(255, 255, 255, 0.08);
-      border: 1px solid rgba(255, 255, 255, 0.16);
+      background: #FFFFFF;
+      border: 1px solid #E5E7EB;
       border-radius: 28px;
-      padding: 40px 28px;
+      padding: 44px 32px;
       width: 100%;
-      max-width: 420px;
-      backdrop-filter: blur(14px);
-      box-shadow: 0 24px 48px rgba(0,0,0,0.35);
+      max-width: 440px;
+      box-shadow: 0 20px 45px -10px rgba(0, 0, 0, 0.07);
     }
     .icon-badge {
       width: 68px;
       height: 68px;
       border-radius: 34px;
-      background: #10B981;
+      background: #ECFDF5;
+      border: 2px solid #A7F3D0;
+      color: #059669;
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      font-size: 34px;
+      font-size: 32px;
+      font-weight: 800;
       margin-bottom: 20px;
-      box-shadow: 0 10px 24px rgba(16, 185, 129, 0.35);
+      box-shadow: 0 8px 20px rgba(16, 185, 129, 0.15);
     }
     h1 {
-      font-size: 24px;
+      font-size: 22px;
       margin: 0 0 10px;
       font-weight: 800;
       letter-spacing: -0.5px;
+      color: #111827;
     }
     p {
       margin: 0 0 18px;
       font-size: 14px;
-      color: #D1D5DB;
+      color: #4B5563;
       line-height: 1.55;
     }
     .ref-chip {
       display: inline-block;
-      background: rgba(0,0,0,0.3);
-      border: 1px solid rgba(255,255,255,0.12);
+      background: #F3F4F6;
+      border: 1px solid #E5E7EB;
       padding: 7px 16px;
       border-radius: 12px;
       font-family: monospace;
-      font-size: 11px;
-      color: #34D399;
+      font-size: 12px;
+      color: #0F7644;
+      font-weight: 700;
       margin-bottom: 24px;
       word-break: break-all;
     }
     .progress-bar-container {
       width: 100%;
-      height: 4px;
-      background: rgba(255, 255, 255, 0.12);
-      border-radius: 2px;
+      height: 5px;
+      background: #E5E7EB;
+      border-radius: 999px;
       overflow: hidden;
-      margin-bottom: 22px;
+      margin-bottom: 24px;
     }
     .progress-bar {
       width: 100%;
       height: 100%;
-      background: #10B981;
-      animation: fillProgress 1.6s ease-in-out infinite;
+      background: #0F7644;
+      border-radius: 999px;
+      animation: fillProgress 1.5s ease-in-out infinite;
     }
     @keyframes fillProgress {
       0% { transform: translateX(-100%); }
@@ -516,7 +532,7 @@ class PaymentController {
     .btn-return {
       display: block;
       width: 100%;
-      background: #10B981;
+      background: #0F7644;
       color: #FFFFFF;
       font-weight: 700;
       font-size: 14px;
@@ -524,21 +540,22 @@ class PaymentController {
       border-radius: 16px;
       text-decoration: none;
       transition: background 0.2s, transform 0.1s;
-      margin-bottom: 14px;
+      margin-bottom: 16px;
+      box-shadow: 0 4px 14px rgba(15, 118, 68, 0.25);
     }
     .btn-return:hover {
-      background: #059669;
+      background: #0B5B34;
     }
     .btn-return:active {
       transform: scale(0.98);
     }
     .alt-links {
-      font-size: 11px;
-      color: #9CA3AF;
+      font-size: 12px;
+      color: #6B7280;
       margin-top: 10px;
     }
     .alt-links a {
-      color: #34D399;
+      color: #0F7644;
       text-decoration: none;
       font-weight: 600;
       margin: 0 4px;

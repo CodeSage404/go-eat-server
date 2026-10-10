@@ -214,7 +214,7 @@ class PaymentService {
         }
         const serverBaseUrl = (process.env.RENDER_EXTERNAL_URL || 'https://go-eat-server-z96s.onrender.com').replace(/\/$/, '');
         const webRedirectDestination = callbackUrl || 'https://goeatone.com/checkout?status=success';
-        const serverCallbackUrl = `${serverBaseUrl}/api/v1/payments/callback?reference=${encodeURIComponent(reference)}&redirect_url=${encodeURIComponent(webRedirectDestination)}`;
+        const serverCallbackUrl = `${serverBaseUrl}/api/v1/payments/callback?redirect_url=${encodeURIComponent(webRedirectDestination)}`;
         if (activeProvider.toLowerCase() === 'flutterwave') {
             const result = await flutterwave_module_1.default.initializePayment({
                 email: safeEmail,
