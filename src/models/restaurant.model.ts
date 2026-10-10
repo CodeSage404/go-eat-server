@@ -283,7 +283,7 @@ const restaurantSchema = new Schema<IRestaurant>(
     },
     isVerified: {
       type: Boolean,
-      default: false,
+      default: true,
       index: true,
     },
     status: {
