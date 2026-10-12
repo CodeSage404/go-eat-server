@@ -276,5 +276,39 @@ router.route('/me/pin')
   .get(restrictTo(UserRole.RIDER, UserRole.VENDOR), walletController.checkWithdrawalPin)
   .post(restrictTo(UserRole.RIDER, UserRole.VENDOR), walletController.setWithdrawalPin);
 
+/**
+ * @openapi
+ * /api/v1/wallets/me/verify-pin:
+ *   post:
+ *     tags:
+ *       - Wallets
+ *     summary: Verify 4-digit transaction / withdrawal PIN
+ *     description: Verifies whether the provided 4-digit transaction PIN matches the user's configured PIN.
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [pin]
+ *             properties:
+ *               pin:
+ *                 type: string
+ *                 example: "1234"
+ *                 description: 4-digit transaction security PIN to verify
+ *     responses:
+ *       200:
+ *         description: PIN verified successfully
+ *       400:
+ *         description: Invalid or missing PIN
+ *       401:
+ *         description: Incorrect transaction PIN
+ *       403:
+ *         description: Transaction PIN not configured
+ */
+router.post('/me/verify-pin', restrictTo(UserRole.RIDER, UserRole.VENDOR), walletController.verifyWithdrawalPin);
+
 export default router;
 

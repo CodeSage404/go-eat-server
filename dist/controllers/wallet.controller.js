@@ -338,6 +338,31 @@ class WalletController {
             });
         });
         /**
+         * Verify 4-digit transaction / withdrawal PIN
+         */
+        this.verifyWithdrawalPin = (0, catchAsync_1.catchAsync)(async (req, res) => {
+            const { pin } = req.body;
+            const pinStr = pin ? pin.toString().trim() : '';
+            if (!pinStr || pinStr.length !== 4) {
+                throw new appError_1.default('Please provide your 4-digit transaction PIN', 400);
+            }
+            const user = await user_model_1.default.findById(req.user._id).select('+withdrawalPin');
+            if (!user || !user.hasWithdrawalPin || !user.withdrawalPin) {
+                throw new appError_1.default('Please configure a 4-digit transaction PIN before proceeding', 403);
+            }
+            const isPinCorrect = await user.compareWithdrawalPin(pinStr);
+            if (!isPinCorrect) {
+                throw new appError_1.default('Incorrect transaction PIN. Please try again.', 401);
+            }
+            res.status(200).json({
+                status: 'success',
+                message: 'Transaction PIN verified successfully',
+                data: {
+                    verified: true,
+                },
+            });
+        });
+        /**
          * Set or update withdrawal PIN
          */
         this.setWithdrawalPin = (0, catchAsync_1.catchAsync)(async (req, res) => {
