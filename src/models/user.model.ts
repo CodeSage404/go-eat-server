@@ -129,6 +129,8 @@ export interface IUser extends Document {
   };
   hasWithdrawalPin?: boolean;
   withdrawalPin?: string;
+  withdrawalPinFailedAttempts?: number;
+  withdrawalPinLockedUntil?: Date | null;
   createdAt: Date;
   updatedAt: Date;
   comparePassword(password: string): Promise<boolean>;
@@ -397,6 +399,14 @@ const userSchema = new Schema<IUser>(
     withdrawalPin: {
       type: String,
       select: false, // Don't return withdrawal pin hash by default
+    },
+    withdrawalPinFailedAttempts: {
+      type: Number,
+      default: 0,
+    },
+    withdrawalPinLockedUntil: {
+      type: Date,
+      default: null,
     },
   },
   {

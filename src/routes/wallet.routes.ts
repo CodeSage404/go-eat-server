@@ -310,5 +310,44 @@ router.route('/me/pin')
  */
 router.post('/me/verify-pin', restrictTo(UserRole.RIDER, UserRole.VENDOR), walletController.verifyWithdrawalPin);
 
+/**
+ * @openapi
+ * /api/v1/wallets/me/reset-pin:
+ *   post:
+ *     tags:
+ *       - Wallets
+ *     summary: Reset / Recover 4-digit transaction PIN using account password
+ *     description: Authenticates user identity with account password and resets their 4-digit transaction PIN, removing any 12-hour lockout immediately.
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [password, newPin]
+ *             properties:
+ *               password:
+ *                 type: string
+ *                 format: password
+ *                 example: "UserSecretPass123!"
+ *                 description: Account login password for security verification
+ *               newPin:
+ *                 type: string
+ *                 example: "8520"
+ *                 description: New 4-digit transaction security PIN
+ *     responses:
+ *       200:
+ *         description: Transaction PIN reset successfully and lockout cleared
+ *       400:
+ *         description: Missing password or weak/predictable new PIN
+ *       401:
+ *         description: Incorrect account password
+ *       404:
+ *         description: User not found
+ */
+router.post('/me/reset-pin', restrictTo(UserRole.RIDER, UserRole.VENDOR), walletController.resetWithdrawalPin);
+
 export default router;
 
