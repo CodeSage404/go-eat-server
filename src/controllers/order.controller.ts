@@ -306,7 +306,7 @@ class OrderController {
    * Calculate dynamic checkout fees (delivery fee, service fee, small order fee)
    */
   public quoteFees = catchAsync(async (req: any, res: Response) => {
-    const { outlets, deliveryCoordinates, deliveryAddressText, isPickup } = req.body;
+    const { outlets, deliveryCoordinates, deliveryAddressText, isPickup, deliveryMode } = req.body;
     if (!outlets || !Array.isArray(outlets) || outlets.length === 0) {
       throw new AppError('Outlets array is required for fee quotation', 400);
     }
@@ -319,6 +319,7 @@ class OrderController {
       deliveryAddressText,
       isPickup: Boolean(isPickup),
       customerId,
+      deliveryMode,
     });
 
     res.status(200).json({
@@ -379,6 +380,14 @@ class OrderController {
         firstBiteDescription: setting?.firstBiteDescription || 'Enjoy your first meal on us as a welcome gift from Go-Eat!',
         firstBiteIsTotallyFree: setting?.firstBiteIsTotallyFree !== false,
         firstBiteMaxFreeAmount: setting?.firstBiteMaxFreeAmount ?? 3000,
+        enableFreeDeliveryTiers: setting?.enableFreeDeliveryTiers ?? true,
+        freeDeliveryTiers: setting?.freeDeliveryTiers || [
+          { maxDistanceKm: 2, minBasketAmount: 10000 },
+          { maxDistanceKm: 3, minBasketAmount: 15000 },
+          { maxDistanceKm: 5, minBasketAmount: 20000 },
+        ],
+        enableExpressDelivery: setting?.enableExpressDelivery ?? true,
+        expressDeliverySurcharge: setting?.expressDeliverySurcharge ?? 800,
       },
     });
   });

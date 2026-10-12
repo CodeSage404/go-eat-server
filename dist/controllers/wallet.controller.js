@@ -90,6 +90,33 @@ async function verifyPinWithLockout(userDoc, candidatePin) {
         await userDoc.save();
     }
 }
+/**
+ * Fuzzy Name Matching Helper:
+ * Ensures the bank account holder's name retrieved from Paystack/Stripe
+ * matches the rider/partner's registered KYC identity name.
+ */
+function isNameMatching(registeredName, bankAccountName) {
+    if (!registeredName || !bankAccountName)
+        return false;
+    const clean = (s) => s
+        .toLowerCase()
+        .replace(/[^a-z0-9\s]/g, ' ')
+        .replace(/\b(mr|mrs|ms|dr|chief|barr|engr|alhaji|pastor|prof)\b/g, '')
+        .trim();
+    const regTokens = clean(registeredName).split(/\s+/).filter((t) => t.length >= 2);
+    const bankTokens = clean(bankAccountName).split(/\s+/).filter((t) => t.length >= 2);
+    if (regTokens.length === 0 || bankTokens.length === 0)
+        return false;
+    let matchedTokens = 0;
+    for (const token of regTokens) {
+        if (bankTokens.some((bt) => bt === token || (token.length >= 4 && bt.includes(token)) || (bt.length >= 4 && token.includes(bt)))) {
+            matchedTokens++;
+        }
+    }
+    // At least 2 matching tokens (e.g. First and Last name), or all tokens if registered name is a single word
+    const requiredMatches = Math.min(2, regTokens.length);
+    return matchedTokens >= requiredMatches;
+}
 class WalletController {
     constructor() {
         /**
@@ -136,6 +163,26 @@ class WalletController {
                 payoutDayOfWeek: platformSettings?.riderPayoutDayOfWeek || 'friday',
             };
             const isPayoutCoolingOff = Boolean(wallet.payoutCooldownUntil && new Date(wallet.payoutCooldownUntil) > new Date());
+            // Weekly withdrawal counter calculation
+            const now = new Date();
+            const day = now.getDay();
+            const diffToMonday = (day === 0 ? -6 : 1) - day;
+            const startOfWeek = new Date(now);
+            startOfWeek.setDate(now.getDate() + diffToMonday);
+            startOfWeek.setHours(0, 0, 0, 0);
+            const weeklyWithdrawalsUsed = await transaction_model_1.default.countDocuments({
+                wallet: wallet._id,
+                type: transaction_model_1.TransactionType.WITHDRAWAL,
+                createdAt: { $gte: startOfWeek },
+                status: { $ne: transaction_model_1.TransactionStatus.FAILED },
+            });
+            const maxWeeklyWithdrawals = platformSettings?.maxWeeklyWithdrawals || 3;
+            const weeklyWithdrawalsRemaining = Math.max(0, maxWeeklyWithdrawals - weeklyWithdrawalsUsed);
+            const weeklyWithdrawals = {
+                used: weeklyWithdrawalsUsed,
+                remaining: weeklyWithdrawalsRemaining,
+                limit: maxWeeklyWithdrawals,
+            };
             res.status(200).json({
                 status: 'success',
                 data: {
@@ -154,6 +201,7 @@ class WalletController {
                         payoutCooldownUntil: wallet.payoutCooldownUntil || null,
                         payoutCooldownReason: wallet.payoutCooldownReason || null,
                         isPayoutCoolingOff,
+                        weeklyWithdrawals,
                         lastPayoutDate: wallet.lastPayoutDate,
                         isActive: wallet.isActive,
                         hasWithdrawalPin,
@@ -162,6 +210,7 @@ class WalletController {
                     },
                     hasWithdrawalPin,
                     isPayoutCoolingOff,
+                    weeklyWithdrawals,
                     payoutSchedule,
                     transactions,
                 },
@@ -209,6 +258,25 @@ class WalletController {
                     if (currentDayName !== requiredDay) {
                         const capitalizedTargetDay = requiredDay.charAt(0).toUpperCase() + requiredDay.slice(1);
                         throw new appError_1.default(`Courier payouts are configured on a Weekly schedule and can only be requested on ${capitalizedTargetDay}s. Please check back then.`, 400);
+                    }
+                }
+                // Weekly Withdrawal Limit Enforcement (Riders)
+                if (existingWalletDoc) {
+                    const maxWeeklyWithdrawals = platformSettings?.maxWeeklyWithdrawals || 3;
+                    const now = new Date();
+                    const day = now.getDay();
+                    const diffToMonday = (day === 0 ? -6 : 1) - day;
+                    const startOfWeek = new Date(now);
+                    startOfWeek.setDate(now.getDate() + diffToMonday);
+                    startOfWeek.setHours(0, 0, 0, 0);
+                    const weeklyWithdrawalsUsed = await transaction_model_1.default.countDocuments({
+                        wallet: existingWalletDoc._id,
+                        type: transaction_model_1.TransactionType.WITHDRAWAL,
+                        createdAt: { $gte: startOfWeek },
+                        status: { $ne: transaction_model_1.TransactionStatus.FAILED },
+                    });
+                    if (weeklyWithdrawalsUsed >= maxWeeklyWithdrawals) {
+                        throw new appError_1.default(`You have reached your limit of ${maxWeeklyWithdrawals} withdrawals this week (${maxWeeklyWithdrawals} of ${maxWeeklyWithdrawals} used). You can request payouts again next week.`, 400);
                     }
                 }
             }
@@ -288,6 +356,16 @@ class WalletController {
             const { accountNumber, bankCode, accountName, bankName, bankSlug, bankLogo, sortCode, routingNumber, iban, countryCode, provider, } = req.body;
             if (!accountNumber || !accountName) {
                 throw new appError_1.default('accountNumber and accountName are required', 400);
+            }
+            // Automated Bank Account Name Matching Enforcement
+            const currentUser = await user_model_1.default.findById(req.user._id);
+            const platformSettings = await setting_model_1.default.findOne();
+            const shouldEnforceNameMatch = platformSettings?.enforceStrictBankNameMatch !== false;
+            if (shouldEnforceNameMatch && currentUser?.name) {
+                const isMatch = isNameMatching(currentUser.name, String(accountName).trim());
+                if (!isMatch) {
+                    throw new appError_1.default(`Bank account name mismatch: The bank account name "${accountName}" does not match your registered courier identity name "${currentUser.name}". Couriers may only link settlement accounts registered under their own verified identity.`, 400);
+                }
             }
             const loc = (0, locationResolver_1.resolveRequestLocation)(req);
             const activeCountry = (countryCode || loc.countryCode || 'NG').toUpperCase();

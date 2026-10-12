@@ -149,6 +149,19 @@ const restaurantSchema = new mongoose_1.Schema({
         type: Boolean,
         default: false,
     },
+    freeDeliveryMinOrder: {
+        type: Number,
+        default: 0,
+    },
+    freeDeliverySubsidyCoverage: {
+        type: String,
+        enum: ['full', 'fixed'],
+        default: 'full',
+    },
+    freeDeliveryFixedSubsidy: {
+        type: Number,
+        default: 0,
+    },
     allowStampCards: {
         type: Boolean,
         default: false,

@@ -134,6 +134,32 @@ const orderSchema = new mongoose_1.Schema({
         type: Number,
         default: 0,
     },
+    isExpressDelivery: {
+        type: Boolean,
+        default: false,
+    },
+    expressDeliveryFee: {
+        type: Number,
+        default: 0,
+    },
+    isFreeDeliveryTierApplied: {
+        type: Boolean,
+        default: false,
+    },
+    freeDeliveryTierDistanceKm: {
+        type: Number,
+    },
+    freeDeliveryTierMinBasket: {
+        type: Number,
+    },
+    isRestaurantSponsoredDelivery: {
+        type: Boolean,
+        default: false,
+    },
+    deliverySubsidyAmount: {
+        type: Number,
+        default: 0,
+    },
     isFirstBiteFreeOrder: {
         type: Boolean,
         default: false,

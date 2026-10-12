@@ -65,6 +65,13 @@ export interface IOrder extends Document {
   courierEarnings?: number;
   deliveryFee: number;
   serviceFee?: number;
+  isExpressDelivery?: boolean;
+  expressDeliveryFee?: number;
+  isFreeDeliveryTierApplied?: boolean;
+  freeDeliveryTierDistanceKm?: number;
+  freeDeliveryTierMinBasket?: number;
+  isRestaurantSponsoredDelivery?: boolean;
+  deliverySubsidyAmount?: number;
   isFirstBiteFreeOrder?: boolean;
   firstBiteDiscount?: number;
   distanceKm?: number;
@@ -194,6 +201,32 @@ const orderSchema = new Schema<IOrder>(
       default: 0,
     },
     serviceFee: {
+      type: Number,
+      default: 0,
+    },
+    isExpressDelivery: {
+      type: Boolean,
+      default: false,
+    },
+    expressDeliveryFee: {
+      type: Number,
+      default: 0,
+    },
+    isFreeDeliveryTierApplied: {
+      type: Boolean,
+      default: false,
+    },
+    freeDeliveryTierDistanceKm: {
+      type: Number,
+    },
+    freeDeliveryTierMinBasket: {
+      type: Number,
+    },
+    isRestaurantSponsoredDelivery: {
+      type: Boolean,
+      default: false,
+    },
+    deliverySubsidyAmount: {
       type: Number,
       default: 0,
     },

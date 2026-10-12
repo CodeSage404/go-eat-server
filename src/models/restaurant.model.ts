@@ -50,6 +50,9 @@ export interface IRestaurant extends Document {
   isSelfPickup: boolean;
   allowsGroupOrder: boolean;
   hasFreeDelivery: boolean;
+  freeDeliveryMinOrder?: number;
+  freeDeliverySubsidyCoverage?: 'full' | 'fixed';
+  freeDeliveryFixedSubsidy?: number;
   allowStampCards: boolean;
   allowFreeGift: boolean;
   hasPromo: boolean;
@@ -248,6 +251,19 @@ const restaurantSchema = new Schema<IRestaurant>(
     hasFreeDelivery: {
       type: Boolean,
       default: false,
+    },
+    freeDeliveryMinOrder: {
+      type: Number,
+      default: 0,
+    },
+    freeDeliverySubsidyCoverage: {
+      type: String,
+      enum: ['full', 'fixed'],
+      default: 'full',
+    },
+    freeDeliveryFixedSubsidy: {
+      type: Number,
+      default: 0,
     },
     allowStampCards: {
       type: Boolean,

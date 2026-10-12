@@ -15,6 +15,11 @@ export interface ICountryBankVerificationProvider {
   isActive: boolean;
 }
 
+export interface IFreeDeliveryTier {
+  maxDistanceKm: number;
+  minBasketAmount: number;
+}
+
 export interface ISetting extends Document {
   appName: string;
   supportEmail: string;
@@ -54,6 +59,15 @@ export interface ISetting extends Document {
   firstBiteDescription: string;
   firstBiteIsTotallyFree: boolean;
   firstBiteMaxFreeAmount: number;
+  // Free Delivery Distance & Basket Threshold Tier Structure
+  enableFreeDeliveryTiers: boolean;
+  freeDeliveryTiers: IFreeDeliveryTier[];
+  // Express / Priority Delivery
+  enableExpressDelivery: boolean;
+  expressDeliverySurcharge: number;
+  // Rider Payout Policy Controls
+  maxWeeklyWithdrawals: number;
+  enforceStrictBankNameMatch: boolean;
 }
 
 const settingSchema = new Schema<ISetting>(
@@ -174,6 +188,42 @@ const settingSchema = new Schema<ISetting>(
     firstBiteMaxFreeAmount: {
       type: Number,
       default: 3000,
+    },
+    // Free Delivery Distance & Basket Threshold Tier Structure
+    enableFreeDeliveryTiers: {
+      type: Boolean,
+      default: true,
+    },
+    freeDeliveryTiers: {
+      type: [
+        {
+          maxDistanceKm: { type: Number, required: true },
+          minBasketAmount: { type: Number, required: true },
+        },
+      ],
+      default: [
+        { maxDistanceKm: 2, minBasketAmount: 10000 },
+        { maxDistanceKm: 3, minBasketAmount: 15000 },
+        { maxDistanceKm: 5, minBasketAmount: 20000 },
+      ],
+    },
+    // Express / Priority Delivery
+    enableExpressDelivery: {
+      type: Boolean,
+      default: true,
+    },
+    expressDeliverySurcharge: {
+      type: Number,
+      default: 800,
+    },
+    // Rider Payout Policy Controls
+    maxWeeklyWithdrawals: {
+      type: Number,
+      default: 3,
+    },
+    enforceStrictBankNameMatch: {
+      type: Boolean,
+      default: true,
     },
   },
   { timestamps: true }

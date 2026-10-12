@@ -186,7 +186,44 @@ class OrderService {
                 : Math.round(baseFee + (effectiveDistKm * feePerKm));
             // Absolute safety cap on single-outlet delivery fee (max ₦2,500 or maxDistanceCap * feePerKm)
             const maxDeliveryFeeCap = Math.max(2500, Math.round(baseFee + (maxDistanceCap * feePerKm)));
-            data.deliveryFee = Math.min(calculatedFee, maxDeliveryFeeCap);
+            let computedDeliveryFee = Math.min(calculatedFee, maxDeliveryFeeCap);
+            // 1. Restaurant-Sponsored Free Delivery Campaign
+            if (restaurant.hasFreeDelivery) {
+                const minOrder = Number(restaurant.freeDeliveryMinOrder) || 0;
+                if (minOrder === 0 || computedFoodSubtotal >= minOrder) {
+                    data.isRestaurantSponsoredDelivery = true;
+                    const coverage = restaurant.freeDeliverySubsidyCoverage || 'full';
+                    const subsidy = coverage === 'full' ? computedDeliveryFee : Math.min(computedDeliveryFee, Number(restaurant.freeDeliveryFixedSubsidy) || 0);
+                    data.deliverySubsidyAmount = subsidy;
+                    computedDeliveryFee = Math.max(0, computedDeliveryFee - subsidy);
+                }
+            }
+            // 2. Free-Delivery Distance & Basket Threshold Tier Structure (Platform Tiers)
+            if (!data.isRestaurantSponsoredDelivery && setting?.enableFreeDeliveryTiers !== false) {
+                const tiers = (setting?.freeDeliveryTiers && setting.freeDeliveryTiers.length > 0)
+                    ? [...setting.freeDeliveryTiers].sort((a, b) => a.maxDistanceKm - b.maxDistanceKm)
+                    : [
+                        { maxDistanceKm: 2, minBasketAmount: 10000 },
+                        { maxDistanceKm: 3, minBasketAmount: 15000 },
+                        { maxDistanceKm: 5, minBasketAmount: 20000 },
+                    ];
+                const applicableTier = tiers.find((t) => effectiveDistKm <= t.maxDistanceKm);
+                if (applicableTier && computedFoodSubtotal >= applicableTier.minBasketAmount) {
+                    data.isFreeDeliveryTierApplied = true;
+                    data.freeDeliveryTierDistanceKm = applicableTier.maxDistanceKm;
+                    data.freeDeliveryTierMinBasket = applicableTier.minBasketAmount;
+                    computedDeliveryFee = 0;
+                }
+            }
+            // 3. Express / Priority Delivery Surcharge
+            const isExpressMode = Boolean(data.deliveryMode === 'Express' || data.deliveryMode === 'Priority');
+            if (isExpressMode && setting?.enableExpressDelivery !== false) {
+                const expressSurcharge = setting?.expressDeliverySurcharge || 800;
+                data.isExpressDelivery = true;
+                data.expressDeliveryFee = expressSurcharge;
+                computedDeliveryFee += expressSurcharge;
+            }
+            data.deliveryFee = computedDeliveryFee;
             data.distanceKm = finalDistKm;
         }
         else if (!isPickup) {
@@ -1121,7 +1158,7 @@ class OrderService {
      * Calculate real-time fee quote for single or multi-outlet carts
      */
     async quoteCheckoutFees(params) {
-        const { outlets, deliveryCoordinates, deliveryAddressText, isPickup, customerId } = params;
+        const { outlets, deliveryCoordinates, deliveryAddressText, isPickup, customerId, deliveryMode } = params;
         const setting = await setting_model_1.default.findOne();
         const isFixedMode = setting?.deliveryFeeCalculationMode === 'fixed';
         const fixedFee = setting?.fixedDeliveryFee ?? 500;
@@ -1183,7 +1220,46 @@ class OrderService {
                 ? Math.round(fixedFee)
                 : Math.round(baseFee + (effectiveDistKm * feePerKm));
             const maxDeliveryFeeCap = Math.max(2500, Math.round(baseFee + (maxDistanceCap * feePerKm)));
-            const singleTripFee = Math.min(computedFee, maxDeliveryFeeCap);
+            let singleTripFee = Math.min(computedFee, maxDeliveryFeeCap);
+            // 1. Restaurant-Sponsored Free Delivery Campaign
+            let isRestaurantSponsored = false;
+            let restaurantSubsidy = 0;
+            if (restDoc.hasFreeDelivery) {
+                const minOrder = Number(restDoc.freeDeliveryMinOrder) || 0;
+                if (minOrder === 0 || outletItem.subtotal >= minOrder) {
+                    isRestaurantSponsored = true;
+                    const coverage = restDoc.freeDeliverySubsidyCoverage || 'full';
+                    restaurantSubsidy = coverage === 'full' ? singleTripFee : Math.min(singleTripFee, Number(restDoc.freeDeliveryFixedSubsidy) || 0);
+                    singleTripFee = Math.max(0, singleTripFee - restaurantSubsidy);
+                }
+            }
+            // 2. Free-Delivery Distance & Basket Threshold Tier Structure (Platform Tiers)
+            let isFreeTierApplied = false;
+            let matchedTier = null;
+            let freeTierHint = '';
+            let freeTierMessage = '';
+            if (!isRestaurantSponsored && setting?.enableFreeDeliveryTiers !== false) {
+                const tiers = (setting?.freeDeliveryTiers && setting.freeDeliveryTiers.length > 0)
+                    ? [...setting.freeDeliveryTiers].sort((a, b) => a.maxDistanceKm - b.maxDistanceKm)
+                    : [
+                        { maxDistanceKm: 2, minBasketAmount: 10000 },
+                        { maxDistanceKm: 3, minBasketAmount: 15000 },
+                        { maxDistanceKm: 5, minBasketAmount: 20000 },
+                    ];
+                const applicableTier = tiers.find((t) => effectiveDistKm <= t.maxDistanceKm);
+                if (applicableTier) {
+                    matchedTier = applicableTier;
+                    if (outletItem.subtotal >= applicableTier.minBasketAmount) {
+                        isFreeTierApplied = true;
+                        singleTripFee = 0;
+                        freeTierMessage = `Free delivery unlocked! (Orders ≥ ₦${applicableTier.minBasketAmount.toLocaleString()} within ${applicableTier.maxDistanceKm}km)`;
+                    }
+                    else {
+                        const needed = applicableTier.minBasketAmount - outletItem.subtotal;
+                        freeTierHint = `Add ₦${needed.toLocaleString()} more for FREE delivery (within ${applicableTier.maxDistanceKm}km)`;
+                    }
+                }
+            }
             outletQuotes.push({
                 restaurantId: outletItem.restaurantId,
                 restaurantName: restDoc.name,
@@ -1193,18 +1269,14 @@ class OrderService {
                 withinRadius,
                 singleTripFee,
                 subtotal: outletItem.subtotal,
+                isRestaurantSponsored,
+                restaurantSubsidy,
+                isFreeTierApplied,
+                matchedTier,
+                freeTierHint,
+                freeTierMessage,
             });
         }
-        // Check if any outlet is outside delivery radius (temporarily bypassed for review/testing)
-        /*
-        const outOfBounds = outletQuotes.find((o) => !o.withinRadius);
-        if (outOfBounds) {
-          throw new AppError(
-            `${outOfBounds.restaurantName} is outside your delivery radius (${outOfBounds.distanceKm} km > ${outOfBounds.deliveryRadius} km max). Please select items from an outlet closer to you.`,
-            400
-          );
-        }
-        */
         // Single outlet vs Multi-outlet routing determination
         let routingMode = 'SINGLE_OUTLET';
         let totalDeliveryFee = 0;
@@ -1227,12 +1299,24 @@ class OrderService {
                 totalDeliveryFee = isFixedMode
                     ? Math.round(fixedFee + multiOutletExtraStopFee)
                     : Math.round(baseFee + (totalBatchedDist * feePerKm) + multiOutletExtraStopFee);
+                // If all outlets qualify for free delivery, waive batched delivery fee
+                if (outletQuotes.every((o) => o.singleTripFee === 0)) {
+                    totalDeliveryFee = 0;
+                }
             }
             else {
                 // Approach 2: Split Delivery (Multiple Riders)
                 routingMode = 'SPLIT_DELIVERY';
                 totalDeliveryFee = outletQuotes.reduce((sum, o) => sum + o.singleTripFee, 0);
             }
+        }
+        // Express / Priority Delivery Surcharge
+        const isExpressMode = Boolean(deliveryMode === 'Express' || deliveryMode === 'Priority');
+        const expressSurcharge = (isExpressMode && setting?.enableExpressDelivery !== false)
+            ? (setting?.expressDeliverySurcharge || 800)
+            : 0;
+        if (isExpressMode && expressSurcharge > 0) {
+            totalDeliveryFee += expressSurcharge;
         }
         const appliedSmallOrderFee = totalSubtotal < smallOrderThreshold ? smallOrderFee : 0;
         const totalFees = totalDeliveryFee + serviceFee + appliedSmallOrderFee;
@@ -1265,12 +1349,23 @@ class OrderService {
                 }
             }
         }
+        const hasAnyFreeTierApplied = outletQuotes.some((o) => o.isFreeTierApplied);
+        const hasAnyRestaurantSponsored = outletQuotes.some((o) => o.isRestaurantSponsored);
+        const activeTierHint = outletQuotes.find((o) => o.freeTierHint)?.freeTierHint || '';
+        const activeTierMessage = outletQuotes.find((o) => o.freeTierMessage)?.freeTierMessage || '';
         return {
             isPickup: false,
             routingMode,
             outletDistanceKm,
             batchThresholdKm,
             totalDeliveryFee,
+            baseDeliveryFee: isExpressMode ? totalDeliveryFee - expressSurcharge : totalDeliveryFee,
+            isExpressDelivery: isExpressMode,
+            expressDeliverySurcharge: expressSurcharge,
+            isFreeDeliveryTierApplied: hasAnyFreeTierApplied,
+            freeDeliveryHint: activeTierHint,
+            freeDeliveryMessage: activeTierMessage,
+            isRestaurantSponsoredDelivery: hasAnyRestaurantSponsored,
             serviceFee,
             smallOrderFee: appliedSmallOrderFee,
             totalFees,
@@ -1324,6 +1419,7 @@ class OrderService {
             deliveryAddressText: deliveryAddress?.address || deliveryAddress?.street,
             isPickup: orderType === 'pickup',
             customerId,
+            deliveryMode,
         });
         const batchGroupId = 'BATCH_' + crypto_1.default.randomBytes(6).toString('hex').toUpperCase();
         const isBatched = quote.routingMode === 'BATCHED_PICKUP';
@@ -1350,6 +1446,13 @@ class OrderService {
                 isBatchedDelivery: isBatched,
                 batchSequence: i + 1,
                 splitDelivery: !isBatched,
+                isExpressDelivery: Boolean(quote.isExpressDelivery),
+                expressDeliveryFee: quote.isExpressDelivery && i === 0 ? quote.expressDeliverySurcharge : 0,
+                isFreeDeliveryTierApplied: Boolean(quote.outlets[i]?.isFreeTierApplied),
+                freeDeliveryTierDistanceKm: quote.outlets[i]?.matchedTier?.maxDistanceKm,
+                freeDeliveryTierMinBasket: quote.outlets[i]?.matchedTier?.minBasketAmount,
+                isRestaurantSponsoredDelivery: Boolean(quote.outlets[i]?.isRestaurantSponsored),
+                deliverySubsidyAmount: quote.outlets[i]?.restaurantSubsidy || 0,
                 deliveryAddress,
                 paymentMethod,
                 deliveryMode,

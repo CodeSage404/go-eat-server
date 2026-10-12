@@ -1274,7 +1274,10 @@ class AdminController {
                 'enableBankVerificationStripe', 'forceGlobalBankVerificationProvider',
                 'countryBankVerificationProviders',
                 'firstBiteEnabled', 'firstBiteCampaignTitle', 'firstBiteDescription',
-                'firstBiteIsTotallyFree', 'firstBiteMaxFreeAmount'
+                'firstBiteIsTotallyFree', 'firstBiteMaxFreeAmount',
+                'enableFreeDeliveryTiers', 'freeDeliveryTiers',
+                'enableExpressDelivery', 'expressDeliverySurcharge',
+                'maxWeeklyWithdrawals', 'enforceStrictBankNameMatch'
             ];
             const update = {};
             allowed.forEach(key => {
