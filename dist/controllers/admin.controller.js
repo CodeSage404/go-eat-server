@@ -1267,7 +1267,7 @@ class AdminController {
                 'deliveryBaseFee', 'deliveryFeePerKm', 'deliveryFeeCalculationMode', 'fixedDeliveryFee',
                 'serviceFee', 'smallOrderFee',
                 'smallOrderFeeThreshold', 'batchPickupThresholdKm', 'multiOutletExtraStopFee',
-                'riderBasePayout', 'riderPerKmPayout', 'defaultPaymentProvider',
+                'riderBasePayout', 'riderPerKmPayout', 'riderPayoutSchedule', 'riderPayoutDayOfWeek', 'defaultPaymentProvider',
                 'enablePaystack', 'enableFlutterwave', 'enableStripe', 'forceGlobalPaymentProvider',
                 'countryPaymentProviders',
                 'defaultBankVerificationProvider', 'enableBankVerificationPaystack',

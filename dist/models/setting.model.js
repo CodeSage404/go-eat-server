@@ -57,6 +57,16 @@ const settingSchema = new mongoose_1.Schema({
     multiOutletExtraStopFee: { type: Number, default: 300 },
     riderBasePayout: { type: Number, default: 400 },
     riderPerKmPayout: { type: Number, default: 80 },
+    riderPayoutSchedule: {
+        type: String,
+        enum: ['daily', 'weekly'],
+        default: 'weekly',
+    },
+    riderPayoutDayOfWeek: {
+        type: String,
+        enum: ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'],
+        default: 'friday',
+    },
     defaultPaymentProvider: { type: String, enum: ['paystack', 'flutterwave', 'stripe'], default: 'paystack' },
     enablePaystack: { type: Boolean, default: true },
     enableFlutterwave: { type: Boolean, default: true },

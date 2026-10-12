@@ -34,6 +34,8 @@ export interface ISetting extends Document {
   multiOutletExtraStopFee: number;
   riderBasePayout: number;
   riderPerKmPayout: number;
+  riderPayoutSchedule: 'daily' | 'weekly';
+  riderPayoutDayOfWeek: 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday';
   defaultPaymentProvider: 'paystack' | 'flutterwave' | 'stripe';
   enablePaystack: boolean;
   enableFlutterwave: boolean;
@@ -78,6 +80,16 @@ const settingSchema = new Schema<ISetting>(
     multiOutletExtraStopFee: { type: Number, default: 300 },
     riderBasePayout: { type: Number, default: 400 },
     riderPerKmPayout: { type: Number, default: 80 },
+    riderPayoutSchedule: {
+      type: String,
+      enum: ['daily', 'weekly'],
+      default: 'weekly',
+    },
+    riderPayoutDayOfWeek: {
+      type: String,
+      enum: ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'],
+      default: 'friday',
+    },
     defaultPaymentProvider: { type: String, enum: ['paystack', 'flutterwave', 'stripe'], default: 'paystack' },
     enablePaystack: { type: Boolean, default: true },
     enableFlutterwave: { type: Boolean, default: true },

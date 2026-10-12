@@ -78,6 +78,7 @@ router.get('/me/transactions/:id', (0, auth_middleware_1.restrictTo)(user_model_
  * /api/v1/wallets/me/bank:
  *   put:
  *     summary: "Update bank account details (Multi-Country: Nigeria, UK, Italy, International)"
+ *     description: Links or updates primary settlement bank account. If an account is already linked, requires 4-digit PIN verification to authorize change.
  *     tags:
  *       - Wallets
  *     security:
@@ -112,9 +113,19 @@ router.get('/me/transactions/:id', (0, auth_middleware_1.restrictTo)(user_model_
  *                 type: string
  *               provider:
  *                 type: string
+ *               pin:
+ *                 type: string
+ *                 example: "1234"
+ *                 description: "4-digit security PIN (required if a bank account is already linked)"
  *     responses:
  *       200:
  *         description: Success
+ *       400:
+ *         description: Missing fields or invalid account information
+ *       401:
+ *         description: Incorrect security PIN provided
+ *       403:
+ *         description: PIN not configured prior to bank change attempt
  */
 router.put('/me/bank', (0, auth_middleware_1.restrictTo)(user_model_1.UserRole.RIDER, user_model_1.UserRole.VENDOR), wallet_controller_1.default.updateBankDetails);
 /**

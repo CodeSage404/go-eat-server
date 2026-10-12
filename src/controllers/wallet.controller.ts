@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import Wallet from '../models/wallet.model';
 import User from '../models/user.model';
+import Setting from '../models/setting.model';
 import Transaction, { TransactionType, TransactionStatus } from '../models/transaction.model';
 import { catchAsync } from '../utils/catchAsync';
 import AppError from '../utils/appError';
@@ -54,6 +55,12 @@ class WalletController {
       .sort({ createdAt: -1 })
       .limit(30);
 
+    const platformSettings = await Setting.findOne();
+    const payoutSchedule = {
+      schedule: platformSettings?.riderPayoutSchedule || 'weekly',
+      payoutDayOfWeek: platformSettings?.riderPayoutDayOfWeek || 'friday',
+    };
+
     res.status(200).json({
       status: 'success',
       data: {
@@ -76,6 +83,7 @@ class WalletController {
           updatedAt: wallet.updatedAt,
         },
         hasWithdrawalPin,
+        payoutSchedule,
         transactions,
       },
     });
@@ -107,6 +115,27 @@ class WalletController {
     const isPinCorrect = await userDoc.compareWithdrawalPin!(pin.toString());
     if (!isPinCorrect) {
       throw new AppError('Incorrect withdrawal PIN. Please try again.', 400);
+    }
+
+    // Admin Payout Schedule Policy Enforcement (Riders)
+    if (req.user?.role === 'rider') {
+      const platformSettings = await Setting.findOne();
+      const scheduleMode = platformSettings?.riderPayoutSchedule || 'weekly';
+
+      if (scheduleMode === 'weekly') {
+        const requiredDay = platformSettings?.riderPayoutDayOfWeek || 'friday';
+        const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+        const currentDayIndex = new Date().getDay();
+        const currentDayName = dayNames[currentDayIndex];
+
+        if (currentDayName !== requiredDay) {
+          const capitalizedTargetDay = requiredDay.charAt(0).toUpperCase() + requiredDay.slice(1);
+          throw new AppError(
+            `Courier payouts are configured on a Weekly schedule and can only be requested on ${capitalizedTargetDay}s. Please check back then.`,
+            400
+          );
+        }
+      }
     }
 
     // Atomically check available balance and deduct in a single database operation to prevent race conditions
@@ -231,6 +260,25 @@ class WalletController {
     let wallet = await Wallet.findOne({ user: req.user!._id });
     if (!wallet) {
       wallet = await Wallet.create({ user: req.user!._id });
+    }
+
+    // Security Check: If wallet already has a linked bank account, require 4-digit PIN verification
+    const hasExistingBank = Boolean(wallet.bankAccount && wallet.bankAccount.accountNumber);
+    if (hasExistingBank) {
+      const userDoc = await User.findById(req.user!._id).select('+withdrawalPin');
+      if (!userDoc || !userDoc.hasWithdrawalPin || !userDoc.withdrawalPin) {
+        throw new AppError('Please configure a 4-digit security PIN before modifying your linked settlement bank account.', 403);
+      }
+
+      const { pin } = req.body;
+      if (!pin || pin.toString().length !== 4) {
+        throw new AppError('Please enter your 4-digit security PIN to authorize changing your bank account.', 400);
+      }
+
+      const isPinCorrect = await userDoc.compareWithdrawalPin!(pin.toString());
+      if (!isPinCorrect) {
+        throw new AppError('Incorrect security PIN. Authorization failed.', 401);
+      }
     }
 
     wallet.bankAccount = {

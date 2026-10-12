@@ -953,10 +953,37 @@ class OrderService {
         if (!orderId)
             return null;
         const targetId = orderId.includes(',') ? orderId.split(',')[0].trim() : orderId.trim();
-        if (!mongoose_1.default.Types.ObjectId.isValid(targetId)) {
-            return null;
+        let order = null;
+        // 1. Direct MongoDB ObjectId lookup
+        if (mongoose_1.default.Types.ObjectId.isValid(targetId)) {
+            order = await order_model_1.default.findById(targetId).populate('customer restaurant rider items.foodItem');
         }
-        const order = await order_model_1.default.findById(targetId).populate('customer restaurant rider items.foodItem');
+        // 2. Reference format ORD_<orderObjectId>_<timestamp> or containing an embedded ObjectId
+        if (!order && (targetId.startsWith('ORD_') || targetId.includes('_'))) {
+            const parts = targetId.split('_');
+            const potentialObjectId = parts.find((p) => mongoose_1.default.Types.ObjectId.isValid(p));
+            if (potentialObjectId) {
+                order = await order_model_1.default.findById(potentialObjectId).populate('customer restaurant rider items.foodItem');
+            }
+        }
+        // 3. Search by paymentResult id, paymentReference, or exact transaction reference
+        if (!order) {
+            order = await order_model_1.default.findOne({
+                $or: [
+                    { 'paymentResult.id': targetId },
+                    { 'paymentResult.reference': targetId },
+                    { paymentReference: targetId },
+                    { reference: targetId },
+                    { batchGroupId: targetId },
+                ],
+            }).populate('customer restaurant rider items.foodItem');
+        }
+        // 4. Fallback search by shortId or tail of ObjectId
+        if (!order && targetId.length >= 4 && targetId.length <= 12) {
+            const cleanTarget = targetId.replace('#', '').trim();
+            const recentOrders = await order_model_1.default.find().sort({ createdAt: -1 }).limit(100).populate('customer restaurant rider items.foodItem');
+            order = (recentOrders.find((o) => o._id.toString().toUpperCase().endsWith(cleanTarget.toUpperCase())) || null);
+        }
         if (!order)
             return null;
         if (order.rider) {
