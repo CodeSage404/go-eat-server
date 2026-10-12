@@ -51,6 +51,45 @@ const order_model_1 = __importDefault(require("../models/order.model"));
 const restaurant_model_1 = __importDefault(require("../models/restaurant.model"));
 const mongoose_1 = __importDefault(require("mongoose"));
 const logger_1 = __importDefault(require("../utils/logger"));
+/**
+ * Helper to verify 4-digit transaction/withdrawal PIN with security lockout:
+ * - Maximum 4 consecutive failed attempts.
+ * - Locks account transaction PIN for 12 hours on the 4th incorrect attempt.
+ * - Resets failed counter on success.
+ */
+async function verifyPinWithLockout(userDoc, candidatePin) {
+    // 1. Check if user is currently locked
+    if (userDoc.withdrawalPinLockedUntil && new Date(userDoc.withdrawalPinLockedUntil) > new Date()) {
+        const diffMs = new Date(userDoc.withdrawalPinLockedUntil).getTime() - Date.now();
+        const hours = Math.floor(diffMs / (1000 * 60 * 60));
+        const mins = Math.ceil((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+        const timeStr = hours > 0 ? `${hours}h ${mins}m` : `${mins} minute(s)`;
+        throw new appError_1.default(`Your transaction PIN is temporarily locked for 12 hours due to 4 consecutive incorrect attempts. Remaining lock time: ${timeStr}. You can reset it immediately using "Forgot PIN".`, 423);
+    }
+    // 2. Compare candidate PIN
+    const isPinCorrect = await userDoc.compareWithdrawalPin(candidatePin);
+    if (!isPinCorrect) {
+        const currentFailed = (userDoc.withdrawalPinFailedAttempts || 0) + 1;
+        if (currentFailed >= 4) {
+            userDoc.withdrawalPinLockedUntil = new Date(Date.now() + 12 * 60 * 60 * 1000);
+            userDoc.withdrawalPinFailedAttempts = 0;
+            await userDoc.save();
+            throw new appError_1.default('You have entered an incorrect transaction PIN 4 times. Your account transaction PIN is now locked for 12 hours. Tap "Forgot PIN" to reset your PIN.', 423);
+        }
+        else {
+            userDoc.withdrawalPinFailedAttempts = currentFailed;
+            await userDoc.save();
+            const remaining = 4 - currentFailed;
+            throw new appError_1.default(`Incorrect transaction PIN. ${remaining} attempt(s) remaining before a 12-hour lockout.`, 401);
+        }
+    }
+    // 3. On success, reset failed attempts & lockout
+    if (userDoc.withdrawalPinFailedAttempts > 0 || userDoc.withdrawalPinLockedUntil) {
+        userDoc.withdrawalPinFailedAttempts = 0;
+        userDoc.withdrawalPinLockedUntil = null;
+        await userDoc.save();
+    }
+}
 class WalletController {
     constructor() {
         /**
@@ -96,6 +135,7 @@ class WalletController {
                 schedule: platformSettings?.riderPayoutSchedule || 'weekly',
                 payoutDayOfWeek: platformSettings?.riderPayoutDayOfWeek || 'friday',
             };
+            const isPayoutCoolingOff = Boolean(wallet.payoutCooldownUntil && new Date(wallet.payoutCooldownUntil) > new Date());
             res.status(200).json({
                 status: 'success',
                 data: {
@@ -111,6 +151,9 @@ class WalletController {
                         bankDetails: wallet.bankAccount,
                         isSettlementOnHold: wallet.isSettlementOnHold || false,
                         holdReason: wallet.holdReason,
+                        payoutCooldownUntil: wallet.payoutCooldownUntil || null,
+                        payoutCooldownReason: wallet.payoutCooldownReason || null,
+                        isPayoutCoolingOff,
                         lastPayoutDate: wallet.lastPayoutDate,
                         isActive: wallet.isActive,
                         hasWithdrawalPin,
@@ -118,6 +161,7 @@ class WalletController {
                         updatedAt: wallet.updatedAt,
                     },
                     hasWithdrawalPin,
+                    isPayoutCoolingOff,
                     payoutSchedule,
                     transactions,
                 },
@@ -142,9 +186,16 @@ class WalletController {
             if (!pin || pin.toString().length !== 4) {
                 throw new appError_1.default('Please enter your 4-digit withdrawal PIN', 400);
             }
-            const isPinCorrect = await userDoc.compareWithdrawalPin(pin.toString());
-            if (!isPinCorrect) {
-                throw new appError_1.default('Incorrect withdrawal PIN. Please try again.', 400);
+            await verifyPinWithLockout(userDoc, pin.toString());
+            // Security Check: Enforce 24-Hour Payout Cooling-Off Period (PIN Reset / Bank Update)
+            const existingWalletDoc = await wallet_model_1.default.findOne({ user: req.user._id });
+            if (existingWalletDoc?.payoutCooldownUntil && new Date(existingWalletDoc.payoutCooldownUntil) > new Date()) {
+                const diffMs = new Date(existingWalletDoc.payoutCooldownUntil).getTime() - Date.now();
+                const hours = Math.floor(diffMs / (1000 * 60 * 60));
+                const mins = Math.ceil((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+                const timeStr = hours > 0 ? `${hours} hour(s) and ${mins} minute(s)` : `${mins} minute(s)`;
+                const unlockDateStr = new Date(existingWalletDoc.payoutCooldownUntil).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' });
+                throw new appError_1.default(`For your financial security, a 24-hour payout cooling-off period is active on your account following a recent security change. Withdrawals will unlock in ${timeStr} (${unlockDateStr}). If this security change was not made by you, please contact support immediately.`, 423);
             }
             // Admin Payout Schedule Policy Enforcement (Riders)
             if (req.user?.role === 'rider') {
@@ -256,10 +307,7 @@ class WalletController {
                 if (!pin || pin.toString().length !== 4) {
                     throw new appError_1.default('Please enter your 4-digit security PIN to authorize changing your bank account.', 400);
                 }
-                const isPinCorrect = await userDoc.compareWithdrawalPin(pin.toString());
-                if (!isPinCorrect) {
-                    throw new appError_1.default('Incorrect security PIN. Authorization failed.', 401);
-                }
+                await verifyPinWithLockout(userDoc, pin.toString());
             }
             wallet.bankAccount = {
                 accountNumber: String(accountNumber).trim(),
@@ -275,10 +323,36 @@ class WalletController {
                 countryCode: activeCountry,
                 provider: provider || (activeCountry === 'NG' ? 'paystack' : 'stripe'),
             };
+            // If an existing bank was modified/replaced, enforce 24-hour security cooling-off
+            if (hasExistingBank) {
+                const cooldownHours = 24;
+                const cooldownUntil = new Date(Date.now() + cooldownHours * 60 * 60 * 1000);
+                wallet.payoutCooldownUntil = cooldownUntil;
+                wallet.payoutCooldownReason = 'Security cooling-off period following settlement bank account modification';
+                // Send security alert email to user
+                if (req.user?.email) {
+                    const userDoc = await user_model_1.default.findById(req.user._id);
+                    const recipientName = userDoc?.name || 'Valued Partner';
+                    const cleanAcc = String(accountNumber).trim();
+                    const maskedAcc = cleanAcc.length > 4 ? `•••• •••• ${cleanAcc.slice(-4)}` : cleanAcc;
+                    const cooldownStr = cooldownUntil.toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' });
+                    const nowStr = new Date().toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' });
+                    email_service_1.default.sendBankUpdateSecurityAlert(req.user.email, {
+                        name: recipientName,
+                        email: req.user.email,
+                        bankName: wallet.bankAccount.bankName || 'Settlement Bank',
+                        accountNumberMasked: maskedAcc,
+                        timestamp: nowStr,
+                        cooldownUntil: cooldownStr,
+                    }).catch(err => logger_1.default.error('Failed to dispatch bank update security email:', err));
+                }
+            }
             await wallet.save();
             res.status(200).json({
                 status: 'success',
-                message: 'Bank details updated successfully',
+                message: hasExistingBank
+                    ? 'Bank details updated. For your security, a 24-hour payout cooling-off period has been activated.'
+                    : 'Bank details linked successfully',
                 data: {
                     wallet: {
                         ...wallet.toObject(),
@@ -350,15 +424,75 @@ class WalletController {
             if (!user || !user.hasWithdrawalPin || !user.withdrawalPin) {
                 throw new appError_1.default('Please configure a 4-digit transaction PIN before proceeding', 403);
             }
-            const isPinCorrect = await user.compareWithdrawalPin(pinStr);
-            if (!isPinCorrect) {
-                throw new appError_1.default('Incorrect transaction PIN. Please try again.', 401);
-            }
+            await verifyPinWithLockout(user, pinStr);
             res.status(200).json({
                 status: 'success',
                 message: 'Transaction PIN verified successfully',
                 data: {
                     verified: true,
+                },
+            });
+        });
+        /**
+         * Reset / Recover 4-digit transaction PIN using account password
+         * Unlocks account if locked out and sets a new 4-digit PIN
+         */
+        this.resetWithdrawalPin = (0, catchAsync_1.catchAsync)(async (req, res) => {
+            const { password, newPin } = req.body;
+            if (!password) {
+                throw new appError_1.default('Please provide your account password to verify your identity', 400);
+            }
+            const pinStr = newPin ? newPin.toString().trim() : '';
+            if (!pinStr || pinStr.length !== 4 || !/^\d{4}$/.test(pinStr)) {
+                throw new appError_1.default('New transaction PIN must be exactly 4 numeric digits', 400);
+            }
+            const isAllSame = /^(\d)\1{3}$/.test(pinStr);
+            const isSequentialAscending = '0123456789'.includes(pinStr);
+            const isSequentialDescending = '9876543210'.includes(pinStr);
+            const hasThreeConsecutiveSame = /^(\d)\1{2}\d$/.test(pinStr) || /^\d(\d)\1{2}$/.test(pinStr);
+            if (isAllSame || isSequentialAscending || isSequentialDescending || hasThreeConsecutiveSame) {
+                throw new appError_1.default('This PIN is too simple or predictable (e.g. repeated or sequential digits). Please choose a stronger 4-digit PIN.', 400);
+            }
+            const user = await user_model_1.default.findById(req.user._id).select('+password +withdrawalPin');
+            if (!user) {
+                throw new appError_1.default('User not found', 404);
+            }
+            const isPasswordCorrect = await user.comparePassword(password);
+            if (!isPasswordCorrect) {
+                throw new appError_1.default('Incorrect account password. Identity verification failed.', 401);
+            }
+            user.withdrawalPin = pinStr;
+            user.hasWithdrawalPin = true;
+            user.withdrawalPinFailedAttempts = 0;
+            user.withdrawalPinLockedUntil = null;
+            await user.save();
+            // Enforce 24-hour payout cooling-off on wallet
+            let wallet = await wallet_model_1.default.findOne({ user: user._id });
+            if (!wallet) {
+                wallet = await wallet_model_1.default.create({ user: user._id });
+            }
+            const cooldownHours = 24;
+            const cooldownUntil = new Date(Date.now() + cooldownHours * 60 * 60 * 1000);
+            wallet.payoutCooldownUntil = cooldownUntil;
+            wallet.payoutCooldownReason = 'Security cooling-off period following transaction PIN reset';
+            await wallet.save();
+            // Send security alert email
+            if (user.email) {
+                const cooldownStr = cooldownUntil.toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' });
+                const nowStr = new Date().toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' });
+                email_service_1.default.sendPinResetSecurityAlert(user.email, {
+                    name: user.name || 'Partner',
+                    email: user.email,
+                    timestamp: nowStr,
+                    cooldownUntil: cooldownStr,
+                }).catch(err => logger_1.default.error('Failed to dispatch PIN reset alert email:', err));
+            }
+            res.status(200).json({
+                status: 'success',
+                message: 'Transaction PIN has been reset successfully. Security lock removed. For your protection, a 24-hour payout cooling-off period is active.',
+                data: {
+                    hasWithdrawalPin: true,
+                    payoutCooldownUntil: cooldownUntil,
                 },
             });
         });
@@ -386,8 +520,9 @@ class WalletController {
             if (!user) {
                 throw new appError_1.default('User not found', 404);
             }
+            const hadExistingPin = Boolean(user.hasWithdrawalPin && user.withdrawalPin);
             // If user already has a withdrawal PIN, require verification of the current PIN
-            if (user.hasWithdrawalPin && user.withdrawalPin) {
+            if (hadExistingPin) {
                 if (!currentPin) {
                     throw new appError_1.default('Please provide your current 4-digit PIN to update your PIN', 400);
                 }
@@ -398,10 +533,36 @@ class WalletController {
             }
             user.withdrawalPin = pin.toString();
             user.hasWithdrawalPin = true;
+            user.withdrawalPinFailedAttempts = 0;
+            user.withdrawalPinLockedUntil = null;
             await user.save();
+            // If updating an existing PIN, enforce 24-hour cooling off and send security email
+            if (hadExistingPin) {
+                let wallet = await wallet_model_1.default.findOne({ user: user._id });
+                if (!wallet) {
+                    wallet = await wallet_model_1.default.create({ user: user._id });
+                }
+                const cooldownHours = 24;
+                const cooldownUntil = new Date(Date.now() + cooldownHours * 60 * 60 * 1000);
+                wallet.payoutCooldownUntil = cooldownUntil;
+                wallet.payoutCooldownReason = 'Security cooling-off period following transaction PIN update';
+                await wallet.save();
+                if (user.email) {
+                    const cooldownStr = cooldownUntil.toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' });
+                    const nowStr = new Date().toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' });
+                    email_service_1.default.sendPinResetSecurityAlert(user.email, {
+                        name: user.name || 'Partner',
+                        email: user.email,
+                        timestamp: nowStr,
+                        cooldownUntil: cooldownStr,
+                    }).catch(err => logger_1.default.error('Failed to dispatch PIN update alert email:', err));
+                }
+            }
             res.status(200).json({
                 status: 'success',
-                message: 'Withdrawal PIN configured successfully',
+                message: hadExistingPin
+                    ? 'Withdrawal PIN updated successfully. For your protection, a 24-hour payout cooling-off period has been activated.'
+                    : 'Withdrawal PIN configured successfully',
                 data: {
                     hasWithdrawalPin: true,
                 },

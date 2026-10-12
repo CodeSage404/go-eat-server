@@ -1,0 +1,53 @@
+<!-- Security Shield Hero Icon -->
+<div style="text-align: center; margin: 10px 0 16px;">
+  <div style="width: 72px; height: 72px; border-radius: 50%; background-color: #FEF3C7; border: 2px solid #FCD34D; margin: 0 auto; text-align: center; line-height: 72px; font-size: 32px;">
+    🛡️
+  </div>
+</div>
+
+<!-- Title & Accent Bar -->
+<div style="text-align: center;">
+  <h1 style="margin: 0; font-size: 23px; font-weight: 800; color: #133824; letter-spacing: -0.3px;">
+    Security Alert: Transaction PIN Reset
+  </h1>
+  <div style="width: 44px; height: 3px; background-color: #D97706; border-radius: 2px; margin: 10px auto 18px;"></div>
+</div>
+
+<!-- Greeting & Message -->
+<div style="text-align: left; max-width: 480px; margin: 0 auto 20px;">
+  <p style="font-size: 14px; font-weight: 700; color: #1F2937; margin: 0 0 10px;">
+    Dear <%= typeof name !== 'undefined' && name ? name : 'Partner' %>,
+  </p>
+  <p style="font-size: 13.5px; line-height: 1.6; color: #4B5563; margin: 0 0 14px;">
+    The 4-digit transaction/withdrawal PIN for your GoEat account (<strong style="color: #111827;"><%= email %></strong>) was successfully reset on <strong><%= timestamp %></strong>.
+  </p>
+</div>
+
+<!-- 24-Hour Cooling-Off Highlight Card -->
+<div style="background-color: #FFFBEB; border: 1.5px solid #FDE68A; border-left: 4px solid #D97706; border-radius: 12px; padding: 18px 20px; max-width: 480px; margin: 0 auto 24px;">
+  <p style="margin: 0 0 6px 0; font-size: 14px; font-weight: 800; color: #92400E; display: flex; align-items: center;">
+    🔒 24-Hour Payout Cooling-Off Active
+  </p>
+  <p style="margin: 0 0 10px 0; font-size: 12.5px; line-height: 1.55; color: #B45309;">
+    To protect your wallet balance from unauthorized cash-outs, automated and manual payout requests are temporarily paused for <strong>24 hours</strong> following a PIN reset.
+  </p>
+  <div style="background-color: #FFFFFF; border-radius: 8px; padding: 10px 14px; border: 1px solid #FEE2E2;">
+    <p style="margin: 0; font-size: 12px; color: #374151;">
+      <strong>Withdrawals Unlock On:</strong> <span style="color: #15803D; font-weight: 700;"><%= cooldownUntil %></span>
+    </p>
+  </div>
+</div>
+
+<!-- Urgent Notice if Unauthorized -->
+<div style="background-color: #FEF2F2; border: 1.5px solid #FECACA; border-radius: 12px; padding: 16px 20px; max-width: 480px; margin: 0 auto 24px;">
+  <p style="margin: 0 0 6px 0; font-size: 13px; font-weight: 700; color: #991B1B;">
+    ⚠️ Didn't request this change?
+  </p>
+  <p style="margin: 0; font-size: 12px; line-height: 1.55; color: #B91C1C;">
+    If you did not reset your transaction PIN, your account may be compromised. Please change your account login password immediately in the app and contact GoEat Security at <a href="mailto:verify@goeatone.com" style="color: #991B1B; font-weight: 800; text-decoration: underline;">verify@goeatone.com</a> so we can freeze your wallet and secure your account.
+  </p>
+</div>
+
+<p style="font-size: 12px; color: #9CA3AF; text-align: center; margin-top: 24px;">
+  This is an automated security alert from GoEat Security Services.
+</p>

@@ -315,6 +315,14 @@ const userSchema = new mongoose_1.Schema({
         type: String,
         select: false, // Don't return withdrawal pin hash by default
     },
+    withdrawalPinFailedAttempts: {
+        type: Number,
+        default: 0,
+    },
+    withdrawalPinLockedUntil: {
+        type: Date,
+        default: null,
+    },
 }, {
     timestamps: true,
 });

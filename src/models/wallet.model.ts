@@ -21,6 +21,8 @@ export interface IWallet extends Document {
     provider?: string;
   };
   lastPayoutDate?: Date;
+  payoutCooldownUntil?: Date | null;
+  payoutCooldownReason?: string | null;
   isSettlementOnHold: boolean;
   holdReason?: string;
   isActive: boolean;
@@ -71,6 +73,14 @@ const walletSchema = new Schema<IWallet>(
     },
     lastPayoutDate: {
       type: Date,
+    },
+    payoutCooldownUntil: {
+      type: Date,
+      default: null,
+    },
+    payoutCooldownReason: {
+      type: String,
+      default: null,
     },
     isSettlementOnHold: {
       type: Boolean,

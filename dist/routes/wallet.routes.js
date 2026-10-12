@@ -126,6 +126,8 @@ router.get('/me/transactions/:id', (0, auth_middleware_1.restrictTo)(user_model_
  *         description: Incorrect security PIN provided
  *       403:
  *         description: PIN not configured prior to bank change attempt
+ *       423:
+ *         description: Transaction PIN is locked for 12 hours due to 4 consecutive failed attempts
  */
 router.put('/me/bank', (0, auth_middleware_1.restrictTo)(user_model_1.UserRole.RIDER, user_model_1.UserRole.VENDOR), wallet_controller_1.default.updateBankDetails);
 /**
@@ -181,7 +183,7 @@ router.post('/request-payout', withdrawLimiter, (0, auth_middleware_1.restrictTo
  *     tags:
  *       - Wallets
  *     summary: Request a withdrawal from courier or vendor available balance
- *     description: Deducts requested funds from available balance and initiates payout processing. Enforces settlement hold rules, available balance checks, and 4-digit PIN verification.
+ *     description: Deducts requested funds from available balance and initiates payout processing. Enforces settlement hold rules, available balance checks, 4-digit PIN verification, and 24-hour payout security cooling-off periods.
  *     security:
  *       - bearerAuth: []
  *     requestBody:
@@ -202,11 +204,13 @@ router.post('/request-payout', withdrawLimiter, (0, auth_middleware_1.restrictTo
  *       200:
  *         description: Withdrawal requested successfully
  *       400:
- *         description: Invalid amount, missing PIN, or incorrect withdrawal PIN
+ *         description: Invalid amount, missing PIN, or schedule restriction
  *       401:
- *         description: Unauthorized or missing authentication token
+ *         description: Unauthorized or incorrect transaction PIN
  *       403:
  *         description: Forbidden, only riders or vendors can withdraw
+ *       423:
+ *         description: Locked due to 24-hour payout security cooling-off period (recent PIN reset or bank update)
  */
 router.post('/me/withdraw', withdrawLimiter, (0, auth_middleware_1.restrictTo)(user_model_1.UserRole.RIDER, user_model_1.UserRole.VENDOR), wallet_controller_1.default.requestWithdrawal);
 /**
@@ -303,4 +307,42 @@ router.route('/me/pin')
  *         description: Transaction PIN not configured
  */
 router.post('/me/verify-pin', (0, auth_middleware_1.restrictTo)(user_model_1.UserRole.RIDER, user_model_1.UserRole.VENDOR), wallet_controller_1.default.verifyWithdrawalPin);
+/**
+ * @openapi
+ * /api/v1/wallets/me/reset-pin:
+ *   post:
+ *     tags:
+ *       - Wallets
+ *     summary: Reset / Recover 4-digit transaction PIN using account password
+ *     description: Authenticates user identity with account password and resets their 4-digit transaction PIN, removing any 12-hour lockout immediately.
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [password, newPin]
+ *             properties:
+ *               password:
+ *                 type: string
+ *                 format: password
+ *                 example: "UserSecretPass123!"
+ *                 description: Account login password for security verification
+ *               newPin:
+ *                 type: string
+ *                 example: "8520"
+ *                 description: New 4-digit transaction security PIN
+ *     responses:
+ *       200:
+ *         description: Transaction PIN reset successfully and lockout cleared
+ *       400:
+ *         description: Missing password or weak/predictable new PIN
+ *       401:
+ *         description: Incorrect account password
+ *       404:
+ *         description: User not found
+ */
+router.post('/me/reset-pin', (0, auth_middleware_1.restrictTo)(user_model_1.UserRole.RIDER, user_model_1.UserRole.VENDOR), wallet_controller_1.default.resetWithdrawalPin);
 exports.default = router;

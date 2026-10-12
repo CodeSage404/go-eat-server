@@ -77,6 +77,14 @@ const walletSchema = new mongoose_1.Schema({
     lastPayoutDate: {
         type: Date,
     },
+    payoutCooldownUntil: {
+        type: Date,
+        default: null,
+    },
+    payoutCooldownReason: {
+        type: String,
+        default: null,
+    },
     isSettlementOnHold: {
         type: Boolean,
         default: false,

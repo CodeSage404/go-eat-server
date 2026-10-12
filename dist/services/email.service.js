@@ -272,5 +272,21 @@ class EmailService {
         this.sendEmail(to, `${data.userName} invited you to be their GoEatOne Buddy`, htmlContent, 'default')
             .catch(err => logger_1.default.error(`Background buddy invitation email failed to ${to}:`, err?.message || err));
     }
+    /**
+     * Sends a security alert notification when transaction PIN is reset
+     */
+    async sendPinResetSecurityAlert(email, data) {
+        const htmlContent = (0, templateEngine_1.renderTemplate)('PIN_RESET_ALERT', data);
+        this.sendEmail(email, 'Security Alert: Your GoEat Transaction PIN Was Reset (24h Cooldown Active)', htmlContent, 'secure')
+            .catch(err => logger_1.default.error(`Background PIN reset alert email failed to ${email}:`, err?.message || err));
+    }
+    /**
+     * Sends a security alert notification when settlement bank details are modified
+     */
+    async sendBankUpdateSecurityAlert(email, data) {
+        const htmlContent = (0, templateEngine_1.renderTemplate)('BANK_UPDATE_ALERT', data);
+        this.sendEmail(email, 'Security Alert: Settlement Bank Changed on GoEat (24h Cooldown Active)', htmlContent, 'secure')
+            .catch(err => logger_1.default.error(`Background bank update alert email failed to ${email}:`, err?.message || err));
+    }
 }
 exports.default = new EmailService();

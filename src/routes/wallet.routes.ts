@@ -127,6 +127,8 @@ router.get('/me/transactions/:id', restrictTo(UserRole.RIDER, UserRole.VENDOR), 
  *         description: Incorrect security PIN provided
  *       403:
  *         description: PIN not configured prior to bank change attempt
+ *       423:
+ *         description: Transaction PIN is locked for 12 hours due to 4 consecutive failed attempts
  */
 router.put('/me/bank', restrictTo(UserRole.RIDER, UserRole.VENDOR), walletController.updateBankDetails);
 
@@ -185,7 +187,7 @@ router.post('/request-payout', withdrawLimiter, restrictTo(UserRole.RIDER, UserR
  *     tags:
  *       - Wallets
  *     summary: Request a withdrawal from courier or vendor available balance
- *     description: Deducts requested funds from available balance and initiates payout processing. Enforces settlement hold rules, available balance checks, and 4-digit PIN verification.
+ *     description: Deducts requested funds from available balance and initiates payout processing. Enforces settlement hold rules, available balance checks, 4-digit PIN verification, and 24-hour payout security cooling-off periods.
  *     security:
  *       - bearerAuth: []
  *     requestBody:
@@ -206,11 +208,13 @@ router.post('/request-payout', withdrawLimiter, restrictTo(UserRole.RIDER, UserR
  *       200:
  *         description: Withdrawal requested successfully
  *       400:
- *         description: Invalid amount, missing PIN, or incorrect withdrawal PIN
+ *         description: Invalid amount, missing PIN, or schedule restriction
  *       401:
- *         description: Unauthorized or missing authentication token
+ *         description: Unauthorized or incorrect transaction PIN
  *       403:
  *         description: Forbidden, only riders or vendors can withdraw
+ *       423:
+ *         description: Locked due to 24-hour payout security cooling-off period (recent PIN reset or bank update)
  */
 router.post('/me/withdraw', withdrawLimiter, restrictTo(UserRole.RIDER, UserRole.VENDOR), walletController.requestWithdrawal);
 

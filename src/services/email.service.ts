@@ -19,7 +19,9 @@ export type EmailTemplateType =
   | 'RIDER_APPLICATION_APPROVED'
   | 'RIDER_ACTION_REQUIRED'
   | 'PARTNER_APPLICATION_RECEIVED'
-  | 'WITHDRAWAL_RECEIPT';
+  | 'WITHDRAWAL_RECEIPT'
+  | 'PIN_RESET_ALERT'
+  | 'BANK_UPDATE_ALERT';
 
 class EmailService {
   /**
@@ -379,6 +381,42 @@ class EmailService {
     `;
     this.sendEmail(to, `${data.userName} invited you to be their GoEatOne Buddy`, htmlContent, 'default')
       .catch(err => logger.error(`Background buddy invitation email failed to ${to}:`, err?.message || err));
+  }
+
+  /**
+   * Sends a security alert notification when transaction PIN is reset
+   */
+  public async sendPinResetSecurityAlert(
+    email: string,
+    data: {
+      name: string;
+      email: string;
+      timestamp: string;
+      cooldownUntil: string;
+    }
+  ): Promise<void> {
+    const htmlContent = renderTemplate('PIN_RESET_ALERT', data);
+    this.sendEmail(email, 'Security Alert: Your GoEat Transaction PIN Was Reset (24h Cooldown Active)', htmlContent, 'secure')
+      .catch(err => logger.error(`Background PIN reset alert email failed to ${email}:`, err?.message || err));
+  }
+
+  /**
+   * Sends a security alert notification when settlement bank details are modified
+   */
+  public async sendBankUpdateSecurityAlert(
+    email: string,
+    data: {
+      name: string;
+      email: string;
+      bankName: string;
+      accountNumberMasked: string;
+      timestamp: string;
+      cooldownUntil: string;
+    }
+  ): Promise<void> {
+    const htmlContent = renderTemplate('BANK_UPDATE_ALERT', data);
+    this.sendEmail(email, 'Security Alert: Settlement Bank Changed on GoEat (24h Cooldown Active)', htmlContent, 'secure')
+      .catch(err => logger.error(`Background bank update alert email failed to ${email}:`, err?.message || err));
   }
 }
 
