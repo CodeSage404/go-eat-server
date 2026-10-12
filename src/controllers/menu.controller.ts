@@ -113,14 +113,20 @@ const foodItemSchema = z.object({
 });
 
 class MenuController {
-  private async checkRestaurantOwnership(restaurantId: string, userId: any, userRole: string) {
+  private async checkRestaurantOwnership(restaurantId: string, userId: any, userRole: string, userRestaurantId?: any) {
     const restaurant = await restaurantService.getRestaurantById(restaurantId);
     if (!restaurant) {
       throw new AppError('Restaurant not found', 404);
     }
     const ownerId = (restaurant.owner?._id || restaurant.owner?.id || restaurant.owner)?.toString();
     const currentUserId = userId?.toString();
-    const isOwner = ownerId && currentUserId && ownerId === currentUserId;
+    const matchesOwner = Boolean(ownerId && currentUserId && ownerId === currentUserId);
+    const matchesRestaurantId = Boolean(
+      userRestaurantId &&
+      (userRestaurantId.toString() === restaurantId.toString() ||
+       userRestaurantId.toString() === restaurant._id?.toString())
+    );
+    const isOwner = matchesOwner || matchesRestaurantId;
     if (!isOwner && userRole !== 'admin') {
       throw new AppError('You do not have permission to manage this menu', 403);
     }
@@ -129,7 +135,7 @@ class MenuController {
   // Category Controllers
   public createCategory = catchAsync(async (req: any, res: Response) => {
     const { restaurantId } = req.params;
-    await this.checkRestaurantOwnership(restaurantId as string, req.user._id, req.user.role);
+    await this.checkRestaurantOwnership(restaurantId as string, req.user._id, req.user.role, req.user.restaurantId);
 
     const validatedData = categorySchema.safeParse(req.body);
     if (!validatedData.success) {
@@ -151,9 +157,17 @@ class MenuController {
     const { restaurantId } = req.params;
     const menu = await menuService.getFullMenu(restaurantId as string);
 
+    // Direct flat list of all food items belonging to this restaurant
+    const items = await FoodItem.find({ restaurant: restaurantId })
+      .populate('category', 'name image description');
+
     res.status(200).json({
       status: 'success',
-      data: { menu },
+      data: {
+        menu,
+        categories: menu,
+        items,
+      },
     });
   });
 
@@ -232,7 +246,7 @@ class MenuController {
   // Food Item Controllers
   public addFoodItem = catchAsync(async (req: any, res: Response) => {
     const { restaurantId } = req.params;
-    await this.checkRestaurantOwnership(restaurantId as string, req.user._id, req.user.role);
+    await this.checkRestaurantOwnership(restaurantId as string, req.user._id, req.user.role, req.user.restaurantId);
 
     const validatedData = foodItemSchema.safeParse(req.body);
     if (!validatedData.success) {
@@ -248,11 +262,16 @@ class MenuController {
       }
     }
 
+    let finalImage = req.file?.path || validatedData.data.image || req.body?.image || 'default-food.png';
+    if (finalImage && typeof finalImage === 'string' && finalImage.startsWith('data:image')) {
+      finalImage = await processBase64Image(finalImage, req);
+    }
+
     const foodItemData: any = {
       ...validatedData.data,
       category: validatedData.data.category as any,
       restaurant: restaurantId as any,
-      image: req.file?.path || validatedData.data.image || req.body?.image || 'default-food.png',
+      image: finalImage,
       preparationTime: validatedData.data.preparationTime || validatedData.data.prepTime || 20,
     };
 
@@ -283,7 +302,7 @@ class MenuController {
 
   public updateFoodItem = catchAsync(async (req: any, res: Response) => {
     const { restaurantId, id } = req.params;
-    await this.checkRestaurantOwnership(restaurantId as string, req.user._id, req.user.role);
+    await this.checkRestaurantOwnership(restaurantId as string, req.user._id, req.user.role, req.user.restaurantId);
 
     const existingItem = await FoodItem.findById(id);
     if (!existingItem) {
@@ -307,6 +326,8 @@ class MenuController {
     }
     if (req.file?.path) {
       updateData.image = req.file.path;
+    } else if (updateData.image && typeof updateData.image === 'string' && updateData.image.startsWith('data:image')) {
+      updateData.image = await processBase64Image(updateData.image, req);
     }
     if (updateData.prepTime && !updateData.preparationTime) {
       updateData.preparationTime = Number(updateData.prepTime);
@@ -372,7 +393,7 @@ class MenuController {
 
   public deleteFoodItem = catchAsync(async (req: any, res: Response) => {
     const { restaurantId, id } = req.params;
-    await this.checkRestaurantOwnership(restaurantId as string, req.user._id, req.user.role);
+    await this.checkRestaurantOwnership(restaurantId as string, req.user._id, req.user.role, req.user.restaurantId);
 
     await menuService.deleteFoodItem(id as string);
     syncRestaurantPromoStatus(restaurantId as string).catch(() => {});

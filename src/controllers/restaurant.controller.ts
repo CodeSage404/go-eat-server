@@ -199,7 +199,15 @@ class RestaurantController {
    * Get logged in vendor's restaurant
    */
   public getMyRestaurant = catchAsync(async (req: any, res: Response) => {
-    const restaurant = await Restaurant.findOne({ owner: req.user._id }).populate('owner', 'name email profileImage phoneNumber phone');
+    let restaurant = await Restaurant.findOne({ owner: req.user._id }).populate('owner', 'name email profileImage phoneNumber phone');
+
+    if (!restaurant && req.user.restaurantId) {
+      restaurant = await Restaurant.findById(req.user.restaurantId).populate('owner', 'name email profileImage phoneNumber phone');
+      if (restaurant && !restaurant.owner) {
+        restaurant.owner = req.user._id;
+        await restaurant.save();
+      }
+    }
 
     if (!restaurant) {
       throw new AppError('No restaurant profile found for this user', 404);
@@ -215,7 +223,15 @@ class RestaurantController {
    * Update logged in vendor's restaurant
    */
   public updateMyRestaurant = catchAsync(async (req: any, res: Response) => {
-    const restaurant = await Restaurant.findOne({ owner: req.user._id });
+    let restaurant = await Restaurant.findOne({ owner: req.user._id });
+
+    if (!restaurant && req.user.restaurantId) {
+      restaurant = await Restaurant.findById(req.user.restaurantId);
+      if (restaurant && !restaurant.owner) {
+        restaurant.owner = req.user._id;
+        await restaurant.save();
+      }
+    }
 
     if (!restaurant) {
       throw new AppError('No restaurant profile found for this user', 404);
@@ -252,7 +268,11 @@ class RestaurantController {
    * Get logged in vendor's verification status
    */
   public getMyVerificationStatus = catchAsync(async (req: any, res: Response) => {
-    const restaurant = await Restaurant.findOne({ owner: req.user._id });
+    let restaurant = await Restaurant.findOne({ owner: req.user._id });
+
+    if (!restaurant && req.user.restaurantId) {
+      restaurant = await Restaurant.findById(req.user.restaurantId);
+    }
 
     if (!restaurant) {
       throw new AppError('No restaurant profile found for this user', 404);
