@@ -556,7 +556,7 @@ class AdminController {
           {
             partnerName: oName,
             restaurantName: name,
-            loginUrl: process.env.VENDOR_DASHBOARD_URL || 'https://partner.goeat.com',
+            loginUrl: process.env.VENDOR_DASHBOARD_URL || 'https://go-eat-webapp.vercel.app/partners/login',
             email: email.toLowerCase(),
             password
           },

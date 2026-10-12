@@ -190,7 +190,7 @@ export const applyForPartnership = catchAsync(async (req: Request, res: Response
         {
           partnerName: resolvedOwnerName,
           restaurantName: businessName.trim(),
-          loginUrl: process.env.VENDOR_DASHBOARD_URL || 'https://partner.goeat.com',
+          loginUrl: process.env.VENDOR_DASHBOARD_URL || 'https://go-eat-webapp.vercel.app/partners/login',
           email: normalizedEmail,
           password: generatedPassword,
         },
@@ -463,7 +463,7 @@ export const adminGrantAccess = catchAsync(async (req: Request, res: Response) =
       {
         partnerName: application.ownerName,
         restaurantName: application.businessName,
-        loginUrl: process.env.VENDOR_DASHBOARD_URL || 'https://partner.goeat.com',
+        loginUrl: process.env.VENDOR_DASHBOARD_URL || 'https://go-eat-webapp.vercel.app/partners/login',
         email: normalizedEmail,
         password: generatedPassword,
       },

@@ -119,6 +119,8 @@ class LocationController {
     let country = 'Nigeria';
     let countryCode = 'NG';
 
+    let resolvedCity = '';
+
     // 1. Try Google Maps Reverse Geocoding
     try {
       const apiKey = process.env.GOOGLE_MAPS_API_KEY;
@@ -131,6 +133,12 @@ class LocationController {
           const formatted = data.results[0].formatted_address;
           if (formatted && formatted.toLowerCase() !== 'nigeria') {
             address = formatted;
+          }
+          const cityComp = data.results[0].address_components?.find((c: any) =>
+            c.types?.includes('locality') || c.types?.includes('administrative_area_level_2')
+          );
+          if (cityComp) {
+            resolvedCity = cityComp.long_name;
           }
           const countryComp = data.results[0].address_components?.find((c: any) =>
             c.types?.includes('country')
@@ -160,14 +168,63 @@ class LocationController {
       // Fallback
     }
 
-    // 2. Fallback to Nominatim (OpenStreetMap) for high-precision address resolution
+    // 2. High-precision Reverse Geocoding via BigDataCloud client (fast, reliable, no key needed)
+    if (!address || address.toLowerCase() === 'nigeria') {
+      try {
+        const bdcResponse = await fetch(
+          `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lng}&localityLanguage=en`
+        );
+        if (bdcResponse.ok) {
+          const bdcData = (await bdcResponse.json()) as any;
+          if (bdcData) {
+            const rawParts = [
+              bdcData.locality,
+              bdcData.city,
+              bdcData.principalSubdivision,
+              bdcData.countryName,
+            ].filter(Boolean);
+            if (rawParts.length > 0) {
+              const uniqueParts = rawParts.filter((part, idx) => rawParts.indexOf(part) === idx);
+              address = uniqueParts.join(', ');
+            }
+            if (bdcData.city) {
+              resolvedCity = bdcData.city;
+            } else if (bdcData.locality) {
+              resolvedCity = bdcData.locality;
+            } else if (bdcData.principalSubdivision) {
+              resolvedCity = bdcData.principalSubdivision;
+            }
+            if (bdcData.countryName) {
+              const bdcCountry = (bdcData.countryName || '').toLowerCase();
+              if (bdcCountry.includes('italy') || bdcData.countryCode === 'IT') {
+                country = 'Italy';
+                countryCode = 'IT';
+              } else if (bdcCountry.includes('united kingdom') || bdcData.countryCode === 'GB' || bdcData.countryCode === 'UK') {
+                country = 'UK';
+                countryCode = 'UK';
+              } else if (bdcCountry.includes('nigeria') || bdcData.countryCode === 'NG') {
+                country = 'Nigeria';
+                countryCode = 'NG';
+              } else {
+                country = bdcData.countryName;
+                countryCode = bdcData.countryCode || 'OT';
+              }
+            }
+          }
+        }
+      } catch (bdcErr: any) {
+        // Fallback
+      }
+    }
+
+    // 3. Fallback to Nominatim (OpenStreetMap)
     if (!address || address.toLowerCase() === 'nigeria') {
       try {
         const response = await fetch(
           `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=jsonv2`,
           {
             headers: {
-              'User-Agent': 'GoEatApp/1.0 (support@goeatone.com)',
+              'User-Agent': 'GoEatOne/1.0 (support@goeatone.com)',
               'Accept': 'application/json',
             }
           }
@@ -179,6 +236,9 @@ class LocationController {
             address = data.display_name;
           }
           if (data && data.address) {
+            if (data.address.city || data.address.town || data.address.village || data.address.suburb) {
+              resolvedCity = data.address.city || data.address.town || data.address.village || data.address.suburb;
+            }
             const nomCountry = (data.address.country || '').toLowerCase();
             const nomCode = (data.address.country_code || '').toLowerCase();
             if (nomCode === 'it' || nomCountry.includes('italy') || nomCountry.includes('italia')) {
@@ -201,7 +261,7 @@ class LocationController {
       }
     }
 
-    // 3. Coordinate bounding box fallback if country not resolved by API
+    // 4. Coordinate bounding box fallback if country not resolved by API
     if (country === 'Nigeria' && countryCode === 'NG' && address) {
       const lowerAddr = address.toLowerCase();
       if (lowerAddr.includes('italy') || lowerAddr.includes('italia')) {
@@ -224,15 +284,54 @@ class LocationController {
       }
     }
 
-    // 4. Guarantee precise fallback address format if still empty
+    // 5. Intelligent Named City Fallback (NEVER display raw coordinates or "Precise Location (lat, lng)")
     if (!address || address.toLowerCase() === 'nigeria') {
+      const KNOWN_NIGERIAN_HUBS = [
+        { name: 'Lagos', state: 'Lagos', lat: 6.5244, lng: 3.3792 },
+        { name: 'Ikeja', state: 'Lagos', lat: 6.6018, lng: 3.3515 },
+        { name: 'Victoria Island', state: 'Lagos', lat: 6.4281, lng: 3.4219 },
+        { name: 'Abuja', state: 'FCT', lat: 9.0765, lng: 7.3986 },
+        { name: 'Ibadan', state: 'Oyo', lat: 7.3775, lng: 3.9470 },
+        { name: 'Port Harcourt', state: 'Rivers', lat: 4.8156, lng: 7.0498 },
+        { name: 'Enugu', state: 'Enugu', lat: 6.4483, lng: 7.5139 },
+        { name: 'Benin City', state: 'Edo', lat: 6.3350, lng: 5.6037 },
+        { name: 'Kano', state: 'Kano', lat: 12.0022, lng: 8.5920 },
+        { name: 'Owerri', state: 'Imo', lat: 5.4836, lng: 7.0332 },
+        { name: 'Calabar', state: 'Cross River', lat: 4.9757, lng: 8.3417 },
+        { name: 'Abeokuta', state: 'Ogun', lat: 7.1475, lng: 3.3619 },
+        { name: 'Akure', state: 'Ondo', lat: 7.2571, lng: 5.2058 },
+        { name: 'Warri', state: 'Delta', lat: 5.5174, lng: 5.7501 },
+        { name: 'Ilorin', state: 'Kwara', lat: 8.4799, lng: 4.5418 },
+        { name: 'Jos', state: 'Plateau', lat: 9.8965, lng: 8.8583 },
+        { name: 'Kaduna', state: 'Kaduna', lat: 10.5105, lng: 7.4165 },
+        { name: 'Asaba', state: 'Delta', lat: 6.2059, lng: 6.6959 },
+        { name: 'Uyo', state: 'Akwa Ibom', lat: 5.0377, lng: 7.9128 },
+      ];
+
       if (country === 'Italy') {
-        address = `Precise Location (${lat.toFixed(4)}, ${lng.toFixed(4)}), Italy`;
+        address = 'Rome, Italy';
+        resolvedCity = 'Rome';
       } else if (country === 'UK') {
-        address = `Precise Location (${lat.toFixed(4)}, ${lng.toFixed(4)}), UK`;
+        address = 'London, UK';
+        resolvedCity = 'London';
       } else {
-        address = `Precise Location (${lat.toFixed(4)}, ${lng.toFixed(4)}), Nigeria`;
+        // Find nearest hub
+        let closest = KNOWN_NIGERIAN_HUBS[0];
+        let minDistanceSq = Infinity;
+        for (const hub of KNOWN_NIGERIAN_HUBS) {
+          const dSq = (lat - hub.lat) ** 2 + (lng - hub.lng) ** 2;
+          if (dSq < minDistanceSq) {
+            minDistanceSq = dSq;
+            closest = hub;
+          }
+        }
+        address = `${closest.name}, ${closest.state}, Nigeria`;
+        resolvedCity = closest.name;
       }
+    }
+
+    if (!resolvedCity) {
+      resolvedCity = address.split(',')[0].trim();
     }
 
     const isNigeria = country === 'Nigeria';
@@ -243,6 +342,7 @@ class LocationController {
       status: 'success',
       data: {
         address,
+        city: resolvedCity,
         coords: { latitude: lat, longitude: lng },
         country,
         countryCode,

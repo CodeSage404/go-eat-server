@@ -118,7 +118,10 @@ class MenuController {
     if (!restaurant) {
       throw new AppError('Restaurant not found', 404);
     }
-    if (restaurant.owner._id.toString() !== userId.toString() && userRole !== 'admin') {
+    const ownerId = (restaurant.owner?._id || restaurant.owner?.id || restaurant.owner)?.toString();
+    const currentUserId = userId?.toString();
+    const isOwner = ownerId && currentUserId && ownerId === currentUserId;
+    if (!isOwner && userRole !== 'admin') {
       throw new AppError('You do not have permission to manage this menu', 403);
     }
   }
