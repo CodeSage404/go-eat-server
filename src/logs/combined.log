@@ -1,0 +1,67 @@
+2026-10-13 20:39:48 [info]: 	🍏 Apple private key loaded successfully from: C:\Users\Immanuel\Desktop\EMStack\Go-Eat\server\apple-auth.txt
+2026-10-13 20:39:48 [warn]: 	⚠️ Firebase service account not configured or using placeholder. Push notifications will be disabled.
+2026-10-13 20:39:48 [warn]: 	⚠️ Twilio credentials use placeholders or are missing. Dynamic Redis OTP will handle verification.
+2026-10-13 20:39:51 [info]: 	⏰ User inactivity re-engagement background schedule active (every 24 hours).
+2026-10-13 20:40:21 [warn]: 	⚠️ MongoDB Disconnected
+2026-10-13 20:42:08 [info]: 	🍏 Apple private key loaded successfully from: C:\Users\Immanuel\Desktop\EMStack\Go-Eat\server\apple-auth.txt
+2026-10-13 20:42:08 [warn]: 	⚠️ Firebase service account not configured or using placeholder. Push notifications will be disabled.
+2026-10-13 20:42:09 [warn]: 	⚠️ Twilio credentials use placeholders or are missing. Dynamic Redis OTP will handle verification.
+2026-10-13 20:42:15 [info]: 	⏰ User inactivity re-engagement background schedule active (every 24 hours).
+2026-10-13 20:42:15 [error]: AggregateError
+    at internalConnectMultiple (node:net:1134:18)
+    at afterConnectMultiple (node:net:1715:7)
+2026-10-13 20:42:15 [error]: AggregateError
+    at internalConnectMultiple (node:net:1134:18)
+    at afterConnectMultiple (node:net:1715:7)
+2026-10-13 20:42:16 [error]: AggregateError
+    at internalConnectMultiple (node:net:1134:18)
+    at afterConnectMultiple (node:net:1715:7)
+2026-10-13 20:42:16 [error]: AggregateError
+    at internalConnectMultiple (node:net:1134:18)
+    at afterConnectMultiple (node:net:1715:7)
+2026-10-13 20:42:17 [error]: AggregateError
+    at internalConnectMultiple (node:net:1134:18)
+    at afterConnectMultiple (node:net:1715:7)
+2026-10-13 20:42:18 [error]: AggregateError
+    at internalConnectMultiple (node:net:1134:18)
+    at afterConnectMultiple (node:net:1715:7)
+2026-10-13 20:42:19 [error]: AggregateError
+    at internalConnectMultiple (node:net:1134:18)
+    at afterConnectMultiple (node:net:1715:7)
+2026-10-13 20:42:21 [error]: AggregateError
+    at internalConnectMultiple (node:net:1134:18)
+    at afterConnectMultiple (node:net:1715:7)
+2026-10-13 20:42:24 [error]: AggregateError
+    at internalConnectMultiple (node:net:1134:18)
+    at afterConnectMultiple (node:net:1715:7)
+2026-10-13 20:42:26 [error]: AggregateError
+    at internalConnectMultiple (node:net:1134:18)
+    at afterConnectMultiple (node:net:1715:7)
+2026-10-13 20:42:28 [error]: AggregateError
+    at internalConnectMultiple (node:net:1134:18)
+    at afterConnectMultiple (node:net:1715:7)
+2026-10-13 20:42:30 [error]: AggregateError
+    at internalConnectMultiple (node:net:1134:18)
+    at afterConnectMultiple (node:net:1715:7)
+2026-10-13 20:42:32 [error]: AggregateError
+    at internalConnectMultiple (node:net:1134:18)
+    at afterConnectMultiple (node:net:1715:7)
+2026-10-13 20:42:34 [error]: AggregateError
+    at internalConnectMultiple (node:net:1134:18)
+    at afterConnectMultiple (node:net:1715:7)
+2026-10-13 20:42:36 [error]: AggregateError
+    at internalConnectMultiple (node:net:1134:18)
+    at afterConnectMultiple (node:net:1715:7)
+2026-10-13 20:42:38 [error]: AggregateError
+    at internalConnectMultiple (node:net:1134:18)
+    at afterConnectMultiple (node:net:1715:7)
+2026-10-13 20:42:40 [error]: AggregateError
+    at internalConnectMultiple (node:net:1134:18)
+    at afterConnectMultiple (node:net:1715:7)
+2026-10-13 20:42:43 [error]: AggregateError
+    at internalConnectMultiple (node:net:1134:18)
+    at afterConnectMultiple (node:net:1715:7)
+2026-10-13 20:42:45 [error]: AggregateError
+    at internalConnectMultiple (node:net:1134:18)
+    at afterConnectMultiple (node:net:1715:7)
+2026-10-13 20:42:45 [warn]: 	⚠️ MongoDB Disconnected

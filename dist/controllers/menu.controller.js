@@ -158,7 +158,7 @@ class MenuController {
         // Category Controllers
         this.createCategory = (0, catchAsync_1.catchAsync)(async (req, res) => {
             const { restaurantId } = req.params;
-            await this.checkRestaurantOwnership(restaurantId, req.user._id, req.user.role);
+            await this.checkRestaurantOwnership(restaurantId, req.user._id, req.user.role, req.user.restaurantId);
             const validatedData = categorySchema.safeParse(req.body);
             if (!validatedData.success) {
                 throw new appError_1.default(validatedData.error.issues.map(i => i.message).join(', '), 400);
@@ -175,9 +175,16 @@ class MenuController {
         this.getMenu = (0, catchAsync_1.catchAsync)(async (req, res) => {
             const { restaurantId } = req.params;
             const menu = await menu_service_1.default.getFullMenu(restaurantId);
+            // Direct flat list of all food items belonging to this restaurant
+            const items = await foodItem_model_1.default.find({ restaurant: restaurantId })
+                .populate('category', 'name image description');
             res.status(200).json({
                 status: 'success',
-                data: { menu },
+                data: {
+                    menu,
+                    categories: menu,
+                    items,
+                },
             });
         });
         this.getAllFoodItems = (0, catchAsync_1.catchAsync)(async (req, res) => {
@@ -242,7 +249,7 @@ class MenuController {
         // Food Item Controllers
         this.addFoodItem = (0, catchAsync_1.catchAsync)(async (req, res) => {
             const { restaurantId } = req.params;
-            await this.checkRestaurantOwnership(restaurantId, req.user._id, req.user.role);
+            await this.checkRestaurantOwnership(restaurantId, req.user._id, req.user.role, req.user.restaurantId);
             const validatedData = foodItemSchema.safeParse(req.body);
             if (!validatedData.success) {
                 throw new appError_1.default(validatedData.error.issues.map(i => i.message).join(', '), 400);
@@ -255,11 +262,15 @@ class MenuController {
                     throw new appError_1.default('Sale Price must be lower than Product Price', 400);
                 }
             }
+            let finalImage = req.file?.path || validatedData.data.image || req.body?.image || 'default-food.png';
+            if (finalImage && typeof finalImage === 'string' && finalImage.startsWith('data:image')) {
+                finalImage = await (0, upload_1.processBase64Image)(finalImage, req);
+            }
             const foodItemData = {
                 ...validatedData.data,
                 category: validatedData.data.category,
                 restaurant: restaurantId,
-                image: req.file?.path || validatedData.data.image || req.body?.image || 'default-food.png',
+                image: finalImage,
                 preparationTime: validatedData.data.preparationTime || validatedData.data.prepTime || 20,
             };
             if (foodItemData.comboOptions && Array.isArray(foodItemData.comboOptions)) {
@@ -284,7 +295,7 @@ class MenuController {
         });
         this.updateFoodItem = (0, catchAsync_1.catchAsync)(async (req, res) => {
             const { restaurantId, id } = req.params;
-            await this.checkRestaurantOwnership(restaurantId, req.user._id, req.user.role);
+            await this.checkRestaurantOwnership(restaurantId, req.user._id, req.user.role, req.user.restaurantId);
             const existingItem = await foodItem_model_1.default.findById(id);
             if (!existingItem) {
                 throw new appError_1.default('Food item not found', 404);
@@ -306,6 +317,9 @@ class MenuController {
             }
             if (req.file?.path) {
                 updateData.image = req.file.path;
+            }
+            else if (updateData.image && typeof updateData.image === 'string' && updateData.image.startsWith('data:image')) {
+                updateData.image = await (0, upload_1.processBase64Image)(updateData.image, req);
             }
             if (updateData.prepTime && !updateData.preparationTime) {
                 updateData.preparationTime = Number(updateData.prepTime);
@@ -366,7 +380,7 @@ class MenuController {
         });
         this.deleteFoodItem = (0, catchAsync_1.catchAsync)(async (req, res) => {
             const { restaurantId, id } = req.params;
-            await this.checkRestaurantOwnership(restaurantId, req.user._id, req.user.role);
+            await this.checkRestaurantOwnership(restaurantId, req.user._id, req.user.role, req.user.restaurantId);
             await menu_service_1.default.deleteFoodItem(id);
             (0, restaurant_service_1.syncRestaurantPromoStatus)(restaurantId).catch(() => { });
             res.status(204).json({
@@ -375,12 +389,19 @@ class MenuController {
             });
         });
     }
-    async checkRestaurantOwnership(restaurantId, userId, userRole) {
+    async checkRestaurantOwnership(restaurantId, userId, userRole, userRestaurantId) {
         const restaurant = await restaurant_service_1.default.getRestaurantById(restaurantId);
         if (!restaurant) {
             throw new appError_1.default('Restaurant not found', 404);
         }
-        if (restaurant.owner._id.toString() !== userId.toString() && userRole !== 'admin') {
+        const ownerId = (restaurant.owner?._id || restaurant.owner?.id || restaurant.owner)?.toString();
+        const currentUserId = userId?.toString();
+        const matchesOwner = Boolean(ownerId && currentUserId && ownerId === currentUserId);
+        const matchesRestaurantId = Boolean(userRestaurantId &&
+            (userRestaurantId.toString() === restaurantId.toString() ||
+                userRestaurantId.toString() === restaurant._id?.toString()));
+        const isOwner = matchesOwner || matchesRestaurantId;
+        if (!isOwner && userRole !== 'admin') {
             throw new appError_1.default('You do not have permission to manage this menu', 403);
         }
     }

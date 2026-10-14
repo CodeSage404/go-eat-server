@@ -497,7 +497,7 @@ class AdminController {
                     await email_util_1.default.sendTemplateEmail(email.toLowerCase(), 'WELCOME_PARTNER', 'Welcome to the Go-Eat Family — Partner Onboarding Successful!', {
                         partnerName: oName,
                         restaurantName: name,
-                        loginUrl: process.env.VENDOR_DASHBOARD_URL || 'https://partner.goeat.com',
+                        loginUrl: process.env.VENDOR_DASHBOARD_URL || 'https://go-eat-webapp.vercel.app/partners/login',
                         email: email.toLowerCase(),
                         password
                     }, 'partners');

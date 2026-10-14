@@ -43,9 +43,18 @@ class MenuService {
         // Assign food items to their categories
         for (const item of allFoodItems) {
             const cat = item.category;
-            if (!cat)
+            if (!cat) {
+                if (!categoryMap.has('general')) {
+                    categoryMap.set('general', {
+                        _id: 'general',
+                        name: 'General',
+                        items: [],
+                    });
+                }
+                categoryMap.get('general').items.push(item.toObject());
                 continue;
-            const catId = cat._id.toString();
+            }
+            const catId = cat._id ? cat._id.toString() : String(cat);
             if (categoryMap.has(catId)) {
                 categoryMap.get(catId).items.push(item.toObject());
             }

@@ -216,7 +216,14 @@ class RestaurantController {
          * Get logged in vendor's restaurant
          */
         this.getMyRestaurant = (0, catchAsync_1.catchAsync)(async (req, res) => {
-            const restaurant = await restaurant_model_1.default.findOne({ owner: req.user._id }).populate('owner', 'name email profileImage phoneNumber phone');
+            let restaurant = await restaurant_model_1.default.findOne({ owner: req.user._id }).populate('owner', 'name email profileImage phoneNumber phone');
+            if (!restaurant && req.user.restaurantId) {
+                restaurant = await restaurant_model_1.default.findById(req.user.restaurantId).populate('owner', 'name email profileImage phoneNumber phone');
+                if (restaurant && !restaurant.owner) {
+                    restaurant.owner = req.user._id;
+                    await restaurant.save();
+                }
+            }
             if (!restaurant) {
                 throw new appError_1.default('No restaurant profile found for this user', 404);
             }
@@ -229,7 +236,14 @@ class RestaurantController {
          * Update logged in vendor's restaurant
          */
         this.updateMyRestaurant = (0, catchAsync_1.catchAsync)(async (req, res) => {
-            const restaurant = await restaurant_model_1.default.findOne({ owner: req.user._id });
+            let restaurant = await restaurant_model_1.default.findOne({ owner: req.user._id });
+            if (!restaurant && req.user.restaurantId) {
+                restaurant = await restaurant_model_1.default.findById(req.user.restaurantId);
+                if (restaurant && !restaurant.owner) {
+                    restaurant.owner = req.user._id;
+                    await restaurant.save();
+                }
+            }
             if (!restaurant) {
                 throw new appError_1.default('No restaurant profile found for this user', 404);
             }
@@ -257,7 +271,10 @@ class RestaurantController {
          * Get logged in vendor's verification status
          */
         this.getMyVerificationStatus = (0, catchAsync_1.catchAsync)(async (req, res) => {
-            const restaurant = await restaurant_model_1.default.findOne({ owner: req.user._id });
+            let restaurant = await restaurant_model_1.default.findOne({ owner: req.user._id });
+            if (!restaurant && req.user.restaurantId) {
+                restaurant = await restaurant_model_1.default.findById(req.user.restaurantId);
+            }
             if (!restaurant) {
                 throw new appError_1.default('No restaurant profile found for this user', 404);
             }

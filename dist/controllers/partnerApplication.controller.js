@@ -182,7 +182,7 @@ exports.applyForPartnership = (0, catchAsync_1.catchAsync)(async (req, res) => {
             await email_service_1.default.sendTemplateEmail(normalizedEmail, 'WELCOME_PARTNER', 'Welcome to GoEat — Your Partner Account is Ready!', {
                 partnerName: resolvedOwnerName,
                 restaurantName: businessName.trim(),
-                loginUrl: process.env.VENDOR_DASHBOARD_URL || 'https://partner.goeat.com',
+                loginUrl: process.env.VENDOR_DASHBOARD_URL || 'https://go-eat-webapp.vercel.app/partners/login',
                 email: normalizedEmail,
                 password: generatedPassword,
             }, 'partners');
@@ -413,7 +413,7 @@ exports.adminGrantAccess = (0, catchAsync_1.catchAsync)(async (req, res) => {
         await email_service_1.default.sendTemplateEmail(normalizedEmail, 'WELCOME_PARTNER', 'GoEat Vendor Portal — Access Granted!', {
             partnerName: application.ownerName,
             restaurantName: application.businessName,
-            loginUrl: process.env.VENDOR_DASHBOARD_URL || 'https://partner.goeat.com',
+            loginUrl: process.env.VENDOR_DASHBOARD_URL || 'https://go-eat-webapp.vercel.app/partners/login',
             email: normalizedEmail,
             password: generatedPassword,
         }, 'partners');
