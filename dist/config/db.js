@@ -9,7 +9,9 @@ const dotenv_1 = __importDefault(require("dotenv"));
 const restaurant_service_1 = require("../services/restaurant.service");
 const categoryTree_service_1 = require("../services/categoryTree.service");
 dotenv_1.default.config();
-const mongodbUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/go-eat';
+const mongodbUri = (process.env.NODE_ENV === 'production' && process.env.MONGODB_URI_PROD)
+    ? process.env.MONGODB_URI_PROD
+    : (process.env.MONGODB_URI || 'mongodb://localhost:27017/go-eat');
 const connectDB = async () => {
     try {
         const conn = await mongoose_1.default.connect(mongodbUri);

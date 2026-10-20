@@ -19,6 +19,7 @@ import Review from '../models/review.model';
 import Setting from '../models/setting.model';
 import Category from '../models/category.model';
 import PartnerApplication from '../models/partnerApplication.model';
+import AccountDeletionRequest from '../models/accountDeletionRequest.model';
 import notificationService from '../services/notification.service';
 import emailUtil from '../utils/email.util';
 import { sendSMS } from '../utils/sms.util';
@@ -1405,6 +1406,25 @@ class AdminController {
     res.status(200).json({
       status: 'success',
       message: 'User deleted successfully'
+    });
+  });
+
+  /**
+   * Get all user account deletion requests
+   */
+  public getAccountDeletionRequests = catchAsync(async (req: Request, res: Response) => {
+    const { status } = req.query;
+    const filter: any = {};
+    if (status) filter.status = status;
+
+    const requests = await AccountDeletionRequest.find(filter)
+      .populate('user', 'name email phoneNumber role')
+      .sort({ requestedAt: -1 });
+
+    res.status(200).json({
+      status: 'success',
+      results: requests.length,
+      data: { requests },
     });
   });
 

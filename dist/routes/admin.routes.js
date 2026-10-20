@@ -1252,6 +1252,46 @@ router.patch('/users/:id', (0, auth_middleware_1.checkPermission)('users.update'
 router.delete('/users/:id', (0, auth_middleware_1.checkPermission)('users.delete'), admin_controller_1.default.deleteUser);
 /**
  * @openapi
+ * /api/v1/admin/account-deletion-requests:
+ *   get:
+ *     tags:
+ *       - Admin User Management
+ *     summary: Get all user account deletion requests
+ *     description: Retrieve all pending and historical account deletion requests submitted by users with their reasons, feedback, and 24h scheduled wipe timestamps.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *           enum: [pending, processing, completed, cancelled]
+ *         description: Optional status filter.
+ *     responses:
+ *       200:
+ *         description: List of account deletion requests returned successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: success
+ *                 results:
+ *                   type: integer
+ *                   example: 1
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     requests:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ */
+router.get('/account-deletion-requests', (0, auth_middleware_1.checkPermission)('users.view'), admin_controller_1.default.getAccountDeletionRequests);
+/**
+ * @openapi
  * /api/v1/admin/roles-permissions:
  *   get:
  *     tags:

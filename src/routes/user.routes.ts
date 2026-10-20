@@ -467,5 +467,96 @@ router.route('/responsible-purchasing')
  */
 router.post('/buddy/resend-invite', userController.resendBuddyInvite);
 
+/**
+ * @openapi
+ * /api/v1/users/account:
+ *   delete:
+ *     tags:
+ *       - Users
+ *     summary: Delete Current User Account (Self-Service)
+ *     description: Permanently deletes the authenticated user's account and any associated personal and business data in compliance with App Store Guideline 5.1.1(v) and GDPR.
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Account successfully deleted.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: success
+ *                 message:
+ *                   type: string
+ *                   example: Account and associated personal data deleted successfully
+ *       401:
+ *         description: Unauthorized. Missing or invalid authentication token.
+ *       404:
+ *         description: User profile not found.
+ */
+router.delete('/account', userController.deleteMyAccount);
+
+/**
+ * @openapi
+ * /api/v1/users/deletion-request:
+ *   post:
+ *     tags:
+ *       - Users
+ *     summary: Submit Account Deletion Request (User Survey & 24h Scheduled Wipe)
+ *     description: Records an authenticated user's account deletion request with selected survey reasons and optional feedback. Schedules permanent wiping in 24 hours and forwards the entry to the admin dashboard.
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - reasons
+ *             properties:
+ *               reasons:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                 description: List of reasons chosen by the user for leaving.
+ *                 example: ["Found an alternative", "High delivery fees"]
+ *               feedback:
+ *                 type: string
+ *                 description: Optional detailed feedback or comments.
+ *                 example: "Great app, but I moved to an area without partner restaurants."
+ *     responses:
+ *       201:
+ *         description: Deletion request recorded successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: success
+ *                 message:
+ *                   type: string
+ *                   example: Your account deletion request has been recorded. Your account and personal data will be permanently deleted within 24 hours.
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     requestId:
+ *                       type: string
+ *                     scheduledWipeAt:
+ *                       type: string
+ *                       format: date-time
+ *       400:
+ *         description: At least one reason must be selected.
+ *       401:
+ *         description: Unauthorized. Missing or invalid authentication token.
+ *       404:
+ *         description: User profile not found.
+ */
+router.post('/deletion-request', userController.requestAccountDeletion);
+
 export default router;
 

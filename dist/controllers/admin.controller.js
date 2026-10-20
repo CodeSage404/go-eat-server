@@ -54,6 +54,7 @@ const review_model_1 = __importDefault(require("../models/review.model"));
 const setting_model_1 = __importDefault(require("../models/setting.model"));
 const category_model_1 = __importDefault(require("../models/category.model"));
 const partnerApplication_model_1 = __importDefault(require("../models/partnerApplication.model"));
+const accountDeletionRequest_model_1 = __importDefault(require("../models/accountDeletionRequest.model"));
 const notification_service_1 = __importDefault(require("../services/notification.service"));
 const email_util_1 = __importDefault(require("../utils/email.util"));
 const sms_util_1 = require("../utils/sms.util");
@@ -1194,6 +1195,23 @@ class AdminController {
             res.status(200).json({
                 status: 'success',
                 message: 'User deleted successfully'
+            });
+        });
+        /**
+         * Get all user account deletion requests
+         */
+        this.getAccountDeletionRequests = (0, catchAsync_1.catchAsync)(async (req, res) => {
+            const { status } = req.query;
+            const filter = {};
+            if (status)
+                filter.status = status;
+            const requests = await accountDeletionRequest_model_1.default.find(filter)
+                .populate('user', 'name email phoneNumber role')
+                .sort({ requestedAt: -1 });
+            res.status(200).json({
+                status: 'success',
+                results: requests.length,
+                data: { requests },
             });
         });
         /**

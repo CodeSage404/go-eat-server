@@ -6,7 +6,10 @@ import { syncPermanentCategoryTree } from '../services/categoryTree.service';
 
 dotenv.config();
 
-const mongodbUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/go-eat';
+const mongodbUri = 
+  (process.env.NODE_ENV === 'production' && process.env.MONGODB_URI_PROD)
+    ? process.env.MONGODB_URI_PROD
+    : (process.env.MONGODB_URI || 'mongodb://localhost:27017/go-eat');
 
 const connectDB = async (): Promise<void> => {
   try {

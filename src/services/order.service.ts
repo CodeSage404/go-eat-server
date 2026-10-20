@@ -610,13 +610,40 @@ class OrderService {
             }
           ).catch((err: any) => logger.error('Failed to send order preparing email:', err));
         }
-      } else if (status === OrderStatus.OUT_FOR_DELIVERY && order.deliveryPin) {
-        // Send separate dedicated PIN reminder notification
-        notificationService.notifyOrderDeliveryPin(
-          customerId,
-          order._id.toString(),
-          order.deliveryPin
-        ).catch((err: any) => logger.warn('Failed to send delivery PIN push notification:', err.message));
+      } else if (status === OrderStatus.OUT_FOR_DELIVERY) {
+        if (order.deliveryPin) {
+          // Send separate dedicated PIN reminder notification
+          notificationService.notifyOrderDeliveryPin(
+            customerId,
+            order._id.toString(),
+            order.deliveryPin
+          ).catch((err: any) => logger.warn('Failed to send delivery PIN push notification:', err.message));
+        }
+
+        const customerUser = (order.customer as any)?.email ? (order.customer as any) : await User.findById(customerId);
+        if (customerUser && customerUser.email && !customerUser.email.includes('customer@goeat.com')) {
+          let riderUser: any = (order.rider as any)?.name ? (order.rider as any) : null;
+          if (!riderUser && order.rider) {
+            riderUser = await User.findById(order.rider).select('name phoneNumber profileImage image');
+          }
+
+          emailService.sendTemplateEmail(
+            customerUser.email,
+            'ORDER_PICKED_UP',
+            `Your Order is on the Way! 🛵 (#${shortId})`,
+            {
+              orderId: order._id,
+              customerName: customerUser.name || 'there',
+              total: order.totalAmount || 0,
+              itemsCount: order.items?.length || 1,
+              deliveryAddress: typeof order.deliveryAddress === 'string' ? order.deliveryAddress : ((order.deliveryAddress as any)?.street || 'Delivery Address'),
+              courierName: riderUser?.name || 'Samuel',
+              courierPhone: riderUser?.phoneNumber || '',
+              courierPhoto: riderUser?.profileImage || riderUser?.image || 'https://res.cloudinary.com/dqtjja88b/image/upload/v1792504742/delivery-guard_vdrrxj.png',
+              estimatedArrival: '15 mins away',
+            }
+          ).catch((err: any) => logger.error('Failed to send order picked up email:', err));
+        }
       }
     }
 

@@ -529,9 +529,29 @@ class OrderService {
                     }).catch((err) => logger_1.default.error('Failed to send order preparing email:', err));
                 }
             }
-            else if (status === order_model_1.OrderStatus.OUT_FOR_DELIVERY && order.deliveryPin) {
-                // Send separate dedicated PIN reminder notification
-                notification_service_1.default.notifyOrderDeliveryPin(customerId, order._id.toString(), order.deliveryPin).catch((err) => logger_1.default.warn('Failed to send delivery PIN push notification:', err.message));
+            else if (status === order_model_1.OrderStatus.OUT_FOR_DELIVERY) {
+                if (order.deliveryPin) {
+                    // Send separate dedicated PIN reminder notification
+                    notification_service_1.default.notifyOrderDeliveryPin(customerId, order._id.toString(), order.deliveryPin).catch((err) => logger_1.default.warn('Failed to send delivery PIN push notification:', err.message));
+                }
+                const customerUser = order.customer?.email ? order.customer : await user_model_1.default.findById(customerId);
+                if (customerUser && customerUser.email && !customerUser.email.includes('customer@goeat.com')) {
+                    let riderUser = order.rider?.name ? order.rider : null;
+                    if (!riderUser && order.rider) {
+                        riderUser = await user_model_1.default.findById(order.rider).select('name phoneNumber profileImage image');
+                    }
+                    email_service_1.default.sendTemplateEmail(customerUser.email, 'ORDER_PICKED_UP', `Your Order is on the Way! 🛵 (#${shortId})`, {
+                        orderId: order._id,
+                        customerName: customerUser.name || 'there',
+                        total: order.totalAmount || 0,
+                        itemsCount: order.items?.length || 1,
+                        deliveryAddress: typeof order.deliveryAddress === 'string' ? order.deliveryAddress : (order.deliveryAddress?.street || 'Delivery Address'),
+                        courierName: riderUser?.name || 'Samuel',
+                        courierPhone: riderUser?.phoneNumber || '',
+                        courierPhoto: riderUser?.profileImage || riderUser?.image || 'https://res.cloudinary.com/dqtjja88b/image/upload/v1792504742/delivery-guard_vdrrxj.png',
+                        estimatedArrival: '15 mins away',
+                    }).catch((err) => logger_1.default.error('Failed to send order picked up email:', err));
+                }
             }
         }
         // Notify Vendor/Outlet

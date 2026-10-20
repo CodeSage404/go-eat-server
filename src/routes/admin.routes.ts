@@ -1301,6 +1301,47 @@ router.delete('/users/:id', checkPermission('users.delete'), adminController.del
 
 /**
  * @openapi
+ * /api/v1/admin/account-deletion-requests:
+ *   get:
+ *     tags:
+ *       - Admin User Management
+ *     summary: Get all user account deletion requests
+ *     description: Retrieve all pending and historical account deletion requests submitted by users with their reasons, feedback, and 24h scheduled wipe timestamps.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *           enum: [pending, processing, completed, cancelled]
+ *         description: Optional status filter.
+ *     responses:
+ *       200:
+ *         description: List of account deletion requests returned successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: success
+ *                 results:
+ *                   type: integer
+ *                   example: 1
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     requests:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ */
+router.get('/account-deletion-requests', checkPermission('users.view'), adminController.getAccountDeletionRequests);
+
+/**
+ * @openapi
  * /api/v1/admin/roles-permissions:
  *   get:
  *     tags:

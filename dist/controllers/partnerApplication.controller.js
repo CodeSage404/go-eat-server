@@ -95,112 +95,85 @@ exports.applyForPartnership = (0, catchAsync_1.catchAsync)(async (req, res) => {
             throw new appError_1.default('Food Hygiene Certificate is required for verification', 400);
         }
     }
-    // Handle Quick Setup (Instant Access Creation)
-    if (isQuick) {
-        // Check if user already exists
-        let user = await user_model_1.default.findOne({
-            $or: [{ email: normalizedEmail }, { phoneNumber: normalizedPhone }],
-        });
-        if (user && user.role !== user_model_1.UserRole.VENDOR) {
-            throw new appError_1.default('An account with this email or phone number already exists under a different role', 400);
-        }
-        const generatedPassword = `GoEat#${crypto_1.default.randomBytes(3).toString('hex').toUpperCase()}!`;
-        if (!user) {
-            user = await user_model_1.default.create({
-                name: resolvedOwnerName,
-                email: normalizedEmail,
-                phoneNumber: normalizedPhone,
-                password: generatedPassword,
-                role: user_model_1.UserRole.VENDOR,
-                status: user_model_1.UserStatus.ACTIVE,
-                isVerified: true,
-            });
-        }
-        // Check if restaurant already exists for this vendor
-        let restaurant = await restaurant_model_1.default.findOne({ owner: user._id });
-        if (!restaurant) {
-            restaurant = await restaurant_model_1.default.create({
-                owner: user._id,
-                name: businessName.trim(),
-                description: `Welcome to ${businessName.trim()}`,
-                address: {
-                    street: businessAddress.trim(),
-                    city: city ? city.trim() : 'Lagos',
-                    state: 'Lagos',
-                    zipCode: '100001',
-                },
-                location: {
-                    type: 'Point',
-                    coordinates: [3.3792, 6.5244],
-                },
-                outletType: 'Restaurant',
-                baseCurrency: 'NGN',
-                status: restaurant_model_1.RestaurantStatus.PENDING, // Pending full document review
-                complianceStatus: 'pending',
-                businessPhone: normalizedPhone,
-                phone: normalizedPhone,
-                phoneNumber: normalizedPhone,
-                phoneContact: normalizedPhone,
-                images: {
-                    logo: businessImageUrl || '',
-                    cover: coverImageUrl || '',
-                },
-                verificationDocuments: {
-                    ninUrl: ninUrl || '',
-                    foodHygieneUrl: foodHygieneUrl || '',
-                    cacUrl: cacUrl || '',
-                },
-            });
-            user.restaurantId = restaurant._id;
-            await user.save({ validateBeforeSave: false });
-        }
-        const application = await partnerApplication_model_1.default.create({
-            businessName: businessName.trim(),
-            businessAddress: businessAddress.trim(),
-            businessType: resolvedBusinessType,
-            ownerName: resolvedOwnerName,
+    // Check if user already exists
+    let user = await user_model_1.default.findOne({
+        $or: [{ email: normalizedEmail }, { phoneNumber: normalizedPhone }],
+    });
+    if (user && user.role !== user_model_1.UserRole.VENDOR) {
+        throw new appError_1.default('An account with this email or phone number already exists under a different role', 400);
+    }
+    const generatedPassword = `GoEatOne#${crypto_1.default.randomBytes(3).toString('hex').toUpperCase()}!`;
+    let isNewUser = false;
+    if (!user) {
+        user = await user_model_1.default.create({
+            name: resolvedOwnerName,
             email: normalizedEmail,
             phoneNumber: normalizedPhone,
-            city: city ? city.trim() : '',
-            applicationType: 'quick',
-            hasAccessGranted: true,
-            onboardedRestaurant: restaurant._id,
-            documents: {
-                ninUrl,
-                foodHygieneUrl,
-                cacUrl,
-            },
-            ninUrl,
-            foodHygieneUrl,
-            cacUrl,
-            businessImageUrl,
-            coverImageUrl,
-            status: 'pending',
+            password: generatedPassword,
+            role: user_model_1.UserRole.VENDOR,
+            status: user_model_1.UserStatus.ACTIVE,
+            isVerified: true,
         });
-        // Dispatch Welcome Partner email with generated credentials
-        try {
-            await email_service_1.default.sendTemplateEmail(normalizedEmail, 'WELCOME_PARTNER', 'Welcome to GoEat — Your Partner Account is Ready!', {
-                partnerName: resolvedOwnerName,
-                restaurantName: businessName.trim(),
-                loginUrl: process.env.VENDOR_DASHBOARD_URL || 'https://go-eat-webapp.vercel.app/partners/login',
-                email: normalizedEmail,
-                password: generatedPassword,
-            }, 'partners');
-        }
-        catch (mailErr) {
-            logger_1.default.warn(`Failed to dispatch quick partner welcome email: ${mailErr.message}`);
-        }
-        return res.status(201).json({
-            status: 'success',
-            message: 'Vendor quick account created! Your login credentials have been emailed to you.',
-            data: {
-                application,
-                restaurantId: restaurant._id,
-                hasInstantAccess: true,
-            },
-        });
+        isNewUser = true;
     }
-    // Full Application Flow
+    // Check if restaurant already exists for this vendor
+    let restaurant = await restaurant_model_1.default.findOne({ owner: user._id });
+    if (!restaurant) {
+        restaurant = await restaurant_model_1.default.create({
+            owner: user._id,
+            name: businessName.trim(),
+            description: `Welcome to ${businessName.trim()}`,
+            address: {
+                street: businessAddress.trim(),
+                city: city ? city.trim() : 'Lagos',
+                state: 'Lagos',
+                zipCode: '100001',
+            },
+            location: {
+                type: 'Point',
+                coordinates: [3.3792, 6.5244],
+            },
+            outletType: 'Restaurant',
+            baseCurrency: 'NGN',
+            status: restaurant_model_1.RestaurantStatus.PENDING, // Pending full document review
+            complianceStatus: 'pending',
+            businessPhone: normalizedPhone,
+            phone: normalizedPhone,
+            phoneNumber: normalizedPhone,
+            phoneContact: normalizedPhone,
+            images: {
+                logo: businessImageUrl || '',
+                cover: coverImageUrl || '',
+            },
+            verificationDocuments: {
+                ninUrl: ninUrl || '',
+                foodHygieneUrl: foodHygieneUrl || '',
+                cacUrl: cacUrl || '',
+            },
+        });
+        user.restaurantId = restaurant._id;
+        await user.save({ validateBeforeSave: false });
+    }
+    else {
+        // If restaurant already exists, update verification documents and images if new files were provided
+        if (!restaurant.verificationDocuments) {
+            restaurant.verificationDocuments = {};
+        }
+        if (ninUrl)
+            restaurant.verificationDocuments.ninUrl = ninUrl;
+        if (foodHygieneUrl)
+            restaurant.verificationDocuments.foodHygieneUrl = foodHygieneUrl;
+        if (cacUrl)
+            restaurant.verificationDocuments.cacUrl = cacUrl;
+        if (!restaurant.images) {
+            restaurant.images = { logo: '', cover: '' };
+        }
+        if (businessImageUrl && !restaurant.images.logo)
+            restaurant.images.logo = businessImageUrl;
+        if (coverImageUrl && !restaurant.images.cover)
+            restaurant.images.cover = coverImageUrl;
+        await restaurant.save();
+    }
     const application = await partnerApplication_model_1.default.create({
         businessName: businessName.trim(),
         businessAddress: businessAddress.trim(),
@@ -209,8 +182,9 @@ exports.applyForPartnership = (0, catchAsync_1.catchAsync)(async (req, res) => {
         email: normalizedEmail,
         phoneNumber: normalizedPhone,
         city: city ? city.trim() : '',
-        applicationType: 'full',
-        hasAccessGranted: false,
+        applicationType: isQuick ? 'quick' : 'full',
+        hasAccessGranted: true,
+        onboardedRestaurant: restaurant._id,
         documents: {
             ninUrl,
             foodHygieneUrl,
@@ -223,13 +197,28 @@ exports.applyForPartnership = (0, catchAsync_1.catchAsync)(async (req, res) => {
         coverImageUrl,
         status: 'pending',
     });
-    // Dispatch acknowledgement email to the applicant using EJS template
+    // 1. Dispatch Welcome Partner email with generated credentials (if new user or needs access)
+    if (isNewUser) {
+        try {
+            await email_service_1.default.sendTemplateEmail(normalizedEmail, 'WELCOME_PARTNER', 'Welcome to GoEatOne — Your Partner Account is Ready!', {
+                partnerName: resolvedOwnerName,
+                restaurantName: businessName.trim(),
+                loginUrl: process.env.VENDOR_DASHBOARD_URL || 'https://goeatone.com/partners/login',
+                email: normalizedEmail,
+                password: generatedPassword,
+            }, 'partners');
+        }
+        catch (mailErr) {
+            logger_1.default.warn(`Failed to dispatch partner welcome credentials email: ${mailErr.message}`);
+        }
+    }
+    // 2. Dispatch application confirmation email to the applicant
     try {
         await email_service_1.default.sendPartnerApplicationReceived(normalizedEmail, {
             ownerName: resolvedOwnerName,
-            businessName,
+            businessName: businessName.trim(),
             businessType: resolvedBusinessType,
-            businessAddress,
+            businessAddress: businessAddress.trim(),
             email: normalizedEmail,
             phoneNumber: normalizedPhone,
         });
@@ -237,12 +226,15 @@ exports.applyForPartnership = (0, catchAsync_1.catchAsync)(async (req, res) => {
     catch (err) {
         logger_1.default.warn(`Failed to dispatch partner application confirmation email to ${email}: ${err.message}`);
     }
-    res.status(201).json({
+    return res.status(201).json({
         status: 'success',
-        message: 'Partner application submitted successfully. Confirmation email sent.',
+        message: isQuick
+            ? 'Vendor account created! Your login credentials and confirmation email have been sent.'
+            : 'Partner application submitted! Your vendor account has been registered and login credentials sent via email.',
         data: {
             application,
-            hasInstantAccess: false,
+            restaurantId: restaurant._id,
+            hasInstantAccess: true,
         },
     });
 });

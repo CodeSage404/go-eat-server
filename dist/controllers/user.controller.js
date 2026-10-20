@@ -39,6 +39,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const crypto_1 = __importDefault(require("crypto"));
 const user_model_1 = __importStar(require("../models/user.model"));
 const riderOnboarding_model_1 = __importDefault(require("../models/riderOnboarding.model"));
+const restaurant_model_1 = __importDefault(require("../models/restaurant.model"));
+const accountDeletionRequest_model_1 = __importDefault(require("../models/accountDeletionRequest.model"));
 const catchAsync_1 = require("../utils/catchAsync");
 const appError_1 = __importDefault(require("../utils/appError"));
 const email_service_1 = __importDefault(require("../services/email.service"));
@@ -412,6 +414,65 @@ class UserController {
                 title: 'Unknown Action',
                 message: 'The requested action is not recognized.',
             }));
+        });
+        /**
+         * Delete authenticated user's own account (Self-Service Account Deletion - Apple Guideline 5.1.1(v))
+         */
+        this.deleteMyAccount = (0, catchAsync_1.catchAsync)(async (req, res) => {
+            const userId = req.user._id;
+            const user = await user_model_1.default.findById(userId);
+            if (!user) {
+                throw new appError_1.default('User not found', 404);
+            }
+            // If vendor, delete their associated restaurant(s)
+            if (user.role === user_model_1.UserRole.VENDOR) {
+                await restaurant_model_1.default.deleteMany({ owner: userId });
+            }
+            // If rider, clean up onboarding record
+            if (user.role === user_model_1.UserRole.RIDER) {
+                await riderOnboarding_model_1.default.deleteMany({ user: userId });
+            }
+            // Delete user account permanently
+            await user_model_1.default.findByIdAndDelete(userId);
+            logger_1.default.info(`User account ${userId} (${user.email || user.phoneNumber}) permanently deleted via self-service.`);
+            res.status(200).json({
+                status: 'success',
+                message: 'Account and associated personal data deleted successfully',
+            });
+        });
+        /**
+         * Submit an in-app account deletion request with user survey reasons
+         * Records request for admin review and schedules permanent 24-hour wipe
+         */
+        this.requestAccountDeletion = (0, catchAsync_1.catchAsync)(async (req, res) => {
+            const userId = req.user._id;
+            const { reasons, feedback } = req.body;
+            if (!reasons || !Array.isArray(reasons) || reasons.length === 0) {
+                throw new appError_1.default('Please select at least one reason for deleting your account.', 400);
+            }
+            const user = await user_model_1.default.findById(userId);
+            if (!user) {
+                throw new appError_1.default('User not found', 404);
+            }
+            const scheduledWipeAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+            const deletionRequest = await accountDeletionRequest_model_1.default.create({
+                user: userId,
+                userName: user.name || 'User',
+                userEmail: user.email || '',
+                userPhone: user.phoneNumber || '',
+                reasons,
+                feedback: typeof feedback === 'string' ? feedback.trim() : '',
+                scheduledWipeAt,
+            });
+            logger_1.default.info(`User ${userId} (${user.email || user.phoneNumber}) requested account deletion. Scheduled wipe at ${scheduledWipeAt.toISOString()}`);
+            res.status(201).json({
+                status: 'success',
+                message: 'Your account deletion request has been recorded. Your account and personal data will be permanently deleted within 24 hours.',
+                data: {
+                    requestId: deletionRequest._id,
+                    scheduledWipeAt: deletionRequest.scheduledWipeAt,
+                },
+            });
         });
     }
 }

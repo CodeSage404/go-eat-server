@@ -152,12 +152,12 @@
         <td align="center" valign="top" width="600">
         <![endif]-->
 
-        <table role="presentation" class="email-container" border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 600px; width: 100%; background-color: #FFFFFF; border-radius: 20px; overflow: hidden; border: 1px solid #E5E7EB; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05); margin: 0 auto;">
+        <table role="presentation" class="email-container" border="0" cellpadding="0" cellspacing="0" width="100%" background="https://res.cloudinary.com/dqtjja88b/image/upload/v1792505008/email-bg_a37tjv.png" style="max-width: 600px; width: 100%; background-color: #FFFFFF; background-image: url('https://res.cloudinary.com/dqtjja88b/image/upload/v1792505008/email-bg_a37tjv.png'); background-repeat: repeat; background-size: cover; background-position: center top; border-radius: 20px; overflow: hidden; border: 1px solid #E5E7EB; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05); margin: 0 auto;">
           
           <!-- Top Brand Header Bar -->
           <tr>
             <td style="padding: 0;">
-              <table role="presentation" width="100%" border="0" cellpadding="0" cellspacing="0" class="email-header" style="background-color: #FFFFFF; border-bottom: 1px solid #F3F4F6; padding: 22px 28px 16px;">
+              <table role="presentation" width="100%" border="0" cellpadding="0" cellspacing="0" class="email-header" style="background-color: transparent; border-bottom: 1px solid rgba(243, 244, 246, 0.6); padding: 22px 28px 16px;">
                 <tr>
                   <td align="left" style="vertical-align: middle;">
                     <a href="https://goeatone.com" target="_blank" style="text-decoration: none; display: inline-block;">
@@ -176,11 +176,12 @@
 
           <!-- Dynamic Email Content Body -->
           <tr>
-            <td class="email-body" style="padding: 28px 28px 36px; background-color: #FFFFFF;">
+            <td class="email-body" background="https://res.cloudinary.com/dqtjja88b/image/upload/v1792505008/email-bg_a37tjv.png" style="padding: 24px 28px 36px; background-color: transparent; background-image: url('https://res.cloudinary.com/dqtjja88b/image/upload/v1792505008/email-bg_a37tjv.png'); background-repeat: repeat; background-size: cover; background-position: center top;">
               <%- body %>
             </td>
           </tr>
 
+          <% if (typeof showDarkFooter !== 'undefined' && showDarkFooter) { %>
           <!-- Unified Dark Forest Green Responsive Footer -->
           <tr>
             <td style="background-color: #133824; color: #FFFFFF; padding: 28px 24px 22px;">
@@ -245,6 +246,7 @@
               </div>
             </td>
           </tr>
+          <% } %>
 
         </table>
 
