@@ -5706,3 +5706,66 @@
 2026-10-14 11:50:45 [info]: 	⏰ Initializing self-ping keep-alive service every 3 minutes to: https://go-eat-server.onrender.com/api/health
 2026-10-14 11:50:50 [info]: 	🚀 Connected to MongoDB: ac-hjwrplp-shard-00-00.dupeyhe.mongodb.net
 2026-10-14 11:51:06 [info]: 	🔍 Running 7-day user inactivity scan (Threshold: 2026-10-07T10:51:06.752Z)...
+2026-10-14 12:17:57 [info]: 	⚡ Initializing Upstash Redis via HTTPS REST (Port 443)
+2026-10-14 12:18:03 [info]: 	🍏 Apple private key loaded from APPLE_PRIVATE_KEY env var.
+2026-10-14 12:18:06 [info]: 	🔥 Firebase Admin initialized
+2026-10-14 12:18:07 [info]: 	📱 Twilio client initialized for WhatsApp & SMS messaging
+2026-10-14 12:18:13 [info]: 	⏰ User inactivity re-engagement background schedule active (every 24 hours).
+2026-10-14 12:18:17 [info]: 	⚡ Upstash Redis (REST over HTTPS) Connected
+2026-10-14 12:18:17 [info]: 	🚀 Server running in production mode on port 5000
+2026-10-14 12:18:17 [info]: 	⏰ Initializing self-ping keep-alive service every 3 minutes to: https://go-eat-server.onrender.com/api/health
+2026-10-14 12:18:20 [info]: 	🚀 Connected to MongoDB: ac-hjwrplp-shard-00-02.dupeyhe.mongodb.net
+2026-10-14 12:18:26 [info]: 	✅ Verified & migrated promo fields across all restaurant documents.
+2026-10-14 12:18:26 [info]: 	✅ Verified & migrated country fields across all restaurant documents.
+2026-10-14 12:18:33 [info]: 	✅ Verified & synced live promo status across restaurants.
+2026-10-14 12:18:43 [info]: 	🔍 Running 7-day user inactivity scan (Threshold: 2026-10-07T11:18:43.542Z)...
+2026-10-14 12:18:45 [info]: 	✅ Inactivity scan completed: 0 scanned, 0 re-engagement alerts sent.
+2026-10-14 12:19:20 [info]: 	⚡ MongoDB Reconnected
+2026-10-14 12:19:36 [info]: 	✅ Successfully verified & synced permanent GoEatOne category tree.
+2026-10-14 12:21:22 [warn]: 	⚠️ Keep-alive ping warning: 404 Not Found
+2026-10-14 12:24:28 [error]: 	❌ Keep-alive ping failed: fetch failed
+2026-10-14 12:24:55 [warn]: 	⚠️ MongoDB Disconnected
+2026-10-14 12:24:55 [info]: 	⚡ MongoDB Reconnected
+2026-10-14 12:25:36 [info]: 	⚡ MongoDB Reconnected
+2026-10-14 12:27:17 [error]: 	❌ Keep-alive ping failed: fetch failed
+2026-10-14 12:30:28 [error]: 	❌ Keep-alive ping failed: fetch failed
+2026-10-14 12:33:19 [warn]: 	⚠️ Keep-alive ping warning: 404 Not Found
+2026-10-14 12:36:19 [warn]: 	⚠️ Keep-alive ping warning: 404 Not Found
+2026-10-14 12:39:19 [warn]: 	⚠️ Keep-alive ping warning: 404 Not Found
+2026-10-14 12:40:54 [info]: 	⚡ MongoDB Reconnected
+2026-10-14 12:40:54 [info]: 	⚡ MongoDB Reconnected
+2026-10-14 12:41:49 [warn]: 	⚠️ MongoDB Disconnected
+2026-10-14 12:41:53 [info]: 	⚡ MongoDB Reconnected
+2026-10-14 12:42:28 [error]: 	❌ Keep-alive ping failed: fetch failed
+2026-10-14 12:45:23 [warn]: 	⚠️ Keep-alive ping warning: 404 Not Found
+2026-10-14 12:47:31 [info]: 	⚡ MongoDB Reconnected
+2026-10-14 12:47:32 [info]: 	⚡ MongoDB Reconnected
+2026-10-14 12:47:42 [warn]: 	⚠️ MongoDB Disconnected
+2026-10-14 12:47:46 [info]: 	⚡ MongoDB Reconnected
+2026-10-14 12:48:25 [warn]: 	⚠️ Keep-alive ping warning: 404 Not Found
+2026-10-14 12:51:19 [warn]: 	⚠️ Keep-alive ping warning: 404 Not Found
+2026-10-14 12:54:21 [warn]: 	⚠️ Keep-alive ping warning: 404 Not Found
+2026-10-14 12:54:56 [info]: 	⚡ MongoDB Reconnected
+2026-10-14 12:55:00 [info]: 	⚡ MongoDB Reconnected
+2026-10-14 12:55:21 [warn]: 	⚠️ MongoDB Disconnected
+2026-10-14 12:55:22 [info]: 	⚡ MongoDB Reconnected
+2026-10-14 12:57:18 [warn]: 	⚠️ Keep-alive ping warning: 404 Not Found
+2026-10-14 13:00:19 [warn]: 	⚠️ Keep-alive ping warning: 404 Not Found
+2026-10-14 13:03:19 [warn]: 	⚠️ Keep-alive ping warning: 404 Not Found
+2026-10-14 13:06:38 [info]: 	⚡ Initializing Upstash Redis via HTTPS REST (Port 443)
+2026-10-14 13:06:49 [info]: 	🍏 Apple private key loaded from APPLE_PRIVATE_KEY env var.
+2026-10-14 13:06:50 [info]: 	🔥 Firebase Admin initialized
+2026-10-14 13:06:53 [info]: 	📱 Twilio client initialized for WhatsApp & SMS messaging
+2026-10-14 13:07:05 [info]: 	⏰ User inactivity re-engagement background schedule active (every 24 hours).
+2026-10-14 13:07:08 [info]: 	⚡ Upstash Redis (REST over HTTPS) Connected
+2026-10-14 13:07:08 [info]: 	🚀 Server running in production mode on port 5000
+2026-10-14 13:07:08 [info]: 	⏰ Initializing self-ping keep-alive service every 3 minutes to: https://go-eat-server.onrender.com/api/health
+2026-10-14 13:07:10 [info]: 	🚀 Connected to MongoDB: ac-hjwrplp-shard-00-02.dupeyhe.mongodb.net
+2026-10-14 13:07:18 [info]: 	✅ Verified & migrated promo fields across all restaurant documents.
+2026-10-14 13:07:18 [info]: 	✅ Verified & migrated country fields across all restaurant documents.
+2026-10-14 13:07:20 [info]: 	✅ Verified & synced live promo status across restaurants.
+2026-10-14 13:07:26 [info]: 	✅ Successfully verified & synced permanent GoEatOne category tree.
+2026-10-14 13:07:35 [info]: 	🔍 Running 7-day user inactivity scan (Threshold: 2026-10-07T12:07:35.634Z)...
+2026-10-14 13:07:35 [info]: 	✅ Inactivity scan completed: 0 scanned, 0 re-engagement alerts sent.
+2026-10-14 13:10:10 [warn]: 	⚠️ Keep-alive ping warning: 404 Not Found
+2026-10-14 13:13:10 [warn]: 	⚠️ Keep-alive ping warning: 404 Not Found

@@ -371,8 +371,28 @@ class RiderVerificationController {
       query.deliveryMethod = deliveryMethod;
     }
 
-    if (countryCode && countryCode !== 'ALL') {
-      query.countryCode = countryCode.toUpperCase();
+    const headerCountry = ((req.headers['x-country-code'] || req.headers['x-country']) as string) || '';
+    const effectiveCountry = (countryCode && countryCode !== 'ALL' && countryCode !== 'all'
+      ? countryCode
+      : headerCountry && headerCountry !== 'all' && headerCountry !== 'ALL'
+      ? headerCountry
+      : '').trim();
+
+    if (effectiveCountry) {
+      const codeUpper = effectiveCountry.toUpperCase();
+      const mappedCode =
+        codeUpper === 'NIGERIA' || codeUpper === 'NG'
+          ? 'NG'
+          : codeUpper === 'UK' || codeUpper === 'GB' || effectiveCountry.toLowerCase() === 'united kingdom'
+          ? 'GB'
+          : codeUpper === 'ITALY' || codeUpper === 'IT'
+          ? 'IT'
+          : codeUpper;
+
+      query.$or = [
+        { countryCode: mappedCode },
+        { country: new RegExp(`^${effectiveCountry}$`, 'i') },
+      ];
     }
 
     if (search) {

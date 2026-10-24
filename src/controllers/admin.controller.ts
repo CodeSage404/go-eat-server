@@ -29,52 +29,96 @@ import AppError from '../utils/appError';
 
 class AdminController {
   /**
-   * Helper to build Mongoose regional query filter based on admin token or ?country query param
+   * Helper to build Mongoose regional query filter based on admin token, ?country param, or x-country header
    */
   private getRegionFilter(req: Request): any {
-    const queryCountry = req.query.country as string;
+    const rawCountry =
+      (req.query.country as string) ||
+      (req.query.countryCode as string) ||
+      (req.headers['x-country'] as string) ||
+      (req.headers['x-country-code'] as string);
+
     const adminUser = (req as any).user;
     const adminRegion = adminUser?.adminRegion || 'ALL';
 
     const targetCountry =
-      adminRegion !== 'ALL'
+      adminRegion !== 'ALL' && adminRegion !== 'all'
         ? adminRegion
-        : queryCountry && queryCountry !== 'ALL'
-        ? queryCountry
+        : rawCountry && rawCountry !== 'ALL' && rawCountry !== 'all'
+        ? rawCountry
         : null;
+
     if (!targetCountry) return {};
 
-    if (targetCountry === 'Nigeria') return { isNigeria: true };
-    if (targetCountry === 'Italy') return { isItaly: true };
-    if (targetCountry === 'UK') return { isUk: true };
-    return { country: targetCountry };
+    const clean = String(targetCountry).trim();
+    const upper = clean.toUpperCase();
+
+    if (clean === 'Nigeria' || upper === 'NG') return { isNigeria: true };
+    if (clean === 'Italy' || upper === 'IT') return { isItaly: true };
+    if (clean === 'UK' || upper === 'GB' || clean.toLowerCase() === 'united kingdom') return { isUk: true };
+
+    return { country: new RegExp(`^${clean}$`, 'i') };
   }
 
   /**
-   * Get platform-wide statistics for the super-admin dashboard
+   * Helper to get active currency symbol based on regional context
+   */
+  private getRegionCurrency(req: Request): string {
+    const rawCountry =
+      (req.query.country as string) ||
+      (req.query.countryCode as string) ||
+      (req.headers['x-country'] as string) ||
+      (req.headers['x-country-code'] as string);
+
+    const adminUser = (req as any).user;
+    const adminRegion = adminUser?.adminRegion || 'ALL';
+
+    const target = (adminRegion !== 'ALL' && adminRegion !== 'all' ? adminRegion : rawCountry || '').trim().toUpperCase();
+
+    if (target === 'UK' || target === 'GB' || target === 'UNITED KINGDOM') return '£';
+    if (target === 'ITALY' || target === 'IT') return '€';
+    return '₦';
+  }
+
+  /**
+   * Get platform-wide statistics for the super-admin dashboard with dynamic regional isolation
    */
   public getPlatformStats = catchAsync(async (req: Request, res: Response) => {
     const regionFilter = this.getRegionFilter(req);
+    const hasRegion = Object.keys(regionFilter).length > 0;
+
+    let restaurantIdsForRegion: mongoose.Types.ObjectId[] | null = null;
+    if (hasRegion) {
+      const regionRestaurants = await Restaurant.find(regionFilter).select('_id');
+      restaurantIdsForRegion = regionRestaurants.map((r) => r._id as mongoose.Types.ObjectId);
+    }
+
+    const orderMatch: any = {};
+    if (restaurantIdsForRegion !== null) {
+      orderMatch.restaurant = { $in: restaurantIdsForRegion };
+    }
 
     // User count breakdown
     const userStats = await User.aggregate([
-      { $match: regionFilter },
+      ...(hasRegion ? [{ $match: regionFilter }] : []),
       { $group: { _id: '$role', count: { $sum: 1 } } },
     ]);
 
     // Users by country breakdown
     const usersByCountry = await User.aggregate([
+      ...(hasRegion ? [{ $match: regionFilter }] : []),
       { $group: { _id: '$country', count: { $sum: 1 } } },
     ]);
 
     // Order status breakdown
     const orderStats = await Order.aggregate([
+      ...(Object.keys(orderMatch).length > 0 ? [{ $match: orderMatch }] : []),
       { $group: { _id: '$status', count: { $sum: 1 } } },
     ]);
 
-    // Financial summaries
+    // Financial summaries (gross sales, commissions, delivery fees)
     const financialStats = await Order.aggregate([
-      { $match: { status: OrderStatus.DELIVERED } },
+      { $match: { status: OrderStatus.DELIVERED, ...orderMatch } },
       {
         $group: {
           _id: null,
@@ -86,12 +130,14 @@ class AdminController {
       },
     ]);
 
-    const activeVendors = await Restaurant.countDocuments({ status: RestaurantStatus.ACTIVE });
-    const pendingVendors = await Restaurant.countDocuments({ status: RestaurantStatus.PENDING });
+    const activeVendors = await Restaurant.countDocuments({ status: RestaurantStatus.ACTIVE, ...regionFilter });
+    const pendingVendors = await Restaurant.countDocuments({ status: RestaurantStatus.PENDING, ...regionFilter });
+    const currency = this.getRegionCurrency(req);
 
     res.status(200).json({
       status: 'success',
       data: {
+        currency,
         users: userStats,
         usersByCountry,
         orders: orderStats,
@@ -162,13 +208,16 @@ class AdminController {
   });
 
   /**
-   * Get all restaurants (including inactive, pending approval ones)
+   * Get all restaurants (including inactive, pending approval ones) filtered by regional scope
    */
   public getAllRestaurants = catchAsync(async (req: Request, res: Response) => {
     const { status } = req.query;
     const filter: any = {};
 
     if (status) filter.status = status;
+
+    const regionFilter = this.getRegionFilter(req);
+    Object.assign(filter, regionFilter);
 
     const restaurants = await Restaurant.find(filter).populate('owner', 'name email phoneNumber');
 
@@ -180,7 +229,7 @@ class AdminController {
   });
 
   /**
-   * Get all orders with optional status filtering for platform auditing
+   * Get all orders with optional status filtering and regional scoping
    */
   public getAllOrders = catchAsync(async (req: Request, res: Response) => {
     const { status } = req.query;
@@ -188,10 +237,17 @@ class AdminController {
 
     if (status) filter.status = status;
 
+    const regionFilter = this.getRegionFilter(req);
+    if (Object.keys(regionFilter).length > 0) {
+      const regionRestaurants = await Restaurant.find(regionFilter).select('_id');
+      const restIds = regionRestaurants.map(r => r._id);
+      filter.restaurant = { $in: restIds };
+    }
+
     const orders = await Order.find(filter)
-      .populate('customer', 'name email phoneNumber')
-      .populate('restaurant', 'name')
-      .populate('rider', 'name phoneNumber')
+      .populate('customer', 'name email phoneNumber country')
+      .populate('restaurant', 'name country countryCode isNigeria isUk isItaly')
+      .populate('rider', 'name phoneNumber country')
       .sort({ createdAt: -1 });
 
     res.status(200).json({
@@ -617,12 +673,21 @@ class AdminController {
   });
 
   /**
-   * Get all menu items across all restaurants
+   * Get all menu items across all restaurants with regional filtering
    */
   public getAllMenuItems = catchAsync(async (req: Request, res: Response) => {
-    const items = await FoodItem.find()
+    const filter: any = {};
+    const regionFilter = this.getRegionFilter(req);
+
+    if (Object.keys(regionFilter).length > 0) {
+      const regionRestaurants = await Restaurant.find(regionFilter).select('_id');
+      const restIds = regionRestaurants.map((r) => r._id);
+      filter.restaurant = { $in: restIds };
+    }
+
+    const items = await FoodItem.find(filter)
       .populate('category', 'name')
-      .populate('restaurant', 'name')
+      .populate('restaurant', 'name country countryCode isNigeria isUk isItaly')
       .sort({ createdAt: -1 });
 
     res.status(200).json({
@@ -721,12 +786,21 @@ class AdminController {
   });
 
   /**
-   * Get all bookings
+   * Get all bookings with regional filtering
    */
   public getAllBookings = catchAsync(async (req: Request, res: Response) => {
-    const bookings = await Booking.find()
+    const filter: any = {};
+    const regionFilter = this.getRegionFilter(req);
+
+    if (Object.keys(regionFilter).length > 0) {
+      const regionRestaurants = await Restaurant.find(regionFilter).select('_id');
+      const restIds = regionRestaurants.map((r) => r._id);
+      filter.restaurant = { $in: restIds };
+    }
+
+    const bookings = await Booking.find(filter)
       .populate('customer', 'name email phoneNumber')
-      .populate('restaurant', 'name')
+      .populate('restaurant', 'name country countryCode isNigeria isUk isItaly')
       .sort({ createdAt: -1 });
 
     res.status(200).json({
@@ -781,15 +855,24 @@ class AdminController {
   });
 
   /**
-   * Get all transactions
+   * Get all transactions with regional filtering
    */
   public getAllTransactions = catchAsync(async (req: Request, res: Response) => {
-    const transactions = await Transaction.find()
+    const filter: any = {};
+    const regionFilter = this.getRegionFilter(req);
+
+    if (Object.keys(regionFilter).length > 0) {
+      const regionUsers = await User.find(regionFilter).select('_id');
+      const userIds = regionUsers.map((u) => u._id);
+      filter.user = { $in: userIds };
+    }
+
+    const transactions = await Transaction.find(filter)
       .populate({
         path: 'wallet',
         populate: {
           path: 'user',
-          select: 'name email role'
+          select: 'name email role country countryCode isNigeria isUk isItaly'
         }
       })
       .sort({ createdAt: -1 });
@@ -1429,17 +1512,25 @@ class AdminController {
   });
 
   /**
-   * Get all customer reviews across the platform
+   * Get all customer reviews across the platform with regional filtering
    */
   public getAllReviews = catchAsync(async (req: Request, res: Response) => {
     const { rating, restaurantId } = req.query;
     const filter: any = {};
     if (rating) filter.rating = Number(rating);
-    if (restaurantId) filter.restaurant = restaurantId;
+    if (restaurantId) {
+      filter.restaurant = restaurantId;
+    } else {
+      const regionFilter = this.getRegionFilter(req);
+      if (Object.keys(regionFilter).length > 0) {
+        const regionRestaurants = await Restaurant.find(regionFilter).select('_id');
+        filter.restaurant = { $in: regionRestaurants.map((r) => r._id) };
+      }
+    }
 
     const reviews = await Review.find(filter)
       .populate('user', 'name email profileImage')
-      .populate('restaurant', 'name')
+      .populate('restaurant', 'name country countryCode isNigeria isUk isItaly')
       .populate('order', '_id totalAmount')
       .sort({ createdAt: -1 });
 

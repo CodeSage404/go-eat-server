@@ -64,26 +64,38 @@ const appError_1 = __importDefault(require("../utils/appError"));
 class AdminController {
     constructor() {
         /**
-         * Get platform-wide statistics for the super-admin dashboard
+         * Get platform-wide statistics for the super-admin dashboard with dynamic regional isolation
          */
         this.getPlatformStats = (0, catchAsync_1.catchAsync)(async (req, res) => {
             const regionFilter = this.getRegionFilter(req);
+            const hasRegion = Object.keys(regionFilter).length > 0;
+            let restaurantIdsForRegion = null;
+            if (hasRegion) {
+                const regionRestaurants = await restaurant_model_1.default.find(regionFilter).select('_id');
+                restaurantIdsForRegion = regionRestaurants.map((r) => r._id);
+            }
+            const orderMatch = {};
+            if (restaurantIdsForRegion !== null) {
+                orderMatch.restaurant = { $in: restaurantIdsForRegion };
+            }
             // User count breakdown
             const userStats = await user_model_1.default.aggregate([
-                { $match: regionFilter },
+                ...(hasRegion ? [{ $match: regionFilter }] : []),
                 { $group: { _id: '$role', count: { $sum: 1 } } },
             ]);
             // Users by country breakdown
             const usersByCountry = await user_model_1.default.aggregate([
+                ...(hasRegion ? [{ $match: regionFilter }] : []),
                 { $group: { _id: '$country', count: { $sum: 1 } } },
             ]);
             // Order status breakdown
             const orderStats = await order_model_1.default.aggregate([
+                ...(Object.keys(orderMatch).length > 0 ? [{ $match: orderMatch }] : []),
                 { $group: { _id: '$status', count: { $sum: 1 } } },
             ]);
-            // Financial summaries
+            // Financial summaries (gross sales, commissions, delivery fees)
             const financialStats = await order_model_1.default.aggregate([
-                { $match: { status: order_model_1.OrderStatus.DELIVERED } },
+                { $match: { status: order_model_1.OrderStatus.DELIVERED, ...orderMatch } },
                 {
                     $group: {
                         _id: null,
@@ -94,11 +106,13 @@ class AdminController {
                     },
                 },
             ]);
-            const activeVendors = await restaurant_model_1.default.countDocuments({ status: restaurant_model_1.RestaurantStatus.ACTIVE });
-            const pendingVendors = await restaurant_model_1.default.countDocuments({ status: restaurant_model_1.RestaurantStatus.PENDING });
+            const activeVendors = await restaurant_model_1.default.countDocuments({ status: restaurant_model_1.RestaurantStatus.ACTIVE, ...regionFilter });
+            const pendingVendors = await restaurant_model_1.default.countDocuments({ status: restaurant_model_1.RestaurantStatus.PENDING, ...regionFilter });
+            const currency = this.getRegionCurrency(req);
             res.status(200).json({
                 status: 'success',
                 data: {
+                    currency,
                     users: userStats,
                     usersByCountry,
                     orders: orderStats,
@@ -155,13 +169,15 @@ class AdminController {
             });
         });
         /**
-         * Get all restaurants (including inactive, pending approval ones)
+         * Get all restaurants (including inactive, pending approval ones) filtered by regional scope
          */
         this.getAllRestaurants = (0, catchAsync_1.catchAsync)(async (req, res) => {
             const { status } = req.query;
             const filter = {};
             if (status)
                 filter.status = status;
+            const regionFilter = this.getRegionFilter(req);
+            Object.assign(filter, regionFilter);
             const restaurants = await restaurant_model_1.default.find(filter).populate('owner', 'name email phoneNumber');
             res.status(200).json({
                 status: 'success',
@@ -170,17 +186,23 @@ class AdminController {
             });
         });
         /**
-         * Get all orders with optional status filtering for platform auditing
+         * Get all orders with optional status filtering and regional scoping
          */
         this.getAllOrders = (0, catchAsync_1.catchAsync)(async (req, res) => {
             const { status } = req.query;
             const filter = {};
             if (status)
                 filter.status = status;
+            const regionFilter = this.getRegionFilter(req);
+            if (Object.keys(regionFilter).length > 0) {
+                const regionRestaurants = await restaurant_model_1.default.find(regionFilter).select('_id');
+                const restIds = regionRestaurants.map(r => r._id);
+                filter.restaurant = { $in: restIds };
+            }
             const orders = await order_model_1.default.find(filter)
-                .populate('customer', 'name email phoneNumber')
-                .populate('restaurant', 'name')
-                .populate('rider', 'name phoneNumber')
+                .populate('customer', 'name email phoneNumber country')
+                .populate('restaurant', 'name country countryCode isNigeria isUk isItaly')
+                .populate('rider', 'name phoneNumber country')
                 .sort({ createdAt: -1 });
             res.status(200).json({
                 status: 'success',
@@ -551,12 +573,19 @@ class AdminController {
             });
         });
         /**
-         * Get all menu items across all restaurants
+         * Get all menu items across all restaurants with regional filtering
          */
         this.getAllMenuItems = (0, catchAsync_1.catchAsync)(async (req, res) => {
-            const items = await foodItem_model_1.default.find()
+            const filter = {};
+            const regionFilter = this.getRegionFilter(req);
+            if (Object.keys(regionFilter).length > 0) {
+                const regionRestaurants = await restaurant_model_1.default.find(regionFilter).select('_id');
+                const restIds = regionRestaurants.map((r) => r._id);
+                filter.restaurant = { $in: restIds };
+            }
+            const items = await foodItem_model_1.default.find(filter)
                 .populate('category', 'name')
-                .populate('restaurant', 'name')
+                .populate('restaurant', 'name country countryCode isNigeria isUk isItaly')
                 .sort({ createdAt: -1 });
             res.status(200).json({
                 status: 'success',
@@ -638,12 +667,19 @@ class AdminController {
             });
         });
         /**
-         * Get all bookings
+         * Get all bookings with regional filtering
          */
         this.getAllBookings = (0, catchAsync_1.catchAsync)(async (req, res) => {
-            const bookings = await booking_model_1.default.find()
+            const filter = {};
+            const regionFilter = this.getRegionFilter(req);
+            if (Object.keys(regionFilter).length > 0) {
+                const regionRestaurants = await restaurant_model_1.default.find(regionFilter).select('_id');
+                const restIds = regionRestaurants.map((r) => r._id);
+                filter.restaurant = { $in: restIds };
+            }
+            const bookings = await booking_model_1.default.find(filter)
                 .populate('customer', 'name email phoneNumber')
-                .populate('restaurant', 'name')
+                .populate('restaurant', 'name country countryCode isNigeria isUk isItaly')
                 .sort({ createdAt: -1 });
             res.status(200).json({
                 status: 'success',
@@ -685,15 +721,22 @@ class AdminController {
             });
         });
         /**
-         * Get all transactions
+         * Get all transactions with regional filtering
          */
         this.getAllTransactions = (0, catchAsync_1.catchAsync)(async (req, res) => {
-            const transactions = await transaction_model_1.default.find()
+            const filter = {};
+            const regionFilter = this.getRegionFilter(req);
+            if (Object.keys(regionFilter).length > 0) {
+                const regionUsers = await user_model_1.default.find(regionFilter).select('_id');
+                const userIds = regionUsers.map((u) => u._id);
+                filter.user = { $in: userIds };
+            }
+            const transactions = await transaction_model_1.default.find(filter)
                 .populate({
                 path: 'wallet',
                 populate: {
                     path: 'user',
-                    select: 'name email role'
+                    select: 'name email role country countryCode isNigeria isUk isItaly'
                 }
             })
                 .sort({ createdAt: -1 });
@@ -1215,18 +1258,26 @@ class AdminController {
             });
         });
         /**
-         * Get all customer reviews across the platform
+         * Get all customer reviews across the platform with regional filtering
          */
         this.getAllReviews = (0, catchAsync_1.catchAsync)(async (req, res) => {
             const { rating, restaurantId } = req.query;
             const filter = {};
             if (rating)
                 filter.rating = Number(rating);
-            if (restaurantId)
+            if (restaurantId) {
                 filter.restaurant = restaurantId;
+            }
+            else {
+                const regionFilter = this.getRegionFilter(req);
+                if (Object.keys(regionFilter).length > 0) {
+                    const regionRestaurants = await restaurant_model_1.default.find(regionFilter).select('_id');
+                    filter.restaurant = { $in: regionRestaurants.map((r) => r._id) };
+                }
+            }
             const reviews = await review_model_1.default.find(filter)
                 .populate('user', 'name email profileImage')
-                .populate('restaurant', 'name')
+                .populate('restaurant', 'name country countryCode isNigeria isUk isItaly')
                 .populate('order', '_id totalAmount')
                 .sort({ createdAt: -1 });
             res.status(200).json({
@@ -1567,26 +1618,48 @@ class AdminController {
         });
     }
     /**
-     * Helper to build Mongoose regional query filter based on admin token or ?country query param
+     * Helper to build Mongoose regional query filter based on admin token, ?country param, or x-country header
      */
     getRegionFilter(req) {
-        const queryCountry = req.query.country;
+        const rawCountry = req.query.country ||
+            req.query.countryCode ||
+            req.headers['x-country'] ||
+            req.headers['x-country-code'];
         const adminUser = req.user;
         const adminRegion = adminUser?.adminRegion || 'ALL';
-        const targetCountry = adminRegion !== 'ALL'
+        const targetCountry = adminRegion !== 'ALL' && adminRegion !== 'all'
             ? adminRegion
-            : queryCountry && queryCountry !== 'ALL'
-                ? queryCountry
+            : rawCountry && rawCountry !== 'ALL' && rawCountry !== 'all'
+                ? rawCountry
                 : null;
         if (!targetCountry)
             return {};
-        if (targetCountry === 'Nigeria')
+        const clean = String(targetCountry).trim();
+        const upper = clean.toUpperCase();
+        if (clean === 'Nigeria' || upper === 'NG')
             return { isNigeria: true };
-        if (targetCountry === 'Italy')
+        if (clean === 'Italy' || upper === 'IT')
             return { isItaly: true };
-        if (targetCountry === 'UK')
+        if (clean === 'UK' || upper === 'GB' || clean.toLowerCase() === 'united kingdom')
             return { isUk: true };
-        return { country: targetCountry };
+        return { country: new RegExp(`^${clean}$`, 'i') };
+    }
+    /**
+     * Helper to get active currency symbol based on regional context
+     */
+    getRegionCurrency(req) {
+        const rawCountry = req.query.country ||
+            req.query.countryCode ||
+            req.headers['x-country'] ||
+            req.headers['x-country-code'];
+        const adminUser = req.user;
+        const adminRegion = adminUser?.adminRegion || 'ALL';
+        const target = (adminRegion !== 'ALL' && adminRegion !== 'all' ? adminRegion : rawCountry || '').trim().toUpperCase();
+        if (target === 'UK' || target === 'GB' || target === 'UNITED KINGDOM')
+            return '£';
+        if (target === 'ITALY' || target === 'IT')
+            return '€';
+        return '₦';
     }
 }
 exports.default = new AdminController();
