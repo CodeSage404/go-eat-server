@@ -1,9 +1,76 @@
 import { Router } from 'express';
 import supportController from '../controllers/support.controller';
-import { protect, restrictTo } from '../middleware/auth.middleware';
+import { protect, restrictTo, optionalAuth } from '../middleware/auth.middleware';
 import { UserRole } from '../models/user.model';
 
 const router = Router();
+
+/**
+ * @openapi
+ * /api/v1/support/contact:
+ *   post:
+ *     tags:
+ *       - Support
+ *     summary: Submit a public contact or support inquiry form
+ *     description: Allows customers, couriers, partner stores, or web visitors to submit a message to customer support. Sends immediate email notifications to the support team and confirmation to the sender.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [name, email, message]
+ *             properties:
+ *               name:
+ *                 type: string
+ *                 example: Jane Doe
+ *               email:
+ *                 type: string
+ *                 format: email
+ *                 example: jane@example.com
+ *               phone:
+ *                 type: string
+ *                 example: "+447123456789"
+ *               role:
+ *                 type: string
+ *                 enum: [users, couriers, partners]
+ *                 example: users
+ *               category:
+ *                 type: string
+ *                 example: Orders & Tracking
+ *               orderOrRefId:
+ *                 type: string
+ *                 example: ORD_64f1a2b3
+ *               subject:
+ *                 type: string
+ *                 example: Question about delivery address
+ *               message:
+ *                 type: string
+ *                 example: I need to update my delivery gate instructions for my active order.
+ *     responses:
+ *       200:
+ *         description: Support inquiry submitted successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: success
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     reference:
+ *                       type: string
+ *                       example: SUP-123456
+ *                     message:
+ *                       type: string
+ *                       example: Your message has been received! Our support team will get back to you shortly.
+ *       400:
+ *         description: Missing required fields.
+ */
+router.post('/contact', optionalAuth, supportController.submitContactForm);
 
 router.use(protect);
 

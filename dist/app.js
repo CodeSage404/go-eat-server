@@ -47,6 +47,7 @@ const rider_verification_routes_1 = __importDefault(require("./routes/rider-veri
 const partnerApplication_routes_1 = __importDefault(require("./routes/partnerApplication.routes"));
 const incident_routes_1 = __importDefault(require("./routes/incident.routes"));
 const customMealRequest_routes_1 = __importDefault(require("./routes/customMealRequest.routes"));
+const job_routes_1 = __importDefault(require("./routes/job.routes"));
 const activity_service_1 = __importDefault(require("./services/activity.service"));
 const keepAlive_1 = require("./utils/keepAlive");
 const swagger_ui_express_1 = __importDefault(require("swagger-ui-express"));
@@ -206,6 +207,7 @@ class App {
         this.app.use('/api/v1/partners', partnerApplication_routes_1.default);
         this.app.use('/api/v1/incidents', incident_routes_1.default);
         this.app.use('/api/v1/custom-requests', customMealRequest_routes_1.default);
+        this.app.use('/api/v1/jobs', job_routes_1.default);
         // Documentation Routes
         this.app.use('/api-docs', swagger_ui_express_1.default.serve, swagger_ui_express_1.default.setup(swagger_1.swaggerSpec));
         this.app.get('/redoc', (req, res) => {

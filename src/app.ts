@@ -44,6 +44,7 @@ import riderVerificationRoutes from './routes/rider-verification.routes';
 import partnerApplicationRoutes from './routes/partnerApplication.routes';
 import incidentRoutes from './routes/incident.routes';
 import customMealRequestRoutes from './routes/customMealRequest.routes';
+import jobRoutes from './routes/job.routes';
 import activityService from './services/activity.service';
 import { startKeepAlivePing } from './utils/keepAlive';
 
@@ -231,6 +232,7 @@ class App {
     this.app.use('/api/v1/partners', partnerApplicationRoutes);
     this.app.use('/api/v1/incidents', incidentRoutes);
     this.app.use('/api/v1/custom-requests', customMealRequestRoutes);
+    this.app.use('/api/v1/jobs', jobRoutes);
 
     // Documentation Routes
     this.app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));

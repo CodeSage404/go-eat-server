@@ -17,7 +17,12 @@ export enum TicketCategory {
 }
 
 export interface ITicket extends Document {
-  customer: mongoose.Types.ObjectId;
+  customer?: mongoose.Types.ObjectId;
+  guestName?: string;
+  guestEmail?: string;
+  guestPhone?: string;
+  role?: string;
+  referenceCode?: string;
   order?: mongoose.Types.ObjectId;
   restaurant?: mongoose.Types.ObjectId;
   category: TicketCategory;
@@ -34,7 +39,28 @@ const ticketSchema = new Schema<ITicket>(
     customer: {
       type: Schema.Types.ObjectId,
       ref: 'User',
-      required: true,
+      required: false,
+    },
+    guestName: {
+      type: String,
+      trim: true,
+    },
+    guestEmail: {
+      type: String,
+      trim: true,
+      lowercase: true,
+    },
+    guestPhone: {
+      type: String,
+      trim: true,
+    },
+    role: {
+      type: String,
+      default: 'user',
+    },
+    referenceCode: {
+      type: String,
+      trim: true,
     },
     order: {
       type: Schema.Types.ObjectId,

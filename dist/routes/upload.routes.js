@@ -21,10 +21,10 @@ const memUpload = (0, multer_1.default)({
     storage: multer_1.default.memoryStorage(),
     limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
     fileFilter: (req, file, cb) => {
-        const allowed = /jpeg|jpg|png|webp|gif/;
-        const ext = allowed.test(file.originalname.toLowerCase());
-        const mime = allowed.test(file.mimetype);
-        if (ext && mime)
+        const allowedExt = /\.(jpe?g|png|webp|gif|pdf|heic|heif)$/i;
+        const isImageOrPdfMime = file.mimetype && (file.mimetype.startsWith('image/') || file.mimetype === 'application/pdf');
+        const hasValidExt = allowedExt.test(file.originalname) || !file.originalname.includes('.');
+        if (isImageOrPdfMime || hasValidExt)
             return cb(null, true);
         cb(new Error('Only images (jpg, jpeg, png, webp, gif) are allowed!'));
     },

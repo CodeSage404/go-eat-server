@@ -302,6 +302,9 @@ class OrderService {
                 data.paymentStatus = 'pending';
             }
         }
+        if (!data.currency) {
+            data.currency = restaurant?.baseCurrency || (restaurant?.countryCode === 'GB' ? 'GBP' : restaurant?.countryCode === 'IT' ? 'EUR' : 'NGN');
+        }
         // Create the order
         const order = await order_model_1.default.create(data);
         const shortId = order._id.toString().slice(-6).toUpperCase();

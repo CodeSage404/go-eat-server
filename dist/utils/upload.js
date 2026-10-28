@@ -21,10 +21,10 @@ const uploadDir = process.env.UPLOAD_DIR
     : path_1.default.join(__dirname, '../../uploads');
 exports.uploadDir = uploadDir;
 const fileFilter = (req, file, cb) => {
-    const allowedTypes = /jpeg|jpg|png|webp|gif|pdf/;
-    const ext = allowedTypes.test(path_1.default.extname(file.originalname).toLowerCase());
-    const mime = allowedTypes.test(file.mimetype);
-    if (ext && mime) {
+    const allowedExt = /\.(jpe?g|png|webp|gif|pdf|heic|heif)$/i;
+    const isImageOrPdfMime = file.mimetype && (file.mimetype.startsWith('image/') || file.mimetype === 'application/pdf');
+    const hasValidExt = allowedExt.test(file.originalname) || !file.originalname.includes('.');
+    if (isImageOrPdfMime || hasValidExt) {
         return cb(null, true);
     }
     cb(new Error('Only images (jpg, jpeg, png, webp, gif) and PDFs are allowed!'));

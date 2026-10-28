@@ -246,9 +246,31 @@ class PaymentService {
             else if (order.currency) {
                 stripeCurrency = String(order.currency).toLowerCase();
             }
+            // Rates consistent with platform conversion: NGN per 1 unit of foreign currency
+            const EXCHANGE_RATES_FROM_NGN = {
+                gbp: 2000,
+                eur: 1700,
+                usd: 1550,
+                cad: 1150,
+            };
+            let finalStripeAmount = amount;
+            const orderCurrency = String(order.currency || 'NGN').toUpperCase();
+            const targetCurrency = stripeCurrency.toLowerCase();
+            // If the order amounts are in NGN, but Stripe is charging in GBP/EUR/USD, convert to foreign currency
+            if (orderCurrency === 'NGN' && EXCHANGE_RATES_FROM_NGN[targetCurrency]) {
+                const rate = EXCHANGE_RATES_FROM_NGN[targetCurrency];
+                finalStripeAmount = Math.round((amount / rate) * 100) / 100;
+                logger_1.default.info(`Stripe payment conversion applied: ${amount} NGN -> ${finalStripeAmount} ${targetCurrency.toUpperCase()} (rate: ${rate})`);
+            }
+            else if (targetCurrency === 'gbp' && finalStripeAmount > 1000 && orderCurrency !== 'GBP') {
+                // Safety guard: If an order total is > 1,000 on a GBP Stripe checkout and not explicitly tagged GBP,
+                // it is an unflagged NGN amount that slipped through
+                finalStripeAmount = Math.round((amount / 2000) * 100) / 100;
+                logger_1.default.warn(`Stripe payment safety cap applied: ${amount} converted to ${finalStripeAmount} GBP`);
+            }
             const result = await stripe_module_1.default.initializePayment({
                 email: safeEmail,
-                amount,
+                amount: finalStripeAmount,
                 reference,
                 currency: stripeCurrency,
                 redirectUrl: `${serverCallbackUrl}&provider=stripe`,
@@ -256,6 +278,8 @@ class PaymentService {
                     orderId: order._id.toString(),
                     orderIds: orderIdList.join(','),
                     customerId: user._id.toString(),
+                    originalNgnAmount: orderCurrency === 'NGN' ? amount : undefined,
+                    convertedCurrency: stripeCurrency,
                 },
             });
             return {

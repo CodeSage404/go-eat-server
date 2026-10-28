@@ -48,7 +48,7 @@ class StripeModule {
       const formData = new URLSearchParams();
       formData.append('payment_method_types[]', 'card');
       formData.append('line_items[0][price_data][currency]', currency);
-      formData.append('line_items[0][price_data][product_data][name]', 'Go-Eat Order');
+      formData.append('line_items[0][price_data][product_data][name]', 'GoEatOne Order');
       formData.append('line_items[0][price_data][unit_amount]', amountInCents.toString());
       formData.append('line_items[0][quantity]', '1');
       formData.append('mode', 'payment');

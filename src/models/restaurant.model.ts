@@ -555,6 +555,12 @@ restaurantSchema.pre('save', function (this: any) {
     rest.address.country = rest.country;
     rest.address.countryCode = rest.countryCode;
   }
+
+  if (!rest.baseCurrency || rest.baseCurrency === 'NGN') {
+    if (rest.countryCode === 'GB') rest.baseCurrency = 'GBP';
+    else if (rest.countryCode === 'IT') rest.baseCurrency = 'EUR';
+    else if (rest.countryCode === 'NG') rest.baseCurrency = 'NGN';
+  }
 });
 
 // Indexes for geospatial and country queries

@@ -55,7 +55,28 @@ const ticketSchema = new mongoose_1.Schema({
     customer: {
         type: mongoose_1.Schema.Types.ObjectId,
         ref: 'User',
-        required: true,
+        required: false,
+    },
+    guestName: {
+        type: String,
+        trim: true,
+    },
+    guestEmail: {
+        type: String,
+        trim: true,
+        lowercase: true,
+    },
+    guestPhone: {
+        type: String,
+        trim: true,
+    },
+    role: {
+        type: String,
+        default: 'user',
+    },
+    referenceCode: {
+        type: String,
+        trim: true,
     },
     order: {
         type: mongoose_1.Schema.Types.ObjectId,

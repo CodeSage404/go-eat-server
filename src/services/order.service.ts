@@ -316,6 +316,10 @@ class OrderService {
       }
     }
 
+    if (!data.currency) {
+      data.currency = (restaurant as any)?.baseCurrency || (restaurant?.countryCode === 'GB' ? 'GBP' : restaurant?.countryCode === 'IT' ? 'EUR' : 'NGN');
+    }
+
     // Create the order
     const order = await Order.create(data);
 
