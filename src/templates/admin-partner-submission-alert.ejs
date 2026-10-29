@@ -1,0 +1,91 @@
+<!-- Admin Partner Submission Alert Hero Icon -->
+<div style="text-align: center; margin: 10px 0 16px;">
+  <div style="width: 72px; height: 72px; border-radius: 50%; background-color: #ECFDF5; border: 2px solid #A7F3D0; margin: 0 auto; text-align: center; line-height: 72px; font-size: 32px;">
+    🏢
+  </div>
+</div>
+
+<!-- Title & Accent Bar -->
+<div style="text-align: center;">
+  <h1 style="margin: 0; font-size: 23px; font-weight: 800; color: #004320; letter-spacing: -0.3px;">
+    New Partner Documents Submitted
+  </h1>
+  <div style="width: 44px; height: 3px; background-color: #FFB800; border-radius: 2px; margin: 10px auto 18px;"></div>
+</div>
+
+<!-- Greeting & Notice -->
+<div style="text-align: left; max-width: 480px; margin: 0 auto 20px;">
+  <p style="font-size: 14px; font-weight: 700; color: #1F2937; margin: 0 0 8px;">
+    Hello GoEatOne Admin Team,
+  </p>
+  <p style="font-size: 13.5px; line-height: 1.6; color: #4B5563; margin: 0;">
+    A new partner application along with merchant documents has been submitted on GoEatOne and is currently <strong>awaiting review and approval from admin</strong>.
+  </p>
+</div>
+
+<!-- Partner Outlet & Document Details -->
+<div style="background-color: #F9FAFB; border: 1px solid #E5E7EB; border-radius: 16px; padding: 20px; max-width: 480px; margin: 0 auto 22px;">
+  <div style="font-size: 12px; font-weight: 800; color: #004320; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px; border-bottom: 1px solid #E5E7EB; padding-bottom: 8px;">
+    Partner Application Details
+  </div>
+
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="font-size: 13px;">
+    <tr>
+      <td style="padding: 6px 0; color: #6B7280; width: 135px;">Business Name:</td>
+      <td style="padding: 6px 0; font-weight: 700; color: #111827;"><%= businessName %></td>
+    </tr>
+    <tr>
+      <td style="padding: 6px 0; color: #6B7280;">Owner / Contact:</td>
+      <td style="padding: 6px 0; font-weight: 600; color: #111827;"><%= typeof ownerName !== 'undefined' && ownerName ? ownerName : 'Not specified' %></td>
+    </tr>
+    <tr>
+      <td style="padding: 6px 0; color: #6B7280;">Business Type:</td>
+      <td style="padding: 6px 0; font-weight: 600; color: #111827; text-transform: capitalize;"><%= typeof businessType !== 'undefined' && businessType ? businessType : 'Restaurant' %></td>
+    </tr>
+    <tr>
+      <td style="padding: 6px 0; color: #6B7280;">Email:</td>
+      <td style="padding: 6px 0; font-weight: 600; color: #004320;"><%= email %></td>
+    </tr>
+    <tr>
+      <td style="padding: 6px 0; color: #6B7280;">Phone Number:</td>
+      <td style="padding: 6px 0; font-weight: 600; color: #111827;"><%= phoneNumber %></td>
+    </tr>
+    <tr>
+      <td style="padding: 6px 0; color: #6B7280;">Business Address:</td>
+      <td style="padding: 6px 0; font-weight: 600; color: #374151;"><%= typeof businessAddress !== 'undefined' && businessAddress ? businessAddress : 'Not specified' %></td>
+    </tr>
+    <tr>
+      <td style="padding: 6px 0; color: #6B7280;">Country:</td>
+      <td style="padding: 6px 0; font-weight: 600; color: #111827;"><%= typeof country !== 'undefined' && country ? country : 'Nigeria' %></td>
+    </tr>
+    <tr>
+      <td style="padding: 6px 0; color: #6B7280;">Documents:</td>
+      <td style="padding: 6px 0; font-weight: 600; color: #15803D;"><%= typeof documentsList !== 'undefined' && documentsList ? documentsList : 'Registration Documents Uploaded' %></td>
+    </tr>
+    <tr>
+      <td style="padding: 6px 0; color: #6B7280;">Submitted At:</td>
+      <td style="padding: 6px 0; font-weight: 500; color: #4B5563;"><%= typeof submittedAt !== 'undefined' && submittedAt ? submittedAt : new Date().toUTCString() %></td>
+    </tr>
+  </table>
+</div>
+
+<!-- Review Alert Card -->
+<div style="background-color: #FEF9C3; border: 1.5px solid #FDE047; border-left: 4px solid #FFB800; border-radius: 12px; padding: 14px 18px; max-width: 480px; margin: 0 auto 24px;">
+  <p style="margin: 0 0 4px 0; font-size: 13.5px; font-weight: 800; color: #713F12;">
+    ⏳ Action Required: Review & Approval
+  </p>
+  <p style="margin: 0; font-size: 12.5px; line-height: 1.55; color: #854D0E;">
+    This merchant application is pending admin review. Please verify the submitted documents (CAC / NIN / Food Hygiene) and activate or request revisions for this store in the Admin Portal.
+  </p>
+</div>
+
+<!-- Admin Portal CTA Button -->
+<div style="text-align: center; margin: 28px 0 20px 0;">
+  <a href="<%= typeof reviewUrl !== 'undefined' && reviewUrl ? reviewUrl : 'https://admin.goeatone.com/dashboard/applications' %>" style="background-color: #004320; color: #ffffff; text-decoration: none; padding: 14px 32px; border-radius: 30px; font-weight: 700; font-size: 14.5px; display: inline-block;">
+    Review Application in Admin Portal →
+  </a>
+</div>
+
+<p style="font-size: 12px; color: #9CA3AF; text-align: center; margin-top: 24px;">
+  This is an automated operational notification dispatched to support@goeatone.com.
+</p>

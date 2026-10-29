@@ -4,6 +4,8 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = __importDefault(require("express"));
+const path_1 = __importDefault(require("path"));
+const fs_1 = __importDefault(require("fs"));
 const cors_1 = __importDefault(require("cors"));
 const helmet_1 = __importDefault(require("helmet"));
 const morgan_1 = __importDefault(require("morgan"));
@@ -152,6 +154,14 @@ class App {
             res.setHeader('Content-Security-Policy', "default-src 'none'; style-src 'unsafe-inline'; sandbox");
             next();
         }, express_1.default.static(upload_1.uploadDir));
+        // Serve static email template assets (logos, badges, illustrations)
+        const emailAssetsDir = fs_1.default.existsSync(path_1.default.join(__dirname, 'templates/assets'))
+            ? path_1.default.join(__dirname, 'templates/assets')
+            : path_1.default.join(__dirname, '../src/templates/assets');
+        this.app.use('/email-assets', (_req, res, next) => {
+            res.setHeader('Cache-Control', 'public, max-age=86400');
+            next();
+        }, express_1.default.static(emailAssetsDir));
     }
     routes() {
         // Health Check

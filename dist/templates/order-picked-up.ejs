@@ -1,23 +1,30 @@
-<!-- Hero Illustration: Rider On The Way (Reduced, responsive) -->
-<div style="text-align: center; margin: 10px 0 16px;">
-  <img src="https://res.cloudinary.com/dqtjja88b/image/upload/v1792505222/Order_Accepted_icon_1__1_-removebg-preview_v60hrt.png" alt="Your order is on the way!" width="150" style="width: 150px; max-width: 150px; height: auto; display: block; margin: 0 auto; border: 0;" />
+<!-- Go.Compare / Rami Niemi Inspired Rider Hero -->
+<div style="text-align: center; margin-bottom: 20px;">
+  <h1 style="margin: 0; font-size: 36px; line-height: 1.05; font-weight: 900; color: #133824; letter-spacing: -1px; text-transform: uppercase;">
+    ORDER<br/><span style="color: #F59E0B;">PICKED UP!</span>
+  </h1>
+  <p style="font-size: 15px; font-weight: 700; color: #1F2937; margin: 8px auto 0; max-width: 420px; line-height: 1.4;">
+    Your courier has grabbed your food and is on the move.
+  </p>
 </div>
 
-<!-- Title & Accent Bar -->
-<div style="text-align: center;">
-  <h1 style="margin: 0; font-size: 22px; font-weight: 800; color: #133824; letter-spacing: -0.3px;">
-    Your order is on the way!
-  </h1>
-  <div style="width: 38px; height: 3px; background-color: #F59E0B; border-radius: 2px; margin: 10px auto 16px;"></div>
+<!-- Centerpiece Vector Illustration: Courier On The Way -->
+<div style="text-align: center; margin: 0 auto 22px; max-width: 480px; background-color: #FFFFFF; border-radius: 20px; padding: 12px; border: 1px solid #F3F4F6; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);">
+  <img 
+    src="<%= typeof emailAssetsUrl !== 'undefined' ? emailAssetsUrl + '/rider-enroute.jpg' : 'cid:goeat_rider-enroute' %>" 
+    alt="Courier On The Way" 
+    width="460" 
+    style="width: 100%; max-width: 460px; height: auto; display: block; margin: 0 auto; border-radius: 14px; border: 0;" 
+  />
 </div>
 
 <!-- Greeting & Message -->
 <div style="text-align: center; max-width: 440px; margin: 0 auto 20px;">
-  <p style="font-size: 14px; font-weight: 700; color: #1F2937; margin: 0 0 6px;">
-    Hi <%= typeof customerName !== 'undefined' && customerName ? customerName : 'there' %>,
+  <p style="font-size: 14px; font-weight: 800; color: #133824; margin: 0 0 6px;">
+    Good news, <%= typeof customerName !== 'undefined' && customerName ? customerName : 'there' %>! 🛍️
   </p>
   <p style="font-size: 13px; line-height: 1.5; color: #4B5563; margin: 0;">
-    Great news! Your rider is on the way and will be at your doorstep soon. Track your order in real time below
+    The kitchen just handed off your bag to your courier. It’s packed warm and heading towards you right now.
   </p>
 </div>
 
@@ -157,7 +164,7 @@
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
     <tr>
       <td style="vertical-align: middle; width: 48px; padding-right: 12px;">
-        <img src="<%= typeof courierPhoto !== 'undefined' && courierPhoto ? courierPhoto : 'https://res.cloudinary.com/dqtjja88b/image/upload/v1792504742/delivery-guard_vdrrxj.png' %>" alt="Courier" style="width: 44px; height: 44px; border-radius: 50%; object-fit: cover; display: block; border: 1.5px solid #133824;" />
+        <img src="<%= typeof courierPhoto !== 'undefined' && courierPhoto ? courierPhoto : (typeof emailAssetsUrl !== 'undefined' ? emailAssetsUrl + '/logo.png' : 'cid:goeat_logo') %>" alt="Courier" style="width: 44px; height: 44px; border-radius: 50%; object-fit: cover; display: block; border: 1.5px solid #133824;" />
       </td>
       <td style="vertical-align: middle;">
         <div style="font-size: 13.5px; font-weight: 800; color: #111827;">

@@ -1,33 +1,23 @@
-<!-- Hero Illustration: Rider On The Way (Reduced, responsive) -->
-<div style="text-align: center; margin: 10px 0 16px;">
-  <img src="https://res.cloudinary.com/dqtjja88b/image/upload/v1792505222/Order_Accepted_icon_1__1_-removebg-preview_v60hrt.png" alt="Your order is on the way!" width="150" style="width: 150px; max-width: 150px; height: auto; display: block; margin: 0 auto; border: 0;" />
-</div>
+<!-- Main Content Body (Clean, Spacious, Un-squashed) -->
+<div class="email-content-padding" style="padding: 32px 30px; background-color: #FFFFFF; border-radius: 0;">
 
-<!-- Title & Accent Bar -->
-<div style="text-align: center;">
-  <h1 style="margin: 0; font-size: 22px; font-weight: 800; color: #133824; letter-spacing: -0.3px;">
-    Your order is on the way!
-  </h1>
-  <div style="width: 38px; height: 3px; background-color: #F59E0B; border-radius: 2px; margin: 10px auto 16px;"></div>
-</div>
-
-<!-- Greeting & Message -->
-<div style="text-align: center; max-width: 440px; margin: 0 auto 20px;">
-  <p style="font-size: 14px; font-weight: 700; color: #1F2937; margin: 0 0 6px;">
-    Hi <%= typeof customerName !== 'undefined' && customerName ? customerName : 'there' %>,
-  </p>
-  <p style="font-size: 13px; line-height: 1.5; color: #4B5563; margin: 0;">
-    Great news! Your rider is on the way and will be at your doorstep soon. Track your order in real time below
-  </p>
-</div>
+  <!-- Greeting & Message -->
+  <div style="margin-bottom: 24px;">
+    <h2 style="font-size: 18px; font-weight: 800; color: #111827; margin: 0 0 8px;">
+      Hang tight, <%= typeof customerName !== 'undefined' && customerName ? customerName : 'there' %>! 🚴💨
+    </h2>
+    <p style="font-size: 13px; line-height: 1.6; color: #4B5563; margin: 0;">
+      Your order has been picked up fresh from the kitchen and is speeding to your address. Track your delivery in real-time below.
+    </p>
+  </div>
 
 <!-- Live Order Progress Stepper (Mobile Fluid) -->
-<div style="background-color: #F9FAFB; border: 1px solid #F3F4F6; border-radius: 18px; padding: 16px 10px; margin-bottom: 20px;">
+<div style="background-color: #F9FAFB; border: 1px solid #F3F4F6; border-radius: 0; padding: 16px 10px; margin-bottom: 20px;">
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
     <tr>
       <!-- Step 1: Kitchen (Completed) -->
       <td class="stepper-step" align="center" style="vertical-align: top; width: 22%; text-align: center;">
-        <div style="width: 32px; height: 32px; border-radius: 50%; background-color: #059669; color: #FFFFFF; text-align: center; line-height: 32px; font-size: 14px; margin: 0 auto 6px;">
+        <div style="width: 32px; height: 32px; border-radius: 0; background-color: #059669; color: #FFFFFF; text-align: center; line-height: 32px; font-size: 14px; margin: 0 auto 6px;">
           🍳
         </div>
         <div style="font-size: 11px; font-weight: 800; color: #059669;">Kitchen</div>
@@ -43,7 +33,7 @@
 
       <!-- Step 2: Picked up (Completed) -->
       <td class="stepper-step" align="center" style="vertical-align: top; width: 22%; text-align: center;">
-        <div style="width: 32px; height: 32px; border-radius: 50%; background-color: #059669; color: #FFFFFF; text-align: center; line-height: 32px; font-size: 14px; margin: 0 auto 6px;">
+        <div style="width: 32px; height: 32px; border-radius: 0; background-color: #059669; color: #FFFFFF; text-align: center; line-height: 32px; font-size: 14px; margin: 0 auto 6px;">
           🛍️
         </div>
         <div style="font-size: 11px; font-weight: 800; color: #059669;">Picked up</div>
@@ -59,7 +49,7 @@
 
       <!-- Step 3: In-transit (Active) -->
       <td class="stepper-step" align="center" style="vertical-align: top; width: 22%; text-align: center;">
-        <div style="width: 32px; height: 32px; border-radius: 50%; background-color: #059669; color: #FFFFFF; text-align: center; line-height: 32px; font-size: 14px; margin: 0 auto 6px;">
+        <div style="width: 32px; height: 32px; border-radius: 0; background-color: #059669; color: #FFFFFF; text-align: center; line-height: 32px; font-size: 14px; margin: 0 auto 6px;">
           🛵
         </div>
         <div style="font-size: 11px; font-weight: 800; color: #059669;">In-transit</div>
@@ -75,7 +65,7 @@
 
       <!-- Step 4: Arrived -->
       <td class="stepper-step" align="center" style="vertical-align: top; width: 22%; text-align: center;">
-        <div style="width: 32px; height: 32px; border-radius: 50%; background-color: #E5E7EB; color: #6B7280; text-align: center; line-height: 32px; font-size: 14px; margin: 0 auto 6px;">
+        <div style="width: 32px; height: 32px; border-radius: 0; background-color: #E5E7EB; color: #6B7280; text-align: center; line-height: 32px; font-size: 14px; margin: 0 auto 6px;">
           📍
         </div>
         <div style="font-size: 11px; font-weight: 600; color: #6B7280;">Arrived</div>
@@ -90,14 +80,14 @@
   var totalAmount = typeof total !== 'undefined' ? total : 0;
   var count = typeof itemsCount !== 'undefined' ? itemsCount : (typeof items !== 'undefined' && items ? items.length : 1);
 %>
-<div style="border: 1px solid #E5E7EB; border-radius: 18px; padding: 16px 18px; background-color: #FFFFFF; margin-bottom: 18px;">
+<div style="border: 1px solid #E5E7EB; border-radius: 0; padding: 16px 18px; background-color: #FFFFFF; margin-bottom: 18px;">
   <div style="font-size: 12px; font-weight: 800; color: #133824; margin-bottom: 12px;">Order Summary</div>
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
     <tr>
       <td style="vertical-align: middle; width: 50px; padding-right: 12px;">
         <div style="position: relative; width: 44px; height: 44px;">
-          <img src="https://res.cloudinary.com/dqtjja88b/image/upload/v1791211867/go_eat_email/email_order_accepted_bag.png" alt="Meal" style="width: 44px; height: 44px; border-radius: 50%; object-fit: cover; display: block; border: 1px solid #E5E7EB;" />
-          <div style="position: absolute; top: -3px; right: -3px; background-color: #DC2626; color: #FFFFFF; font-size: 9px; font-weight: 800; border-radius: 50%; width: 16px; height: 16px; text-align: center; line-height: 16px;">
+          <img src="https://res.cloudinary.com/dqtjja88b/image/upload/v1791211867/go_eat_email/email_order_accepted_bag.png" alt="Meal" style="width: 44px; height: 44px; border-radius: 0; object-fit: cover; display: block; border: 1px solid #E5E7EB;" />
+          <div style="position: absolute; top: -3px; right: -3px; background-color: #DC2626; color: #FFFFFF; font-size: 9px; font-weight: 800; border-radius: 0; width: 16px; height: 16px; text-align: center; line-height: 16px;">
             <%= count %>
           </div>
         </div>
@@ -121,7 +111,7 @@
 </div>
 
 <!-- Order Meta Strip (Responsive Stacking on Mobile) -->
-<div style="background-color: #F9FAFB; border: 1px solid #F3F4F6; border-radius: 16px; padding: 14px 18px; margin-bottom: 18px;">
+<div style="background-color: #F9FAFB; border: 1px solid #F3F4F6; border-radius: 0; padding: 14px 18px; margin-bottom: 18px;">
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
     <tr>
       <td class="meta-box-col" style="vertical-align: top; width: 33.33%; padding-right: 8px;">
@@ -153,11 +143,11 @@
 </div>
 
 <!-- Assigned Courier Card -->
-<div style="background-color: #FFFFFF; border: 1px solid #E5E7EB; border-radius: 18px; padding: 14px 18px; margin-bottom: 20px;">
+<div style="background-color: #FFFFFF; border: 1px solid #E5E7EB; border-radius: 0; padding: 14px 18px; margin-bottom: 20px;">
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
     <tr>
       <td style="vertical-align: middle; width: 48px; padding-right: 12px;">
-        <img src="<%= typeof courierPhoto !== 'undefined' && courierPhoto ? courierPhoto : 'https://res.cloudinary.com/dqtjja88b/image/upload/v1792504742/delivery-guard_vdrrxj.png' %>" alt="Courier" style="width: 44px; height: 44px; border-radius: 50%; object-fit: cover; display: block; border: 1.5px solid #133824;" />
+        <img src="<%= typeof courierPhoto !== 'undefined' && courierPhoto ? courierPhoto : (typeof emailAssetsUrl !== 'undefined' ? emailAssetsUrl + '/logo.png' : 'cid:goeat_logo') %>" alt="Courier" style="width: 44px; height: 44px; border-radius: 0; object-fit: cover; display: block; border: 1.5px solid #133824;" />
       </td>
       <td style="vertical-align: middle;">
         <div style="font-size: 13.5px; font-weight: 800; color: #111827;">
@@ -169,13 +159,13 @@
       </td>
       <% if (typeof courierPhone !== 'undefined' && courierPhone) { %>
       <td align="right" style="vertical-align: middle; width: 44px;">
-        <a href="tel:<%= courierPhone %>" style="display: inline-block; width: 38px; height: 38px; border-radius: 50%; border: 1.5px solid #133824; text-align: center; line-height: 38px; text-decoration: none; color: #133824; background-color: #F0FDF4;">
+        <a href="tel:<%= courierPhone %>" style="display: inline-block; width: 38px; height: 38px; border-radius: 0; border: 1.5px solid #133824; text-align: center; line-height: 38px; text-decoration: none; color: #133824; background-color: #F0FDF4;">
           <span style="font-size: 16px;">📞</span>
         </a>
       </td>
       <% } else { %>
       <td align="right" style="vertical-align: middle; width: 44px;">
-        <div style="display: inline-block; width: 38px; height: 38px; border-radius: 50%; border: 1.5px solid #D1D5DB; text-align: center; line-height: 38px; color: #133824; background-color: #F9FAFB;">
+        <div style="display: inline-block; width: 38px; height: 38px; border-radius: 0; border: 1.5px solid #D1D5DB; text-align: center; line-height: 38px; color: #133824; background-color: #F9FAFB;">
           <span style="font-size: 16px;">📞</span>
         </div>
       </td>
@@ -185,7 +175,7 @@
 </div>
 
 <!-- Cross-Sell Upsell Card (Fluid Stacking) -->
-<div style="background-color: #ECFDF5; border: 1px solid #A7F3D0; border-radius: 18px; padding: 16px 18px; margin-bottom: 22px;">
+<div style="background-color: #ECFDF5; border: 1px solid #A7F3D0; border-radius: 0; padding: 16px 18px; margin-bottom: 22px;">
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
     <tr>
       <td class="fluid-stack-col" style="vertical-align: middle; padding-right: 12px; text-align: left;">

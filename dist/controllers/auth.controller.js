@@ -262,6 +262,33 @@ class AuthController {
                     if (updatedUser) {
                         user = updatedUser;
                     }
+                    // Operational alert to support@goeatone.com if documents were submitted at signup
+                    if (initialStatus === 'under_review') {
+                        const submittedDocs = [];
+                        if (docs.license || docs.driverLicense)
+                            submittedDocs.push("Driver's License");
+                        if (docs.riderPhoto || docs.selfieVerification)
+                            submittedDocs.push('Selfie Photo');
+                        if (docs.proofOfAddress)
+                            submittedDocs.push('Proof of Address');
+                        if (docs.vehiclePhoto)
+                            submittedDocs.push('Vehicle Photo');
+                        if (docs.vehicleRegistration || docs.vehiclePapers)
+                            submittedDocs.push('Vehicle Registration Papers');
+                        const documentsList = submittedDocs.length > 0 ? submittedDocs.join(', ') : 'Initial Registration Documents Uploaded';
+                        email_service_1.default.sendAdminRiderSubmissionAlert({
+                            riderName: user.name || pendingUserData.name || 'Courier',
+                            email: user.email || pendingUserData.email || 'Not provided',
+                            phoneNumber: user.phoneNumber || pendingUserData.phoneNumber || 'Not provided',
+                            deliveryMethod,
+                            vehicleReg: pendingUserData.vehicleNumber || user.vehicleNumber || 'N/A',
+                            country: user.country || 'Nigeria',
+                            documentsList,
+                            riderId: user._id.toString(),
+                        }).catch((adminErr) => {
+                            logger_1.default.warn(`⚠️ Failed to dispatch admin rider signup alert: ${adminErr.message}`);
+                        });
+                    }
                 }
             }
             else {

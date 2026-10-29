@@ -180,6 +180,19 @@ class RestaurantController {
                     sort: sort,
                     shuffle: shouldShuffle
                 });
+                // If no outlets found within the strict distance radius, gracefully fallback to country-level outlets
+                if (!restaurants || restaurants.length === 0) {
+                    restaurants = await restaurant_service_1.default.getAllRestaurants({
+                        cuisine,
+                        search,
+                        isTopSpot: isTopSpot === 'true',
+                        tags: tags ? (Array.isArray(tags) ? tags : [tags]) : undefined,
+                        sort: sort,
+                        country,
+                        countryCode,
+                        shuffle: shouldShuffle
+                    });
+                }
             }
             else {
                 restaurants = await restaurant_service_1.default.getAllRestaurants({

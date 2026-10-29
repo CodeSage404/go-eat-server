@@ -256,6 +256,32 @@ class RiderVerificationController {
                         logger_1.default.warn(`⚠️ Failed to dispatch application receipt confirmation email: ${emailErr.message}`);
                     });
                 }
+                // 3. Operational alert to support@goeatone.com (Awaiting admin review & approval)
+                const docs = profile.documents || {};
+                const submittedDocLabels = [];
+                if (docs.driverLicense)
+                    submittedDocLabels.push("Driver's License");
+                if (docs.selfieVerification || docs.riderPhoto)
+                    submittedDocLabels.push('Selfie Photo');
+                if (docs.proofOfAddress)
+                    submittedDocLabels.push('Proof of Address');
+                if (docs.vehiclePhoto)
+                    submittedDocLabels.push('Vehicle Photo');
+                if (docs.vehicleRegistration)
+                    submittedDocLabels.push('Vehicle Registration Papers');
+                const documentsList = submittedDocLabels.length > 0 ? submittedDocLabels.join(', ') : 'Verification Documents Uploaded';
+                email_service_1.default.sendAdminRiderSubmissionAlert({
+                    riderName,
+                    email: riderEmail || updatedUser?.email || 'Not provided',
+                    phoneNumber: profile.phoneNumber || updatedUser?.phoneNumber || 'Not provided',
+                    deliveryMethod: profile.deliveryMethod || updatedUser?.vehicleType || 'Motorcycle',
+                    vehicleReg: profile.vehicle?.registrationNumber || updatedUser?.vehicleNumber || 'N/A',
+                    country: profile.country || updatedUser?.country || 'Nigeria',
+                    documentsList,
+                    riderId: userId.toString(),
+                }).catch((adminErr) => {
+                    logger_1.default.warn(`⚠️ Failed to dispatch admin rider submission alert: ${adminErr.message}`);
+                });
             }
             await profile.save();
             res.status(200).json({

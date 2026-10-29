@@ -270,6 +270,29 @@ class RiderVerificationController {
           logger.warn(`⚠️ Failed to dispatch application receipt confirmation email: ${emailErr.message}`);
         });
       }
+
+      // 3. Operational alert to support@goeatone.com (Awaiting admin review & approval)
+      const docs = profile.documents || ({} as any);
+      const submittedDocLabels: string[] = [];
+      if (docs.driverLicense) submittedDocLabels.push("Driver's License");
+      if (docs.selfieVerification || docs.riderPhoto) submittedDocLabels.push('Selfie Photo');
+      if (docs.proofOfAddress) submittedDocLabels.push('Proof of Address');
+      if (docs.vehiclePhoto) submittedDocLabels.push('Vehicle Photo');
+      if (docs.vehicleRegistration) submittedDocLabels.push('Vehicle Registration Papers');
+      const documentsList = submittedDocLabels.length > 0 ? submittedDocLabels.join(', ') : 'Verification Documents Uploaded';
+
+      emailService.sendAdminRiderSubmissionAlert({
+        riderName,
+        email: riderEmail || updatedUser?.email || 'Not provided',
+        phoneNumber: profile.phoneNumber || updatedUser?.phoneNumber || 'Not provided',
+        deliveryMethod: profile.deliveryMethod || updatedUser?.vehicleType || 'Motorcycle',
+        vehicleReg: profile.vehicle?.registrationNumber || updatedUser?.vehicleNumber || 'N/A',
+        country: profile.country || updatedUser?.country || 'Nigeria',
+        documentsList,
+        riderId: userId.toString(),
+      }).catch((adminErr: any) => {
+        logger.warn(`⚠️ Failed to dispatch admin rider submission alert: ${adminErr.message}`);
+      });
     }
 
     await profile.save();

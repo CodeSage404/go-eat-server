@@ -1,30 +1,18 @@
-<!-- Bank Withdrawal Hero Illustration -->
-<div style="text-align: center; margin: 10px 0 14px;">
-  <div style="width: 72px; height: 72px; border-radius: 50%; background-color: #ECFDF5; border: 2px solid #A7F3D0; margin: 0 auto; text-align: center; line-height: 72px; font-size: 30px;">
-    🏦
+<!-- Main Content Body (Clean, Spacious, Un-squashed) -->
+<div class="email-content-padding" style="padding: 32px 30px; background-color: #FFFFFF; border-radius: 0;">
+
+  <!-- Greeting & Intro -->
+  <div style="margin-bottom: 24px;">
+    <h2 style="font-size: 18px; font-weight: 800; color: #111827; margin: 0 0 8px;">
+      Hello, <%= typeof userName !== 'undefined' && userName ? userName : 'Valued Partner' %>! 💼
+    </h2>
+    <p style="font-size: 13px; line-height: 1.6; color: #4B5563; margin: 0;">
+      Your wallet withdrawal request has been submitted and approved. Below is your official transaction receipt for your records.
+    </p>
   </div>
-</div>
-
-<!-- Title & Accent Bar -->
-<div style="text-align: center;">
-  <h1 style="margin: 0; font-size: 24px; font-weight: 800; color: #133824; letter-spacing: -0.3px;">
-    Withdrawal Payout Receipt
-  </h1>
-  <div style="width: 38px; height: 3px; background-color: #F59E0B; border-radius: 2px; margin: 10px auto 16px;"></div>
-</div>
-
-<!-- Greeting & Intro -->
-<div style="text-align: center; max-width: 440px; margin: 0 auto 22px;">
-  <p style="font-size: 14px; font-weight: 700; color: #1F2937; margin: 0 0 6px;">
-    Dear <%= typeof userName !== 'undefined' && userName ? userName : 'Valued Partner' %>,
-  </p>
-  <p style="font-size: 13px; line-height: 1.5; color: #4B5563; margin: 0;">
-    Your withdrawal payout request has been successfully submitted and processed. Below is your official transaction receipt for your records.
-  </p>
-</div>
 
 <!-- Transaction Summary Card -->
-<div style="border: 1px solid #E5E7EB; border-radius: 18px; padding: 20px; background-color: #FFFFFF; margin-bottom: 22px;">
+<div style="border: 1px solid #E5E7EB; border-radius: 0; padding: 20px; background-color: #FFFFFF; margin-bottom: 22px;">
   <div style="font-size: 12px; font-weight: 800; color: #133824; margin-bottom: 12px; border-bottom: 1px solid #F3F4F6; padding-bottom: 8px;">
     Transaction Details
   </div>
@@ -73,7 +61,12 @@
     <tr>
       <td style="font-size: 13.5px; font-weight: 700; color: #374151;">Amount Withdrawn:</td>
       <td align="right" style="font-size: 20px; font-weight: 800; color: #133824;">
-        <%= typeof currencySymbol !== 'undefined' ? currencySymbol : '₦' %><%= typeof amount !== 'undefined' ? Number(amount).toLocaleString() : '0' %>
+        <% 
+          var curr = typeof currencySymbol !== 'undefined' ? currencySymbol : (typeof currency !== 'undefined' ? currency : '₦');
+          var amt = typeof amount !== 'undefined' ? amount : '0';
+          var isNumeric = !isNaN(Number(String(amt).replace(/[^0-9.-]+/g, "")));
+        %>
+        <%= String(amt).startsWith(curr) ? '' : curr %><%= isNumeric ? Number(String(amt).replace(/[^0-9.-]+/g, "")).toLocaleString() : amt %>
       </td>
     </tr>
   </table>

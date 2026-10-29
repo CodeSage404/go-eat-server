@@ -234,6 +234,33 @@ export const applyForPartnership = catchAsync(async (req: Request, res: Response
     logger.warn(`Failed to dispatch partner application confirmation email to ${email}: ${err.message}`);
   }
 
+  // 3. Dispatch operational alert to support@goeatone.com (Awaiting admin review & approval)
+  try {
+    const uploadedDocs: string[] = [];
+    if (cacUrl) uploadedDocs.push('CAC Certificate');
+    if (ninUrl) uploadedDocs.push('NIN / Identity Document');
+    if (foodHygieneUrl) uploadedDocs.push('Food Hygiene Certificate');
+    if (businessImageUrl) uploadedDocs.push('Business Storefront Photo');
+    if (coverImageUrl) uploadedDocs.push('Cover Image');
+    const documentsList = uploadedDocs.length > 0 ? uploadedDocs.join(', ') : 'Standard Merchant Registration Details';
+
+    const resolvedCountry = req.body.country || user?.country || 'Nigeria';
+
+    await emailService.sendAdminPartnerSubmissionAlert({
+      businessName: businessName.trim(),
+      ownerName: resolvedOwnerName,
+      email: normalizedEmail,
+      phoneNumber: normalizedPhone,
+      businessAddress: businessAddress.trim(),
+      businessType: resolvedBusinessType,
+      country: resolvedCountry,
+      documentsList,
+      applicationId: application._id.toString(),
+    });
+  } catch (adminMailErr: any) {
+    logger.warn(`Failed to dispatch admin partner submission alert: ${adminMailErr.message}`);
+  }
+
   return res.status(201).json({
     status: 'success',
     message: isQuick

@@ -4,6 +4,8 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const nodemailer_1 = __importDefault(require("nodemailer"));
+const fs_1 = __importDefault(require("fs"));
+const path_1 = __importDefault(require("path"));
 const logger_1 = __importDefault(require("../utils/logger"));
 const templateEngine_1 = require("../utils/templateEngine");
 class EmailService {
@@ -24,9 +26,67 @@ class EmailService {
         return { user: defaultUser, from: `"GoEatOne Support" <${defaultUser}>` };
     }
     /**
+     * Resolves the directory where local email template assets (logos, badges) are stored.
+     */
+    getAssetsDir() {
+        const primary = path_1.default.join(__dirname, '../templates/assets');
+        if (fs_1.default.existsSync(primary))
+            return primary;
+        const fallback = path_1.default.join(__dirname, '../../src/templates/assets');
+        if (fs_1.default.existsSync(fallback))
+            return fallback;
+        return primary;
+    }
+    /**
+     * Collects all local image assets as CID attachments for SMTP dispatch.
+     */
+    getCidAttachments() {
+        const assetsDir = this.getAssetsDir();
+        const attachments = [];
+        if (fs_1.default.existsSync(assetsDir)) {
+            try {
+                const files = fs_1.default.readdirSync(assetsDir);
+                for (const file of files) {
+                    const ext = path_1.default.extname(file).toLowerCase();
+                    if (['.png', '.jpg', '.jpeg', '.svg', '.gif', '.webp'].includes(ext)) {
+                        const nameWithoutExt = path_1.default.basename(file, ext);
+                        attachments.push({
+                            filename: file,
+                            path: path_1.default.join(assetsDir, file),
+                            cid: `goeat_${nameWithoutExt}`,
+                        });
+                    }
+                }
+            }
+            catch (err) {
+                logger_1.default.warn(`⚠️ Failed reading email assets directory for CID attachments: ${err.message}`);
+            }
+        }
+        return attachments;
+    }
+    /**
+     * Prepares HTML for HTTP-based email APIs (Brevo / Resend).
+     * Since transactional HTTP APIs do not natively support CID attachments,
+     * any 'cid:goeat_<asset>' references are resolved to the server's public '/email-assets' URL.
+     */
+    prepareHtmlForHttpApi(html) {
+        const cloudCdnBase = 'https://res.cloudinary.com/dqtjja88b/image/upload/v1793280551/go_eat_email';
+        const assetsDir = this.getAssetsDir();
+        return html.replace(/cid:goeat_([a-zA-Z0-9_-]+)/g, (_match, assetName) => {
+            const exts = ['.jpg', '.png', '.jpeg', '.svg', '.webp'];
+            for (const ext of exts) {
+                if (fs_1.default.existsSync(path_1.default.join(assetsDir, `${assetName}${ext}`))) {
+                    return `${cloudCdnBase}/${assetName}${ext}`;
+                }
+            }
+            return `${cloudCdnBase}/${assetName}.png`;
+        });
+    }
+    /**
      * Dispatches email via Brevo HTTPS REST API (Port 443 - Never blocked by Render firewall)
      */
     async sendViaBrevoHttp(to, subject, html, senderEmail, senderName, apiKey) {
+        const resolvedHtml = this.prepareHtmlForHttpApi(html);
         try {
             const response = await fetch('https://api.brevo.com/v3/smtp/email', {
                 method: 'POST',
@@ -39,7 +99,7 @@ class EmailService {
                     sender: { name: senderName, email: senderEmail.toLowerCase().trim() },
                     to: [{ email: to.toLowerCase().trim() }],
                     subject,
-                    htmlContent: html,
+                    htmlContent: resolvedHtml,
                 }),
             });
             if (response.ok) {
@@ -62,6 +122,7 @@ class EmailService {
      * Dispatches email via Resend HTTPS REST API (Port 443 - Never blocked by Render firewall)
      */
     async sendViaResendHttp(to, subject, html, fromHeader, apiKey) {
+        const resolvedHtml = this.prepareHtmlForHttpApi(html);
         try {
             const response = await fetch('https://api.resend.com/emails', {
                 method: 'POST',
@@ -73,7 +134,7 @@ class EmailService {
                     from: fromHeader,
                     to: [to.toLowerCase().trim()],
                     subject,
-                    html,
+                    html: resolvedHtml,
                 }),
             });
             if (response.ok) {
@@ -136,11 +197,13 @@ class EmailService {
         // 3. Fallback to multi-port SMTP (587, 465, 2525)
         const defaultPort = Number(process.env.EMAIL_PORT) || 587;
         const portsToTry = Array.from(new Set([defaultPort, 587, 465, 2525]));
+        const attachments = this.getCidAttachments();
         const mailOptions = {
             from,
             to,
             subject,
             html,
+            attachments,
         };
         let sent = false;
         for (const port of portsToTry) {
@@ -222,6 +285,49 @@ class EmailService {
         const htmlContent = (0, templateEngine_1.renderTemplate)('PARTNER_APPLICATION_RECEIVED', data);
         this.sendEmail(email, 'GoEatOne Partner Application Received', htmlContent, 'partners')
             .catch(err => logger_1.default.error(`Background partner received email failed to ${email}:`, err?.message || err));
+    }
+    /**
+     * Sends admin operational notification when a new partner registers and submits documents for review
+     */
+    async sendAdminPartnerSubmissionAlert(data) {
+        const adminEmail = (process.env.ADMIN_ALERT_EMAIL || 'support@goeatone.com').toLowerCase().trim();
+        const adminPortalUrl = (process.env.ADMIN_PORTAL_URL || 'https://admin.goeatone.com').replace(/\/$/, '');
+        const reviewUrl = `${adminPortalUrl}/dashboard/applications`;
+        const templateData = {
+            ...data,
+            reviewUrl,
+            submittedAt: data.submittedAt || new Date().toUTCString(),
+        };
+        try {
+            const htmlContent = (0, templateEngine_1.renderTemplate)('ADMIN_PARTNER_SUBMISSION_ALERT', templateData);
+            this.sendEmail(adminEmail, `Action Required: New Partner Application Submitted - ${data.businessName} (Awaiting Admin Review)`, htmlContent, 'default').catch(err => logger_1.default.error(`Background admin partner submission alert failed to ${adminEmail}:`, err?.message || err));
+        }
+        catch (templateErr) {
+            logger_1.default.error(`Failed to compile admin partner submission template: ${templateErr.message}`);
+        }
+    }
+    /**
+     * Sends admin operational notification when a courier submits onboarding / verification documents for review
+     */
+    async sendAdminRiderSubmissionAlert(data) {
+        const adminEmail = (process.env.ADMIN_ALERT_EMAIL || 'support@goeatone.com').toLowerCase().trim();
+        const adminPortalUrl = (process.env.ADMIN_PORTAL_URL || 'https://admin.goeatone.com').replace(/\/$/, '');
+        const reviewUrl = `${adminPortalUrl}/management/riders`;
+        const templateData = {
+            ...data,
+            email: data.email || 'Not provided',
+            phoneNumber: data.phoneNumber || 'Not provided',
+            deliveryMethod: data.deliveryMethod || 'Motorcycle',
+            reviewUrl,
+            submittedAt: data.submittedAt || new Date().toUTCString(),
+        };
+        try {
+            const htmlContent = (0, templateEngine_1.renderTemplate)('ADMIN_RIDER_SUBMISSION_ALERT', templateData);
+            this.sendEmail(adminEmail, `Action Required: Courier Verification Documents Submitted - ${data.riderName} (Awaiting Admin Review)`, htmlContent, 'default').catch(err => logger_1.default.error(`Background admin rider submission alert failed to ${adminEmail}:`, err?.message || err));
+        }
+        catch (templateErr) {
+            logger_1.default.error(`Failed to compile admin rider submission template: ${templateErr.message}`);
+        }
     }
     /**
      * Sends a withdrawal payout receipt email

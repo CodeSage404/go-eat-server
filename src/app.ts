@@ -1,5 +1,6 @@
 import express, { Application, Request, Response, NextFunction } from 'express';
 import path from 'path';
+import fs from 'fs';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
@@ -172,6 +173,20 @@ class App {
         next();
       },
       express.static(uploadDir)
+    );
+
+    // Serve static email template assets (logos, badges, illustrations)
+    const emailAssetsDir = fs.existsSync(path.join(__dirname, 'templates/assets'))
+      ? path.join(__dirname, 'templates/assets')
+      : path.join(__dirname, '../src/templates/assets');
+
+    this.app.use(
+      '/email-assets',
+      (_req, res, next) => {
+        res.setHeader('Cache-Control', 'public, max-age=86400');
+        next();
+      },
+      express.static(emailAssetsDir)
     );
   }
 

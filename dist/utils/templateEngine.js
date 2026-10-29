@@ -61,9 +61,18 @@ function renderTemplate(templateName, data) {
             throw err;
         }
     };
+    const cloudCdnBase = 'https://res.cloudinary.com/dqtjja88b/image/upload/v1793280551/go_eat_email';
+    const serverBaseUrl = (process.env.RENDER_EXTERNAL_URL || process.env.SERVER_BASE_URL || 'https://go-eat-server-z96s.onrender.com').replace(/\/$/, '');
+    const emailAssetsUrl = cloudCdnBase;
+    const commonLocals = {
+        year: new Date().getFullYear(),
+        serverBaseUrl,
+        emailAssetsUrl,
+        ...data,
+    };
     // Compile template body first
-    const bodyHtml = compile(body, data);
+    const bodyHtml = compile(body, commonLocals);
     // Combine body into layout and compile full html
     const fullHtml = layout.replace(/<%- \s*body\s*%>/g, bodyHtml);
-    return compile(fullHtml, { year: new Date().getFullYear(), ...data });
+    return compile(fullHtml, commonLocals);
 }
