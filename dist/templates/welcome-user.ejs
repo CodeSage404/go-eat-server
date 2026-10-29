@@ -1,5 +1,5 @@
 <!-- Main Body Container -->
-<div class="welcome-content" style="background-color: #FFFFFF; padding: 36px 30px 34px; text-align: center;">
+<div class="welcome-content" style="background-color: #FFFFFF; padding: 36px 28px 34px; text-align: center;">
 
   <!-- Centered Greeting & Welcome Title (Bold, Normal Sentence Casing) -->
   <h1 class="welcome-main-title" style="font-family: 'Bricolage Grotesque', 'Poppins', -apple-system, sans-serif; font-size: 28px; line-height: 1.25; font-weight: 800; color: #111827; letter-spacing: -0.4px; margin: 0 auto 12px; text-align: center;">
@@ -7,7 +7,7 @@
   </h1>
 
   <p class="welcome-intro-text" style="font-family: 'Poppins', sans-serif; font-size: 14.5px; line-height: 1.6; color: #4B5563; margin: 0 auto 34px; max-width: 480px; text-align: center;">
-    Welcome to <strong style="color: #111827;">GoEatOne</strong>! Whether it's a quick lunch, comforting dinner, or everyday essentials, we're thrilled to connect you with the finest local kitchens and fastest couriers in your city.
+    Welcome to <strong>GoEatOne</strong>! Whether it's a quick lunch, comforting dinner, or everyday essentials, we're thrilled to connect you with the finest local kitchens and fastest couriers in your city.
   </p>
 
   <!-- Big Bold Centered Section Headline -->
@@ -15,19 +15,19 @@
     What you get with GoEatOne
   </h2>
 
-  <!-- ZIG-ZAG FEATURE 1: Food Delivery Bag (Desktop: Image Left, Text Right | Mobile: Image Top, Text Below) -->
+  <!-- ZIG-ZAG FEATURE 1: Food Delivery Bag (Desktop: Image Left, Text Right | Mobile: Image Reaches Far Ends on Top, Text Below) -->
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="feature-row" style="margin-bottom: 34px;">
     <tr>
-      <td width="46%" align="center" class="feature-cell-img" style="vertical-align: middle; padding: 8px 16px;">
+      <td width="48%" align="center" class="feature-cell-img" style="vertical-align: middle; padding: 8px 14px;">
         <img 
           src="<%= typeof emailAssetsUrl !== 'undefined' ? emailAssetsUrl + '/welcome-food-bag.png' : 'cid:goeat_welcome-food-bag' %>" 
           alt="Every craving, delivered" 
-          width="190" 
+          width="230" 
           class="feature-img"
-          style="width: 100%; max-width: 190px; height: auto; display: block; margin: 0 auto; border: 0;" 
+          style="width: 100%; max-width: 230px; height: auto; display: block; margin: 0 auto; border: 0; border-radius: 8px;" 
         />
       </td>
-      <td width="54%" align="left" class="feature-cell-text" style="vertical-align: middle; padding: 8px 16px; text-align: left;">
+      <td width="52%" align="left" class="feature-cell-text" style="vertical-align: middle; padding: 8px 14px; text-align: left;">
         <h3 class="feature-title" style="font-family: 'Bricolage Grotesque', 'Poppins', -apple-system, sans-serif; margin: 0 0 8px; font-size: 18px; font-weight: 800; color: #111827; letter-spacing: -0.2px;">
           Every craving, delivered
         </h3>
@@ -38,21 +38,21 @@
     </tr>
   </table>
 
-  <!-- ZIG-ZAG FEATURE 2: Live Courier Radar (Desktop: Text Left, Image Right | Mobile: Image Top, Text Below via dir="rtl") -->
+  <!-- ZIG-ZAG FEATURE 2: Live Courier Radar (Desktop: Text Left, Image Right | Mobile: Image Reaches Far Ends on Top, Text Below via dir="rtl") -->
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="feature-row" dir="rtl" style="margin-bottom: 34px;">
     <tr>
-      <!-- On Desktop (RTL table): this 1st cell renders on the RIGHT. On Mobile (stacked): it is 1st (ON TOP)! -->
-      <td width="46%" align="center" class="feature-cell-img" dir="ltr" style="vertical-align: middle; padding: 8px 16px;">
+      <!-- On Desktop (RTL table): this 1st cell renders on the RIGHT. On Mobile (stacked): it is 1st (ON TOP, REACHING FAR ENDS)! -->
+      <td width="48%" align="center" class="feature-cell-img" dir="ltr" style="vertical-align: middle; padding: 8px 14px;">
         <img 
           src="<%= typeof emailAssetsUrl !== 'undefined' ? emailAssetsUrl + '/rider-enroute.jpg' : 'cid:goeat_rider-enroute' %>" 
           alt="Speed on the pedals" 
-          width="190" 
+          width="230" 
           class="feature-img"
-          style="width: 100%; max-width: 190px; height: auto; display: block; margin: 0 auto; border: 0;" 
+          style="width: 100%; max-width: 230px; height: auto; display: block; margin: 0 auto; border: 0; border-radius: 8px;" 
         />
       </td>
       <!-- On Desktop (RTL table): this 2nd cell renders on the LEFT. On Mobile (stacked): it is 2nd (BELOW)! -->
-      <td width="54%" align="left" class="feature-cell-text" dir="ltr" style="vertical-align: middle; padding: 8px 16px; text-align: left;">
+      <td width="52%" align="left" class="feature-cell-text" dir="ltr" style="vertical-align: middle; padding: 8px 14px; text-align: left;">
         <h3 class="feature-title" style="font-family: 'Bricolage Grotesque', 'Poppins', -apple-system, sans-serif; margin: 0 0 8px; font-size: 18px; font-weight: 800; color: #111827; letter-spacing: -0.2px;">
           Speed on the pedals
         </h3>
@@ -63,19 +63,19 @@
     </tr>
   </table>
 
-  <!-- ZIG-ZAG FEATURE 3: Community Grid (Desktop: Image Left, Text Right | Mobile: Image Top, Text Below) -->
+  <!-- ZIG-ZAG FEATURE 3: Community Grid (Desktop: Image Left, Text Right | Mobile: Image Reaches Far Ends on Top, Text Below) -->
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="feature-row" style="margin-bottom: 36px;">
     <tr>
-      <td width="46%" align="center" class="feature-cell-img" style="vertical-align: middle; padding: 8px 16px;">
+      <td width="48%" align="center" class="feature-cell-img" style="vertical-align: middle; padding: 8px 14px;">
         <img 
           src="<%= typeof emailAssetsUrl !== 'undefined' ? emailAssetsUrl + '/welcome-avatars-grid.png' : 'cid:goeat_welcome-avatars-grid' %>" 
           alt="A community of great taste" 
-          width="190" 
+          width="230" 
           class="feature-img"
-          style="width: 100%; max-width: 190px; height: auto; display: block; margin: 0 auto; border: 0;" 
+          style="width: 100%; max-width: 230px; height: auto; display: block; margin: 0 auto; border: 0; border-radius: 8px;" 
         />
       </td>
-      <td width="54%" align="left" class="feature-cell-text" style="vertical-align: middle; padding: 8px 16px; text-align: left;">
+      <td width="52%" align="left" class="feature-cell-text" style="vertical-align: middle; padding: 8px 14px; text-align: left;">
         <h3 class="feature-title" style="font-family: 'Bricolage Grotesque', 'Poppins', -apple-system, sans-serif; margin: 0 0 8px; font-size: 18px; font-weight: 800; color: #111827; letter-spacing: -0.2px;">
           A community of great taste
         </h3>

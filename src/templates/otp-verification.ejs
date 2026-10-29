@@ -1,16 +1,26 @@
 <!-- Clean White Body Card -->
-<div class="email-content-padding" style="background-color: #FFFFFF; padding: 36px 32px 30px; text-align: center; border-radius: 0;">
+<div class="email-content-padding" style="background-color: #FFFFFF; padding: 36px 30px 32px; text-align: center; border-radius: 0;">
 
-  <p style="font-size: 15px; font-weight: 800; color: #133824; margin: 0 0 8px;">
+  <!-- Hero Illustration: Purple Security Padlock -->
+  <div style="text-align: center; margin: 0 auto 22px;">
+    <img 
+      src="<%= typeof emailAssetsUrl !== 'undefined' ? emailAssetsUrl + '/otp-lock.png' : 'cid:goeat_otp-lock' %>" 
+      alt="Verification Security Lock" 
+      width="170" 
+      style="width: 170px; max-width: 170px; height: auto; display: block; margin: 0 auto; border: 0;" 
+    />
+  </div>
+
+  <p style="font-size: 16px; font-weight: 800; color: #133824; margin: 0 0 8px;">
     Hey <%= typeof name !== 'undefined' && name ? name : 'there' %>,
   </p>
-  <p style="font-size: 13.5px; line-height: 1.6; color: #4B5563; margin: 0 auto 28px; max-width: 440px;">
-    Thanks for signing up with GoEatOne! Use the 6-digit verification code below to verify your email address and start exploring the best food in town.
+  <p style="font-size: 14px; line-height: 1.6; color: #4B5563; margin: 0 auto 28px; max-width: 440px;">
+    Thanks for joining <strong>GoEatOne</strong>! Use the 6-digit verification code below to verify your email address and activate your account.
   </p>
 
-  <!-- BIGGER AND BETTER OTP DISPLAY (Sharp modernist boxes) -->
-  <div style="background-color: #F9FAFB; border: 2px dashed #E5E7EB; border-radius: 0; padding: 26px 16px 22px; max-width: 460px; margin: 0 auto 26px;">
-    <div style="font-size: 11.5px; font-weight: 800; color: #6B7280; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 16px;">
+  <!-- MODERN ROUNDED OTP DISPLAY (Parent box with rounded corners & shadow) -->
+  <div class="otp-parent-box" style="background-color: #F9FAFB; border: 1.5px solid #E5E7EB; border-radius: 20px; padding: 26px 16px 22px; max-width: 470px; margin: 0 auto 26px; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);">
+    <div style="font-family: 'Bricolage Grotesque', 'Poppins', sans-serif; font-size: 12px; font-weight: 800; color: #6B7280; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 18px;">
       YOUR 6-DIGIT VERIFICATION CODE
     </div>
 
@@ -22,11 +32,12 @@
     <table role="presentation" cellpadding="0" cellspacing="0" style="margin: 0 auto;">
       <tr>
         <% digits.forEach(function(digit, idx) { %>
-          <td class="otp-digit-td" align="center" style="width: 56px; height: 68px; background-color: #FFFFFF; border: 2.5px solid #133824; border-radius: 0; font-size: 34px; font-weight: 900; color: #133824; text-align: center; line-height: 68px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', monospace; box-shadow: 0 4px 10px rgba(19, 56, 36, 0.08);">
+          <!-- Individual Digit Box with Border Radius & Spacing -->
+          <td class="otp-digit-td" align="center" style="width: 52px; height: 66px; background-color: #FFFFFF; border: 2px solid #133824; border-radius: 12px; font-size: 32px; font-weight: 800; color: #133824; text-align: center; line-height: 66px; font-family: 'Bricolage Grotesque', 'Poppins', -apple-system, monospace; box-shadow: 0 4px 12px rgba(19, 56, 36, 0.08);">
             <%= digit %>
           </td>
           <% if (idx < digits.length - 1) { %>
-            <td class="otp-digit-gap" style="width: 8px;"></td>
+            <td class="otp-digit-gap" style="width: 10px;"></td>
           <% } %>
         <% }); %>
       </tr>
@@ -37,14 +48,14 @@
     </div>
   </div>
 
-  <!-- Chunky Orange Pill CTA Button (Headspace Style) -->
-  <div style="margin: 28px 0 24px;">
-    <a href="https://goeatone.com" target="_blank" style="display: inline-block; background-color: #F59E0B; color: #133824 !important; text-decoration: none; font-weight: 900; font-size: 15px; padding: 16px 52px; border-radius: 999px; text-align: center; text-transform: uppercase; letter-spacing: 0.4px; box-shadow: 0 6px 18px rgba(245, 158, 11, 0.35);">
+  <!-- Chunky Orange Pill CTA Button -->
+  <div style="margin: 28px 0 22px;">
+    <a href="https://goeatone.com" target="_blank" style="display: inline-block; background-color: #F59E0B; color: #133824 !important; text-decoration: none; font-family: 'Poppins', sans-serif; font-weight: 800; font-size: 14.5px; padding: 15px 48px; border-radius: 999px; text-align: center; text-transform: uppercase; letter-spacing: 0.5px; box-shadow: 0 4px 16px rgba(245, 158, 11, 0.35);">
       Verify Account Now
     </a>
   </div>
 
-  <p style="font-size: 12px; line-height: 1.5; color: #9CA3AF; margin: 0 auto; max-width: 400px;">
+  <p style="font-size: 12px; line-height: 1.55; color: #9CA3AF; margin: 0 auto; max-width: 420px;">
     If you didn't create a GoEatOne account, you can safely ignore this email. Someone may have mistyped their email address.
   </p>
 

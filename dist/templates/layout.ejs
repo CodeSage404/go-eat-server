@@ -45,7 +45,7 @@
     h1, h2, h3, h4, .brand-heading {
       font-family: 'Bricolage Grotesque', 'Poppins', -apple-system, BlinkMacSystemFont, sans-serif !important;
     }
-    /* Mobile-Specific Responsive Overrides: Image first, followed by text on mobile */
+    /* Mobile-Specific Responsive Overrides: Big images reaching far ends, image first */
     @media only screen and (max-width: 600px) {
       .email-wrapper {
         padding: 0 !important;
@@ -57,30 +57,32 @@
         border: none !important;
       }
       .welcome-content {
-        padding: 24px 18px 28px !important;
+        padding: 24px 16px 30px !important;
       }
       .welcome-main-title {
-        font-size: 24px !important;
-        margin-bottom: 10px !important;
+        font-size: 26px !important;
+        margin-bottom: 12px !important;
       }
       .welcome-intro-text {
-        font-size: 13.5px !important;
-        line-height: 1.55 !important;
-        margin-bottom: 24px !important;
+        font-size: 14px !important;
+        line-height: 1.6 !important;
+        margin-bottom: 26px !important;
       }
       .welcome-section-heading {
-        font-size: 19px !important;
-        margin-bottom: 22px !important;
+        font-size: 21px !important;
+        margin-bottom: 24px !important;
       }
-      /* In mobile: stack vertically with image first, followed by text */
+      /* On mobile: big images reaching the far ends, stacked above text */
       .feature-row {
-        margin-bottom: 28px !important;
+        margin-bottom: 34px !important;
+        display: block !important;
+        width: 100% !important;
       }
       .feature-cell-img {
         display: block !important;
         width: 100% !important;
         text-align: center !important;
-        padding: 0 0 12px !important;
+        padding: 0 0 16px 0 !important;
       }
       .feature-cell-text {
         display: block !important;
@@ -89,22 +91,26 @@
         padding: 0 4px !important;
       }
       .feature-img {
-        max-width: 165px !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        height: auto !important;
+        display: block !important;
         margin: 0 auto !important;
+        border-radius: 8px !important;
       }
       .feature-title {
-        font-size: 16px !important;
-        margin-bottom: 4px !important;
+        font-size: 18px !important;
+        margin-bottom: 6px !important;
         text-align: center !important;
       }
       .feature-desc {
-        font-size: 12.5px !important;
-        line-height: 1.5 !important;
+        font-size: 13.5px !important;
+        line-height: 1.55 !important;
         text-align: center !important;
       }
       .welcome-cta-btn {
-        font-size: 13.5px !important;
-        padding: 13px 36px !important;
+        font-size: 14px !important;
+        padding: 14px 42px !important;
       }
       /* General content padding */
       .email-content-padding {
@@ -112,13 +118,14 @@
       }
       /* OTP Digits scaling on small screens */
       .otp-digit-td {
-        width: 42px !important;
-        height: 52px !important;
-        font-size: 24px !important;
-        line-height: 52px !important;
+        width: 44px !important;
+        height: 56px !important;
+        font-size: 26px !important;
+        line-height: 56px !important;
+        border-radius: 10px !important;
       }
       .otp-digit-gap {
-        width: 4px !important;
+        width: 6px !important;
       }
       .river-flow-stripe {
         height: 28px !important;
@@ -126,6 +133,17 @@
       .river-flow-stripe img {
         height: 28px !important;
       }
+    }
+    /* Dark Mode High-Contrast Overrides */
+    @media (prefers-color-scheme: dark) {
+      body, .email-wrapper { background-color: #07130C !important; color: #D1E5D9 !important; }
+      .email-container { background-color: #0F2318 !important; border-color: #1A3E2B !important; }
+      .email-body, .welcome-content, .email-content-padding { background-color: #0F2318 !important; color: #D1E5D9 !important; }
+      h1, h2, h3, h4, .brand-heading, .welcome-main-title, .welcome-section-heading, .feature-title { color: #FFFFFF !important; }
+      p, .feature-desc, .welcome-intro-text { color: #B5D2C2 !important; }
+      strong, b { color: #FFFFFF !important; }
+      [style*="color: #111827"], [style*="color: #1F2937"], [style*="color: #133824"], [style*="color: #000000"] { color: #FFFFFF !important; }
+      [style*="color: #4B5563"], [style*="color: #6B7280"] { color: #B5D2C2 !important; }
     }
   </style>
 </head>
