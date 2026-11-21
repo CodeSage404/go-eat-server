@@ -45,6 +45,7 @@ const otp_util_1 = __importDefault(require("../utils/otp.util"));
 const email_service_1 = __importDefault(require("../services/email.service"));
 const logger_1 = __importDefault(require("../utils/logger"));
 const twilioVerify_util_1 = require("../utils/twilioVerify.util");
+const auditLogger_1 = require("../utils/auditLogger");
 class AuthController {
     constructor() {
         this.signupUser = (0, catchAsync_1.catchAsync)(async (req, res) => {
@@ -202,6 +203,13 @@ class AuthController {
                 const result = await auth_service_1.default.createVerifiedUser(pendingUserData);
                 user = result.user;
                 token = result.token;
+                (0, auditLogger_1.logPlatformActivity)({
+                    user: user.name || user.email || user.phoneNumber || 'User',
+                    action: `New user verified and registered: ${user.name || 'User'} (${user.email || user.phoneNumber || ''}) [Role: ${(user.role || 'user').toUpperCase()}]`,
+                    category: 'auth',
+                    ipAddress: req.ip || '127.0.0.1',
+                    status: 'success',
+                });
                 await otp_util_1.default.deletePendingUser(identifier);
                 if (phoneNumber) {
                     await otp_util_1.default.deletePendingUser((0, twilioVerify_util_1.formatPhoneNumber)(phoneNumber));
@@ -434,7 +442,7 @@ class AuthController {
             else if (role === user_model_1.UserRole.VENDOR) {
                 clientId = process.env.APPLE_SERVICES_ID_VENDOR || 'com.emmanuelnwafor.goeatpartners.auth';
             }
-            const serverCallbackUrl = `${process.env.RENDER_EXTERNAL_URL || 'https://go-eat-server-z96s.onrender.com'}/api/v1/auth/apple/callback`;
+            const serverCallbackUrl = `${process.env.RENDER_EXTERNAL_URL || 'https://api.goeatone.com'}/api/v1/auth/apple/callback`;
             const stateObj = { role, clientRedirectUri };
             const state = Buffer.from(JSON.stringify(stateObj)).toString('base64url');
             const appleAuthUrl = `https://appleid.apple.com/auth/authorize?client_id=${encodeURIComponent(clientId)}&redirect_uri=${encodeURIComponent(serverCallbackUrl)}&response_type=code%20id_token&scope=name%20email&response_mode=form_post&state=${encodeURIComponent(state)}`;
@@ -478,23 +486,77 @@ class AuthController {
             }
             const result = await auth_service_1.default.socialLogin('apple', id_token, role, fullName);
             const targetUrl = `${clientRedirectUri}?token=${encodeURIComponent(result.token)}&user=${encodeURIComponent(JSON.stringify(result.user))}`;
-            // Return an HTML auto-redirect so Android Chrome CustomTabs seamlessly passes control back to the deep link scheme
+            // Return clean white HTML with instant native redirect and animated spinner
             res.send(`<!DOCTYPE html>
-<html>
+<html lang="en">
   <head>
-    <title>Authenticating with Apple...</title>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="refresh" content="0;url=${targetUrl}" />
+    <title>Signing in to GoEatOne...</title>
     <script>
-      window.location.href = "${targetUrl}";
-      setTimeout(function() {
+      try {
+        window.location.replace("${targetUrl}");
+      } catch (e) {
         window.location.href = "${targetUrl}";
-      }, 400);
+      }
     </script>
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+        background: #FFFFFF;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 100vh;
+        color: #111827;
+      }
+      .card {
+        text-align: center;
+        padding: 32px 24px;
+        max-width: 360px;
+        width: 100%;
+      }
+      .spinner {
+        width: 42px;
+        height: 42px;
+        border: 3.5px solid #F3F4F6;
+        border-top: 3.5px solid #0F7644;
+        border-radius: 50%;
+        animation: spin 0.75s linear infinite;
+        margin: 0 auto 20px auto;
+      }
+      @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+      }
+      h2 {
+        font-size: 19px;
+        font-weight: 700;
+        margin: 0 0 6px 0;
+        color: #111827;
+      }
+      p {
+        font-size: 13px;
+        color: #6B7280;
+        margin: 0 0 16px 0;
+      }
+      a {
+        font-size: 12px;
+        color: #0F7644;
+        text-decoration: underline;
+        font-weight: 600;
+      }
+    </style>
   </head>
-  <body style="font-family: sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; background: #0F3D26; color: white;">
-    <div style="text-align: center; padding: 20px;">
-      <h2>Authenticated Successfully</h2>
-      <p>Returning you to GoEatOne...</p>
-      <a href="${targetUrl}" style="color: #FFC529; text-decoration: underline; font-weight: bold; font-size: 16px;">Tap here if not redirected automatically</a>
+  <body>
+    <div class="card">
+      <div class="spinner"></div>
+      <h2>Signing you in...</h2>
+      <p>Returning you to GoEatOne</p>
+      <a href="${targetUrl}">Tap here if not redirected automatically</a>
     </div>
   </body>
 </html>`);

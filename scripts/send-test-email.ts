@@ -10,30 +10,22 @@ import emailService from '../src/services/email.service';
 const recipient = process.argv[2] || 'echinecherem729@gmail.com';
 
 async function main() {
-  console.log(`Preparing to send test email to: ${recipient}`);
+  console.log(`Preparing to send test welcome email to: ${recipient}`);
 
   try {
-    // Send a templated OTP test email
-    await emailService.sendOTP(recipient, '123456');
-    console.log('✅ OTP Test Email dispatched successfully via EmailService!');
-
-    // Send a general welcome template email
+    // Send a general welcome user template email
     await emailService.sendTemplateEmail(
       recipient,
-      'WELCOME_PARTNER',
-      'Go-Eat Partner Welcome Test',
+      'WELCOME_USER',
+      'Welcome to GoEatOne!',
       {
-        partnerName: 'Test Partner Owner',
-        restaurantName: 'Test Gourmet Restaurant',
-        loginUrl: 'https://partner.goeat.com',
-        email: 'partner@test.com',
-        password: 'TestPassword123!'
+        name: 'Immanuel',
       },
-      'partners'
+      'default'
     );
-    console.log('✅ Welcome Partner Test Email dispatched successfully via EmailService!');
+    console.log(`✅ Welcome User Test Email dispatched successfully to ${recipient} via EmailService!`);
   } catch (err: any) {
-    console.error(`❌ Failed to send test emails: ${err.message}`);
+    console.error(`❌ Failed to send test email: ${err.message}`);
     process.exit(1);
   }
 }

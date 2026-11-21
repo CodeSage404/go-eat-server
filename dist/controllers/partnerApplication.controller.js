@@ -59,6 +59,18 @@ exports.applyForPartnership = (0, catchAsync_1.catchAsync)(async (req, res) => {
     let cacUrl = req.body.cacUrl || req.body['cacUrl'] || '';
     let businessImageUrl = req.body.businessImageUrl || req.body['businessImageUrl'] || '';
     let coverImageUrl = req.body.coverImageUrl || req.body['coverImageUrl'] || '';
+    const ninExpiryDate = req.body.ninExpiryDate ? new Date(req.body.ninExpiryDate) : undefined;
+    const foodHygieneExpiryDate = req.body.foodHygieneExpiryDate ? new Date(req.body.foodHygieneExpiryDate) : undefined;
+    const cacExpiryDate = req.body.cacExpiryDate ? new Date(req.body.cacExpiryDate) : undefined;
+    const now = new Date();
+    const expiredDocsList = [];
+    if (ninExpiryDate && ninExpiryDate < now)
+        expiredDocsList.push('NIN / Identity Document');
+    if (foodHygieneExpiryDate && foodHygieneExpiryDate < now)
+        expiredDocsList.push('Food Safety Certificate');
+    if (cacExpiryDate && cacExpiryDate < now)
+        expiredDocsList.push('CAC Certificate');
+    const isDocumentExpired = expiredDocsList.length > 0;
     if (files) {
         if (files['nin'] && files['nin'][0]) {
             ninUrl = files['nin'][0].path;
@@ -136,7 +148,6 @@ exports.applyForPartnership = (0, catchAsync_1.catchAsync)(async (req, res) => {
             outletType: 'Restaurant',
             baseCurrency: 'NGN',
             status: restaurant_model_1.RestaurantStatus.PENDING, // Pending full document review
-            complianceStatus: 'pending',
             businessPhone: normalizedPhone,
             phone: normalizedPhone,
             phoneNumber: normalizedPhone,
@@ -147,9 +158,16 @@ exports.applyForPartnership = (0, catchAsync_1.catchAsync)(async (req, res) => {
             },
             verificationDocuments: {
                 ninUrl: ninUrl || '',
+                ninExpiryDate,
                 foodHygieneUrl: foodHygieneUrl || '',
+                foodHygieneExpiryDate,
                 cacUrl: cacUrl || '',
+                cacExpiryDate,
             },
+            isDocumentExpired,
+            expiredDocumentsList: expiredDocsList,
+            complianceStatus: isDocumentExpired ? 'expired' : 'pending',
+            documentExpiryFlagReason: isDocumentExpired ? `Operating documents have expired: ${expiredDocsList.join(', ')}` : '',
         });
         user.restaurantId = restaurant._id;
         await user.save({ validateBeforeSave: false });
@@ -161,10 +179,22 @@ exports.applyForPartnership = (0, catchAsync_1.catchAsync)(async (req, res) => {
         }
         if (ninUrl)
             restaurant.verificationDocuments.ninUrl = ninUrl;
+        if (ninExpiryDate)
+            restaurant.verificationDocuments.ninExpiryDate = ninExpiryDate;
         if (foodHygieneUrl)
             restaurant.verificationDocuments.foodHygieneUrl = foodHygieneUrl;
+        if (foodHygieneExpiryDate)
+            restaurant.verificationDocuments.foodHygieneExpiryDate = foodHygieneExpiryDate;
         if (cacUrl)
             restaurant.verificationDocuments.cacUrl = cacUrl;
+        if (cacExpiryDate)
+            restaurant.verificationDocuments.cacExpiryDate = cacExpiryDate;
+        if (isDocumentExpired) {
+            restaurant.isDocumentExpired = true;
+            restaurant.expiredDocumentsList = expiredDocsList;
+            restaurant.complianceStatus = 'expired';
+            restaurant.documentExpiryFlagReason = `Operating documents have expired: ${expiredDocsList.join(', ')}`;
+        }
         if (!restaurant.images) {
             restaurant.images = { logo: '', cover: '' };
         }
@@ -187,12 +217,22 @@ exports.applyForPartnership = (0, catchAsync_1.catchAsync)(async (req, res) => {
         onboardedRestaurant: restaurant._id,
         documents: {
             ninUrl,
+            ninExpiryDate,
             foodHygieneUrl,
+            foodHygieneExpiryDate,
             cacUrl,
+            cacExpiryDate,
+            isDocumentExpired,
+            expiredDocuments: expiredDocsList,
         },
         ninUrl,
+        ninExpiryDate,
         foodHygieneUrl,
+        foodHygieneExpiryDate,
         cacUrl,
+        cacExpiryDate,
+        isDocumentExpired,
+        expiredDocuments: expiredDocsList,
         businessImageUrl,
         coverImageUrl,
         status: 'pending',

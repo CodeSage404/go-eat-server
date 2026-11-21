@@ -1,59 +1,113 @@
-<div class="email-content-padding" style="padding: 36px 30px 28px; background-color: #FFFFFF; text-align: center; border-radius: 0;">
+<div class="email-content-padding" style="padding: 32px 28px 24px; background-color: #FFFFFF; text-align: left; border-radius: 0;">
 
-  <!-- Main Title & Subtitle (Bold, Normal Sentence Casing) -->
-  <h1 class="brand-heading" style="font-family: 'Bricolage Grotesque', 'Poppins', -apple-system, sans-serif; font-size: 28px; line-height: 1.25; font-weight: 800; color: #111827; letter-spacing: -0.4px; margin: 0 auto 12px; text-align: center;">
-    Welcome to GoEatOne Partners
-  </h1>
-
-  <p style="font-family: 'Poppins', sans-serif; font-size: 14.5px; line-height: 1.6; color: #4B5563; margin: 0 auto 28px; max-width: 480px; text-align: center;">
-    Dear <strong><%= typeof partnerName !== 'undefined' && partnerName ? partnerName : (typeof ownerName !== 'undefined' && ownerName ? ownerName : 'Partner') %></strong>, congratulations! Your merchant partner account for <strong><%= typeof restaurantName !== 'undefined' && restaurantName ? restaurantName : (typeof businessName !== 'undefined' && businessName ? businessName : 'your store') %></strong> is now active on the GoEatOne platform.
+  <!-- Invitation Sub-badge & Title -->
+  <p style="font-family: 'Poppins', Arial, sans-serif; font-size: 11px; letter-spacing: 2px; color: #6B7280; font-weight: 700; text-transform: uppercase; margin: 0 0 10px;">
+    <% if (typeof isFoundingPartner !== 'undefined' && isFoundingPartner) { %>
+      FOUNDING PARTNER INVITATION
+    <% } else { %>
+      PARTNER ONBOARDING INVITATION
+    <% } %>
   </p>
 
-  <!-- High-Contrast Vendor Login Credentials Box (With Border Radius) -->
-  <div style="background-color: #F9FAFB; border: 1.5px solid #E5E7EB; border-radius: 16px; overflow: hidden; padding: 22px 24px 20px; max-width: 460px; margin: 0 auto 28px; text-align: left; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.03);">
-    <div style="font-family: 'Bricolage Grotesque', 'Poppins', sans-serif; font-size: 13px; font-weight: 800; color: #133824; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 14px; border-bottom: 1px solid #E5E7EB; padding-bottom: 8px;">
-      Your Merchant Login Credentials
-    </div>
+  <h1 class="brand-heading" style="font-family: 'Bricolage Grotesque', 'Poppins', Arial, sans-serif; font-size: 30px; line-height: 1.25; font-weight: 800; color: #111827; letter-spacing: -0.5px; margin: 0 0 20px;">
+    We’ve given your business a head start.
+  </h1>
 
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="font-size: 13.5px; font-family: 'Poppins', sans-serif;">
+  <p style="font-family: 'Poppins', Arial, sans-serif; font-size: 14.5px; line-height: 1.7; color: #374151; margin: 0 0 16px;">
+    Dear <strong><%= typeof businessName !== 'undefined' && businessName ? businessName : (typeof restaurantName !== 'undefined' && restaurantName ? restaurantName : (typeof partnerName !== 'undefined' && partnerName ? partnerName : 'Partner')) %></strong>,
+  </p>
+
+  <p style="font-family: 'Poppins', Arial, sans-serif; font-size: 14.5px; line-height: 1.7; color: #374151; margin: 0 0 16px;">
+    We know how busy running a business can be. To make exploring <strong>GoEatOne</strong> easier, we’ve prepared a <strong>provisional business profile</strong> and added your store information and sample menu items so you can get started seamlessly.
+  </p>
+
+  <p style="font-family: 'Poppins', Arial, sans-serif; font-size: 14px; line-height: 1.7; color: #4B5563; margin: 0 0 24px;">
+    This is simply a head start, not confirmation of a partnership. <strong>Your business is not live for customer orders and no financial commitment has been made on your behalf.</strong>
+  </p>
+
+  <!-- High-Contrast Secure Login Credentials Box -->
+  <div style="background-color: #F9FAFB; border: 1.5px solid #E5E7EB; border-radius: 14px; padding: 22px 24px; margin-bottom: 24px;">
+    <h2 style="font-family: 'Bricolage Grotesque', 'Poppins', Arial, sans-serif; font-size: 17px; font-weight: 700; color: #111827; margin: 0 0 10px;">
+      Your provisional login details
+    </h2>
+    <p style="font-family: 'Poppins', Arial, sans-serif; font-size: 13px; color: #4B5563; line-height: 1.6; margin: 0 0 14px;">
+      Open your browser and navigate to the address below to access your portal:
+    </p>
+
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="font-size: 13.5px; font-family: 'Poppins', Arial, sans-serif; border-top: 1px solid #E5E7EB; padding-top: 10px;">
       <tr>
-        <td style="padding: 8px 0; color: #6B7280; width: 140px; font-weight: 600;">Email / Username:</td>
-        <td style="padding: 8px 0; font-weight: 700; color: #111827; font-family: -apple-system, BlinkMacSystemFont, monospace;">
+        <td style="padding: 8px 0; color: #6B7280; width: 140px; font-weight: 600;">Website</td>
+        <td style="padding: 8px 0; font-weight: 700; color: #111827;">
+          <a href="https://goeatone.com/partners/login" target="_blank" style="color: #0F3D26; text-decoration: underline;">goeatone.com/partners/login</a>
+        </td>
+      </tr>
+      <tr>
+        <td style="padding: 8px 0; color: #6B7280; font-weight: 600;">Username / Email</td>
+        <td style="padding: 8px 0; font-weight: 700; color: #111827; font-family: monospace;">
           <%= typeof email !== 'undefined' && email ? email : 'partner@business.com' %>
         </td>
       </tr>
       <tr>
-        <td style="padding: 8px 0; color: #6B7280; font-weight: 600;">Temporary Password:</td>
-        <td style="padding: 8px 10px; font-weight: 800; color: #133824; font-family: -apple-system, BlinkMacSystemFont, monospace; background-color: #F1FBF4; border-radius: 6px; border-left: 3px solid #10B981;">
+        <td style="padding: 8px 0; color: #6B7280; font-weight: 600;">Temporary password</td>
+        <td style="padding: 8px 0; font-weight: 700; color: #0F3D26; font-family: monospace;">
           <%= typeof password !== 'undefined' && password ? password : '••••••••••••' %>
         </td>
       </tr>
     </table>
 
-    <div style="margin-top: 14px; padding-top: 12px; border-top: 1px dashed #E5E7EB; font-size: 12px; color: #4B5563; line-height: 1.55;">
-      💡 <strong>Next Step:</strong> Log in to the <strong>GoEatOne Partner App</strong> to verify your store details, upload your menu items, and start accepting online orders.
-    </div>
+    <p style="font-family: 'Poppins', Arial, sans-serif; font-size: 11.5px; line-height: 1.5; color: #6B7280; margin: 12px 0 0; border-top: 1px dashed #E5E7EB; padding-top: 10px;">
+      🔒 Please change your password upon your first sign-in and keep your login credentials private.
+    </p>
   </div>
 
-  <!-- Primary Yellow Pill CTA Button -->
-  <div style="margin: 10px 0 24px; text-align: center;">
+  <% if (typeof isFoundingPartner !== 'undefined' && isFoundingPartner) { %>
+  <!-- Founding Partner Programme Banner -->
+  <div style="background-color: #FFF9E3; border: 1.5px solid #F0DA8B; border-radius: 14px; padding: 22px; text-align: center; margin-bottom: 24px;">
+    <p style="font-family: 'Poppins', Arial, sans-serif; font-size: 11px; letter-spacing: 2px; font-weight: 700; color: #69602E; margin: 0 0 6px; text-transform: uppercase;">
+      FOUNDING PARTNER PROGRAMME
+    </p>
+    <div style="font-family: 'Bricolage Grotesque', 'Poppins', Arial, sans-serif; font-weight: 800; font-size: 26px; line-height: 1.25; color: #07442D;">
+      3 MONTHS AT <span style="color: #BE8800;">0% COMMISSION</span>
+    </div>
+    <p style="font-family: 'Poppins', Arial, sans-serif; font-size: 12px; line-height: 1.6; color: #4B5563; margin: 10px 0 0;">
+      For eligible founding partners on qualifying food sales. Full terms and details will be provided in your onboarding dashboard.
+    </p>
+  </div>
+  <% } %>
+
+  <!-- Review Business Profile Section -->
+  <h2 style="font-family: 'Bricolage Grotesque', 'Poppins', Arial, sans-serif; font-size: 18px; font-weight: 700; color: #111827; margin: 0 0 10px;">
+    Review your business profile
+  </h2>
+  <p style="font-family: 'Poppins', Arial, sans-serif; font-size: 14px; line-height: 1.7; color: #374151; margin: 0 0 16px;">
+    Take your time to review your business details, menu or catalog, prices, photos, and operating hours. You can make any changes before deciding whether you’d like to activate your store for live customer orders.
+  </p>
+
+  <!-- No Obligation Notice Box -->
+  <div style="background-color: #FFFAF0; border-left: 4px solid #F59E0B; border-radius: 8px; padding: 14px 18px; margin-bottom: 24px;">
+    <p style="font-family: 'Poppins', Arial, sans-serif; font-size: 12.5px; line-height: 1.65; color: #4B5563; margin: 0;">
+      <strong>No obligation to join.</strong> Your provisional profile is not active for customer orders. We will only activate your business after you verify your details and accept our partner terms. If you prefer not to proceed, simply reply to this email to request removal.
+    </p>
+  </div>
+
+  <!-- CTA Button -->
+  <div style="margin: 20px 0 28px; text-align: center;">
     <a 
       href="<%= typeof loginUrl !== 'undefined' && loginUrl ? loginUrl : 'https://goeatone.com/partners/login' %>" 
       target="_blank" 
-      style="display: inline-block; background-color: #F59E0B; color: #133824 !important; text-decoration: none; font-family: 'Poppins', sans-serif; font-weight: 800; font-size: 14px; padding: 14px 44px; border-radius: 999px; text-align: center; text-transform: uppercase; letter-spacing: 0.5px; box-shadow: 0 4px 16px rgba(245, 158, 11, 0.35);"
+      style="display: inline-block; background-color: #0F3D26; color: #FFFFFF !important; text-decoration: none; font-family: 'Poppins', Arial, sans-serif; font-weight: 700; font-size: 14px; padding: 14px 38px; border-radius: 999px; text-align: center; text-transform: uppercase; letter-spacing: 0.5px; box-shadow: 0 4px 14px rgba(15, 61, 38, 0.3);"
     >
-      Log In to Partner Portal
+      Review Business Profile &rarr;
     </a>
-    <div style="margin-top: 12px;">
-      <a href="https://goeatone.com/partners/login" target="_blank" style="font-family: 'Poppins', sans-serif; font-size: 12px; color: #059669; text-decoration: underline; font-weight: 600;">
-        Open Web App Dashboard &rarr;
-      </a>
-    </div>
   </div>
 
-  <!-- Security Note -->
-  <p style="font-family: 'Poppins', sans-serif; font-size: 12px; color: #9CA3AF; margin: 0 auto; max-width: 420px; line-height: 1.5;">
-    For your store security, please update your temporary password after logging in for the first time.
+  <p style="font-family: 'Poppins', Arial, sans-serif; font-size: 14px; line-height: 1.7; color: #374151; margin: 0 0 6px;">
+    We would be delighted to welcome your business to GoEatOne.
+  </p>
+  <p style="font-family: 'Poppins', Arial, sans-serif; font-size: 13.5px; line-height: 1.6; color: #374151; margin: 0;">
+    Warm regards,<br />
+    <strong>The GoEatOne Partner Onboarding Team</strong><br />
+    <span style="color: #6B7280; font-size: 12px;">One App. Every Craving.</span>
   </p>
 
 </div>

@@ -8,11 +8,13 @@ import notificationService from './notification.service';
 import paystackModule from './payments/paystack.module';
 import flutterwaveModule from './payments/flutterwave.module';
 import stripeModule from './payments/stripe.module';
+import monnifyModule from './payments/monnify.module';
+import bachsModule from './payments/bachs.module';
 import Setting from '../models/setting.model';
 import emailService from './email.service';
 import { NotificationType } from '../models/userNotification.model';
 
-export type PaymentProvider = 'paystack' | 'flutterwave' | 'stripe';
+export type PaymentProvider = 'paystack' | 'flutterwave' | 'stripe' | 'monnify' | 'bachs';
 export class PaymentService {
   /**
    * Helper to resolve payment provider based on order location, user country, and admin settings
@@ -22,12 +24,16 @@ export class PaymentService {
     const paystackEnabled = setting?.enablePaystack !== false;
     const flutterwaveEnabled = setting?.enableFlutterwave !== false;
     const stripeEnabled = setting?.enableStripe !== false;
+    const monnifyEnabled = setting?.enableMonnify !== false;
+    const bachsEnabled = setting?.enableBachs !== false;
 
-    if (!paystackEnabled && !flutterwaveEnabled && !stripeEnabled) {
+    if (!paystackEnabled && !flutterwaveEnabled && !stripeEnabled && !monnifyEnabled && !bachsEnabled) {
       throw new AppError('Online card payments are currently disabled by the administrator.', 503);
     }
 
     const isProviderEnabled = (p: PaymentProvider): boolean => {
+      if (p === 'bachs') return bachsEnabled;
+      if (p === 'monnify') return monnifyEnabled;
       if (p === 'paystack') return paystackEnabled;
       if (p === 'flutterwave') return flutterwaveEnabled;
       if (p === 'stripe') return stripeEnabled;
@@ -79,6 +85,11 @@ export class PaymentService {
 
     // 6. Direct Country Assignment (if enabled)
     if (countryCode === 'NG' || user?.isNigeria) {
+      if (bachsEnabled) return 'bachs';
+      if (setting?.defaultPaymentProvider === 'bachs' && bachsEnabled) return 'bachs';
+      if (setting?.defaultPaymentProvider === 'monnify' && monnifyEnabled) return 'monnify';
+      if (setting?.defaultPaymentProvider === 'paystack' && paystackEnabled) return 'paystack';
+      if (monnifyEnabled) return 'monnify';
       if (paystackEnabled) return 'paystack';
       if (flutterwaveEnabled) return 'flutterwave';
       if (stripeEnabled) return 'stripe';
@@ -189,7 +200,7 @@ export class PaymentService {
       };
     }
 
-    const serverBaseUrl = (process.env.RENDER_EXTERNAL_URL || 'https://go-eat-server-z96s.onrender.com').replace(/\/$/, '');
+    const serverBaseUrl = (process.env.RENDER_EXTERNAL_URL || 'https://api.goeatone.com').replace(/\/$/, '');
     const webRedirectDestination = callbackUrl || 'https://goeatone.com/checkout?status=success';
     const serverCallbackUrl = `${serverBaseUrl}/api/v1/payments/callback?redirect_url=${encodeURIComponent(webRedirectDestination)}`;
 
@@ -267,6 +278,61 @@ export class PaymentService {
         reference: result.reference,
         provider: 'stripe',
       };
+    } else if (provider?.toLowerCase() === 'monnify') {
+      const Restaurant = require('../models/restaurant.model').default;
+      const restaurantId = (order.restaurant as any)?._id || order.restaurant;
+      const restaurantObj = restaurantId ? await Restaurant.findById(restaurantId) : null;
+      const subaccount = restaurantObj?.monnifySubaccountCode;
+
+      let transactionCharge: number | undefined;
+      if (subaccount) {
+        const commissionRate = setting?.commissionRate || 10;
+        transactionCharge = 100 - commissionRate; // Percentage to vendor
+      }
+
+      const result = await monnifyModule.initializePayment({
+        email: safeEmail,
+        name: user?.name,
+        amount,
+        reference,
+        callbackUrl: `${serverCallbackUrl}&provider=monnify`,
+        metadata: {
+          orderId: order._id.toString(),
+          orderIds: orderIdList.join(','),
+          customerId: user._id.toString(),
+        },
+        subaccount,
+        transactionCharge,
+        description: `Go-Eat Order #${order._id.toString().slice(-6)}`,
+      });
+
+      return {
+        authorizationUrl: result.authorizationUrl,
+        accessCode: result.accessCode,
+        reference: result.reference,
+        provider: 'monnify',
+      };
+    } else if (provider?.toLowerCase() === 'bachs') {
+      const result = await bachsModule.initializePayment({
+        email: safeEmail,
+        name: user?.name,
+        amount,
+        reference,
+        callbackUrl: `${serverCallbackUrl}&provider=bachs`,
+        cancelUrl: 'https://goeatone.com/checkout',
+        metadata: {
+          orderId: order._id.toString(),
+          orderIds: orderIdList.join(','),
+          customerId: user._id.toString(),
+        },
+        description: `Go-Eat Order #${order._id.toString().slice(-6)}`,
+      });
+
+      return {
+        authorizationUrl: result.authorizationUrl,
+        reference: result.reference,
+        provider: 'bachs',
+      };
     } else {
       // Default: Paystack
       const Restaurant = require('../models/restaurant.model').default;
@@ -340,6 +406,35 @@ export class PaymentService {
         status: 'success',
         update_time: new Date().toISOString(),
         provider: 'stripe',
+      };
+    } else if (provider?.toLowerCase() === 'monnify') {
+      const data = await monnifyModule.verifyPayment(reference);
+      const isPaid = data?.paymentStatus === 'PAID' || data?.status === 'PAID';
+      if (!isPaid) {
+        throw new AppError('Monnify payment was not successful', 400);
+      }
+      orderId = data?.metaData?.orderId || reference.split('_')[1];
+      metaOrderIds = data?.metaData?.orderIds;
+      paymentResult = {
+        id: data?.transactionReference || reference,
+        status: 'success',
+        update_time: data?.paidOn || new Date().toISOString(),
+        email_address: data?.customer?.email || data?.customerEmail,
+        provider: 'monnify',
+      };
+    } else if (provider?.toLowerCase() === 'bachs') {
+      const data = await bachsModule.verifyPayment(reference);
+      if (data.status !== 'success') {
+        throw new AppError('Bachs payment was not successful', 400);
+      }
+      orderId = data?.metadata?.orderId || reference.split('_')[1];
+      metaOrderIds = data?.metadata?.orderIds;
+      paymentResult = {
+        id: data?.id || reference,
+        status: 'success',
+        update_time: new Date().toISOString(),
+        email_address: data?.customer?.email,
+        provider: 'bachs',
       };
     } else {
       const data = await paystackModule.verifyPayment(reference);
@@ -517,6 +612,43 @@ export class PaymentService {
   }
 
   /**
+   * Secure Webhook Handler for Monnify
+   */
+  async processMonnifyWebhook(payload: any, signature: string): Promise<void> {
+    const isValid = monnifyModule.verifyWebhookSignature(payload, signature);
+    if (!isValid) {
+      throw new AppError('Invalid Monnify webhook signature', 400);
+    }
+
+    const eventType = payload.eventType;
+    if (eventType === 'SUCCESSFUL_TRANSACTION' || payload.eventData?.paymentStatus === 'PAID') {
+      const reference = payload.eventData?.paymentReference || payload.eventData?.transactionReference;
+      if (reference) {
+        await this.verifyPayment(reference, 'monnify');
+      }
+    }
+  }
+
+  /**
+   * Secure Webhook Handler for Bachs.io
+   */
+  async processBachsWebhook(payload: any): Promise<void> {
+    const eventType = payload?.event || payload?.type;
+    const data = payload?.data || payload;
+    const reference = data?.metadata?.reference || data?.reference;
+
+    if (
+      reference &&
+      (eventType === 'checkout.completed' ||
+        eventType === 'collection.succeeded' ||
+        data?.status === 'succeeded' ||
+        data?.status === 'completed')
+    ) {
+      await this.verifyPayment(reference, 'bachs');
+    }
+  }
+
+  /**
    * Payout / Transfer money to a Delivery Rider's Bank Account
    */
   async payoutRider(
@@ -556,6 +688,14 @@ export class PaymentService {
         reference,
         narration: `Go-Eat Rider Payout (${rider.name})`,
         beneficiaryName: bankAccount.accountName || rider.name,
+      });
+    } else if (provider?.toLowerCase() === 'monnify') {
+      transferResult = await monnifyModule.initiatePayout({
+        amount,
+        accountNumber: bankAccount.accountNumber,
+        bankCode: bankAccount.bankCode,
+        reference,
+        reason: `Go-Eat Rider Payout (${rider.name})`,
       });
     } else {
       let recipientCode = bankAccount.recipientCode;
@@ -630,6 +770,14 @@ export class PaymentService {
         narration: 'Go-Eat Restaurant Payout',
         beneficiaryName: bankAccount.accountName || 'Go-Eat Vendor',
       });
+    } else if (provider?.toLowerCase() === 'monnify') {
+      transferResult = await monnifyModule.initiatePayout({
+        amount,
+        accountNumber: bankAccount.accountNumber,
+        bankCode: bankAccount.bankCode,
+        reference,
+        reason: 'Go-Eat Restaurant Payout',
+      });
     } else {
       let recipientCode = bankAccount.recipientCode;
       if (!recipientCode) {
@@ -685,6 +833,12 @@ export class PaymentService {
           amountInCents: Math.round(amount * 100),
           reason: reason || 'Order cancellation or item refund',
         });
+      } else if (String(provider).toLowerCase() === 'monnify') {
+        return await monnifyModule.refundTransaction({
+          reference: reference || order.paymentReference,
+          amount,
+          reason: reason || 'Order cancellation or item refund',
+        });
       } else if (String(provider).toLowerCase() === 'paystack') {
         return await paystackModule.refundTransaction({
           reference: reference || order.paymentReference,
@@ -707,7 +861,7 @@ export class PaymentService {
   async getBankVerificationConfig(userCountryCode?: string, user?: any): Promise<{
     countryCode: string;
     countryName: string;
-    provider: 'paystack' | 'stripe' | 'flutterwave';
+    provider: 'paystack' | 'stripe' | 'flutterwave' | 'monnify';
     accountFormat: 'nuban' | 'uk_sort_code' | 'iban' | 'us_routing' | 'general';
     currency: string;
     requiresRoutingNumber: boolean;
@@ -729,6 +883,7 @@ export class PaymentService {
     // 2. Check Provider Kill-Switches
     const paystackEnabled = setting?.enableBankVerificationPaystack !== false;
     const stripeEnabled = setting?.enableBankVerificationStripe !== false;
+    const monnifyEnabled = setting?.enableBankVerificationMonnify !== false && setting?.enableMonnify !== false;
 
     // 3. Check Admin Force Global Override
     const forcedProvider = setting?.forceGlobalBankVerificationProvider || 'none';
@@ -742,6 +897,16 @@ export class PaymentService {
         requiresRoutingNumber: countryCode === 'GB' || countryCode === 'US',
         routingNumberLabel: countryCode === 'GB' ? 'Sort Code' : 'Routing Number',
         accountNumberLabel: countryCode === 'IT' ? 'IBAN' : 'Account Number',
+      };
+    } else if (forcedProvider === 'monnify' && monnifyEnabled) {
+      return {
+        countryCode,
+        countryName: this.getCountryName(countryCode),
+        provider: 'monnify',
+        accountFormat: 'nuban',
+        currency: 'NGN',
+        requiresRoutingNumber: false,
+        accountNumberLabel: 'NUBAN Account Number',
       };
     } else if (forcedProvider === 'paystack' && paystackEnabled) {
       return {
@@ -858,7 +1023,7 @@ export class PaymentService {
     bankName: string;
     bankCode: string;
     currency: string;
-    provider: 'paystack' | 'stripe' | 'flutterwave';
+    provider: 'paystack' | 'stripe' | 'flutterwave' | 'monnify';
     isVerified: boolean;
   }> {
     const config = await this.getBankVerificationConfig(params.countryCode, params.user);
@@ -874,6 +1039,20 @@ export class PaymentService {
       return {
         ...stripeRes,
         provider: 'stripe',
+      };
+    }
+
+    if (config.provider === 'monnify') {
+      const cleanBankCode = params.bankCode || '044';
+      const monnifyRes = await monnifyModule.resolveAccountNumber(params.accountNumber, cleanBankCode);
+      return {
+        accountNumber: monnifyRes.accountNumber,
+        accountName: monnifyRes.accountName,
+        bankName: 'Nigerian Commercial Bank',
+        bankCode: cleanBankCode,
+        currency: 'NGN',
+        provider: 'monnify',
+        isVerified: true,
       };
     }
 

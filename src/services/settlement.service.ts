@@ -7,6 +7,7 @@ import { emitToUser } from '../io';
 import notificationService from './notification.service';
 import logger from '../utils/logger';
 import paymentService from './payment.service';
+import { SubscriptionService } from './subscription.service';
 
 class SettlementService {
   /**
@@ -50,6 +51,24 @@ class SettlementService {
   public async processOrderAccepted(order: IOrder): Promise<void> {
     try {
       const breakdown = this.calculateOutletSettlement(order);
+      const restaurantId = (order.restaurant as any)?._id || order.restaurant;
+
+      // Dynamically calculate commission from active subscription plan (PAYG, Plus, Unlimited, Founding Partner)
+      if (!order.isFirstBiteFreeOrder && restaurantId) {
+        try {
+          const subCalc = await SubscriptionService.calculateOrderCommission(
+            restaurantId,
+            breakdown.grossAmount,
+            0,
+            breakdown.commissionRate
+          );
+          breakdown.commissionRate = subCalc.effectiveCommissionRate;
+          breakdown.commissionAmount = Math.round(subCalc.totalCommissionCharged * 100) / 100;
+          breakdown.outletNetSettlement = Math.max(0, Math.round((breakdown.grossAmount - breakdown.commissionAmount) * 100) / 100);
+        } catch (subErr) {
+          logger.warn('Subscription commission calculation fallback to standard rate:', subErr);
+        }
+      }
       
       order.grossAmount = breakdown.grossAmount;
       order.commissionRate = breakdown.commissionRate;
@@ -58,7 +77,6 @@ class SettlementService {
       order.courierEarnings = breakdown.courierEarnings;
       await order.save();
 
-      const restaurantId = (order.restaurant as any)?._id || order.restaurant;
       const restaurant = restaurantId ? await Restaurant.findById(restaurantId) : null;
       if (restaurant && restaurant.owner) {
         let wallet = await Wallet.findOne({ user: restaurant.owner });
@@ -148,6 +166,15 @@ class SettlementService {
           availableBalance: wallet.availableBalance,
           orderId: order._id.toString(),
         });
+
+        // Record food sales into restaurant's subscription cycle counter
+        if (restaurantId && breakdown.grossAmount > 0) {
+          try {
+            await SubscriptionService.recordOrderCompletion(restaurantId, breakdown.grossAmount);
+          } catch (subErr) {
+            logger.warn('Failed to record subscription cycle sales accumulation:', subErr);
+          }
+        }
       }
 
       // 2. Process Courier Settlement

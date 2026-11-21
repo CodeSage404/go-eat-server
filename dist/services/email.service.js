@@ -12,13 +12,22 @@ class EmailService {
     /**
      * Helper to fetch the correct user & sender header based on channel.
      * Ensures all email addresses are lowercase to strictly match Brevo's verified senders list.
+     * Defaults partner and business communications to business@goeatone.com.
      */
     getSenderInfo(channel) {
-        const defaultUser = (process.env.EMAIL_USER_DEFAULT || 'support@goeatone.com').toLowerCase().trim();
-        const partnersUser = (process.env.EMAIL_USER_PARTNERS || 'partner@goeatone.com').toLowerCase().trim();
-        const secureUser = (process.env.EMAIL_USER_SECURE || 'verify@goeatone.com').toLowerCase().trim();
+        const globalUser = (process.env.EMAIL_USER || process.env.EMAIL_FROM || '').toLowerCase().trim();
+        const businessUser = (process.env.EMAIL_USER_PARTNERS ||
+            process.env.EMAIL_BUSINESS ||
+            globalUser ||
+            'business@goeatone.com').toLowerCase().trim();
+        const defaultUser = (process.env.EMAIL_USER_DEFAULT ||
+            globalUser ||
+            businessUser).toLowerCase().trim();
+        const secureUser = (process.env.EMAIL_USER_SECURE ||
+            businessUser ||
+            defaultUser).toLowerCase().trim();
         if (channel === 'partners') {
-            return { user: partnersUser, from: `"GoEatOne Partner Support" <${partnersUser}>` };
+            return { user: businessUser, from: `"GoEatOne Business" <${businessUser}>` };
         }
         if (channel === 'secure') {
             return { user: secureUser, from: `"GoEatOne Security" <${secureUser}>` };
@@ -84,74 +93,96 @@ class EmailService {
     }
     /**
      * Dispatches email via Brevo HTTPS REST API (Port 443 - Never blocked by Render firewall)
+     * Supports automatic sender fallback if Brevo rejects an unverified address.
      */
-    async sendViaBrevoHttp(to, subject, html, senderEmail, senderName, apiKey) {
+    async sendViaBrevoHttp(to, subject, html, preferredSenderEmail, preferredSenderName, apiKey) {
         const resolvedHtml = this.prepareHtmlForHttpApi(html);
-        try {
-            const response = await fetch('https://api.brevo.com/v3/smtp/email', {
-                method: 'POST',
-                headers: {
-                    'api-key': apiKey,
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/json',
-                },
-                body: JSON.stringify({
-                    sender: { name: senderName, email: senderEmail.toLowerCase().trim() },
-                    to: [{ email: to.toLowerCase().trim() }],
-                    subject,
-                    htmlContent: resolvedHtml,
-                }),
-            });
-            if (response.ok) {
-                const data = await response.json();
-                logger_1.default.info(`⚡ Email dispatched via Brevo HTTPS API to ${to} (MessageID: ${data.messageId || 'ok'})`);
-                return true;
+        // List of candidate senders to try in order (ensuring business@goeatone.com is checked)
+        const candidateSenders = Array.from(new Set([
+            preferredSenderEmail.toLowerCase().trim(),
+            (process.env.EMAIL_BUSINESS || '').toLowerCase().trim(),
+            'business@goeatone.com',
+            (process.env.EMAIL_USER || '').toLowerCase().trim(),
+            'support@goeatone.com',
+        ].filter(Boolean)));
+        for (const senderEmail of candidateSenders) {
+            try {
+                const response = await fetch('https://api.brevo.com/v3/smtp/email', {
+                    method: 'POST',
+                    headers: {
+                        'api-key': apiKey,
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        sender: { name: preferredSenderName, email: senderEmail },
+                        to: [{ email: to.toLowerCase().trim() }],
+                        subject,
+                        htmlContent: resolvedHtml,
+                    }),
+                });
+                if (response.ok) {
+                    const data = (await response.json());
+                    logger_1.default.info(`⚡ Email dispatched via Brevo HTTPS API from <${senderEmail}> to ${to} (MessageID: ${data.messageId || 'ok'})`);
+                    return true;
+                }
+                else {
+                    const errorText = await response.text();
+                    logger_1.default.warn(`⚠️ Brevo HTTPS API attempt with sender <${senderEmail}> failed (${response.status}): ${errorText}`);
+                    if (response.status === 401 || response.status === 403) {
+                        return false;
+                    }
+                }
             }
-            else {
-                const errorText = await response.text();
-                logger_1.default.warn(`⚠️ Brevo HTTPS API dispatch failed (${response.status}): ${errorText}`);
-                return false;
+            catch (err) {
+                logger_1.default.warn(`⚠️ Brevo HTTPS API network error with sender <${senderEmail}>: ${err.message}`);
             }
         }
-        catch (err) {
-            logger_1.default.warn(`⚠️ Brevo HTTPS API request error: ${err.message}`);
-            return false;
-        }
+        return false;
     }
     /**
      * Dispatches email via Resend HTTPS REST API (Port 443 - Never blocked by Render firewall)
      */
     async sendViaResendHttp(to, subject, html, fromHeader, apiKey) {
         const resolvedHtml = this.prepareHtmlForHttpApi(html);
-        try {
-            const response = await fetch('https://api.resend.com/emails', {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${apiKey}`,
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    from: fromHeader,
-                    to: [to.toLowerCase().trim()],
-                    subject,
-                    html: resolvedHtml,
-                }),
-            });
-            if (response.ok) {
-                const data = await response.json();
-                logger_1.default.info(`⚡ Email dispatched via Resend HTTPS API to ${to} (MessageID: ${data.id || 'ok'})`);
-                return true;
+        const candidateFroms = Array.from(new Set([
+            fromHeader,
+            `"GoEatOne Business" <business@goeatone.com>`,
+            `"GoEatOne Support" <support@goeatone.com>`,
+        ].filter(Boolean)));
+        for (const currentFrom of candidateFroms) {
+            try {
+                const response = await fetch('https://api.resend.com/emails', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${apiKey}`,
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        from: currentFrom,
+                        to: [to.toLowerCase().trim()],
+                        subject,
+                        html: resolvedHtml,
+                    }),
+                });
+                if (response.ok) {
+                    const data = (await response.json());
+                    logger_1.default.info(`⚡ Email dispatched via Resend HTTPS API (${currentFrom}) to ${to} (MessageID: ${data.id || 'ok'})`);
+                    return true;
+                }
+                else {
+                    const errorText = await response.text();
+                    logger_1.default.warn(`⚠️ Resend HTTPS API attempt (${currentFrom}) failed (${response.status}): ${errorText}`);
+                    if (response.status === 401 || response.status === 403) {
+                        return false;
+                    }
+                }
             }
-            else {
-                const errorText = await response.text();
-                logger_1.default.warn(`⚠️ Resend HTTPS API dispatch failed (${response.status}): ${errorText}`);
-                return false;
+            catch (err) {
+                logger_1.default.warn(`⚠️ Resend HTTPS API error (${currentFrom}): ${err.message}`);
             }
         }
-        catch (err) {
-            logger_1.default.warn(`⚠️ Resend HTTPS API request error: ${err.message}`);
-            return false;
-        }
+        return false;
     }
     /**
      * Creates an SMTP transporter for a specific port
@@ -226,10 +257,14 @@ class EmailService {
     /**
      * Sends a structured verification OTP code (secure channel)
      */
-    async sendOTP(email, otp) {
+    async sendOTP(email, otp, senderType = 'secure') {
         const htmlContent = (0, templateEngine_1.renderTemplate)('OTP_VERIFICATION', { otpCode: otp, validTime: '10 minutes' });
-        this.sendEmail(email, 'Your GoEatOne Verification OTP Code', htmlContent, 'secure')
-            .catch(err => logger_1.default.error(`Background OTP send failed to ${email}:`, err?.message || err));
+        try {
+            await this.sendEmail(email, 'Your GoEatOne Verification OTP Code', htmlContent, senderType);
+        }
+        catch (err) {
+            logger_1.default.error(`OTP dispatch failed to ${email}:`, err?.message || err);
+        }
     }
     /**
      * Sends a templated email with a preset layout
@@ -283,8 +318,12 @@ class EmailService {
      */
     async sendPartnerApplicationReceived(email, data) {
         const htmlContent = (0, templateEngine_1.renderTemplate)('PARTNER_APPLICATION_RECEIVED', data);
-        this.sendEmail(email, 'GoEatOne Partner Application Received', htmlContent, 'partners')
-            .catch(err => logger_1.default.error(`Background partner received email failed to ${email}:`, err?.message || err));
+        try {
+            await this.sendEmail(email, 'GoEatOne Partner Application Received', htmlContent, 'partners');
+        }
+        catch (err) {
+            logger_1.default.error(`Partner application received email failed to ${email}:`, err?.message || err);
+        }
     }
     /**
      * Sends admin operational notification when a new partner registers and submits documents for review

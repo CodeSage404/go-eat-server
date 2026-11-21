@@ -315,6 +315,10 @@ const restaurantSchema = new mongoose_1.Schema({
         type: String,
         trim: true,
     },
+    monnifySubaccountCode: {
+        type: String,
+        trim: true,
+    },
     bankDetails: {
         bankName: { type: String },
         bankCode: { type: String },
@@ -341,8 +345,13 @@ const restaurantSchema = new mongoose_1.Schema({
     },
     verificationDocuments: {
         ninUrl: { type: String, default: '' },
+        ninExpiryDate: { type: Date },
         foodHygieneUrl: { type: String, default: '' },
+        foodHygieneExpiryDate: { type: Date },
         cacUrl: { type: String, default: '' },
+        cacExpiryDate: { type: Date },
+        healthSafetyUrl: { type: String, default: '' },
+        healthSafetyExpiryDate: { type: Date },
         idNumber: { type: String, default: '' },
         submittedAt: { type: Date },
     },
@@ -351,9 +360,49 @@ const restaurantSchema = new mongoose_1.Schema({
         enum: ['pending', 'approved', 'rejected', 'expired'],
         default: 'pending',
     },
+    isDocumentExpired: {
+        type: Boolean,
+        default: false,
+    },
+    documentExpiryFlagReason: {
+        type: String,
+        default: '',
+    },
+    expiredDocumentsList: {
+        type: [String],
+        default: [],
+    },
     baseCurrency: {
         type: String,
         default: 'NGN',
+    },
+    subscriptionPlan: {
+        type: String,
+        enum: ['payg', 'plus', 'unlimited'],
+        default: 'payg',
+    },
+    subscriptionStatus: {
+        type: String,
+        enum: ['active', 'past_due', 'cancelled', 'trialing', 'grace_period'],
+        default: 'active',
+    },
+    cycleFoodSales: {
+        type: Number,
+        default: 0,
+    },
+    cycleStartDate: {
+        type: Date,
+        default: Date.now,
+    },
+    cycleEndDate: {
+        type: Date,
+    },
+    isFoundingPartner: {
+        type: Boolean,
+        default: false,
+    },
+    foundingPartnerOfferExpiresAt: {
+        type: Date,
     },
     autoAcceptOrders: {
         type: Boolean,

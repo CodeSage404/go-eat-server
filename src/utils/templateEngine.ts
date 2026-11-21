@@ -61,7 +61,7 @@ export function renderTemplate(templateName: string, data: Record<string, any>):
   };
 
   const cloudCdnBase = 'https://res.cloudinary.com/dqtjja88b/image/upload/go_eat_email';
-  const serverBaseUrl = (process.env.RENDER_EXTERNAL_URL || process.env.SERVER_BASE_URL || 'https://go-eat-server-z96s.onrender.com').replace(/\/$/, '');
+  const serverBaseUrl = (process.env.RENDER_EXTERNAL_URL || process.env.SERVER_BASE_URL || 'https://api.goeatone.com').replace(/\/$/, '');
   const emailAssetsUrl = cloudCdnBase;
 
   // Master component metadata defaults for templates

@@ -141,6 +141,101 @@ router.post('/webhook/stripe', paymentController.handleStripeWebhook);
 
 /**
  * @openapi
+ * /api/v1/payments/webhook/monnify:
+ *   post:
+ *     tags:
+ *       - Payments
+ *     summary: Monnify Webhook Handler
+ *     description: Receives cryptographically signed webhook notifications from Monnify for successful card and dynamic bank transfer payments.
+ *     parameters:
+ *       - in: header
+ *         name: monnify-signature
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: SHA-512 HMAC signature computed with Monnify Secret Key
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               eventType:
+ *                 type: string
+ *                 example: SUCCESSFUL_TRANSACTION
+ *               eventData:
+ *                 type: object
+ *                 properties:
+ *                   product:
+ *                     type: object
+ *                   transactionReference:
+ *                     type: string
+ *                   paymentReference:
+ *                     type: string
+ *                   amountPaid:
+ *                     type: number
+ *                   totalPayable:
+ *                     type: number
+ *                   paymentStatus:
+ *                     type: string
+ *                     example: PAID
+ *                   paymentMethod:
+ *                     type: string
+ *                     example: ACCOUNT_TRANSFER
+ *     responses:
+ *       200:
+ *         description: Monnify webhook received and processed successfully
+ *       400:
+ *         description: Invalid webhook signature or malformed payload
+ */
+router.post('/webhook/monnify', paymentController.handleMonnifyWebhook);
+
+/**
+ * @openapi
+ * /api/v1/payments/webhook/bachs:
+ *   post:
+ *     tags:
+ *       - Payments
+ *     summary: Bachs.io Webhook Handler
+ *     description: Receives asynchronous notifications from Bachs.io for completed checkout sessions and successful payment collections.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               event:
+ *                 type: string
+ *                 example: checkout.completed
+ *               data:
+ *                 type: object
+ *                 properties:
+ *                   id:
+ *                     type: string
+ *                   status:
+ *                     type: string
+ *                   metadata:
+ *                     type: object
+ *     responses:
+ *       200:
+ *         description: Bachs webhook received and processed successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 received:
+ *                   type: boolean
+ *                   example: true
+ *       400:
+ *         description: Malformed payload or processing error
+ */
+router.post('/webhook/bachs', paymentController.handleBachsWebhook);
+
+/**
+ * @openapi
  * /api/v1/payments/verify/{reference}:
  *   get:
  *     tags:

@@ -50,6 +50,10 @@ const partnerApplication_routes_1 = __importDefault(require("./routes/partnerApp
 const incident_routes_1 = __importDefault(require("./routes/incident.routes"));
 const customMealRequest_routes_1 = __importDefault(require("./routes/customMealRequest.routes"));
 const job_routes_1 = __importDefault(require("./routes/job.routes"));
+const subscription_routes_1 = __importDefault(require("./routes/subscription.routes"));
+const securityReport_routes_1 = __importDefault(require("./routes/securityReport.routes"));
+const catalogImport_routes_1 = __importDefault(require("./routes/catalogImport.routes"));
+const legalDocument_routes_1 = __importDefault(require("./routes/legalDocument.routes"));
 const activity_service_1 = __importDefault(require("./services/activity.service"));
 const keepAlive_1 = require("./utils/keepAlive");
 const swagger_ui_express_1 = __importDefault(require("swagger-ui-express"));
@@ -218,6 +222,10 @@ class App {
         this.app.use('/api/v1/incidents', incident_routes_1.default);
         this.app.use('/api/v1/custom-requests', customMealRequest_routes_1.default);
         this.app.use('/api/v1/jobs', job_routes_1.default);
+        this.app.use('/api/v1/subscriptions', subscription_routes_1.default);
+        this.app.use('/api/v1/security', securityReport_routes_1.default);
+        this.app.use('/api/v1/catalog', catalogImport_routes_1.default);
+        this.app.use('/api/v1/legal-documents', legalDocument_routes_1.default);
         // Documentation Routes
         this.app.use('/api-docs', swagger_ui_express_1.default.serve, swagger_ui_express_1.default.setup(swagger_1.swaggerSpec));
         this.app.get('/redoc', (req, res) => {

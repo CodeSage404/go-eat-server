@@ -46,6 +46,10 @@ import partnerApplicationRoutes from './routes/partnerApplication.routes';
 import incidentRoutes from './routes/incident.routes';
 import customMealRequestRoutes from './routes/customMealRequest.routes';
 import jobRoutes from './routes/job.routes';
+import subscriptionRoutes from './routes/subscription.routes';
+import securityReportRoutes from './routes/securityReport.routes';
+import catalogImportRoutes from './routes/catalogImport.routes';
+import legalDocumentRoutes from './routes/legalDocument.routes';
 import activityService from './services/activity.service';
 import { startKeepAlivePing } from './utils/keepAlive';
 
@@ -248,6 +252,10 @@ class App {
     this.app.use('/api/v1/incidents', incidentRoutes);
     this.app.use('/api/v1/custom-requests', customMealRequestRoutes);
     this.app.use('/api/v1/jobs', jobRoutes);
+    this.app.use('/api/v1/subscriptions', subscriptionRoutes);
+    this.app.use('/api/v1/security', securityReportRoutes);
+    this.app.use('/api/v1/catalog', catalogImportRoutes);
+    this.app.use('/api/v1/legal-documents', legalDocumentRoutes);
 
     // Documentation Routes
     this.app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));

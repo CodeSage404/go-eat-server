@@ -4,9 +4,14 @@ export type PartnerApplicationStatus = 'pending' | 'under_review' | 'approved' |
 
 export interface IPartnerDocuments {
   ninUrl?: string;
+  ninExpiryDate?: Date;
   foodHygieneUrl?: string;
+  foodHygieneExpiryDate?: Date;
   cacUrl?: string;
+  cacExpiryDate?: Date;
   idNumber?: string;
+  isDocumentExpired?: boolean;
+  expiredDocuments?: string[];
 }
 
 export interface IPartnerApplication extends Document {
@@ -21,8 +26,13 @@ export interface IPartnerApplication extends Document {
   hasAccessGranted?: boolean;
   documents?: IPartnerDocuments;
   ninUrl?: string;
+  ninExpiryDate?: Date;
   foodHygieneUrl?: string;
+  foodHygieneExpiryDate?: Date;
   cacUrl?: string;
+  cacExpiryDate?: Date;
+  isDocumentExpired?: boolean;
+  expiredDocuments?: string[];
   businessImageUrl?: string;
   coverImageUrl?: string;
   status: PartnerApplicationStatus;
@@ -87,21 +97,43 @@ const partnerApplicationSchema = new Schema<IPartnerApplication>(
     },
     documents: {
       ninUrl: { type: String, default: '' },
+      ninExpiryDate: { type: Date },
       foodHygieneUrl: { type: String, default: '' },
+      foodHygieneExpiryDate: { type: Date },
       cacUrl: { type: String, default: '' },
+      cacExpiryDate: { type: Date },
       idNumber: { type: String, default: '' },
+      isDocumentExpired: { type: Boolean, default: false },
+      expiredDocuments: { type: [String], default: [] },
     },
     ninUrl: {
       type: String,
       default: '',
     },
+    ninExpiryDate: {
+      type: Date,
+    },
     foodHygieneUrl: {
       type: String,
       default: '',
     },
+    foodHygieneExpiryDate: {
+      type: Date,
+    },
     cacUrl: {
       type: String,
       default: '',
+    },
+    cacExpiryDate: {
+      type: Date,
+    },
+    isDocumentExpired: {
+      type: Boolean,
+      default: false,
+    },
+    expiredDocuments: {
+      type: [String],
+      default: [],
     },
     businessImageUrl: {
       type: String,

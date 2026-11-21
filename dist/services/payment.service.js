@@ -47,6 +47,8 @@ const notification_service_1 = __importDefault(require("./notification.service")
 const paystack_module_1 = __importDefault(require("./payments/paystack.module"));
 const flutterwave_module_1 = __importDefault(require("./payments/flutterwave.module"));
 const stripe_module_1 = __importDefault(require("./payments/stripe.module"));
+const monnify_module_1 = __importDefault(require("./payments/monnify.module"));
+const bachs_module_1 = __importDefault(require("./payments/bachs.module"));
 const setting_model_1 = __importDefault(require("../models/setting.model"));
 const email_service_1 = __importDefault(require("./email.service"));
 const userNotification_model_1 = require("../models/userNotification.model");
@@ -59,10 +61,16 @@ class PaymentService {
         const paystackEnabled = setting?.enablePaystack !== false;
         const flutterwaveEnabled = setting?.enableFlutterwave !== false;
         const stripeEnabled = setting?.enableStripe !== false;
-        if (!paystackEnabled && !flutterwaveEnabled && !stripeEnabled) {
+        const monnifyEnabled = setting?.enableMonnify !== false;
+        const bachsEnabled = setting?.enableBachs !== false;
+        if (!paystackEnabled && !flutterwaveEnabled && !stripeEnabled && !monnifyEnabled && !bachsEnabled) {
             throw new appError_1.default('Online card payments are currently disabled by the administrator.', 503);
         }
         const isProviderEnabled = (p) => {
+            if (p === 'bachs')
+                return bachsEnabled;
+            if (p === 'monnify')
+                return monnifyEnabled;
             if (p === 'paystack')
                 return paystackEnabled;
             if (p === 'flutterwave')
@@ -112,6 +120,16 @@ class PaymentService {
         }
         // 6. Direct Country Assignment (if enabled)
         if (countryCode === 'NG' || user?.isNigeria) {
+            if (bachsEnabled)
+                return 'bachs';
+            if (setting?.defaultPaymentProvider === 'bachs' && bachsEnabled)
+                return 'bachs';
+            if (setting?.defaultPaymentProvider === 'monnify' && monnifyEnabled)
+                return 'monnify';
+            if (setting?.defaultPaymentProvider === 'paystack' && paystackEnabled)
+                return 'paystack';
+            if (monnifyEnabled)
+                return 'monnify';
             if (paystackEnabled)
                 return 'paystack';
             if (flutterwaveEnabled)
@@ -212,7 +230,7 @@ class PaymentService {
                 provider: 'stripe',
             };
         }
-        const serverBaseUrl = (process.env.RENDER_EXTERNAL_URL || 'https://go-eat-server-z96s.onrender.com').replace(/\/$/, '');
+        const serverBaseUrl = (process.env.RENDER_EXTERNAL_URL || 'https://api.goeatone.com').replace(/\/$/, '');
         const webRedirectDestination = callbackUrl || 'https://goeatone.com/checkout?status=success';
         const serverCallbackUrl = `${serverBaseUrl}/api/v1/payments/callback?redirect_url=${encodeURIComponent(webRedirectDestination)}`;
         if (activeProvider.toLowerCase() === 'flutterwave') {
@@ -288,6 +306,59 @@ class PaymentService {
                 provider: 'stripe',
             };
         }
+        else if (provider?.toLowerCase() === 'monnify') {
+            const Restaurant = require('../models/restaurant.model').default;
+            const restaurantId = order.restaurant?._id || order.restaurant;
+            const restaurantObj = restaurantId ? await Restaurant.findById(restaurantId) : null;
+            const subaccount = restaurantObj?.monnifySubaccountCode;
+            let transactionCharge;
+            if (subaccount) {
+                const commissionRate = setting?.commissionRate || 10;
+                transactionCharge = 100 - commissionRate; // Percentage to vendor
+            }
+            const result = await monnify_module_1.default.initializePayment({
+                email: safeEmail,
+                name: user?.name,
+                amount,
+                reference,
+                callbackUrl: `${serverCallbackUrl}&provider=monnify`,
+                metadata: {
+                    orderId: order._id.toString(),
+                    orderIds: orderIdList.join(','),
+                    customerId: user._id.toString(),
+                },
+                subaccount,
+                transactionCharge,
+                description: `Go-Eat Order #${order._id.toString().slice(-6)}`,
+            });
+            return {
+                authorizationUrl: result.authorizationUrl,
+                accessCode: result.accessCode,
+                reference: result.reference,
+                provider: 'monnify',
+            };
+        }
+        else if (provider?.toLowerCase() === 'bachs') {
+            const result = await bachs_module_1.default.initializePayment({
+                email: safeEmail,
+                name: user?.name,
+                amount,
+                reference,
+                callbackUrl: `${serverCallbackUrl}&provider=bachs`,
+                cancelUrl: 'https://goeatone.com/checkout',
+                metadata: {
+                    orderId: order._id.toString(),
+                    orderIds: orderIdList.join(','),
+                    customerId: user._id.toString(),
+                },
+                description: `Go-Eat Order #${order._id.toString().slice(-6)}`,
+            });
+            return {
+                authorizationUrl: result.authorizationUrl,
+                reference: result.reference,
+                provider: 'bachs',
+            };
+        }
         else {
             // Default: Paystack
             const Restaurant = require('../models/restaurant.model').default;
@@ -357,6 +428,37 @@ class PaymentService {
                 status: 'success',
                 update_time: new Date().toISOString(),
                 provider: 'stripe',
+            };
+        }
+        else if (provider?.toLowerCase() === 'monnify') {
+            const data = await monnify_module_1.default.verifyPayment(reference);
+            const isPaid = data?.paymentStatus === 'PAID' || data?.status === 'PAID';
+            if (!isPaid) {
+                throw new appError_1.default('Monnify payment was not successful', 400);
+            }
+            orderId = data?.metaData?.orderId || reference.split('_')[1];
+            metaOrderIds = data?.metaData?.orderIds;
+            paymentResult = {
+                id: data?.transactionReference || reference,
+                status: 'success',
+                update_time: data?.paidOn || new Date().toISOString(),
+                email_address: data?.customer?.email || data?.customerEmail,
+                provider: 'monnify',
+            };
+        }
+        else if (provider?.toLowerCase() === 'bachs') {
+            const data = await bachs_module_1.default.verifyPayment(reference);
+            if (data.status !== 'success') {
+                throw new appError_1.default('Bachs payment was not successful', 400);
+            }
+            orderId = data?.metadata?.orderId || reference.split('_')[1];
+            metaOrderIds = data?.metadata?.orderIds;
+            paymentResult = {
+                id: data?.id || reference,
+                status: 'success',
+                update_time: new Date().toISOString(),
+                email_address: data?.customer?.email,
+                provider: 'bachs',
             };
         }
         else {
@@ -505,6 +607,37 @@ class PaymentService {
         }
     }
     /**
+     * Secure Webhook Handler for Monnify
+     */
+    async processMonnifyWebhook(payload, signature) {
+        const isValid = monnify_module_1.default.verifyWebhookSignature(payload, signature);
+        if (!isValid) {
+            throw new appError_1.default('Invalid Monnify webhook signature', 400);
+        }
+        const eventType = payload.eventType;
+        if (eventType === 'SUCCESSFUL_TRANSACTION' || payload.eventData?.paymentStatus === 'PAID') {
+            const reference = payload.eventData?.paymentReference || payload.eventData?.transactionReference;
+            if (reference) {
+                await this.verifyPayment(reference, 'monnify');
+            }
+        }
+    }
+    /**
+     * Secure Webhook Handler for Bachs.io
+     */
+    async processBachsWebhook(payload) {
+        const eventType = payload?.event || payload?.type;
+        const data = payload?.data || payload;
+        const reference = data?.metadata?.reference || data?.reference;
+        if (reference &&
+            (eventType === 'checkout.completed' ||
+                eventType === 'collection.succeeded' ||
+                data?.status === 'succeeded' ||
+                data?.status === 'completed')) {
+            await this.verifyPayment(reference, 'bachs');
+        }
+    }
+    /**
      * Payout / Transfer money to a Delivery Rider's Bank Account
      */
     async payoutRider(riderId, amount, provider = process.env.DEFAULT_PAYMENT_PROVIDER || 'paystack') {
@@ -535,6 +668,15 @@ class PaymentService {
                 reference,
                 narration: `Go-Eat Rider Payout (${rider.name})`,
                 beneficiaryName: bankAccount.accountName || rider.name,
+            });
+        }
+        else if (provider?.toLowerCase() === 'monnify') {
+            transferResult = await monnify_module_1.default.initiatePayout({
+                amount,
+                accountNumber: bankAccount.accountNumber,
+                bankCode: bankAccount.bankCode,
+                reference,
+                reason: `Go-Eat Rider Payout (${rider.name})`,
             });
         }
         else {
@@ -598,6 +740,15 @@ class PaymentService {
                 beneficiaryName: bankAccount.accountName || 'Go-Eat Vendor',
             });
         }
+        else if (provider?.toLowerCase() === 'monnify') {
+            transferResult = await monnify_module_1.default.initiatePayout({
+                amount,
+                accountNumber: bankAccount.accountNumber,
+                bankCode: bankAccount.bankCode,
+                reference,
+                reason: 'Go-Eat Restaurant Payout',
+            });
+        }
         else {
             let recipientCode = bankAccount.recipientCode;
             if (!recipientCode) {
@@ -647,6 +798,13 @@ class PaymentService {
                     reason: reason || 'Order cancellation or item refund',
                 });
             }
+            else if (String(provider).toLowerCase() === 'monnify') {
+                return await monnify_module_1.default.refundTransaction({
+                    reference: reference || order.paymentReference,
+                    amount,
+                    reason: reason || 'Order cancellation or item refund',
+                });
+            }
             else if (String(provider).toLowerCase() === 'paystack') {
                 return await paystack_module_1.default.refundTransaction({
                     reference: reference || order.paymentReference,
@@ -686,6 +844,7 @@ class PaymentService {
         // 2. Check Provider Kill-Switches
         const paystackEnabled = setting?.enableBankVerificationPaystack !== false;
         const stripeEnabled = setting?.enableBankVerificationStripe !== false;
+        const monnifyEnabled = setting?.enableBankVerificationMonnify !== false && setting?.enableMonnify !== false;
         // 3. Check Admin Force Global Override
         const forcedProvider = setting?.forceGlobalBankVerificationProvider || 'none';
         if (forcedProvider === 'stripe' && stripeEnabled) {
@@ -698,6 +857,17 @@ class PaymentService {
                 requiresRoutingNumber: countryCode === 'GB' || countryCode === 'US',
                 routingNumberLabel: countryCode === 'GB' ? 'Sort Code' : 'Routing Number',
                 accountNumberLabel: countryCode === 'IT' ? 'IBAN' : 'Account Number',
+            };
+        }
+        else if (forcedProvider === 'monnify' && monnifyEnabled) {
+            return {
+                countryCode,
+                countryName: this.getCountryName(countryCode),
+                provider: 'monnify',
+                accountFormat: 'nuban',
+                currency: 'NGN',
+                requiresRoutingNumber: false,
+                accountNumberLabel: 'NUBAN Account Number',
             };
         }
         else if (forcedProvider === 'paystack' && paystackEnabled) {
@@ -806,6 +976,19 @@ class PaymentService {
             return {
                 ...stripeRes,
                 provider: 'stripe',
+            };
+        }
+        if (config.provider === 'monnify') {
+            const cleanBankCode = params.bankCode || '044';
+            const monnifyRes = await monnify_module_1.default.resolveAccountNumber(params.accountNumber, cleanBankCode);
+            return {
+                accountNumber: monnifyRes.accountNumber,
+                accountName: monnifyRes.accountName,
+                bankName: 'Nigerian Commercial Bank',
+                bankCode: cleanBankCode,
+                currency: 'NGN',
+                provider: 'monnify',
+                isVerified: true,
             };
         }
         // Default to Paystack

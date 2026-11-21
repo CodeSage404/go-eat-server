@@ -98,6 +98,7 @@ export interface IRestaurant extends Document {
   businessEmail?: string;
   businessWebsite?: string;
   paystackSubaccountCode?: string;
+  monnifySubaccountCode?: string;
   bankDetails?: {
     bankName: string;
     bankCode?: string;
@@ -120,13 +121,28 @@ export interface IRestaurant extends Document {
   };
   verificationDocuments?: {
     ninUrl?: string;
+    ninExpiryDate?: Date;
     foodHygieneUrl?: string;
+    foodHygieneExpiryDate?: Date;
     cacUrl?: string;
+    cacExpiryDate?: Date;
+    healthSafetyUrl?: string;
+    healthSafetyExpiryDate?: Date;
     idNumber?: string;
     submittedAt?: Date;
   };
   complianceStatus?: 'pending' | 'approved' | 'rejected' | 'expired';
+  isDocumentExpired?: boolean;
+  documentExpiryFlagReason?: string;
+  expiredDocumentsList?: string[];
   baseCurrency: string;
+  subscriptionPlan?: 'payg' | 'plus' | 'unlimited';
+  subscriptionStatus?: 'active' | 'past_due' | 'cancelled' | 'trialing' | 'grace_period';
+  cycleFoodSales?: number;
+  cycleStartDate?: Date;
+  cycleEndDate?: Date;
+  isFoundingPartner?: boolean;
+  foundingPartnerOfferExpiresAt?: Date;
   autoAcceptOrders: boolean;
   orderAlerts: boolean;
   specialDays?: {
@@ -418,6 +434,10 @@ const restaurantSchema = new Schema<IRestaurant>(
       type: String,
       trim: true,
     },
+    monnifySubaccountCode: {
+      type: String,
+      trim: true,
+    },
     bankDetails: {
       bankName: { type: String },
       bankCode: { type: String },
@@ -444,8 +464,13 @@ const restaurantSchema = new Schema<IRestaurant>(
     },
     verificationDocuments: {
       ninUrl: { type: String, default: '' },
+      ninExpiryDate: { type: Date },
       foodHygieneUrl: { type: String, default: '' },
+      foodHygieneExpiryDate: { type: Date },
       cacUrl: { type: String, default: '' },
+      cacExpiryDate: { type: Date },
+      healthSafetyUrl: { type: String, default: '' },
+      healthSafetyExpiryDate: { type: Date },
       idNumber: { type: String, default: '' },
       submittedAt: { type: Date },
     },
@@ -454,9 +479,49 @@ const restaurantSchema = new Schema<IRestaurant>(
       enum: ['pending', 'approved', 'rejected', 'expired'],
       default: 'pending',
     },
+    isDocumentExpired: {
+      type: Boolean,
+      default: false,
+    },
+    documentExpiryFlagReason: {
+      type: String,
+      default: '',
+    },
+    expiredDocumentsList: {
+      type: [String],
+      default: [],
+    },
     baseCurrency: {
       type: String,
       default: 'NGN',
+    },
+    subscriptionPlan: {
+      type: String,
+      enum: ['payg', 'plus', 'unlimited'],
+      default: 'payg',
+    },
+    subscriptionStatus: {
+      type: String,
+      enum: ['active', 'past_due', 'cancelled', 'trialing', 'grace_period'],
+      default: 'active',
+    },
+    cycleFoodSales: {
+      type: Number,
+      default: 0,
+    },
+    cycleStartDate: {
+      type: Date,
+      default: Date.now,
+    },
+    cycleEndDate: {
+      type: Date,
+    },
+    isFoundingPartner: {
+      type: Boolean,
+      default: false,
+    },
+    foundingPartnerOfferExpiresAt: {
+      type: Date,
     },
     autoAcceptOrders: {
       type: Boolean,

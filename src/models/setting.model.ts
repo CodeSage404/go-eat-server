@@ -3,14 +3,14 @@ import mongoose, { Schema, Document } from 'mongoose';
 export interface ICountryPaymentProvider {
   countryCode: string;
   countryName: string;
-  provider: 'paystack' | 'flutterwave' | 'stripe';
+  provider: 'paystack' | 'flutterwave' | 'stripe' | 'monnify' | 'bachs';
   isActive: boolean;
 }
 
 export interface ICountryBankVerificationProvider {
   countryCode: string;
   countryName: string;
-  provider: 'paystack' | 'stripe' | 'flutterwave';
+  provider: 'paystack' | 'stripe' | 'flutterwave' | 'monnify';
   accountFormat: 'nuban' | 'uk_sort_code' | 'iban' | 'us_routing' | 'general';
   isActive: boolean;
 }
@@ -41,17 +41,33 @@ export interface ISetting extends Document {
   riderPerKmPayout: number;
   riderPayoutSchedule: 'daily' | 'weekly';
   riderPayoutDayOfWeek: 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday';
-  defaultPaymentProvider: 'paystack' | 'flutterwave' | 'stripe';
+  defaultPaymentProvider: 'paystack' | 'flutterwave' | 'stripe' | 'monnify' | 'bachs';
   enablePaystack: boolean;
   enableFlutterwave: boolean;
   enableStripe: boolean;
-  forceGlobalPaymentProvider: 'none' | 'paystack' | 'flutterwave' | 'stripe';
+  enableMonnify: boolean;
+  enableBachs: boolean;
+  bachsApiKey?: string;
+  bachsSecretKey?: string;
+  bachsWebhookSecret?: string;
+  bachsMode?: 'sandbox' | 'live';
+  stripePublicKey?: string;
+  stripeSecretKey?: string;
+  stripeWebhookSecret?: string;
+  stripeMode?: 'sandbox' | 'live';
+  monnifyApiKey?: string;
+  monnifySecretKey?: string;
+  monnifyContractCode?: string;
+  monnifyWalletAccountNumber?: string;
+  monnifyMode?: 'sandbox' | 'live';
+  forceGlobalPaymentProvider: 'none' | 'paystack' | 'flutterwave' | 'stripe' | 'monnify' | 'bachs';
   countryPaymentProviders: ICountryPaymentProvider[];
   // Bank Account Verification Configuration
-  defaultBankVerificationProvider: 'paystack' | 'stripe' | 'flutterwave';
+  defaultBankVerificationProvider: 'paystack' | 'stripe' | 'flutterwave' | 'monnify';
   enableBankVerificationPaystack: boolean;
   enableBankVerificationStripe: boolean;
-  forceGlobalBankVerificationProvider: 'none' | 'paystack' | 'stripe' | 'flutterwave';
+  enableBankVerificationMonnify?: boolean;
+  forceGlobalBankVerificationProvider: 'none' | 'paystack' | 'stripe' | 'flutterwave' | 'monnify';
   countryBankVerificationProviders: ICountryBankVerificationProvider[];
   // First Bite Free Order Campaign Configuration
   firstBiteEnabled: boolean;
@@ -104,13 +120,28 @@ const settingSchema = new Schema<ISetting>(
       enum: ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'],
       default: 'friday',
     },
-    defaultPaymentProvider: { type: String, enum: ['paystack', 'flutterwave', 'stripe'], default: 'paystack' },
+    defaultPaymentProvider: { type: String, enum: ['paystack', 'flutterwave', 'stripe', 'monnify', 'bachs'], default: 'bachs' },
     enablePaystack: { type: Boolean, default: true },
     enableFlutterwave: { type: Boolean, default: true },
     enableStripe: { type: Boolean, default: true },
+    enableMonnify: { type: Boolean, default: false },
+    enableBachs: { type: Boolean, default: true },
+    bachsApiKey: { type: String, trim: true },
+    bachsSecretKey: { type: String, trim: true },
+    bachsWebhookSecret: { type: String, trim: true },
+    bachsMode: { type: String, enum: ['sandbox', 'live'], default: 'live' },
+    stripePublicKey: { type: String, trim: true },
+    stripeSecretKey: { type: String, trim: true },
+    stripeWebhookSecret: { type: String, trim: true },
+    stripeMode: { type: String, enum: ['sandbox', 'live'], default: 'live' },
+    monnifyApiKey: { type: String, trim: true },
+    monnifySecretKey: { type: String, trim: true },
+    monnifyContractCode: { type: String, trim: true },
+    monnifyWalletAccountNumber: { type: String, trim: true },
+    monnifyMode: { type: String, enum: ['sandbox', 'live'], default: 'sandbox' },
     forceGlobalPaymentProvider: {
       type: String,
-      enum: ['none', 'paystack', 'flutterwave', 'stripe'],
+      enum: ['none', 'paystack', 'flutterwave', 'stripe', 'monnify', 'bachs'],
       default: 'none',
     },
     countryPaymentProviders: {
@@ -118,12 +149,12 @@ const settingSchema = new Schema<ISetting>(
         {
           countryCode: { type: String, uppercase: true },
           countryName: { type: String },
-          provider: { type: String, enum: ['paystack', 'flutterwave', 'stripe'] },
+          provider: { type: String, enum: ['paystack', 'flutterwave', 'stripe', 'monnify', 'bachs'] },
           isActive: { type: Boolean, default: true },
         },
       ],
       default: [
-        { countryCode: 'NG', countryName: 'Nigeria', provider: 'paystack', isActive: true },
+        { countryCode: 'NG', countryName: 'Nigeria', provider: 'bachs', isActive: true },
         { countryCode: 'GB', countryName: 'United Kingdom', provider: 'stripe', isActive: true },
         { countryCode: 'US', countryName: 'United States', provider: 'stripe', isActive: true },
         { countryCode: 'IT', countryName: 'Italy', provider: 'stripe', isActive: true },

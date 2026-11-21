@@ -302,7 +302,7 @@ class UserController {
 
     // Trigger outbound invitation dispatch asynchronously
     if (shouldSendInvite && payload.buddy && inviteToken) {
-      const baseUrl = (process.env.RENDER_EXTERNAL_URL || 'https://go-eat-server-z96s.onrender.com').replace(/\/$/, '');
+      const baseUrl = (process.env.RENDER_EXTERNAL_URL || 'https://api.goeatone.com').replace(/\/$/, '');
       const acceptUrl = `${baseUrl}/api/v1/users/buddy/respond?token=${inviteToken}&action=accept`;
       const declineUrl = `${baseUrl}/api/v1/users/buddy/respond?token=${inviteToken}&action=decline`;
       const isEmail = payload.buddy.contact.includes('@');
@@ -356,7 +356,7 @@ class UserController {
     user.responsiblePurchasing!.buddy!.invitedAt = new Date();
     await user.save({ validateBeforeSave: false });
 
-    const baseUrl = (process.env.RENDER_EXTERNAL_URL || 'https://go-eat-server-z96s.onrender.com').replace(/\/$/, '');
+    const baseUrl = (process.env.RENDER_EXTERNAL_URL || 'https://api.goeatone.com').replace(/\/$/, '');
     const acceptUrl = `${baseUrl}/api/v1/users/buddy/respond?token=${inviteToken}&action=accept`;
     const declineUrl = `${baseUrl}/api/v1/users/buddy/respond?token=${inviteToken}&action=decline`;
     const isEmail = buddy.contact.includes('@');

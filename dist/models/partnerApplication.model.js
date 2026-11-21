@@ -86,21 +86,43 @@ const partnerApplicationSchema = new mongoose_1.Schema({
     },
     documents: {
         ninUrl: { type: String, default: '' },
+        ninExpiryDate: { type: Date },
         foodHygieneUrl: { type: String, default: '' },
+        foodHygieneExpiryDate: { type: Date },
         cacUrl: { type: String, default: '' },
+        cacExpiryDate: { type: Date },
         idNumber: { type: String, default: '' },
+        isDocumentExpired: { type: Boolean, default: false },
+        expiredDocuments: { type: [String], default: [] },
     },
     ninUrl: {
         type: String,
         default: '',
     },
+    ninExpiryDate: {
+        type: Date,
+    },
     foodHygieneUrl: {
         type: String,
         default: '',
     },
+    foodHygieneExpiryDate: {
+        type: Date,
+    },
     cacUrl: {
         type: String,
         default: '',
+    },
+    cacExpiryDate: {
+        type: Date,
+    },
+    isDocumentExpired: {
+        type: Boolean,
+        default: false,
+    },
+    expiredDocuments: {
+        type: [String],
+        default: [],
     },
     businessImageUrl: {
         type: String,

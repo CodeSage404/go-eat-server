@@ -3,7 +3,7 @@ import logger from './logger';
 const PING_INTERVAL = 3 * 60 * 1000; // 3 minutes
 
 export function startKeepAlivePing() {
-  const serverUrl = process.env.RENDER_EXTERNAL_URL || 'https://go-eat-server.onrender.com';
+  const serverUrl = process.env.RENDER_EXTERNAL_URL || 'https://api.goeatone.com';
   const healthUrl = `${serverUrl}/api/health`;
 
   logger.info(`⏰ Initializing self-ping keep-alive service every 3 minutes to: ${healthUrl}`);

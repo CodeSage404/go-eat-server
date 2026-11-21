@@ -292,7 +292,34 @@ class RestaurantController {
       throw new AppError('No restaurant profile found for this user', 404);
     }
 
+    const docs = restaurant.verificationDocuments;
+    const now = new Date();
+    const expiredList: string[] = [];
+
+    if (docs?.ninExpiryDate && new Date(docs.ninExpiryDate) < now) {
+      expiredList.push('Identity / NIN Document');
+    }
+    if (docs?.foodHygieneExpiryDate && new Date(docs.foodHygieneExpiryDate) < now) {
+      expiredList.push('Food Safety & Hygiene Certificate');
+    }
+    if (docs?.cacExpiryDate && new Date(docs.cacExpiryDate) < now) {
+      expiredList.push('CAC Certificate');
+    }
+    if (docs?.healthSafetyExpiryDate && new Date(docs.healthSafetyExpiryDate) < now) {
+      expiredList.push('Health & Safety Certificate');
+    }
+
+    const isDocumentExpired = expiredList.length > 0 || Boolean(restaurant.isDocumentExpired);
+    if (isDocumentExpired && restaurant.complianceStatus !== 'expired') {
+      restaurant.isDocumentExpired = true;
+      restaurant.complianceStatus = 'expired';
+      restaurant.documentExpiryFlagReason = `Required operating documents have expired: ${expiredList.join(', ')}`;
+      restaurant.expiredDocumentsList = expiredList;
+      await restaurant.save();
+    }
+
     const isVerified =
+      !isDocumentExpired &&
       restaurant.complianceStatus === 'approved' &&
       restaurant.status === RestaurantStatus.ACTIVE;
 
@@ -306,6 +333,9 @@ class RestaurantController {
       data: {
         isVerified,
         complianceStatus: restaurant.complianceStatus || 'pending',
+        isDocumentExpired,
+        expiredDocumentsList: expiredList,
+        flagReason: restaurant.documentExpiryFlagReason || '',
         status: restaurant.status,
         hasSubmittedDocuments,
         documents: restaurant.verificationDocuments || {},
@@ -346,10 +376,37 @@ class RestaurantController {
       throw new AppError('Please provide at least one verification document (NIN or Food Hygiene Certificate)', 400);
     }
 
+    const ninExpiryDate = req.body.ninExpiryDate ? new Date(req.body.ninExpiryDate) : restaurant.verificationDocuments?.ninExpiryDate;
+    const foodHygieneExpiryDate = req.body.foodHygieneExpiryDate ? new Date(req.body.foodHygieneExpiryDate) : restaurant.verificationDocuments?.foodHygieneExpiryDate;
+    const cacExpiryDate = req.body.cacExpiryDate ? new Date(req.body.cacExpiryDate) : restaurant.verificationDocuments?.cacExpiryDate;
+    const healthSafetyExpiryDate = req.body.healthSafetyExpiryDate ? new Date(req.body.healthSafetyExpiryDate) : restaurant.verificationDocuments?.healthSafetyExpiryDate;
+
+    const now = new Date();
+    const expiredList: string[] = [];
+    if (ninExpiryDate && ninExpiryDate < now) expiredList.push('NIN / Identity Document');
+    if (foodHygieneExpiryDate && foodHygieneExpiryDate < now) expiredList.push('Food Safety & Hygiene Certificate');
+    if (cacExpiryDate && cacExpiryDate < now) expiredList.push('CAC Certificate');
+    if (healthSafetyExpiryDate && healthSafetyExpiryDate < now) expiredList.push('Health & Safety Certificate');
+
+    const isDocumentExpired = expiredList.length > 0;
+    restaurant.isDocumentExpired = isDocumentExpired;
+    restaurant.expiredDocumentsList = expiredList;
+    restaurant.complianceStatus = isDocumentExpired ? 'expired' : 'pending';
+    if (isDocumentExpired) {
+      restaurant.documentExpiryFlagReason = `Operating documents have expired: ${expiredList.join(', ')}`;
+    } else {
+      restaurant.documentExpiryFlagReason = '';
+    }
+
     restaurant.verificationDocuments = {
       ninUrl,
+      ninExpiryDate,
       foodHygieneUrl,
+      foodHygieneExpiryDate,
       cacUrl,
+      cacExpiryDate,
+      healthSafetyUrl: req.body.healthSafetyUrl || restaurant.verificationDocuments?.healthSafetyUrl || '',
+      healthSafetyExpiryDate,
       idNumber,
       submittedAt: new Date(),
     };

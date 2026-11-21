@@ -7,6 +7,7 @@ import Restaurant from '../models/restaurant.model';
 import Setting from '../models/setting.model';
 import paystackModule from '../services/payments/paystack.module';
 import stripeModule from '../services/payments/stripe.module';
+import monnifyModule from '../services/payments/monnify.module';
 import { resolveRequestLocation } from '../utils/locationResolver';
 import logger from '../utils/logger';
 
@@ -48,12 +49,17 @@ class PaymentController {
     const paystackEnabled = setting?.enablePaystack !== false;
     const flutterwaveEnabled = setting?.enableFlutterwave !== false;
     const stripeEnabled = setting?.enableStripe !== false;
+    const monnifyEnabled = setting?.enableMonnify !== false;
+    const bachsEnabled = setting?.enableBachs !== false;
 
-    const allDisabled = !paystackEnabled && !flutterwaveEnabled && !stripeEnabled;
+    const allDisabled =
+      !paystackEnabled && !flutterwaveEnabled && !stripeEnabled && !monnifyEnabled && !bachsEnabled;
 
     let forcedProvider = setting?.forceGlobalPaymentProvider || 'none';
     if (forcedProvider !== 'none') {
+      if (forcedProvider === 'bachs' && !bachsEnabled) forcedProvider = 'none';
       if (forcedProvider === 'stripe' && !stripeEnabled) forcedProvider = 'none';
+      if (forcedProvider === 'monnify' && !monnifyEnabled) forcedProvider = 'none';
       if (forcedProvider === 'paystack' && !paystackEnabled) forcedProvider = 'none';
       if (forcedProvider === 'flutterwave' && !flutterwaveEnabled) forcedProvider = 'none';
     }
@@ -71,13 +77,27 @@ class PaymentController {
       );
 
       if (countryCode === 'NG') {
+        if (bachsEnabled) activeProviders.push('bachs');
         if (paystackEnabled) activeProviders.push('paystack');
+        if (monnifyEnabled) activeProviders.push('monnify');
         if (flutterwaveEnabled) activeProviders.push('flutterwave');
         if (activeProviders.length === 0 && stripeEnabled) activeProviders.push('stripe');
-        defaultProvider = countryMatch?.provider || (paystackEnabled ? 'paystack' : flutterwaveEnabled ? 'flutterwave' : 'stripe');
+        defaultProvider =
+          countryMatch?.provider ||
+          (bachsEnabled
+            ? 'bachs'
+            : monnifyEnabled
+            ? 'monnify'
+            : paystackEnabled
+            ? 'paystack'
+            : flutterwaveEnabled
+            ? 'flutterwave'
+            : 'stripe');
       } else {
         if (stripeEnabled) activeProviders.push('stripe');
         if (activeProviders.length === 0) {
+          if (bachsEnabled) activeProviders.push('bachs');
+          if (monnifyEnabled) activeProviders.push('monnify');
           if (paystackEnabled) activeProviders.push('paystack');
           if (flutterwaveEnabled) activeProviders.push('flutterwave');
         }
@@ -93,6 +113,8 @@ class PaymentController {
         activeProviders,
         defaultProvider,
         providers: {
+          bachs: bachsEnabled,
+          monnify: monnifyEnabled,
           paystack: paystackEnabled,
           flutterwave: flutterwaveEnabled,
           stripe: stripeEnabled,
@@ -155,6 +177,33 @@ class PaymentController {
 
     // Flutterwave expects a 200 OK response immediately
     res.status(200).send('Flutterwave webhook received successfully');
+  });
+
+  /**
+   * Webhook endpoint for Monnify
+   */
+  public handleMonnifyWebhook = catchAsync(async (req: Request, res: Response) => {
+    const signature = req.headers['monnify-signature'] as string;
+    if (!signature) {
+      res.status(400).send('Missing Monnify signature header');
+      return;
+    }
+
+    const payload = (req as any).rawBody || req.body;
+    await paymentService.processMonnifyWebhook(payload, signature);
+
+    // Monnify expects a 200 OK response immediately
+    res.status(200).send('Monnify webhook received successfully');
+  });
+
+  /**
+   * Webhook endpoint for Bachs.io
+   */
+  public handleBachsWebhook = catchAsync(async (req: Request, res: Response) => {
+    const payload = req.body;
+    logger.info(`[Bachs Webhook] Received event payload`);
+    await paymentService.processBachsWebhook(payload);
+    res.status(200).json({ received: true });
   });
 
   /**
@@ -315,7 +364,15 @@ class PaymentController {
     }
 
     const country = (req.query.country as string) || (countryCode === 'GH' ? 'ghana' : 'nigeria');
-    const banks = await paystackModule.getBanks(country);
+    const provider = String(req.query.provider || '').toLowerCase();
+    
+    let banks: any[] = [];
+    if (provider === 'monnify' || (!req.query.country && countryCode === 'NG')) {
+      banks = await monnifyModule.getBanks();
+    }
+    if (!banks || banks.length === 0) {
+      banks = await paystackModule.getBanks(country);
+    }
 
     res.status(200).json({
       status: 'success',
@@ -374,6 +431,7 @@ class PaymentController {
     const isForeign = countryCode !== 'NG' && countryCode !== 'GH';
 
     let subaccountCode: string | undefined = undefined;
+    let monnifySubCode: string | undefined = undefined;
     if (!isForeign) {
       try {
         // Default percentage charge is 0, since we will override with transaction_charge per order
@@ -387,10 +445,26 @@ class PaymentController {
       } catch (err: any) {
         logger.warn(`Paystack subaccount creation skipped/fallback: ${err.message}`);
       }
+
+      try {
+        const monnifySub = await monnifyModule.createSubaccount({
+          businessName: restaurant.name,
+          bankCode: String(bankCode),
+          accountNumber: String(accountNumber),
+          percentageCharge: 85,
+          email: restaurant.businessEmail || (req.user as any)?.email || 'vendor@goeat.com',
+        });
+        monnifySubCode = monnifySub.subaccountCode;
+      } catch (err: any) {
+        logger.warn(`Monnify subaccount creation skipped/fallback: ${err.message}`);
+      }
     }
 
     if (subaccountCode) {
       restaurant.paystackSubaccountCode = subaccountCode;
+    }
+    if (monnifySubCode) {
+      restaurant.monnifySubaccountCode = monnifySubCode;
     }
 
     restaurant.bankDetails = {

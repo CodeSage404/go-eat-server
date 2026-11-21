@@ -45,6 +45,7 @@ const io_1 = require("../io");
 const notification_service_1 = __importDefault(require("./notification.service"));
 const logger_1 = __importDefault(require("../utils/logger"));
 const payment_service_1 = __importDefault(require("./payment.service"));
+const subscription_service_1 = require("./subscription.service");
 class SettlementService {
     /**
      * Calculate Outlet Net Settlement
@@ -78,13 +79,25 @@ class SettlementService {
     async processOrderAccepted(order) {
         try {
             const breakdown = this.calculateOutletSettlement(order);
+            const restaurantId = order.restaurant?._id || order.restaurant;
+            // Dynamically calculate commission from active subscription plan (PAYG, Plus, Unlimited, Founding Partner)
+            if (!order.isFirstBiteFreeOrder && restaurantId) {
+                try {
+                    const subCalc = await subscription_service_1.SubscriptionService.calculateOrderCommission(restaurantId, breakdown.grossAmount, 0, breakdown.commissionRate);
+                    breakdown.commissionRate = subCalc.effectiveCommissionRate;
+                    breakdown.commissionAmount = Math.round(subCalc.totalCommissionCharged * 100) / 100;
+                    breakdown.outletNetSettlement = Math.max(0, Math.round((breakdown.grossAmount - breakdown.commissionAmount) * 100) / 100);
+                }
+                catch (subErr) {
+                    logger_1.default.warn('Subscription commission calculation fallback to standard rate:', subErr);
+                }
+            }
             order.grossAmount = breakdown.grossAmount;
             order.commissionRate = breakdown.commissionRate;
             order.commissionAmount = breakdown.commissionAmount;
             order.outletNetSettlement = breakdown.outletNetSettlement;
             order.courierEarnings = breakdown.courierEarnings;
             await order.save();
-            const restaurantId = order.restaurant?._id || order.restaurant;
             const restaurant = restaurantId ? await restaurant_model_1.default.findById(restaurantId) : null;
             if (restaurant && restaurant.owner) {
                 let wallet = await wallet_model_1.default.findOne({ user: restaurant.owner });
@@ -164,6 +177,15 @@ class SettlementService {
                     availableBalance: wallet.availableBalance,
                     orderId: order._id.toString(),
                 });
+                // Record food sales into restaurant's subscription cycle counter
+                if (restaurantId && breakdown.grossAmount > 0) {
+                    try {
+                        await subscription_service_1.SubscriptionService.recordOrderCompletion(restaurantId, breakdown.grossAmount);
+                    }
+                    catch (subErr) {
+                        logger_1.default.warn('Failed to record subscription cycle sales accumulation:', subErr);
+                    }
+                }
             }
             // 2. Process Courier Settlement
             if (order.rider) {

@@ -3,6 +3,8 @@ import { catchAsync } from '../utils/catchAsync';
 import AppError from '../utils/appError';
 import DocumentModel, { VerificationStatusType } from '../models/document.model';
 import Restaurant from '../models/restaurant.model';
+import User from '../models/user.model';
+import UserNotification from '../models/userNotification.model';
 
 export const uploadDocument = catchAsync(async (req: Request, res: Response) => {
   const {
@@ -122,7 +124,7 @@ export const checkExpiryDates = catchAsync(async (req: Request, res: Response) =
   const fourteenDaysFromNow = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000);
   const sevenDaysFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
 
-  // 1. Mark expired documents
+  // 1. Mark expired documents and flag associated accounts
   const expiredResult = await DocumentModel.updateMany(
     {
       expiryDate: { $lt: now },
@@ -135,6 +137,44 @@ export const checkExpiryDates = catchAsync(async (req: Request, res: Response) =
       },
     }
   );
+
+  // Find all expired documents to flag corresponding accounts
+  const allExpiredDocs = await DocumentModel.find({
+    expiryDate: { $lt: now },
+  });
+
+  const expiredVendorIds = allExpiredDocs
+    .filter((d) => d.ownerType === 'Vendor' || (d.ownerType as string) === 'restaurant')
+    .map((d) => d.ownerId);
+
+  const expiredRiderIds = allExpiredDocs
+    .filter((d) => d.ownerType === 'Rider' || (d.ownerType as string) === 'rider')
+    .map((d) => d.ownerId);
+
+  if (expiredVendorIds.length > 0) {
+    await Restaurant.updateMany(
+      { _id: { $in: expiredVendorIds } },
+      {
+        $set: {
+          complianceStatus: 'expired',
+          isDocumentExpired: true,
+          documentExpiryFlagReason: 'One or more required partner compliance documents have expired.',
+        },
+      }
+    );
+  }
+
+  if (expiredRiderIds.length > 0) {
+    await User.updateMany(
+      { _id: { $in: expiredRiderIds } },
+      {
+        $set: {
+          'riderProfile.isDocumentExpired': true,
+          'riderProfile.complianceStatus': 'expired',
+        },
+      }
+    );
+  }
 
   // 2. Query documents expiring within 30, 14, 7 days that haven't had their corresponding alerts sent
   const thirtyDayDocs = await DocumentModel.find({
