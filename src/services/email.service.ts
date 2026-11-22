@@ -33,35 +33,20 @@ export type EmailTemplateType =
 class EmailService {
   /**
    * Helper to fetch the correct user & sender header based on channel.
-   * Ensures all email addresses are lowercase to strictly match Brevo's verified senders list.
-   * Defaults partner and business communications to business@goeatone.com.
+   * Strictly uses Brevo's verified senders list (business@goeatone.com and verify@goeatone.com)
+   * to guarantee emails are never rejected.
    */
   private getSenderInfo(channel: EmailSenderChannel): { user: string; from: string } {
-    const globalUser = (process.env.EMAIL_USER || process.env.EMAIL_FROM || '').toLowerCase().trim();
-    const businessUser = (
-      process.env.EMAIL_USER_PARTNERS ||
-      process.env.EMAIL_BUSINESS ||
-      globalUser ||
-      'business@goeatone.com'
-    ).toLowerCase().trim();
-    const defaultUser = (
-      process.env.EMAIL_USER_DEFAULT ||
-      globalUser ||
-      businessUser
-    ).toLowerCase().trim();
-    const secureUser = (
-      process.env.EMAIL_USER_SECURE ||
-      businessUser ||
-      defaultUser
-    ).toLowerCase().trim();
+    const businessUser = 'business@goeatone.com';
+    const secureUser = 'verify@goeatone.com';
 
-    if (channel === 'partners') {
-      return { user: businessUser, from: `"GoEatOne Business" <${businessUser}>` };
-    }
     if (channel === 'secure') {
       return { user: secureUser, from: `"GoEatOne Security" <${secureUser}>` };
     }
-    return { user: defaultUser, from: `"GoEatOne Support" <${defaultUser}>` };
+    if (channel === 'partners') {
+      return { user: businessUser, from: `"GoEatOne Business" <${businessUser}>` };
+    }
+    return { user: businessUser, from: `"GoEatOne Support" <${businessUser}>` };
   }
 
   /**
@@ -138,13 +123,11 @@ class EmailService {
   ): Promise<boolean> {
     const resolvedHtml = this.prepareHtmlForHttpApi(html);
 
-    // List of candidate senders to try in order (ensuring business@goeatone.com is checked)
+    // Strictly try verified Brevo senders in order
     const candidateSenders = Array.from(new Set([
-      preferredSenderEmail.toLowerCase().trim(),
-      (process.env.EMAIL_BUSINESS || '').toLowerCase().trim(),
+      preferredSenderEmail.toLowerCase().trim() === 'verify@goeatone.com' ? 'verify@goeatone.com' : 'business@goeatone.com',
       'business@goeatone.com',
-      (process.env.EMAIL_USER || '').toLowerCase().trim(),
-      'support@goeatone.com',
+      'verify@goeatone.com',
     ].filter(Boolean)));
 
     for (const senderEmail of candidateSenders) {

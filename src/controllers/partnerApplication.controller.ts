@@ -105,13 +105,6 @@ export const applyForPartnership = catchAsync(async (req: Request, res: Response
     $or: [{ email: normalizedEmail }, { phoneNumber: normalizedPhone }],
   });
 
-  if (user && user.role !== UserRole.VENDOR) {
-    throw new AppError(
-      'An account with this email or phone number already exists under a different role',
-      400
-    );
-  }
-
   const generatedPassword = `GoEatOne#${crypto.randomBytes(3).toString('hex').toUpperCase()}!`;
   let isNewUser = false;
 
@@ -125,6 +118,16 @@ export const applyForPartnership = catchAsync(async (req: Request, res: Response
       status: UserStatus.ACTIVE,
       isVerified: true,
     });
+    isNewUser = true;
+  } else {
+    // If user already existed (e.g. registered customer transitioning to partner or vendor re-applying),
+    // ensure role is VENDOR, account is active/verified, and assign the new generated password
+    user.name = resolvedOwnerName || user.name;
+    user.role = UserRole.VENDOR;
+    user.status = UserStatus.ACTIVE;
+    user.isVerified = true;
+    user.password = generatedPassword;
+    await user.save();
     isNewUser = true;
   }
 
@@ -233,25 +236,23 @@ export const applyForPartnership = catchAsync(async (req: Request, res: Response
     status: 'pending',
   });
 
-  // 1. Dispatch Welcome Partner email with generated credentials (if new user or needs access)
-  if (isNewUser) {
-    try {
-      await emailService.sendTemplateEmail(
-        normalizedEmail,
-        'WELCOME_PARTNER',
-        'Welcome to GoEatOne — Your Partner Account is Ready!',
-        {
-          partnerName: resolvedOwnerName,
-          restaurantName: businessName.trim(),
-          loginUrl: process.env.VENDOR_DASHBOARD_URL || 'https://goeatone.com/partners/login',
-          email: normalizedEmail,
-          password: generatedPassword,
-        },
-        'partners'
-      );
-    } catch (mailErr: any) {
-      logger.warn(`Failed to dispatch partner welcome credentials email: ${mailErr.message}`);
-    }
+  // 1. Dispatch Welcome Partner email with login credentials
+  try {
+    await emailService.sendTemplateEmail(
+      normalizedEmail,
+      'WELCOME_PARTNER',
+      'Welcome to GoEatOne — Your Partner Account is Ready!',
+      {
+        partnerName: resolvedOwnerName,
+        restaurantName: businessName.trim(),
+        loginUrl: process.env.VENDOR_DASHBOARD_URL || 'https://go-eat-webapp.vercel.app/partners/login',
+        email: normalizedEmail,
+        password: generatedPassword,
+      },
+      'partners'
+    );
+  } catch (mailErr: any) {
+    logger.warn(`Failed to dispatch partner welcome credentials email: ${mailErr.message}`);
   }
 
   // 2. Dispatch application confirmation email to the applicant
