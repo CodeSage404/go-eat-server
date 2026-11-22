@@ -6,6 +6,85 @@ const auth_middleware_1 = require("../middleware/auth.middleware");
 const router = (0, express_1.Router)();
 /**
  * @openapi
+ * /api/v1/subscriptions/admin/all:
+ *   get:
+ *     summary: Get all platform subscribers and MRR metrics (Admin)
+ *     description: Returns paginated list of restaurant and partner subscriptions with aggregate MRR, tier counts, and subscriber profiles.
+ *     tags:
+ *       - Subscriptions
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *         description: Search by outlet name, owner name, or email
+ *       - in: query
+ *         name: planTier
+ *         schema:
+ *           type: string
+ *           enum: [all, payg, plus, unlimited]
+ *         description: Filter by subscription tier
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *           enum: [all, active, past_due, cancelled, trialing]
+ *         description: Filter by status
+ *       - in: query
+ *         name: market
+ *         schema:
+ *           type: string
+ *           enum: [all, NG, UK, EU]
+ *         description: Filter by operating market
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 25
+ *     responses:
+ *       200:
+ *         description: Subscriptions and metrics retrieved successfully
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Internal server error
+ */
+router.get('/admin/all', auth_middleware_1.protect, subscription_controller_1.SubscriptionController.getAllSubscriptionsAdmin);
+/**
+ * @openapi
+ * /api/v1/subscriptions/admin/{id}/cancel:
+ *   patch:
+ *     summary: Cancel a subscription (Admin)
+ *     description: Terminates an active outlet subscription and flags it for cancellation.
+ *     tags:
+ *       - Subscriptions
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Subscription document ID
+ *     responses:
+ *       200:
+ *         description: Subscription cancelled successfully
+ *       404:
+ *         description: Subscription not found
+ *       500:
+ *         description: Internal server error
+ */
+router.patch('/admin/:id/cancel', auth_middleware_1.protect, subscription_controller_1.SubscriptionController.cancelSubscriptionAdmin);
+/**
+ * @openapi
  * /api/v1/subscriptions/plans:
  *   get:
  *     summary: Retrieve subscription plans

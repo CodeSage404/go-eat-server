@@ -1,9 +1,137 @@
 import { Request, Response } from 'express';
 import { SubscriptionService } from '../services/subscription.service';
-import { SUBSCRIPTION_PLAN_CONFIGS, SubscriptionPlanTier } from '../models/subscription.model';
+import { OutletSubscription, SUBSCRIPTION_PLAN_CONFIGS, SubscriptionPlanTier } from '../models/subscription.model';
 import Restaurant from '../models/restaurant.model';
 
 export class SubscriptionController {
+  /**
+   * Admin: Retrieve all platform subscriptions with KPI metrics, search, and filters
+   */
+  public static async getAllSubscriptionsAdmin(req: Request, res: Response) {
+    try {
+      const { search, planTier, status, market, page = 1, limit = 25 } = req.query;
+      const skip = (Number(page) - 1) * Number(limit);
+
+      const filter: any = {};
+      if (planTier && planTier !== 'all') {
+        filter.planTier = planTier;
+      }
+      if (status && status !== 'all') {
+        filter.status = status;
+      }
+      if (market && market !== 'all') {
+        filter.market = market;
+      }
+
+      const subscriptions = await OutletSubscription.find(filter)
+        .populate({
+          path: 'restaurantId',
+          select: 'name email phoneNumber address city country logo coverImage status owner',
+          populate: {
+            path: 'owner',
+            select: 'name email phoneNumber role',
+          },
+        })
+        .sort({ updatedAt: -1 })
+        .skip(skip)
+        .limit(Number(limit));
+
+      const total = await OutletSubscription.countDocuments(filter);
+
+      // Compute aggregate KPIs for Active subscribers
+      const allActive = await OutletSubscription.find({ status: 'active' });
+      let mrrNGN = 0;
+      let mrrGBP = 0;
+      let mrrEUR = 0;
+      let plusCount = 0;
+      let unlimitedCount = 0;
+      let paygCount = 0;
+
+      for (const sub of allActive) {
+        if (sub.currency === 'NGN') mrrNGN += sub.monthlyFee || 0;
+        else if (sub.currency === 'GBP') mrrGBP += sub.monthlyFee || 0;
+        else if (sub.currency === 'EUR') mrrEUR += sub.monthlyFee || 0;
+
+        if (sub.planTier === 'plus') plusCount++;
+        else if (sub.planTier === 'unlimited') unlimitedCount++;
+        else paygCount++;
+      }
+
+      let resultItems = subscriptions;
+      if (search && String(search).trim() !== '') {
+        const queryTerm = String(search).toLowerCase();
+        resultItems = subscriptions.filter((sub: any) => {
+          const rest = sub.restaurantId;
+          const owner = rest?.owner;
+          return (
+            rest?.name?.toLowerCase().includes(queryTerm) ||
+            rest?.email?.toLowerCase().includes(queryTerm) ||
+            owner?.name?.toLowerCase().includes(queryTerm) ||
+            owner?.email?.toLowerCase().includes(queryTerm) ||
+            sub.planTier?.toLowerCase().includes(queryTerm)
+          );
+        });
+      }
+
+      return res.status(200).json({
+        success: true,
+        data: {
+          subscriptions: resultItems,
+          pagination: {
+            total,
+            page: Number(page),
+            pages: Math.ceil(total / Number(limit)),
+            limit: Number(limit),
+          },
+          metrics: {
+            totalSubscribers: total,
+            activeCount: allActive.length,
+            mrrNGN,
+            mrrGBP,
+            mrrEUR,
+            plusCount,
+            unlimitedCount,
+            paygCount,
+          },
+        },
+      });
+    } catch (error: any) {
+      return res.status(500).json({
+        success: false,
+        message: error.message || 'Failed to retrieve subscribers list',
+      });
+    }
+  }
+
+  /**
+   * Admin: Cancel or terminate a subscription
+   */
+  public static async cancelSubscriptionAdmin(req: Request, res: Response) {
+    try {
+      const subscriptionId = req.params.id;
+      const sub = await OutletSubscription.findById(subscriptionId);
+      if (!sub) {
+        return res.status(404).json({ success: false, message: 'Subscription not found' });
+      }
+
+      sub.status = 'cancelled';
+      sub.cancelledAt = new Date();
+      sub.cancelAtPeriodEnd = true;
+      await sub.save();
+
+      return res.status(200).json({
+        success: true,
+        message: 'Subscription successfully cancelled',
+        subscription: sub,
+      });
+    } catch (error: any) {
+      return res.status(500).json({
+        success: false,
+        message: error.message || 'Failed to cancel subscription',
+      });
+    }
+  }
+
   /**
    * Get subscription plans configuration for the current outlet's market
    */

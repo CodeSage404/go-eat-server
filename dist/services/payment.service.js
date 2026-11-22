@@ -57,39 +57,15 @@ class PaymentService {
      * Helper to resolve payment provider based on order location, user country, and admin settings
      */
     resolveProviderByLocation(order, setting, user, requestedProvider) {
-        // 1. Check Global Provider Kill Switches
-        const paystackEnabled = setting?.enablePaystack !== false;
-        const flutterwaveEnabled = setting?.enableFlutterwave !== false;
-        const stripeEnabled = setting?.enableStripe !== false;
-        const monnifyEnabled = setting?.enableMonnify !== false;
+        // Platform Production Rule: Stripe and Bachs.io are the ONLY active production payment gateways.
         const bachsEnabled = setting?.enableBachs !== false;
-        if (!paystackEnabled && !flutterwaveEnabled && !stripeEnabled && !monnifyEnabled && !bachsEnabled) {
-            throw new appError_1.default('Online card payments are currently disabled by the administrator.', 503);
-        }
-        const isProviderEnabled = (p) => {
-            if (p === 'bachs')
-                return bachsEnabled;
-            if (p === 'monnify')
-                return monnifyEnabled;
-            if (p === 'paystack')
-                return paystackEnabled;
-            if (p === 'flutterwave')
-                return flutterwaveEnabled;
-            if (p === 'stripe')
-                return stripeEnabled;
-            return false;
-        };
-        // 2. Admin Override: Force a specific provider globally everywhere
-        if (setting?.forceGlobalPaymentProvider &&
-            setting.forceGlobalPaymentProvider !== 'none' &&
-            isProviderEnabled(setting.forceGlobalPaymentProvider)) {
-            return setting.forceGlobalPaymentProvider;
-        }
-        // 3. If a specific provider was requested by user, verify it's not disabled
-        if (requestedProvider && isProviderEnabled(requestedProvider)) {
-            return requestedProvider;
-        }
-        // 4. Determine Country Code from User profile or Order address
+        const stripeEnabled = setting?.enableStripe !== false;
+        // 1. If explicit forced global provider in admin, check if it's bachs or stripe
+        if (setting?.forceGlobalPaymentProvider === 'bachs' && bachsEnabled)
+            return 'bachs';
+        if (setting?.forceGlobalPaymentProvider === 'stripe' && stripeEnabled)
+            return 'stripe';
+        // 2. Determine Country Code from User profile or Order address
         let countryCode = (user?.countryCode || '').toUpperCase();
         if (!countryCode) {
             if (user?.isNigeria)
@@ -107,64 +83,25 @@ class PaymentService {
             else if (locationStr.includes('italy') || locationStr.includes('italia') || locationStr.includes('rome') || locationStr.includes('milan')) {
                 countryCode = 'IT';
             }
-            else if (locationStr.includes('nigeria') || locationStr.includes('lagos') || locationStr.includes('abuja')) {
+            else if (locationStr.includes('nigeria') || locationStr.includes('lagos') || locationStr.includes('abuja') || locationStr.includes('enugu')) {
                 countryCode = 'NG';
             }
         }
-        // 5. Check Admin Platform Settings (Country-specific payment provider mapping)
-        if (setting?.countryPaymentProviders && Array.isArray(setting.countryPaymentProviders)) {
-            const match = setting.countryPaymentProviders.find((c) => c.countryCode?.toUpperCase() === countryCode && c.isActive !== false);
-            if (match && match.provider && isProviderEnabled(match.provider)) {
-                return match.provider;
-            }
-        }
-        // 6. Direct Country Assignment (if enabled)
-        if (countryCode === 'NG' || user?.isNigeria) {
+        // 3. User requested provider if valid production provider
+        if (requestedProvider === 'bachs' && bachsEnabled)
+            return 'bachs';
+        if (requestedProvider === 'stripe' && stripeEnabled)
+            return 'stripe';
+        // 4. Nigeria strictly uses Bachs.io for all NGN card & transfer transactions
+        if (countryCode === 'NG' || user?.isNigeria || String(order?.currency || '').toUpperCase() === 'NGN') {
             if (bachsEnabled)
                 return 'bachs';
-            if (setting?.defaultPaymentProvider === 'bachs' && bachsEnabled)
-                return 'bachs';
-            if (setting?.defaultPaymentProvider === 'monnify' && monnifyEnabled)
-                return 'monnify';
-            if (setting?.defaultPaymentProvider === 'paystack' && paystackEnabled)
-                return 'paystack';
-            if (monnifyEnabled)
-                return 'monnify';
-            if (paystackEnabled)
-                return 'paystack';
-            if (flutterwaveEnabled)
-                return 'flutterwave';
-            if (stripeEnabled)
-                return 'stripe';
+            return 'stripe';
         }
-        if (countryCode === 'GB' || countryCode === 'UK' || countryCode === 'IT' || user?.isUk || user?.isItaly) {
-            if (stripeEnabled)
-                return 'stripe';
-            if (paystackEnabled)
-                return 'paystack';
-            if (flutterwaveEnabled)
-                return 'flutterwave';
-        }
-        // 7. African Countries fallback
-        const africanCountries = ['GH', 'KE', 'ZA', 'EG', 'RW', 'UG', 'TZ', 'CI', 'SN', 'CM'];
-        if (africanCountries.includes(countryCode)) {
-            if (setting?.defaultPaymentProvider === 'flutterwave' && flutterwaveEnabled)
-                return 'flutterwave';
-            if (paystackEnabled)
-                return 'paystack';
-            if (flutterwaveEnabled)
-                return 'flutterwave';
-            if (stripeEnabled)
-                return 'stripe';
-        }
-        // 8. Outside Africa (UK, US, Europe, Canada, etc.) defaults to Stripe if enabled
+        // 5. UK, Italy and Global markets strictly use Stripe
         if (stripeEnabled)
             return 'stripe';
-        if (paystackEnabled)
-            return 'paystack';
-        if (flutterwaveEnabled)
-            return 'flutterwave';
-        return 'stripe';
+        return bachsEnabled ? 'bachs' : 'stripe';
     }
     /**
      * Initialize Payment for an Order using preferred provider (Paystack, Flutterwave, or Stripe)
@@ -338,7 +275,7 @@ class PaymentService {
                 provider: 'monnify',
             };
         }
-        else if (provider?.toLowerCase() === 'bachs') {
+        else if (activeProvider.toLowerCase() === 'bachs') {
             const result = await bachs_module_1.default.initializePayment({
                 email: safeEmail,
                 name: user?.name,
@@ -360,38 +297,49 @@ class PaymentService {
             };
         }
         else {
-            // Default: Paystack
-            const Restaurant = require('../models/restaurant.model').default;
-            const restaurantId = order.restaurant?._id || order.restaurant;
-            const restaurantObj = restaurantId ? await Restaurant.findById(restaurantId) : null;
-            const subaccount = restaurantObj?.paystackSubaccountCode;
-            let transactionCharge;
-            if (subaccount) {
-                const commissionRate = setting?.commissionRate || 10;
-                const subtotal = order.totalAmount - (order.deliveryFee || 0);
-                const adminCut = (subtotal * commissionRate) / 100;
-                // Platform retains adminCut + deliveryFee + serviceFee(if any)
-                transactionCharge = adminCut + (order.deliveryFee || 0);
+            // Fallback: If in Nigeria -> Bachs.io, otherwise Stripe. (Paystack/Flutterwave/Monnify disabled for production)
+            const userCountry = (user?.countryCode || (user?.isNigeria ? 'NG' : '')).toUpperCase();
+            const isNigeria = userCountry === 'NG' || user?.isNigeria || String(order.currency || '').toUpperCase() === 'NGN';
+            if (isNigeria) {
+                const result = await bachs_module_1.default.initializePayment({
+                    email: safeEmail,
+                    name: user?.name,
+                    amount,
+                    reference,
+                    callbackUrl: `${serverCallbackUrl}&provider=bachs`,
+                    cancelUrl: 'https://goeatone.com/checkout',
+                    metadata: {
+                        orderId: order._id.toString(),
+                        orderIds: orderIdList.join(','),
+                        customerId: user._id.toString(),
+                    },
+                    description: `Go-Eat Order #${order._id.toString().slice(-6)}`,
+                });
+                return {
+                    authorizationUrl: result.authorizationUrl,
+                    reference: result.reference,
+                    provider: 'bachs',
+                };
             }
-            const result = await paystack_module_1.default.initializePayment({
-                email: safeEmail,
-                amount,
-                reference,
-                callbackUrl: `${serverCallbackUrl}&provider=paystack`,
-                metadata: {
-                    orderId: order._id.toString(),
-                    orderIds: orderIdList.join(','),
-                    customerId: user._id.toString(),
-                },
-                subaccount,
-                transactionCharge,
-            });
-            return {
-                authorizationUrl: result.authorizationUrl,
-                accessCode: result.accessCode,
-                reference: result.reference,
-                provider: 'paystack',
-            };
+            else {
+                const result = await stripe_module_1.default.initializePayment({
+                    email: safeEmail,
+                    amount,
+                    reference,
+                    currency: String(order.currency || 'gbp').toLowerCase(),
+                    redirectUrl: `${serverCallbackUrl}&provider=stripe`,
+                    metadata: {
+                        orderId: order._id.toString(),
+                        orderIds: orderIdList.join(','),
+                        customerId: user._id.toString(),
+                    },
+                });
+                return {
+                    authorizationUrl: result.authorizationUrl,
+                    reference: result.reference,
+                    provider: 'stripe',
+                };
+            }
         }
     }
     /**

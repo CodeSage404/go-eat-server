@@ -41,86 +41,40 @@ class PaymentController {
         this.getActivePaymentProviders = (0, catchAsync_1.catchAsync)(async (req, res) => {
             const countryCode = String(req.query.countryCode || '').toUpperCase();
             const setting = await setting_model_1.default.findOne();
-            const paystackEnabled = setting?.enablePaystack !== false;
-            const flutterwaveEnabled = setting?.enableFlutterwave !== false;
-            const stripeEnabled = setting?.enableStripe !== false;
-            const monnifyEnabled = setting?.enableMonnify !== false;
             const bachsEnabled = setting?.enableBachs !== false;
-            const allDisabled = !paystackEnabled && !flutterwaveEnabled && !stripeEnabled && !monnifyEnabled && !bachsEnabled;
-            let forcedProvider = setting?.forceGlobalPaymentProvider || 'none';
-            if (forcedProvider !== 'none') {
-                if (forcedProvider === 'bachs' && !bachsEnabled)
-                    forcedProvider = 'none';
-                if (forcedProvider === 'stripe' && !stripeEnabled)
-                    forcedProvider = 'none';
-                if (forcedProvider === 'monnify' && !monnifyEnabled)
-                    forcedProvider = 'none';
-                if (forcedProvider === 'paystack' && !paystackEnabled)
-                    forcedProvider = 'none';
-                if (forcedProvider === 'flutterwave' && !flutterwaveEnabled)
-                    forcedProvider = 'none';
-            }
+            const stripeEnabled = setting?.enableStripe !== false;
             let activeProviders = [];
-            let defaultProvider = 'stripe';
-            if (forcedProvider !== 'none') {
-                activeProviders = [forcedProvider];
-                defaultProvider = forcedProvider;
+            let defaultProvider = 'bachs';
+            if (countryCode === 'NG') {
+                if (bachsEnabled)
+                    activeProviders.push('bachs');
+                defaultProvider = 'bachs';
             }
             else {
-                // Check country mapping
-                const countryMatch = setting?.countryPaymentProviders?.find((c) => c.countryCode?.toUpperCase() === countryCode && c.isActive !== false);
-                if (countryCode === 'NG') {
-                    if (bachsEnabled)
-                        activeProviders.push('bachs');
-                    if (paystackEnabled)
-                        activeProviders.push('paystack');
-                    if (monnifyEnabled)
-                        activeProviders.push('monnify');
-                    if (flutterwaveEnabled)
-                        activeProviders.push('flutterwave');
-                    if (activeProviders.length === 0 && stripeEnabled)
-                        activeProviders.push('stripe');
-                    defaultProvider =
-                        countryMatch?.provider ||
-                            (bachsEnabled
-                                ? 'bachs'
-                                : monnifyEnabled
-                                    ? 'monnify'
-                                    : paystackEnabled
-                                        ? 'paystack'
-                                        : flutterwaveEnabled
-                                            ? 'flutterwave'
-                                            : 'stripe');
-                }
-                else {
-                    if (stripeEnabled)
-                        activeProviders.push('stripe');
-                    if (activeProviders.length === 0) {
-                        if (bachsEnabled)
-                            activeProviders.push('bachs');
-                        if (monnifyEnabled)
-                            activeProviders.push('monnify');
-                        if (paystackEnabled)
-                            activeProviders.push('paystack');
-                        if (flutterwaveEnabled)
-                            activeProviders.push('flutterwave');
-                    }
-                    defaultProvider = countryMatch?.provider || (stripeEnabled ? 'stripe' : 'paystack');
-                }
+                if (stripeEnabled)
+                    activeProviders.push('stripe');
+                defaultProvider = 'stripe';
+            }
+            if (activeProviders.length === 0) {
+                if (bachsEnabled)
+                    activeProviders.push('bachs');
+                if (stripeEnabled)
+                    activeProviders.push('stripe');
+                defaultProvider = bachsEnabled ? 'bachs' : 'stripe';
             }
             res.status(200).json({
                 status: 'success',
                 data: {
-                    allDisabled,
-                    forcedProvider,
+                    allDisabled: !bachsEnabled && !stripeEnabled,
+                    forcedProvider: setting?.forceGlobalPaymentProvider || 'none',
                     activeProviders,
                     defaultProvider,
                     providers: {
                         bachs: bachsEnabled,
-                        monnify: monnifyEnabled,
-                        paystack: paystackEnabled,
-                        flutterwave: flutterwaveEnabled,
                         stripe: stripeEnabled,
+                        monnify: false,
+                        paystack: false,
+                        flutterwave: false,
                     },
                 },
             });
