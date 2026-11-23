@@ -203,9 +203,11 @@ class SubscriptionService {
         sub.cancelAtPeriodEnd = false;
         sub.status = 'active';
         await sub.save();
+        const isSubscribed = targetTier !== 'payg';
         await restaurant_model_1.default.findByIdAndUpdate(restaurantId, {
             subscriptionPlan: targetTier,
             subscriptionStatus: 'active',
+            isSubscribed,
         });
         return sub;
     }

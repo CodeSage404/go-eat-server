@@ -7,6 +7,8 @@ exports.SubscriptionController = void 0;
 const subscription_service_1 = require("../services/subscription.service");
 const subscription_model_1 = require("../models/subscription.model");
 const restaurant_model_1 = __importDefault(require("../models/restaurant.model"));
+const bachs_module_1 = __importDefault(require("../services/payments/bachs.module"));
+const stripe_module_1 = __importDefault(require("../services/payments/stripe.module"));
 class SubscriptionController {
     /**
      * Admin: Retrieve all platform subscriptions with KPI metrics, search, and filters
@@ -77,6 +79,9 @@ class SubscriptionController {
                 success: true,
                 data: {
                     subscriptions: resultItems,
+                    total,
+                    page: Number(page),
+                    totalPages: Math.ceil(total / Number(limit)),
                     pagination: {
                         total,
                         page: Number(page),
@@ -92,6 +97,11 @@ class SubscriptionController {
                         plusCount,
                         unlimitedCount,
                         paygCount,
+                        tierDistribution: {
+                            payg: paygCount,
+                            plus: plusCount,
+                            unlimited: unlimitedCount,
+                        },
                     },
                 },
             });
@@ -215,6 +225,163 @@ class SubscriptionController {
             return res.status(500).json({
                 success: false,
                 message: error.message || 'Failed to update subscription',
+            });
+        }
+    }
+    /**
+     * Initialize Subscription Checkout (Bachs for Nigeria, Stripe for UK/EU)
+     */
+    static async initializeSubscriptionCheckout(req, res) {
+        try {
+            const user = req.user;
+            let { restaurantId, planTier, market, callbackUrl, cancelUrl } = req.body;
+            if (!restaurantId && user) {
+                const found = await restaurant_model_1.default.findOne({ owner: user._id });
+                if (found)
+                    restaurantId = found._id.toString();
+            }
+            if (!restaurantId) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Restaurant ID is required to initialize subscription',
+                });
+            }
+            if (!['payg', 'plus', 'unlimited'].includes(planTier)) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Valid plan tier required (payg, plus, or unlimited)',
+                });
+            }
+            const restaurant = await restaurant_model_1.default.findById(restaurantId);
+            if (!restaurant) {
+                return res.status(404).json({ success: false, message: 'Restaurant not found' });
+            }
+            const resolvedMarket = market || subscription_service_1.SubscriptionService.getRestaurantMarket(restaurant);
+            const config = subscription_model_1.SUBSCRIPTION_PLAN_CONFIGS[resolvedMarket]?.[planTier];
+            if (!config) {
+                return res.status(400).json({ success: false, message: 'Invalid plan or market configuration' });
+            }
+            // PAYG requires no upfront payment
+            if (planTier === 'payg' || config.monthlyFee <= 0) {
+                const sub = await subscription_service_1.SubscriptionService.updateSubscriptionPlan(restaurantId, 'payg');
+                return res.status(200).json({
+                    success: true,
+                    message: 'Subscribed to Pay As You Go successfully',
+                    requiresPayment: false,
+                    subscription: sub,
+                });
+            }
+            // Paid tiers (Plus / Unlimited)
+            const userEmail = user?.email || restaurant.businessEmail || 'partner@goeatone.com';
+            const userName = user?.name || restaurant.name || 'Go-Eat Partner';
+            const reference = `SUB_${restaurantId}_${planTier.toUpperCase()}_${Date.now()}`;
+            const returnUrl = callbackUrl ||
+                `https://go-eat-server-z96s.onrender.com/api/v1/subscriptions/verify-payment?reference=${encodeURIComponent(reference)}&provider=${resolvedMarket === 'NG' ? 'bachs' : 'stripe'}&restaurantId=${restaurantId}&planTier=${planTier}`;
+            let checkoutResult;
+            if (resolvedMarket === 'NG') {
+                const result = await bachs_module_1.default.initializePayment({
+                    email: userEmail,
+                    name: userName,
+                    amount: config.monthlyFee,
+                    reference,
+                    metadata: {
+                        type: 'partner_subscription',
+                        restaurantId,
+                        planTier,
+                        market: resolvedMarket,
+                    },
+                    callbackUrl: returnUrl,
+                    cancelUrl: cancelUrl || 'https://goeatone.com/partners/tiers',
+                    description: `Go-Eat Partner ${planTier.toUpperCase()} Plan Subscription`,
+                });
+                checkoutResult = {
+                    authorizationUrl: result.authorizationUrl,
+                    reference: result.reference,
+                    provider: 'bachs',
+                };
+            }
+            else {
+                const result = await stripe_module_1.default.initializePayment({
+                    email: userEmail,
+                    amount: config.monthlyFee,
+                    reference,
+                    currency: config.currency.toLowerCase(),
+                    redirectUrl: returnUrl,
+                    metadata: {
+                        type: 'partner_subscription',
+                        restaurantId,
+                        planTier,
+                        market: resolvedMarket,
+                    },
+                });
+                checkoutResult = {
+                    authorizationUrl: result.authorizationUrl,
+                    reference: result.reference,
+                    provider: 'stripe',
+                };
+            }
+            return res.status(200).json({
+                success: true,
+                requiresPayment: true,
+                ...checkoutResult,
+            });
+        }
+        catch (error) {
+            return res.status(500).json({
+                success: false,
+                message: error.message || 'Failed to initialize subscription checkout',
+            });
+        }
+    }
+    /**
+     * Verify and activate subscription after checkout redirect
+     */
+    static async verifySubscriptionPayment(req, res) {
+        try {
+            const { reference, provider = 'bachs', restaurantId, planTier } = req.query;
+            if (!reference || !restaurantId || !planTier) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'reference, restaurantId, and planTier are required query parameters',
+                });
+            }
+            let isSuccess = false;
+            if (String(provider).toLowerCase() === 'stripe') {
+                const verification = await stripe_module_1.default.verifyPayment(String(reference));
+                isSuccess = verification.status === 'success' || verification.status === 'paid';
+            }
+            else {
+                const verification = await bachs_module_1.default.verifyPayment(String(reference));
+                isSuccess = verification.status === 'success';
+            }
+            if (isSuccess) {
+                const sub = await subscription_service_1.SubscriptionService.updateSubscriptionPlan(String(restaurantId), planTier, provider, String(reference));
+                if (req.accepts('html')) {
+                    return res.redirect(`https://goeatone.com/partners/tiers?success=true&plan=${planTier}&ref=${reference}`);
+                }
+                return res.status(200).json({
+                    success: true,
+                    message: `Subscription to ${String(planTier).toUpperCase()} activated successfully`,
+                    subscription: sub,
+                });
+            }
+            else {
+                if (req.accepts('html')) {
+                    return res.redirect(`https://goeatone.com/partners/tiers?error=payment_unverified&ref=${reference}`);
+                }
+                return res.status(400).json({
+                    success: false,
+                    message: 'Payment verification failed or was not completed',
+                });
+            }
+        }
+        catch (error) {
+            if (req.accepts('html')) {
+                return res.redirect(`https://goeatone.com/partners/tiers?error=server_error`);
+            }
+            return res.status(500).json({
+                success: false,
+                message: error.message || 'Failed to verify subscription payment',
             });
         }
     }

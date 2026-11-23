@@ -88,6 +88,56 @@ class BachsModule {
         }
     }
     /**
+     * Initiate a payout / disbursement to a Nigerian bank account via Bachs.io
+     */
+    async initiatePayout(params) {
+        const apiKey = await this.getApiKey();
+        const baseUrl = this.getBaseUrl();
+        const formattedAmount = Number(params.amount).toFixed(2);
+        const payload = {
+            amount: formattedAmount,
+            currency: 'NGN',
+            account_number: params.accountNumber,
+            bank_code: params.bankCode,
+            reference: params.reference,
+            narration: params.narration || 'Go-Eat Payout',
+            recipient_name: params.beneficiaryName || 'Go-Eat Beneficiary',
+        };
+        try {
+            logger_1.default.info(`[Bachs] Initiating payout for reference: ${params.reference}, amount: ${formattedAmount} NGN to ${params.accountNumber}`);
+            const res = await axios_1.default.post(`${baseUrl}/transfers`, payload, {
+                headers: {
+                    Authorization: `Bearer ${apiKey}`,
+                    'Content-Type': 'application/json',
+                    Accept: 'application/json',
+                },
+                timeout: 20000,
+            });
+            return res.data;
+        }
+        catch (error) {
+            const errDetails = error.response?.data
+                ? JSON.stringify(error.response.data)
+                : error.message;
+            logger_1.default.warn(`[Bachs] Transfers endpoint returned: ${errDetails}. Attempting /payouts fallback...`);
+            try {
+                const res2 = await axios_1.default.post(`${baseUrl}/payouts`, payload, {
+                    headers: {
+                        Authorization: `Bearer ${apiKey}`,
+                        'Content-Type': 'application/json',
+                        Accept: 'application/json',
+                    },
+                    timeout: 20000,
+                });
+                return res2.data;
+            }
+            catch (e2) {
+                logger_1.default.error(`[Bachs] Payout execution error: ${e2.response?.data ? JSON.stringify(e2.response.data) : e2.message}`);
+                throw new appError_1.default(`Bachs payout error: ${e2.response?.data?.message || error.response?.data?.message || error.message}`, 400);
+            }
+        }
+    }
+    /**
      * Verify checkout session on Bachs.io
      */
     async verifyPayment(referenceOrSessionId) {

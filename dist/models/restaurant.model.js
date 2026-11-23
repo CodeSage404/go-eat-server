@@ -376,6 +376,10 @@ const restaurantSchema = new mongoose_1.Schema({
         type: String,
         default: 'NGN',
     },
+    isSubscribed: {
+        type: Boolean,
+        default: false,
+    },
     subscriptionPlan: {
         type: String,
         enum: ['payg', 'plus', 'unlimited'],
@@ -500,6 +504,10 @@ restaurantSchema.pre('save', function () {
         else if (rest.countryCode === 'NG')
             rest.baseCurrency = 'NGN';
     }
+    // Sync isSubscribed based on subscriptionPlan
+    rest.isSubscribed = Boolean(rest.subscriptionPlan &&
+        rest.subscriptionPlan !== 'payg' &&
+        rest.subscriptionStatus === 'active');
 });
 // Indexes for geospatial and country queries
 restaurantSchema.index({ location: '2dsphere' });

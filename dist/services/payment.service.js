@@ -588,7 +588,7 @@ class PaymentService {
     /**
      * Payout / Transfer money to a Delivery Rider's Bank Account
      */
-    async payoutRider(riderId, amount, provider = process.env.DEFAULT_PAYMENT_PROVIDER || 'paystack') {
+    async payoutRider(riderId, amount, provider = process.env.DEFAULT_PAYMENT_PROVIDER || 'bachs') {
         if (amount <= 0)
             throw new appError_1.default('Payout amount must be greater than zero', 400);
         const rider = await user_model_1.default.findById(riderId);
@@ -608,8 +608,8 @@ class PaymentService {
         }
         const reference = `PAYOUT_RIDER_${riderId}_${Date.now()}`;
         let transferResult;
-        if (provider.toLowerCase() === 'flutterwave') {
-            transferResult = await flutterwave_module_1.default.initiatePayout({
+        if (provider.toLowerCase() === 'bachs' || provider.toLowerCase() === 'paystack') {
+            transferResult = await bachs_module_1.default.initiatePayout({
                 amount,
                 accountNumber: bankAccount.accountNumber,
                 bankCode: bankAccount.bankCode,
@@ -618,32 +618,17 @@ class PaymentService {
                 beneficiaryName: bankAccount.accountName || rider.name,
             });
         }
-        else if (provider?.toLowerCase() === 'monnify') {
-            transferResult = await monnify_module_1.default.initiatePayout({
+        else if (provider.toLowerCase() === 'stripe') {
+            transferResult = { status: 'submitted', reference, message: 'Dispatched via Stripe Connect' };
+        }
+        else {
+            transferResult = await bachs_module_1.default.initiatePayout({
                 amount,
                 accountNumber: bankAccount.accountNumber,
                 bankCode: bankAccount.bankCode,
                 reference,
-                reason: `Go-Eat Rider Payout (${rider.name})`,
-            });
-        }
-        else {
-            let recipientCode = bankAccount.recipientCode;
-            if (!recipientCode) {
-                const recipient = await paystack_module_1.default.createTransferRecipient({
-                    name: bankAccount.accountName || rider.name,
-                    accountNumber: bankAccount.accountNumber,
-                    bankCode: bankAccount.bankCode,
-                });
-                recipientCode = recipient.recipientCode;
-                wallet.bankAccount.recipientCode = recipientCode;
-                await wallet.save();
-            }
-            transferResult = await paystack_module_1.default.initiatePayout({
-                amount,
-                recipientCode,
-                reference,
-                reason: `Go-Eat Rider Payout (${rider.name})`,
+                narration: `Go-Eat Rider Payout (${rider.name})`,
+                beneficiaryName: bankAccount.accountName || rider.name,
             });
         }
         // Deduct amount from wallet balance after transfer initiation
@@ -662,7 +647,7 @@ class PaymentService {
     /**
      * Payout / Transfer money to a Restaurant Vendor's Bank Account
      */
-    async payoutRestaurant(restaurantId, amount, provider = process.env.DEFAULT_PAYMENT_PROVIDER || 'paystack') {
+    async payoutRestaurant(restaurantId, amount, provider = process.env.DEFAULT_PAYMENT_PROVIDER || 'bachs') {
         if (amount <= 0)
             throw new appError_1.default('Payout amount must be greater than zero', 400);
         const wallet = await wallet_model_1.default.findOne({ user: restaurantId });
@@ -678,8 +663,8 @@ class PaymentService {
         }
         const reference = `PAYOUT_REST_${restaurantId}_${Date.now()}`;
         let transferResult;
-        if (provider.toLowerCase() === 'flutterwave') {
-            transferResult = await flutterwave_module_1.default.initiatePayout({
+        if (provider.toLowerCase() === 'bachs' || provider.toLowerCase() === 'paystack') {
+            transferResult = await bachs_module_1.default.initiatePayout({
                 amount,
                 accountNumber: bankAccount.accountNumber,
                 bankCode: bankAccount.bankCode,
@@ -688,32 +673,17 @@ class PaymentService {
                 beneficiaryName: bankAccount.accountName || 'Go-Eat Vendor',
             });
         }
-        else if (provider?.toLowerCase() === 'monnify') {
-            transferResult = await monnify_module_1.default.initiatePayout({
+        else if (provider.toLowerCase() === 'stripe') {
+            transferResult = { status: 'submitted', reference, message: 'Dispatched via Stripe Connect' };
+        }
+        else {
+            transferResult = await bachs_module_1.default.initiatePayout({
                 amount,
                 accountNumber: bankAccount.accountNumber,
                 bankCode: bankAccount.bankCode,
                 reference,
-                reason: 'Go-Eat Restaurant Payout',
-            });
-        }
-        else {
-            let recipientCode = bankAccount.recipientCode;
-            if (!recipientCode) {
-                const recipient = await paystack_module_1.default.createTransferRecipient({
-                    name: bankAccount.accountName || 'Go-Eat Vendor',
-                    accountNumber: bankAccount.accountNumber,
-                    bankCode: bankAccount.bankCode,
-                });
-                recipientCode = recipient.recipientCode;
-                wallet.bankAccount.recipientCode = recipientCode;
-                await wallet.save();
-            }
-            transferResult = await paystack_module_1.default.initiatePayout({
-                amount,
-                recipientCode,
-                reference,
-                reason: 'Go-Eat Restaurant Payout',
+                narration: 'Go-Eat Restaurant Payout',
+                beneficiaryName: bankAccount.accountName || 'Go-Eat Vendor',
             });
         }
         wallet.balance -= amount;

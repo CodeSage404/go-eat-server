@@ -136,6 +136,7 @@ export interface IRestaurant extends Document {
   documentExpiryFlagReason?: string;
   expiredDocumentsList?: string[];
   baseCurrency: string;
+  isSubscribed?: boolean;
   subscriptionPlan?: 'payg' | 'plus' | 'unlimited';
   subscriptionStatus?: 'active' | 'past_due' | 'cancelled' | 'trialing' | 'grace_period';
   cycleFoodSales?: number;
@@ -495,6 +496,10 @@ const restaurantSchema = new Schema<IRestaurant>(
       type: String,
       default: 'NGN',
     },
+    isSubscribed: {
+      type: Boolean,
+      default: false,
+    },
     subscriptionPlan: {
       type: String,
       enum: ['payg', 'plus', 'unlimited'],
@@ -626,6 +631,13 @@ restaurantSchema.pre('save', function (this: any) {
     else if (rest.countryCode === 'IT') rest.baseCurrency = 'EUR';
     else if (rest.countryCode === 'NG') rest.baseCurrency = 'NGN';
   }
+
+  // Sync isSubscribed based on subscriptionPlan
+  rest.isSubscribed = Boolean(
+    rest.subscriptionPlan &&
+    rest.subscriptionPlan !== 'payg' &&
+    rest.subscriptionStatus === 'active'
+  );
 });
 
 // Indexes for geospatial and country queries

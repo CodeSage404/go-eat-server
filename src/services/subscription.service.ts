@@ -237,7 +237,7 @@ export class SubscriptionService {
   public static async updateSubscriptionPlan(
     restaurantId: string | mongoose.Types.ObjectId,
     targetTier: SubscriptionPlanTier,
-    paymentProvider?: 'stripe' | 'paystack' | 'monnify',
+    paymentProvider?: 'stripe' | 'paystack' | 'monnify' | 'bachs',
     processorSubscriptionId?: string
   ): Promise<IOutletSubscription> {
     const sub = await this.getOrCreateSubscription(restaurantId);
@@ -253,9 +253,11 @@ export class SubscriptionService {
 
     await sub.save();
 
+    const isSubscribed = targetTier !== 'payg';
     await Restaurant.findByIdAndUpdate(restaurantId, {
       subscriptionPlan: targetTier,
       subscriptionStatus: 'active',
+      isSubscribed,
     });
 
     return sub;
