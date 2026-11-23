@@ -4,6 +4,8 @@ import { OutletSubscription, SUBSCRIPTION_PLAN_CONFIGS, SubscriptionPlanTier } f
 import Restaurant, { RestaurantStatus } from '../models/restaurant.model';
 import bachsModule from '../services/payments/bachs.module';
 import stripeModule from '../services/payments/stripe.module';
+import emailService from '../services/email.service';
+import logger from '../utils/logger';
 
 export class SubscriptionController {
   /**
@@ -247,7 +249,18 @@ export class SubscriptionController {
   public static async initializeSubscriptionCheckout(req: Request, res: Response) {
     try {
       const user = (req as any).user;
-      let { restaurantId, planTier, market, callbackUrl, cancelUrl } = req.body;
+      let body = req.body;
+      if (typeof body === 'string') {
+        try {
+          body = JSON.parse(body);
+        } catch {
+          // ignore
+        }
+      }
+      let { restaurantId, planTier, market, callbackUrl, cancelUrl } = body || {};
+      if (planTier) {
+        planTier = String(planTier).toLowerCase().trim();
+      }
 
       if (!restaurantId && user) {
         let found = await Restaurant.findOne({ owner: user._id });
@@ -400,6 +413,39 @@ export class SubscriptionController {
           provider as any,
           String(reference)
         );
+
+        // Dispatch dedicated subscription confirmation receipt email to partner
+        try {
+          const restaurant = await Restaurant.findById(restaurantId).populate('owner');
+          const owner = restaurant?.owner as any;
+          const ownerEmail = owner?.email || restaurant?.businessEmail;
+          if (ownerEmail) {
+            const config = SUBSCRIPTION_PLAN_CONFIGS[sub.market as 'UK' | 'NG' | 'EU']?.[planTier as SubscriptionPlanTier];
+            const planDisplayNames: Record<string, string> = {
+              payg: 'Pay As You Go',
+              plus: 'Plus Plan',
+              unlimited: 'Unlimited Capped',
+            };
+            const planCommissionLabels: Record<string, string> = {
+              payg: '11% - 19% Standard Commission',
+              plus: 'Flat 5% Commission',
+              unlimited: '0% on first sales threshold (8% excess)',
+            };
+
+            await emailService.sendSubscriptionConfirmation(ownerEmail, {
+              partnerName: owner?.name || restaurant?.name || 'Partner',
+              restaurantName: restaurant?.name || 'Your Kitchen',
+              planTier: String(planTier),
+              planName: planDisplayNames[String(planTier)] || String(planTier).toUpperCase(),
+              amountFormatted: `${sub.currency === 'NGN' ? '₦' : sub.currency === 'GBP' ? '£' : '€'}${sub.monthlyFee?.toLocaleString()} / month`,
+              commission: planCommissionLabels[String(planTier)] || `${(config?.commissionRate || 0.05) * 100}%`,
+              reference: String(reference),
+              renewalDate: sub.nextRenewalDate ? new Date(sub.nextRenewalDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : undefined,
+            });
+          }
+        } catch (mailErr: any) {
+          logger.warn(`Failed to dispatch subscription confirmation email: ${mailErr.message}`);
+        }
 
         if (req.accepts('html')) {
           return res.redirect(

@@ -1,0 +1,147 @@
+<%
+  var rName = (typeof restaurantName !== 'undefined' && restaurantName) ? restaurantName : 'Your Kitchen';
+  var pName = (typeof partnerName !== 'undefined' && partnerName) ? partnerName : 'Partner';
+  var tier = (typeof planTier !== 'undefined' && planTier) ? planTier : 'plus';
+  var title = (typeof planName !== 'undefined' && planName) ? planName : (tier === 'unlimited' ? 'Unlimited Capped Plan' : 'Plus Plan');
+  var amt = (typeof amountFormatted !== 'undefined' && amountFormatted) ? amountFormatted : (tier === 'unlimited' ? '₦139,000 / month' : '₦69,000 / month');
+  var comm = (typeof commission !== 'undefined' && commission) ? commission : (tier === 'unlimited' ? '0% on first ₦500k food sales (8% above threshold)' : 'Flat 5% marketplace commission');
+  var ref = (typeof reference !== 'undefined' && reference) ? reference : `SUB-${Date.now().toString().slice(-8)}`;
+  var renewal = (typeof renewalDate !== 'undefined' && renewalDate) ? renewalDate : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+  var logoUrl = (typeof logoUrl !== 'undefined' && logoUrl) ? logoUrl : 'https://go-eat-webapp.vercel.app/images/goeatone_logo_dark.jpg';
+%>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>GoEatOne – Subscription Confirmation</title>
+  <style>
+    body { margin:0; padding:0; background:#f3f6f3; font-family:Arial,Helvetica,sans-serif; -webkit-text-size-adjust:100%; }
+    table { border-collapse:collapse; }
+    img { border:0; display:block; height:auto; }
+    p { margin:0 0 15px; }
+    @media screen and (max-width:640px) {
+      .container { width:100%!important; }
+      .pad { padding:26px 23px!important; }
+      .hero-title { font-size:28px!important; }
+      .logo-img { width:100%!important; max-width:100%!important; }
+      .twocol { display:block!important; width:100%!important; }
+    }
+  </style>
+</head>
+<body style="margin:0;padding:0;background:#f3f6f3;font-family:Arial,Helvetica,sans-serif;color:#173c2c;">
+<div style="display:none;max-height:0;overflow:hidden;opacity:0;">Your GoEatOne subscription is confirmed. Review your plan details and billing schedule.</div>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f3f6f3">
+  <tr>
+    <td align="center" style="padding:32px 12px">
+      <table role="presentation" class="container" width="600" cellpadding="0" cellspacing="0" style="width:600px;max-width:600px;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.06);">
+        <!-- Top Dark Banner with GoEatOne Logo -->
+        <tr>
+          <td align="center" style="background:#004024;padding:0;line-height:0;font-size:0">
+            <img class="logo-img" src="<%= logoUrl %>" alt="GoEatOne – One App. Every Craving." width="600" style="display:block;width:100%;max-width:600px;height:auto;border:0">
+          </td>
+        </tr>
+        <!-- Golden Accent Stripe -->
+        <tr>
+          <td style="height:6px;background:#ffc629;font-size:0;line-height:0">&nbsp;</td>
+        </tr>
+        <!-- Headline & Welcome -->
+        <tr>
+          <td class="pad" style="padding:39px 43px 20px">
+            <p style="margin:0 0 9px;color:#997000;font-size:12px;letter-spacing:2px;font-weight:bold;text-transform:uppercase">
+              GoEatOne · Subscription Confirmation
+            </p>
+            <h1 class="hero-title" style="margin:0 0 17px;font-size:33px;line-height:1.2;color:#06462f;letter-spacing:-0.8px">
+              Your subscription is active! 🎉
+            </h1>
+            <p style="font-size:16px;line-height:1.7;color:#40564b">Dear <strong><%= pName %></strong>,</p>
+            <p style="font-size:15px;line-height:1.72;color:#40564b">
+              Thank you for subscribing to the <strong><%= title %></strong> for <strong><%= rName %></strong>. Your commercial advantages and lower commission rates are now officially active.
+            </p>
+          </td>
+        </tr>
+        <!-- Plan Summary Box -->
+        <tr>
+          <td class="pad" style="padding:4px 43px 22px">
+            <table role="presentation" width="100%" style="background:#f5f8f5;border:1px solid #deebe3;border-radius:12px">
+              <tr>
+                <td style="padding:24px">
+                  <h2 style="margin:0 0 14px;color:#06462f;font-size:18px">Subscription Billing Receipt</h2>
+                  <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                    <tr>
+                      <td style="padding:8px 0;font-size:13px;color:#557064;width:140px">Restaurant</td>
+                      <td style="padding:8px 0;font-size:14px;font-weight:bold;color:#073f2d"><%= rName %></td>
+                    </tr>
+                    <tr>
+                      <td style="padding:8px 0;font-size:13px;color:#557064">Plan</td>
+                      <td style="padding:8px 0;font-size:14px;font-weight:bold;color:#073f2d"><%= title %></td>
+                    </tr>
+                    <tr>
+                      <td style="padding:8px 0;font-size:13px;color:#557064">Subscription Fee</td>
+                      <td style="padding:8px 0;font-size:14px;font-weight:bold;color:#073f2d"><%= amt %></td>
+                    </tr>
+                    <tr>
+                      <td style="padding:8px 0;font-size:13px;color:#557064">Commission Rate</td>
+                      <td style="padding:8px 0;font-size:14px;font-weight:bold;color:#997000"><%= comm %></td>
+                    </tr>
+                    <tr>
+                      <td style="padding:8px 0;font-size:13px;color:#557064">Reference</td>
+                      <td style="padding:8px 0;font-size:13px;font-family:monospace;color:#073f2d"><%= ref %></td>
+                    </tr>
+                    <tr>
+                      <td style="padding:8px 0;font-size:13px;color:#557064">Next Renewal</td>
+                      <td style="padding:8px 0;font-size:13px;color:#073f2d"><%= renewal %></td>
+                    </tr>
+                  </table>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+
+        <!-- Active Privileges Section -->
+        <tr>
+          <td class="pad" style="padding:4px 43px 26px">
+            <h3 style="font-size:17px;color:#06462f;margin:0 0 12px">Your Active Commercial Privileges</h3>
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+              <tr>
+                <td style="padding:6px 0;font-size:14px;color:#40564b">✓ Guaranteed lower marketplace sales commission</td>
+              </tr>
+              <tr>
+                <td style="padding:6px 0;font-size:14px;color:#40564b">✓ Priority algorithm placement in diner search results</td>
+              </tr>
+              <tr>
+                <td style="padding:6px 0;font-size:14px;color:#40564b">✓ Automated instant direct earnings disbursements</td>
+              </tr>
+              <tr>
+                <td style="padding:6px 0;font-size:14px;color:#40564b">✓ Dedicated partner account support</td>
+              </tr>
+            </table>
+
+            <div style="margin:26px 0 10px;text-align:center">
+              <a href="https://goeatone.com/partners/dashboard" target="_blank" style="display:inline-block;background:#004024;color:#ffffff;text-decoration:none;font-weight:bold;font-size:14px;padding:14px 34px;border-radius:10px">
+                Open Partner Dashboard &rarr;
+              </a>
+            </div>
+
+            <p style="font-size:14px;line-height:1.65;color:#40564b;margin:28px 0 0">
+              Warm regards,<br>
+              <strong>GoEatOne Partner Operations Team</strong>
+            </p>
+          </td>
+        </tr>
+        <!-- Footer -->
+        <tr>
+          <td style="background:#06462f;padding:26px 38px;text-align:center">
+            <div style="font-size:18px;font-weight:bold;color:#fff">GoEatOne</div>
+            <div style="font-size:12px;color:#f9cd4e;margin-top:7px">One App. Every Craving.</div>
+            <div style="color:#e4eee7;font-size:13px;margin-top:13px">www.goeatone.com</div>
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+</table>
+</body>
+</html>

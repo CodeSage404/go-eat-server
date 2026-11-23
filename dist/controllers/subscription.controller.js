@@ -42,6 +42,8 @@ const subscription_model_1 = require("../models/subscription.model");
 const restaurant_model_1 = __importStar(require("../models/restaurant.model"));
 const bachs_module_1 = __importDefault(require("../services/payments/bachs.module"));
 const stripe_module_1 = __importDefault(require("../services/payments/stripe.module"));
+const email_service_1 = __importDefault(require("../services/email.service"));
+const logger_1 = __importDefault(require("../utils/logger"));
 class SubscriptionController {
     /**
      * Admin: Retrieve all platform subscriptions with KPI metrics, search, and filters
@@ -267,7 +269,19 @@ class SubscriptionController {
     static async initializeSubscriptionCheckout(req, res) {
         try {
             const user = req.user;
-            let { restaurantId, planTier, market, callbackUrl, cancelUrl } = req.body;
+            let body = req.body;
+            if (typeof body === 'string') {
+                try {
+                    body = JSON.parse(body);
+                }
+                catch {
+                    // ignore
+                }
+            }
+            let { restaurantId, planTier, market, callbackUrl, cancelUrl } = body || {};
+            if (planTier) {
+                planTier = String(planTier).toLowerCase().trim();
+            }
             if (!restaurantId && user) {
                 let found = await restaurant_model_1.default.findOne({ owner: user._id });
                 if (!found) {
@@ -400,6 +414,38 @@ class SubscriptionController {
             }
             if (isSuccess) {
                 const sub = await subscription_service_1.SubscriptionService.updateSubscriptionPlan(String(restaurantId), planTier, provider, String(reference));
+                // Dispatch dedicated subscription confirmation receipt email to partner
+                try {
+                    const restaurant = await restaurant_model_1.default.findById(restaurantId).populate('owner');
+                    const owner = restaurant?.owner;
+                    const ownerEmail = owner?.email || restaurant?.businessEmail;
+                    if (ownerEmail) {
+                        const config = subscription_model_1.SUBSCRIPTION_PLAN_CONFIGS[sub.market]?.[planTier];
+                        const planDisplayNames = {
+                            payg: 'Pay As You Go',
+                            plus: 'Plus Plan',
+                            unlimited: 'Unlimited Capped',
+                        };
+                        const planCommissionLabels = {
+                            payg: '11% - 19% Standard Commission',
+                            plus: 'Flat 5% Commission',
+                            unlimited: '0% on first sales threshold (8% excess)',
+                        };
+                        await email_service_1.default.sendSubscriptionConfirmation(ownerEmail, {
+                            partnerName: owner?.name || restaurant?.name || 'Partner',
+                            restaurantName: restaurant?.name || 'Your Kitchen',
+                            planTier: String(planTier),
+                            planName: planDisplayNames[String(planTier)] || String(planTier).toUpperCase(),
+                            amountFormatted: `${sub.currency === 'NGN' ? '₦' : sub.currency === 'GBP' ? '£' : '€'}${sub.monthlyFee?.toLocaleString()} / month`,
+                            commission: planCommissionLabels[String(planTier)] || `${(config?.commissionRate || 0.05) * 100}%`,
+                            reference: String(reference),
+                            renewalDate: sub.nextRenewalDate ? new Date(sub.nextRenewalDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : undefined,
+                        });
+                    }
+                }
+                catch (mailErr) {
+                    logger_1.default.warn(`Failed to dispatch subscription confirmation email: ${mailErr.message}`);
+                }
                 if (req.accepts('html')) {
                     return res.redirect(`https://goeatone.com/partners/tiers?success=true&plan=${planTier}&ref=${reference}`);
                 }

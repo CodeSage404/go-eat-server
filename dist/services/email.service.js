@@ -315,6 +315,19 @@ class EmailService {
         }
     }
     /**
+     * Sends subscription confirmation receipt email to partner
+     */
+    async sendSubscriptionConfirmation(email, data) {
+        const htmlContent = (0, templateEngine_1.renderTemplate)('SUBSCRIPTION_CONFIRMATION', data);
+        try {
+            await this.sendEmail(email, `Your GoEatOne ${data.planName} Subscription is Active! 🎉`, htmlContent, 'partners');
+            logger_1.default.info(`📧 Subscription confirmation email dispatched to ${email}`);
+        }
+        catch (err) {
+            logger_1.default.error(`Subscription confirmation email failed to ${email}:`, err?.message || err);
+        }
+    }
+    /**
      * Sends admin operational notification when a new partner registers and submits documents for review
      */
     async sendAdminPartnerSubmissionAlert(data) {

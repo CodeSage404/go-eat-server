@@ -8,6 +8,7 @@ export type EmailSenderChannel = 'default' | 'partners' | 'secure';
 
 export type EmailTemplateType = 
   | 'WELCOME_PARTNER' 
+  | 'SUBSCRIPTION_CONFIRMATION'
   | 'OTP_VERIFICATION' 
   | 'CREDENTIALS_ALERT' 
   | 'ORDER_CONFIRMED' 
@@ -417,6 +418,36 @@ class EmailService {
       await this.sendEmail(email, 'GoEatOne Partner Application Received', htmlContent, 'partners');
     } catch (err: any) {
       logger.error(`Partner application received email failed to ${email}:`, err?.message || err);
+    }
+  }
+
+  /**
+   * Sends subscription confirmation receipt email to partner
+   */
+  public async sendSubscriptionConfirmation(
+    email: string,
+    data: {
+      partnerName: string;
+      restaurantName: string;
+      planTier: string;
+      planName: string;
+      amountFormatted: string;
+      commission: string;
+      reference?: string;
+      renewalDate?: string;
+    }
+  ): Promise<void> {
+    const htmlContent = renderTemplate('SUBSCRIPTION_CONFIRMATION', data);
+    try {
+      await this.sendEmail(
+        email,
+        `Your GoEatOne ${data.planName} Subscription is Active! 🎉`,
+        htmlContent,
+        'partners'
+      );
+      logger.info(`📧 Subscription confirmation email dispatched to ${email}`);
+    } catch (err: any) {
+      logger.error(`Subscription confirmation email failed to ${email}:`, err?.message || err);
     }
   }
 

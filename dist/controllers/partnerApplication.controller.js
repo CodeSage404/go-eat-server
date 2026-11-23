@@ -129,7 +129,11 @@ exports.applyForPartnership = (0, catchAsync_1.catchAsync)(async (req, res) => {
         isNewUser = true;
     }
     else {
-        // If user already existed (e.g. registered customer transitioning to partner or vendor re-applying),
+        // SECURITY INTEGRITY CHECK: A Courier (RIDER), Admin, or Staff/SuperAdmin account must NEVER be overwritten to VENDOR!
+        if (user.role === user_model_1.UserRole.RIDER || user.role === user_model_1.UserRole.ADMIN || user.role === user_model_1.UserRole.STAFF || user.role === 'superadmin') {
+            throw new appError_1.default(`This email or phone number is already registered as an active ${user.role} account. For security, please use a separate email address to onboard your partner store.`, 400);
+        }
+        // If user already existed as a customer transitioning to partner or vendor re-applying,
         // ensure role is VENDOR, account is active/verified, and assign the new generated password
         user.name = resolvedOwnerName || user.name;
         user.role = user_model_1.UserRole.VENDOR;
