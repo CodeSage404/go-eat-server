@@ -1,6 +1,4 @@
 <%
-  var resolvedCountry = (typeof country !== 'undefined' && country) ? country : 'United Kingdom';
-  var shortCountry = resolvedCountry === 'United Kingdom' ? 'UK' : resolvedCountry;
   var bName = (typeof businessName !== 'undefined' && businessName) ? businessName : ((typeof restaurantName !== 'undefined' && restaurantName) ? restaurantName : ((typeof partnerName !== 'undefined' && partnerName) ? partnerName : 'Partner'));
   var uEmail = (typeof email !== 'undefined' && email) ? email : (typeof username !== 'undefined' ? username : 'partner@business.com');
   var tempPwd = (typeof password !== 'undefined' && password) ? password : '';
@@ -14,7 +12,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="color-scheme" content="light">
-  <title>GoEatOne <%= shortCountry %> – <%= isFounding ? 'Founding Partner Invitation' : 'Partner Invitation' %></title>
+  <title>GoEatOne – <%= isFounding ? 'Founding Partner Invitation' : 'Partner Invitation' %></title>
   <style>
     body { margin:0; padding:0; background:#f3f6f3; font-family:Arial,Helvetica,sans-serif; -webkit-text-size-adjust:100%; }
     table { border-collapse:collapse; }
@@ -51,7 +49,7 @@
         <tr>
           <td class="pad" style="padding:39px 43px 20px">
             <p style="margin:0 0 9px;color:#997000;font-size:12px;letter-spacing:2px;font-weight:bold;text-transform:uppercase">
-              GoEatOne <%= resolvedCountry %> · <%= isFounding ? 'Founding Partner Invitation' : 'Business Partner Invitation' %>
+              GoEatOne · <%= isFounding ? 'Founding Partner Invitation' : 'Business Partner Invitation' %>
             </p>
             <h1 class="hero-title" style="margin:0 0 17px;font-size:35px;line-height:1.16;color:#06462f;letter-spacing:-0.8px">
               We’ve given your business a head start.
@@ -118,7 +116,7 @@
             <table role="presentation" width="100%" style="background:#004b32;border-radius:12px">
               <tr>
                 <td style="padding:25px 24px;text-align:center">
-                  <div style="color:#ffd34b;font-size:12px;font-weight:bold;letter-spacing:1.5px;text-transform:uppercase">GoEatOne <%= shortCountry %> Partner Programme</div>
+                  <div style="color:#ffd34b;font-size:12px;font-weight:bold;letter-spacing:1.5px;text-transform:uppercase">GoEatOne Partner Programme</div>
                   <div style="font-size:25px;font-weight:bold;line-height:1.35;color:#fff;margin:9px 0">Your business, your decision.</div>
                   <div style="font-size:14px;line-height:1.55;color:#fff">Review your profile and our attached fees before choosing to join.</div>
                 </td>
@@ -137,7 +135,7 @@
               <tr>
                 <td style="padding:18px 0 0">
                   <h2 style="font-size:18px;margin:0 0 9px;color:#06462f">Your fee structure is attached</h2>
-                  <p style="font-size:14px;color:#40564b;line-height:1.7">Please review the accompanying <strong>GoEatOne <%= shortCountry %> Partner Fee Structure</strong> for standard commissions, other applicable charges and the full terms of the introductory offer. Payment processing, delivery or other stated fees may still apply.</p>
+                  <p style="font-size:14px;color:#40564b;line-height:1.7">Please review the accompanying <strong>GoEatOne Partner Fee Structure</strong> for standard commissions, other applicable charges and the full terms of the introductory offer. Payment processing, delivery or other stated fees may still apply.</p>
                 </td>
               </tr>
             </table>
@@ -150,18 +148,18 @@
               </tr>
             </table>
             <p style="font-size:15px;line-height:1.7;color:#40564b;margin:27px 0 0">
-              <%= isFounding ? `If your business meets the offer conditions, we’d be delighted to welcome you as a GoEatOne ${shortCountry} founding partner.` : `We’d be delighted to welcome your business to GoEatOne ${shortCountry}.` %>
+              <%= isFounding ? 'If your business meets the offer conditions, we’d be delighted to welcome you as a GoEatOne founding partner.' : 'We’d be delighted to welcome your business to GoEatOne.' %>
             </p>
             <p style="font-size:14px;line-height:1.65;color:#40564b;margin:18px 0 0">
               Warm regards,<br>
-              <strong>GoEatOne <%= shortCountry %> Partner Onboarding Team</strong>
+              <strong>GoEatOne Partner Onboarding Team</strong>
             </p>
           </td>
         </tr>
         <!-- Footer -->
         <tr>
           <td style="background:#06462f;padding:26px 38px;text-align:center">
-            <div style="font-size:18px;font-weight:bold;color:#fff">GoEatOne <%= shortCountry %></div>
+            <div style="font-size:18px;font-weight:bold;color:#fff">GoEatOne</div>
             <div style="font-size:12px;color:#f9cd4e;margin-top:7px">One App. Every Craving.</div>
             <div style="color:#e4eee7;font-size:13px;margin-top:13px">www.goeatone.com</div>
             <div style="color:#b9d1c3;font-size:11px;line-height:1.5;margin-top:16px">You are receiving this invitation because your business may be suitable for the GoEatOne partner programme. Reply to this email to decline further invitations or request removal of your provisional profile.</div>
