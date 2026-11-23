@@ -168,35 +168,39 @@
         <td align="center" valign="top" width="600">
         <![endif]-->
 
-        <table role="presentation" class="email-container" border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 580px; width: 100%; background-color: #FFFFFF; border-radius: 0; overflow: hidden; border: 1px solid #E5E7EB; box-shadow: 0 8px 30px rgba(0, 0, 0, 0.06); margin: 0 auto;">
+        <table role="presentation" class="email-container" border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 600px; width: 600px; background-color: #FFFFFF; border-radius: 16px; overflow: hidden; border: 1px solid #E5E7EB; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06); margin: 0 auto;">
           
-          <!-- Master Header Banner: Semi-Transparent Left-to-Right Linear Gradient with Wavy Stripe BG -->
+          <!-- Master Header Banner: Dark Green with GoEatOne Logo -->
           <tr>
-            <td style="padding: 0; background-color: #133824; border-radius: 0;">
-              <div style="background-color: #133824; background-image: linear-gradient(90deg, rgba(19, 56, 36, 0.72) 0%, rgba(10, 36, 22, 0.60) 50%, rgba(19, 56, 36, 0.75) 100%), url('<%= stripeAsset %>'); background-size: cover; background-position: center; background-repeat: repeat-x; padding: 28px 20px 26px; text-align: center; border-radius: 0;">
-                <a href="https://goeatone.com" target="_blank" style="text-decoration: none; display: inline-block;">
-                  <img 
-                    src="<%= logoAsset %>" 
-                    alt="GoEatOne" 
-                    style="height: 32px; width: auto; max-width: 180px; display: block; margin: 0 auto; border: 0;" 
-                  />
-                </a>
-              </div>
+            <td align="center" style="padding: 0; background-color: #004024; line-height: 0; font-size: 0;">
+              <a href="https://goeatone.com" target="_blank" style="text-decoration: none; display: block;">
+                <img 
+                  class="logo-img"
+                  src="<%= (typeof logoUrl !== 'undefined' && logoUrl) ? logoUrl : 'https://go-eat-webapp.vercel.app/images/goeatone_logo_dark.jpg' %>" 
+                  alt="GoEatOne – One App. Every Craving." 
+                  width="600" 
+                  style="width: 100%; max-width: 600px; height: auto; display: block; margin: 0 auto; border: 0;" 
+                />
+              </a>
             </td>
+          </tr>
+          <!-- Golden Accent Stripe -->
+          <tr>
+            <td style="height: 6px; background-color: #ffc629; font-size: 0; line-height: 0;">&nbsp;</td>
           </tr>
 
           <% if (typeof heroTitle !== 'undefined' && heroTitle && (typeof hideHeaderTitle === 'undefined' || !hideHeaderTitle)) { %>
-          <!-- Master Title Section (Right after the linear bg, bold, normal casing, NO duplicate logo) -->
+          <!-- Master Title Section -->
           <tr>
-            <td style="padding: 30px 28px 10px; background-color: #FFFFFF; text-align: center; border-radius: 0;">
-              <h1 class="brand-heading" style="font-family: 'Bricolage Grotesque', 'Poppins', -apple-system, sans-serif; font-size: 26px; line-height: 1.25; font-weight: 800; color: #111827; margin: 0 0 6px; text-align: center; letter-spacing: -0.3px;">
-                <%= heroTitle %>
-              </h1>
+            <td style="padding: 34px 40px 10px; background-color: #FFFFFF; text-align: center;">
               <% if (typeof heroSubtitle !== 'undefined' && heroSubtitle) { %>
-              <div style="font-family: 'Poppins', sans-serif; font-size: 13px; font-weight: 700; color: #F59E0B; letter-spacing: 0.5px;">
+              <div style="font-family: Arial, Helvetica, sans-serif; font-size: 11px; font-weight: bold; color: #997000; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 8px;">
                 <%= heroSubtitle %>
               </div>
               <% } %>
+              <h1 class="brand-heading" style="font-family: Arial, Helvetica, sans-serif; font-size: 28px; line-height: 1.25; font-weight: 800; color: #06462f; margin: 0; text-align: center; letter-spacing: -0.5px;">
+                <%= heroTitle %>
+              </h1>
             </td>
           </tr>
           <% } %>
@@ -210,70 +214,19 @@
 
           <!-- Master Clean Editorial Footer Component -->
           <tr>
-            <td style="background-color: #FFFFFF; padding: 28px 24px 16px; border-top: 1px solid #F3F4F6; text-align: center; border-radius: 0;">
-              <p style="font-size: 13px; line-height: 1.55; color: #6B7280; margin: 0 0 16px; font-family: 'Poppins', sans-serif;">
-                If you have any questions, reach out to us at <a href="mailto:support@goeatone.com" style="color: #F59E0B; text-decoration: none; font-weight: 700;">support@goeatone.com</a> or visit our Help Center.
+            <td style="background-color: #002d1a; padding: 32px 40px; text-align: center; color: #b7cebf; font-size: 12px; line-height: 1.7; font-family: Arial, Helvetica, sans-serif;">
+              <p style="margin: 0 0 6px; font-weight: bold; color: #ffffff; font-size: 14px;">GoEatOne</p>
+              <p style="margin: 0 0 12px; color: #a3c2b1;">One App. Every Craving. Delivered Fresh &amp; Fast.</p>
+              <p style="margin: 0 0 14px;">
+                <a href="https://goeatone.com" style="color: #ffc629; text-decoration: none; margin: 0 8px; font-weight: 600;">Website</a> •
+                <a href="https://goeatone.com/privacy-policy" style="color: #ffc629; text-decoration: none; margin: 0 8px; font-weight: 600;">Privacy Policy</a> •
+                <a href="https://goeatone.com/terms" style="color: #ffc629; text-decoration: none; margin: 0 8px; font-weight: 600;">Terms</a> •
+                <a href="mailto:support@goeatone.com" style="color: #ffc629; text-decoration: none; margin: 0 8px; font-weight: 600;">Support</a>
               </p>
-
-              <!-- Subtle Centered Divider -->
-              <div style="width: 100px; height: 1px; background-color: #E5E7EB; margin: 0 auto 16px;"></div>
-
-              <!-- 5 Social Links from Web App (Users) -->
-              <div style="margin-bottom: 16px; text-align: center;">
-                <!-- Twitter / X -->
-                <a href="https://x.com/goeatonehq" target="_blank" style="display: inline-block; margin: 0 6px; text-decoration: none;">
-                  <img src="<%= typeof emailAssetsUrl !== 'undefined' ? emailAssetsUrl + '/social-x.png' : 'cid:goeat_social-x' %>" alt="X" width="26" height="26" style="width: 26px; height: 26px; display: inline-block; border: 0;" />
-                </a>
-                <!-- Instagram -->
-                <a href="https://www.instagram.com/goeatonehq" target="_blank" style="display: inline-block; margin: 0 6px; text-decoration: none;">
-                  <img src="<%= typeof emailAssetsUrl !== 'undefined' ? emailAssetsUrl + '/social-instagram.png' : 'cid:goeat_social-instagram' %>" alt="Instagram" width="26" height="26" style="width: 26px; height: 26px; display: inline-block; border: 0;" />
-                </a>
-                <!-- TikTok -->
-                <a href="https://www.tiktok.com/@goeatone.com" target="_blank" style="display: inline-block; margin: 0 6px; text-decoration: none;">
-                  <img src="<%= typeof emailAssetsUrl !== 'undefined' ? emailAssetsUrl + '/social-tiktok.png' : 'cid:goeat_social-tiktok' %>" alt="TikTok" width="26" height="26" style="width: 26px; height: 26px; display: inline-block; border: 0;" />
-                </a>
-                <!-- Facebook -->
-                <a href="https://facebook.com/GoEatHQ" target="_blank" style="display: inline-block; margin: 0 6px; text-decoration: none;">
-                  <img src="<%= typeof emailAssetsUrl !== 'undefined' ? emailAssetsUrl + '/social-facebook.png' : 'cid:goeat_social-facebook' %>" alt="Facebook" width="26" height="26" style="width: 26px; height: 26px; display: inline-block; border: 0;" />
-                </a>
-                <!-- LinkedIn -->
-                <a href="https://linkedin.com/company/goeatone" target="_blank" style="display: inline-block; margin: 0 6px; text-decoration: none;">
-                  <img src="<%= typeof emailAssetsUrl !== 'undefined' ? emailAssetsUrl + '/social-linkedin.png' : 'cid:goeat_social-linkedin' %>" alt="LinkedIn" width="26" height="26" style="width: 26px; height: 26px; display: inline-block; border: 0;" />
-                </a>
-              </div>
-
-              <!-- Navigation Links Row -->
-              <div style="font-size: 11.5px; font-weight: 600; color: #9CA3AF; margin-bottom: 10px; font-family: 'Poppins', sans-serif;">
-                <a href="https://goeatone.com" style="color: #6B7280; text-decoration: none; margin: 0 6px;">GoEatOne</a> |
-                <a href="https://goeatone.com/how-it-works" style="color: #6B7280; text-decoration: none; margin: 0 6px;">How it works</a> |
-                <a href="https://goeatone.com/support" style="color: #6B7280; text-decoration: none; margin: 0 6px;">FAQs</a> |
-                <a href="https://goeatone.com/privacy" style="color: #6B7280; text-decoration: none; margin: 0 6px;">T&Cs</a>
-              </div>
-
-              <!-- Registered Entity & Address -->
-              <div style="font-size: 11px; line-height: 1.55; color: #6B7280; margin-bottom: 12px; font-family: 'Poppins', sans-serif;">
-                <strong style="color: #374151;">FOREMADE GLOBAL</strong><br />
-                71-75 Shelton Street, Covent Garden, London, WC2H 9JQ, United Kingdom
-              </div>
-
-              <!-- Copyright -->
-              <div style="font-size: 10.5px; color: #9CA3AF; margin-bottom: 4px; font-family: 'Poppins', sans-serif;">
-                © <%= typeof year !== 'undefined' ? year : 2026 %> GoEatOne. All rights reserved.
-              </div>
-            </td>
-          </tr>
-
-          <!-- Far Bottom Signature Yellow River Flow Band (Edge-to-Edge) -->
-          <tr>
-            <td style="padding: 0; margin: 0; line-height: 0; font-size: 0; background-color: #FFFFFF; width: 100%; border-radius: 0; overflow: hidden;">
-              <div class="river-flow-stripe" style="width: 100%; height: 32px; line-height: 0; font-size: 0; overflow: hidden; background-color: #FFFFFF; background-image: url('<%= stripeAsset %>'); background-repeat: repeat-x; background-size: auto 32px; background-position: center bottom;">
-                <img 
-                  src="<%= stripeAsset %>" 
-                  alt="" 
-                  width="580" 
-                  style="width: 100%; max-width: 100%; height: 32px; object-fit: cover; object-position: center bottom; display: block; border: 0; margin: 0;" 
-                />
-              </div>
+              <p style="margin: 0; color: #789987; font-size: 11px;">
+                © <%= typeof year !== 'undefined' ? year : 2026 %> GoEatOne Limited. All rights reserved.<br />
+                London, United Kingdom &bull; Lagos, Nigeria
+              </p>
             </td>
           </tr>
 

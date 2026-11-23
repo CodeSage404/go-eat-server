@@ -351,7 +351,7 @@ class EmailService {
     }
   ): Promise<void> {
     const htmlContent = renderTemplate('INACTIVITY_REENGAGEMENT', data);
-    this.sendEmail(email, 'We miss you at GoEatOne! 🍽️ Craving something delicious?', htmlContent, 'default')
+    this.sendEmail(email, 'We miss you at GoEatOne - Craving something delicious?', htmlContent, 'default')
       .catch(err => logger.error(`Background inactivity email failed to ${email}:`, err?.message || err));
   }
 
@@ -380,7 +380,7 @@ class EmailService {
     }
   ): Promise<void> {
     const htmlContent = renderTemplate('RIDER_APPLICATION_APPROVED', data);
-    this.sendEmail(email, "You're Approved to Deliver on GoEatOne! 🚀", htmlContent, 'default')
+    this.sendEmail(email, 'You are Approved to Deliver on GoEatOne', htmlContent, 'default')
       .catch(err => logger.error(`Background courier approved email failed to ${email}:`, err?.message || err));
   }
 
@@ -395,7 +395,7 @@ class EmailService {
     }
   ): Promise<void> {
     const htmlContent = renderTemplate('RIDER_ACTION_REQUIRED', data);
-    this.sendEmail(email, 'Action Required: Your GoEatOne Courier Verification ⚠️', htmlContent, 'default')
+    this.sendEmail(email, 'Action Required: Your GoEatOne Courier Verification', htmlContent, 'default')
       .catch(err => logger.error(`Background courier correction email failed to ${email}:`, err?.message || err));
   }
 
@@ -441,7 +441,7 @@ class EmailService {
     try {
       await this.sendEmail(
         email,
-        `Your GoEatOne ${data.planName} Subscription is Active! 🎉`,
+        `Your GoEatOne ${data.planName} Subscription is Active`,
         htmlContent,
         'partners'
       );
@@ -576,7 +576,7 @@ class EmailService {
           </p>
           <div style="background-color: #F0FDF4; border: 1px solid #BBF7D0; border-radius: 12px; padding: 18px; margin-bottom: 24px;">
             <p style="margin: 0; font-size: 14px; line-height: 22px; color: #166534;">
-              🛡️ <strong>What does a GoEatOne Buddy do?</strong><br/>
+              <strong>What does a GoEatOne Buddy do?</strong><br/>
               A GoEatOne Buddy is an accountability partner who helps encourage responsible purchasing choices (such as alcohol limits). You will <strong>never</strong> see what ${data.userName} orders, their food choices, delivery address, or payment details.
             </p>
           </div>

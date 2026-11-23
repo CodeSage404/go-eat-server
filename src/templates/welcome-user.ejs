@@ -1,22 +1,26 @@
 <!-- Main Body Container -->
-<div class="welcome-content" style="background-color: #FFFFFF; padding: 36px 28px 34px; text-align: center;">
+<div class="welcome-content" style="background-color: #FFFFFF; padding: 36px 32px 34px; text-align: center;">
 
-  <!-- Centered Greeting & Welcome Title (Bold, Normal Sentence Casing) -->
-  <h1 class="welcome-main-title" style="font-family: 'Bricolage Grotesque', 'Poppins', -apple-system, sans-serif; font-size: 28px; line-height: 1.25; font-weight: 800; color: #111827; letter-spacing: -0.4px; margin: 0 auto 12px; text-align: center;">
+  <div style="font-family: Arial, Helvetica, sans-serif; font-size: 11px; font-weight: bold; color: #997000; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 8px;">
+    GoEatOne Member Onboarding
+  </div>
+
+  <!-- Centered Greeting & Welcome Title -->
+  <h1 class="welcome-main-title" style="font-family: Arial, Helvetica, sans-serif; font-size: 28px; line-height: 1.25; font-weight: 800; color: #06462f; letter-spacing: -0.4px; margin: 0 auto 12px; text-align: center;">
     Welcome, <%= typeof name !== 'undefined' && name ? name : 'Friend' %>
   </h1>
 
-  <p class="welcome-intro-text" style="font-family: 'Poppins', sans-serif; font-size: 14.5px; line-height: 1.6; color: #4B5563; margin: 0 auto 34px; max-width: 480px; text-align: center;">
-    Welcome to <strong>GoEatOne</strong>! Whether it's a quick lunch, comforting dinner, or everyday essentials, we're thrilled to connect you with the finest local kitchens and fastest couriers in your city.
+  <p class="welcome-intro-text" style="font-family: Arial, Helvetica, sans-serif; font-size: 14.5px; line-height: 1.6; color: #40564b; margin: 0 auto 34px; max-width: 480px; text-align: center;">
+    Welcome to <strong>GoEatOne</strong>. Whether it is a quick lunch, comforting dinner, or everyday essentials, we are thrilled to connect you with the finest local kitchens and fastest couriers in your city.
   </p>
 
-  <!-- Big Bold Centered Section Headline -->
-  <h2 class="welcome-section-heading" style="font-family: 'Bricolage Grotesque', 'Poppins', -apple-system, sans-serif; font-size: 22px; line-height: 1.25; font-weight: 800; color: #111827; letter-spacing: -0.3px; margin: 0 auto 32px; text-align: center;">
+  <!-- Section Headline -->
+  <h2 class="welcome-section-heading" style="font-family: Arial, Helvetica, sans-serif; font-size: 20px; line-height: 1.25; font-weight: 800; color: #06462f; letter-spacing: -0.3px; margin: 0 auto 30px; text-align: center;">
     What you get with GoEatOne
   </h2>
 
-  <!-- ZIG-ZAG FEATURE 1: Food Delivery Bag (Desktop: Image Left, Text Right | Mobile: Image Reaches Far Ends on Top, Text Below) -->
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="feature-row" style="margin-bottom: 34px;">
+  <!-- ZIG-ZAG FEATURE 1: Food Delivery Bag -->
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="feature-row" style="margin-bottom: 30px;">
     <tr>
       <td width="48%" align="center" class="feature-cell-img" style="vertical-align: middle; padding: 8px 14px;">
         <img 
@@ -28,20 +32,19 @@
         />
       </td>
       <td width="52%" align="left" class="feature-cell-text" style="vertical-align: middle; padding: 8px 14px; text-align: left;">
-        <h3 class="feature-title" style="font-family: 'Bricolage Grotesque', 'Poppins', -apple-system, sans-serif; margin: 0 0 8px; font-size: 18px; font-weight: 800; color: #111827; letter-spacing: -0.2px;">
+        <h3 class="feature-title" style="font-family: Arial, Helvetica, sans-serif; margin: 0 0 8px; font-size: 17px; font-weight: 800; color: #06462f; letter-spacing: -0.2px;">
           Every craving, delivered
         </h3>
-        <p class="feature-desc" style="font-family: 'Poppins', sans-serif; margin: 0; font-size: 13.5px; line-height: 1.55; color: #4B5563;">
-          Discover hundreds of verified local restaurants, artisan bakeries, and fresh grocery hubs all in one tap.
+        <p class="feature-desc" style="font-family: Arial, Helvetica, sans-serif; margin: 0; font-size: 13.5px; line-height: 1.55; color: #40564b;">
+          Discover hundreds of verified local restaurants, artisan bakeries, and fresh grocery hubs all in one app.
         </p>
       </td>
     </tr>
   </table>
 
-  <!-- ZIG-ZAG FEATURE 2: Live Courier Radar (Desktop: Text Left, Image Right | Mobile: Image Reaches Far Ends on Top, Text Below via dir="rtl") -->
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="feature-row" dir="rtl" style="margin-bottom: 34px;">
+  <!-- ZIG-ZAG FEATURE 2: Live Courier Radar -->
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="feature-row" dir="rtl" style="margin-bottom: 30px;">
     <tr>
-      <!-- On Desktop (RTL table): this 1st cell renders on the RIGHT. On Mobile (stacked): it is 1st (ON TOP, REACHING FAR ENDS)! -->
       <td width="48%" align="center" class="feature-cell-img" dir="ltr" style="vertical-align: middle; padding: 8px 14px;">
         <img 
           src="<%= typeof emailAssetsUrl !== 'undefined' ? emailAssetsUrl + '/rider-enroute.jpg' : 'cid:goeat_rider-enroute' %>" 
@@ -51,20 +54,19 @@
           style="width: 100%; max-width: 230px; height: auto; display: block; margin: 0 auto; border: 0; border-radius: 8px;" 
         />
       </td>
-      <!-- On Desktop (RTL table): this 2nd cell renders on the LEFT. On Mobile (stacked): it is 2nd (BELOW)! -->
       <td width="52%" align="left" class="feature-cell-text" dir="ltr" style="vertical-align: middle; padding: 8px 14px; text-align: left;">
-        <h3 class="feature-title" style="font-family: 'Bricolage Grotesque', 'Poppins', -apple-system, sans-serif; margin: 0 0 8px; font-size: 18px; font-weight: 800; color: #111827; letter-spacing: -0.2px;">
+        <h3 class="feature-title" style="font-family: Arial, Helvetica, sans-serif; margin: 0 0 8px; font-size: 17px; font-weight: 800; color: #06462f; letter-spacing: -0.2px;">
           Speed on the pedals
         </h3>
-        <p class="feature-desc" style="font-family: 'Poppins', sans-serif; margin: 0; font-size: 13.5px; line-height: 1.55; color: #4B5563;">
+        <p class="feature-desc" style="font-family: Arial, Helvetica, sans-serif; margin: 0; font-size: 13.5px; line-height: 1.55; color: #40564b;">
           Watch your courier in real-time on our live radar, from the moment the kitchen packs your meal to your front door.
         </p>
       </td>
     </tr>
   </table>
 
-  <!-- ZIG-ZAG FEATURE 3: Community Grid (Desktop: Image Left, Text Right | Mobile: Image Reaches Far Ends on Top, Text Below) -->
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="feature-row" style="margin-bottom: 36px;">
+  <!-- ZIG-ZAG FEATURE 3: Community Grid -->
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="feature-row" style="margin-bottom: 34px;">
     <tr>
       <td width="48%" align="center" class="feature-cell-img" style="vertical-align: middle; padding: 8px 14px;">
         <img 
@@ -76,23 +78,23 @@
         />
       </td>
       <td width="52%" align="left" class="feature-cell-text" style="vertical-align: middle; padding: 8px 14px; text-align: left;">
-        <h3 class="feature-title" style="font-family: 'Bricolage Grotesque', 'Poppins', -apple-system, sans-serif; margin: 0 0 8px; font-size: 18px; font-weight: 800; color: #111827; letter-spacing: -0.2px;">
+        <h3 class="feature-title" style="font-family: Arial, Helvetica, sans-serif; margin: 0 0 8px; font-size: 17px; font-weight: 800; color: #06462f; letter-spacing: -0.2px;">
           A community of great taste
         </h3>
-        <p class="feature-desc" style="font-family: 'Poppins', sans-serif; margin: 0; font-size: 13.5px; line-height: 1.55; color: #4B5563;">
+        <p class="feature-desc" style="font-family: Arial, Helvetica, sans-serif; margin: 0; font-size: 13.5px; line-height: 1.55; color: #40564b;">
           Join thousands of everyday food lovers enjoying exclusive partner perks, secret deals, and 24/7 dedicated support.
         </p>
       </td>
     </tr>
   </table>
 
-  <!-- Chunky Pill CTA Button -->
+  <!-- Golden Pill CTA Button -->
   <div style="margin: 8px 0 12px; text-align: center;">
     <a 
       href="https://goeatone.com" 
       target="_blank" 
       class="welcome-cta-btn"
-      style="display: inline-block; background-color: #F59E0B; color: #133824 !important; text-decoration: none; font-family: 'Poppins', sans-serif; font-weight: 800; font-size: 14.5px; padding: 15px 46px; border-radius: 999px; text-align: center; text-transform: uppercase; letter-spacing: 0.5px; box-shadow: 0 4px 16px rgba(245, 158, 11, 0.35);"
+      style="display: inline-block; background-color: #ffc629; color: #1a3a2a !important; text-decoration: none; font-family: Arial, Helvetica, sans-serif; font-weight: bold; font-size: 14.5px; padding: 15px 44px; border-radius: 999px; text-align: center; text-transform: uppercase; letter-spacing: 0.5px; box-shadow: 0 4px 16px rgba(255, 198, 41, 0.35);"
     >
       Explore Today's Menu
     </a>
