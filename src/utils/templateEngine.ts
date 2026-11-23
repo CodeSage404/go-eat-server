@@ -132,6 +132,11 @@ export function renderTemplate(templateName: string, data: Record<string, any>):
     ...data,
   };
 
+  // If the template is an entire standalone document (like welcome-partner.ejs which starts with <!DOCTYPE html>)
+  if (body.includes('<!DOCTYPE html>')) {
+    return compile(body, commonLocals);
+  }
+
   // Compile template body first
   const bodyHtml = compile(body, commonLocals);
 

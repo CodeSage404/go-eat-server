@@ -7,6 +7,7 @@ import PartnerApplication from '../models/partnerApplication.model';
 import User, { UserRole, UserStatus } from '../models/user.model';
 import Restaurant, { RestaurantStatus } from '../models/restaurant.model';
 import emailService from '../services/email.service';
+import authService from '../services/auth.service';
 import logger from '../utils/logger';
 
 /**
@@ -100,6 +101,8 @@ export const applyForPartnership = catchAsync(async (req: Request, res: Response
     }
   }
 
+  const resolvedCountry = req.body.country || 'Nigeria';
+
   // Check if user already exists
   let user = await User.findOne({
     $or: [{ email: normalizedEmail }, { phoneNumber: normalizedPhone }],
@@ -117,6 +120,7 @@ export const applyForPartnership = catchAsync(async (req: Request, res: Response
       role: UserRole.VENDOR,
       status: UserStatus.ACTIVE,
       isVerified: true,
+      country: resolvedCountry,
     });
     isNewUser = true;
   } else {
@@ -126,6 +130,7 @@ export const applyForPartnership = catchAsync(async (req: Request, res: Response
     user.role = UserRole.VENDOR;
     user.status = UserStatus.ACTIVE;
     user.isVerified = true;
+    user.country = resolvedCountry;
     user.password = generatedPassword;
     await user.save();
     isNewUser = true;
@@ -244,15 +249,19 @@ export const applyForPartnership = catchAsync(async (req: Request, res: Response
       'Welcome to GoEatOne — Your Partner Account is Ready!',
       {
         partnerName: resolvedOwnerName,
+        businessName: businessName.trim(),
         restaurantName: businessName.trim(),
+        country: resolvedCountry,
+        isFoundingPartner: true,
         loginUrl: process.env.VENDOR_DASHBOARD_URL || 'https://go-eat-webapp.vercel.app/partners/login',
         email: normalizedEmail,
         password: generatedPassword,
       },
       'partners'
     );
+    logger.info(`📧 Welcome partner email successfully dispatched to ${normalizedEmail}`);
   } catch (mailErr: any) {
-    logger.warn(`Failed to dispatch partner welcome credentials email: ${mailErr.message}`);
+    logger.error(`Failed to dispatch partner welcome credentials email: ${mailErr.message}`);
   }
 
   // 2. Dispatch application confirmation email to the applicant
@@ -282,8 +291,6 @@ export const applyForPartnership = catchAsync(async (req: Request, res: Response
     if (coverImageUrl) uploadedDocs.push('Cover Image');
     const documentsList = uploadedDocs.length > 0 ? uploadedDocs.join(', ') : 'Standard Merchant Registration Details';
 
-    const resolvedCountry = req.body.country || user?.country || 'Nigeria';
-
     await emailService.sendAdminPartnerSubmissionAlert({
       businessName: businessName.trim(),
       ownerName: resolvedOwnerName,
@@ -299,12 +306,17 @@ export const applyForPartnership = catchAsync(async (req: Request, res: Response
     logger.warn(`Failed to dispatch admin partner submission alert: ${adminMailErr.message}`);
   }
 
+  const token = authService.signToken(user._id.toString());
+
   return res.status(201).json({
     status: 'success',
     message: isQuick
       ? 'Vendor account created! Your login credentials and confirmation email have been sent.'
       : 'Partner application submitted! Your vendor account has been registered and login credentials sent via email.',
     data: {
+      token,
+      user,
+      restaurant,
       application,
       restaurantId: restaurant._id,
       hasInstantAccess: true,

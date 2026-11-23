@@ -44,6 +44,7 @@ const partnerApplication_model_1 = __importDefault(require("../models/partnerApp
 const user_model_1 = __importStar(require("../models/user.model"));
 const restaurant_model_1 = __importStar(require("../models/restaurant.model"));
 const email_service_1 = __importDefault(require("../services/email.service"));
+const auth_service_1 = __importDefault(require("../services/auth.service"));
 const logger_1 = __importDefault(require("../utils/logger"));
 /**
  * Public controller: submit a new partner application
@@ -107,6 +108,7 @@ exports.applyForPartnership = (0, catchAsync_1.catchAsync)(async (req, res) => {
             throw new appError_1.default('Food Hygiene Certificate is required for verification', 400);
         }
     }
+    const resolvedCountry = req.body.country || 'Nigeria';
     // Check if user already exists
     let user = await user_model_1.default.findOne({
         $or: [{ email: normalizedEmail }, { phoneNumber: normalizedPhone }],
@@ -122,6 +124,7 @@ exports.applyForPartnership = (0, catchAsync_1.catchAsync)(async (req, res) => {
             role: user_model_1.UserRole.VENDOR,
             status: user_model_1.UserStatus.ACTIVE,
             isVerified: true,
+            country: resolvedCountry,
         });
         isNewUser = true;
     }
@@ -132,6 +135,7 @@ exports.applyForPartnership = (0, catchAsync_1.catchAsync)(async (req, res) => {
         user.role = user_model_1.UserRole.VENDOR;
         user.status = user_model_1.UserStatus.ACTIVE;
         user.isVerified = true;
+        user.country = resolvedCountry;
         user.password = generatedPassword;
         await user.save();
         isNewUser = true;
@@ -249,14 +253,18 @@ exports.applyForPartnership = (0, catchAsync_1.catchAsync)(async (req, res) => {
     try {
         await email_service_1.default.sendTemplateEmail(normalizedEmail, 'WELCOME_PARTNER', 'Welcome to GoEatOne — Your Partner Account is Ready!', {
             partnerName: resolvedOwnerName,
+            businessName: businessName.trim(),
             restaurantName: businessName.trim(),
+            country: resolvedCountry,
+            isFoundingPartner: true,
             loginUrl: process.env.VENDOR_DASHBOARD_URL || 'https://go-eat-webapp.vercel.app/partners/login',
             email: normalizedEmail,
             password: generatedPassword,
         }, 'partners');
+        logger_1.default.info(`📧 Welcome partner email successfully dispatched to ${normalizedEmail}`);
     }
     catch (mailErr) {
-        logger_1.default.warn(`Failed to dispatch partner welcome credentials email: ${mailErr.message}`);
+        logger_1.default.error(`Failed to dispatch partner welcome credentials email: ${mailErr.message}`);
     }
     // 2. Dispatch application confirmation email to the applicant
     try {
@@ -286,7 +294,6 @@ exports.applyForPartnership = (0, catchAsync_1.catchAsync)(async (req, res) => {
         if (coverImageUrl)
             uploadedDocs.push('Cover Image');
         const documentsList = uploadedDocs.length > 0 ? uploadedDocs.join(', ') : 'Standard Merchant Registration Details';
-        const resolvedCountry = req.body.country || user?.country || 'Nigeria';
         await email_service_1.default.sendAdminPartnerSubmissionAlert({
             businessName: businessName.trim(),
             ownerName: resolvedOwnerName,
@@ -302,12 +309,16 @@ exports.applyForPartnership = (0, catchAsync_1.catchAsync)(async (req, res) => {
     catch (adminMailErr) {
         logger_1.default.warn(`Failed to dispatch admin partner submission alert: ${adminMailErr.message}`);
     }
+    const token = auth_service_1.default.signToken(user._id.toString());
     return res.status(201).json({
         status: 'success',
         message: isQuick
             ? 'Vendor account created! Your login credentials and confirmation email have been sent.'
             : 'Partner application submitted! Your vendor account has been registered and login credentials sent via email.',
         data: {
+            token,
+            user,
+            restaurant,
             application,
             restaurantId: restaurant._id,
             hasInstantAccess: true,

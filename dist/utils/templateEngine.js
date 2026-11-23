@@ -129,6 +129,10 @@ function renderTemplate(templateName, data) {
         hideHeaderTitle: data.hideHeaderTitle ?? defaultMeta.hideHeaderTitle,
         ...data,
     };
+    // If the template is an entire standalone document (like welcome-partner.ejs which starts with <!DOCTYPE html>)
+    if (body.includes('<!DOCTYPE html>')) {
+        return compile(body, commonLocals);
+    }
     // Compile template body first
     const bodyHtml = compile(body, commonLocals);
     // Combine body into layout and compile full html
