@@ -44,7 +44,6 @@ const partnerApplication_model_1 = __importDefault(require("../models/partnerApp
 const user_model_1 = __importStar(require("../models/user.model"));
 const restaurant_model_1 = __importStar(require("../models/restaurant.model"));
 const email_service_1 = __importDefault(require("../services/email.service"));
-const auth_service_1 = __importDefault(require("../services/auth.service"));
 const logger_1 = __importDefault(require("../utils/logger"));
 /**
  * Public controller: submit a new partner application
@@ -109,10 +108,20 @@ exports.applyForPartnership = (0, catchAsync_1.catchAsync)(async (req, res) => {
         }
     }
     const resolvedCountry = req.body.country || 'Nigeria';
+    // Check if an application or vendor account already exists with this email or phone
+    const existingApp = await partnerApplication_model_1.default.findOne({
+        $or: [{ email: normalizedEmail }, { phoneNumber: normalizedPhone }],
+    });
+    if (existingApp) {
+        throw new appError_1.default('An application with this email address or phone number already exists. Please log in to your partner account or contact support if you need assistance.', 400);
+    }
     // Check if user already exists
     let user = await user_model_1.default.findOne({
         $or: [{ email: normalizedEmail }, { phoneNumber: normalizedPhone }],
     });
+    if (user && user.role === user_model_1.UserRole.VENDOR) {
+        throw new appError_1.default('A partner account with this email address or phone number already exists. Please log in to your partner account.', 400);
+    }
     const generatedPassword = `GoEatOne#${crypto_1.default.randomBytes(3).toString('hex').toUpperCase()}!`;
     let isNewUser = false;
     if (!user) {
@@ -133,8 +142,7 @@ exports.applyForPartnership = (0, catchAsync_1.catchAsync)(async (req, res) => {
         if (user.role === user_model_1.UserRole.RIDER || user.role === user_model_1.UserRole.ADMIN || user.role === user_model_1.UserRole.STAFF || user.role === 'superadmin') {
             throw new appError_1.default(`This email or phone number is already registered as an active ${user.role} account. For security, please use a separate email address to onboard your partner store.`, 400);
         }
-        // If user already existed as a customer transitioning to partner or vendor re-applying,
-        // ensure role is VENDOR, account is active/verified, and assign the new generated password
+        // Existing customer upgrading to partner
         user.name = resolvedOwnerName || user.name;
         user.role = user_model_1.UserRole.VENDOR;
         user.status = user_model_1.UserStatus.ACTIVE;
@@ -313,19 +321,20 @@ exports.applyForPartnership = (0, catchAsync_1.catchAsync)(async (req, res) => {
     catch (adminMailErr) {
         logger_1.default.warn(`Failed to dispatch admin partner submission alert: ${adminMailErr.message}`);
     }
-    const token = auth_service_1.default.signToken(user._id.toString());
     return res.status(201).json({
         status: 'success',
         message: isQuick
-            ? 'Vendor account created! Your login credentials and confirmation email have been sent.'
+            ? 'Vendor account created! Your login credentials have been dispatched to your email. Please log in to access your partner dashboard.'
             : 'Partner application submitted! Your vendor account has been registered and login credentials sent via email.',
         data: {
-            token,
-            user,
-            restaurant,
-            application,
+            user: {
+                _id: user._id,
+                name: user.name,
+                email: user.email,
+                role: user.role,
+            },
             restaurantId: restaurant._id,
-            hasInstantAccess: true,
+            requiresLogin: true,
         },
     });
 });

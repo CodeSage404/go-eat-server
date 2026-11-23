@@ -103,10 +103,28 @@ export const applyForPartnership = catchAsync(async (req: Request, res: Response
 
   const resolvedCountry = req.body.country || 'Nigeria';
 
+  // Check if an application or vendor account already exists with this email or phone
+  const existingApp = await PartnerApplication.findOne({
+    $or: [{ email: normalizedEmail }, { phoneNumber: normalizedPhone }],
+  });
+  if (existingApp) {
+    throw new AppError(
+      'An application with this email address or phone number already exists. Please log in to your partner account or contact support if you need assistance.',
+      400
+    );
+  }
+
   // Check if user already exists
   let user = await User.findOne({
     $or: [{ email: normalizedEmail }, { phoneNumber: normalizedPhone }],
   });
+
+  if (user && user.role === UserRole.VENDOR) {
+    throw new AppError(
+      'A partner account with this email address or phone number already exists. Please log in to your partner account.',
+      400
+    );
+  }
 
   const generatedPassword = `GoEatOne#${crypto.randomBytes(3).toString('hex').toUpperCase()}!`;
   let isNewUser = false;
@@ -132,8 +150,7 @@ export const applyForPartnership = catchAsync(async (req: Request, res: Response
       );
     }
 
-    // If user already existed as a customer transitioning to partner or vendor re-applying,
-    // ensure role is VENDOR, account is active/verified, and assign the new generated password
+    // Existing customer upgrading to partner
     user.name = resolvedOwnerName || user.name;
     user.role = UserRole.VENDOR;
     user.status = UserStatus.ACTIVE;
@@ -314,20 +331,20 @@ export const applyForPartnership = catchAsync(async (req: Request, res: Response
     logger.warn(`Failed to dispatch admin partner submission alert: ${adminMailErr.message}`);
   }
 
-  const token = authService.signToken(user._id.toString());
-
   return res.status(201).json({
     status: 'success',
     message: isQuick
-      ? 'Vendor account created! Your login credentials and confirmation email have been sent.'
+      ? 'Vendor account created! Your login credentials have been dispatched to your email. Please log in to access your partner dashboard.'
       : 'Partner application submitted! Your vendor account has been registered and login credentials sent via email.',
     data: {
-      token,
-      user,
-      restaurant,
-      application,
+      user: {
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+      },
       restaurantId: restaurant._id,
-      hasInstantAccess: true,
+      requiresLogin: true,
     },
   });
 });
