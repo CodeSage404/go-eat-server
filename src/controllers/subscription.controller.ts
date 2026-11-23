@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { SubscriptionService } from '../services/subscription.service';
 import { OutletSubscription, SUBSCRIPTION_PLAN_CONFIGS, SubscriptionPlanTier } from '../models/subscription.model';
-import Restaurant from '../models/restaurant.model';
+import Restaurant, { RestaurantStatus } from '../models/restaurant.model';
 import bachsModule from '../services/payments/bachs.module';
 import stripeModule from '../services/payments/stripe.module';
 
@@ -250,14 +250,26 @@ export class SubscriptionController {
       let { restaurantId, planTier, market, callbackUrl, cancelUrl } = req.body;
 
       if (!restaurantId && user) {
-        const found = await Restaurant.findOne({ owner: user._id });
-        if (found) restaurantId = found._id.toString();
+        let found = await Restaurant.findOne({ owner: user._id });
+        if (!found) {
+          // Auto-provision pending restaurant profile for the partner
+          found = await Restaurant.create({
+            owner: user._id,
+            name: `${user.name || 'Partner'}'s Kitchen`,
+            phone: user.phoneNumber || user.phone || '08000000000',
+            businessEmail: user.email,
+            status: RestaurantStatus.PENDING,
+            subscriptionPlan: planTier,
+            baseCurrency: market === 'UK' ? 'GBP' : market === 'EU' ? 'EUR' : 'NGN',
+          });
+        }
+        restaurantId = found._id.toString();
       }
 
       if (!restaurantId) {
-        return res.status(400).json({
+        return res.status(401).json({
           success: false,
-          message: 'Restaurant ID is required to initialize subscription',
+          message: 'Authentication or valid Restaurant ID is required to initialize subscription',
         });
       }
 
