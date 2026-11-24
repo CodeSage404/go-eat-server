@@ -764,6 +764,43 @@ class PaymentService {
         const paystackEnabled = setting?.enableBankVerificationPaystack !== false;
         const stripeEnabled = setting?.enableBankVerificationStripe !== false;
         const monnifyEnabled = setting?.enableBankVerificationMonnify !== false && setting?.enableMonnify !== false;
+        // STRICT PLATFORM RULE:
+        // Nigeria is strictly verified via Bachs.io (NUBAN resolution) - NEVER via Stripe.
+        // UK & Italy/Europe are strictly verified via Stripe Connect.
+        if (countryCode === 'NG' || countryCode === 'GH') {
+            return {
+                countryCode: 'NG',
+                countryName: 'Nigeria',
+                provider: 'bachs',
+                accountFormat: 'nuban',
+                currency: 'NGN',
+                requiresRoutingNumber: false,
+                accountNumberLabel: 'NUBAN Account Number',
+            };
+        }
+        if (countryCode === 'GB') {
+            return {
+                countryCode: 'GB',
+                countryName: 'United Kingdom',
+                provider: 'stripe',
+                accountFormat: 'uk_sort_code',
+                currency: 'GBP',
+                requiresRoutingNumber: true,
+                routingNumberLabel: 'Sort Code',
+                accountNumberLabel: 'Account Number',
+            };
+        }
+        if (countryCode === 'IT' || countryCode === 'EU') {
+            return {
+                countryCode: 'IT',
+                countryName: 'Italy',
+                provider: 'stripe',
+                accountFormat: 'iban',
+                currency: 'EUR',
+                requiresRoutingNumber: false,
+                accountNumberLabel: 'IBAN',
+            };
+        }
         // 3. Check Admin Force Global Override
         const forcedProvider = setting?.forceGlobalBankVerificationProvider || 'none';
         if (forcedProvider === 'stripe' && stripeEnabled) {

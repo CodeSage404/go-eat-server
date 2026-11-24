@@ -247,6 +247,9 @@ class StripeModule {
         const currency = (params.currency || (country === 'GB' ? 'gbp' : country === 'IT' ? 'eur' : 'usd')).toLowerCase();
         const accountHolder = params.accountHolderName || 'Verified Account';
         // 1. Regional algorithmic pre-validation
+        if (country === 'NG') {
+            throw new appError_1.default('Nigerian accounts cannot be verified through Stripe. Please use NUBAN verification.', 400);
+        }
         if (country === 'GB') {
             if (!this.isValidUKSortCodeAndAccount(cleanRouting, cleanAccount)) {
                 throw new appError_1.default('Invalid UK bank details. Requires 6-digit sort code and 8-digit account number.', 400);
