@@ -760,6 +760,7 @@ class PaymentService {
         if (countryCode === 'UK')
             countryCode = 'GB';
         // 2. Check Provider Kill-Switches
+        const bachsEnabled = setting?.enableBachs !== false;
         const paystackEnabled = setting?.enableBankVerificationPaystack !== false;
         const stripeEnabled = setting?.enableBankVerificationStripe !== false;
         const monnifyEnabled = setting?.enableBankVerificationMonnify !== false && setting?.enableMonnify !== false;
@@ -823,7 +824,7 @@ class PaymentService {
             return {
                 countryCode: 'NG',
                 countryName: 'Nigeria',
-                provider: paystackEnabled ? 'paystack' : 'stripe',
+                provider: bachsEnabled ? 'bachs' : 'stripe',
                 accountFormat: 'nuban',
                 currency: 'NGN',
                 requiresRoutingNumber: false,
@@ -909,16 +910,16 @@ class PaymentService {
                 isVerified: true,
             };
         }
-        // Default to Paystack
+        // Default to Bachs.io for Nigerian account resolution & verification
         const cleanBankCode = params.bankCode || '044';
-        const paystackRes = await paystack_module_1.default.resolveAccountNumber(params.accountNumber, cleanBankCode);
+        const bachsRes = await bachs_module_1.default.resolveAccountNumber(params.accountNumber, cleanBankCode);
         return {
-            accountNumber: paystackRes.accountNumber,
-            accountName: paystackRes.accountName,
+            accountNumber: bachsRes.accountNumber,
+            accountName: bachsRes.accountName,
             bankName: 'Nigerian Commercial Bank',
             bankCode: cleanBankCode,
             currency: 'NGN',
-            provider: 'paystack',
+            provider: 'bachs',
             isVerified: true,
         };
     }

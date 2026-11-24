@@ -1,4 +1,5 @@
 import { Request, Response } from 'express';
+import mongoose from 'mongoose';
 import { SubscriptionService } from '../services/subscription.service';
 import { OutletSubscription, SUBSCRIPTION_PLAN_CONFIGS, SubscriptionPlanTier } from '../models/subscription.model';
 import Restaurant, { RestaurantStatus } from '../models/restaurant.model';
@@ -262,24 +263,73 @@ export class SubscriptionController {
         planTier = String(planTier).toLowerCase().trim();
       }
 
-      if (!restaurantId && user) {
-        let found = await Restaurant.findOne({ owner: user._id });
-        if (!found) {
-          // Auto-provision pending restaurant profile for the partner
-          found = await Restaurant.create({
-            owner: user._id,
-            name: `${user.name || 'Partner'}'s Kitchen`,
-            phone: user.phoneNumber || user.phone || '08000000000',
-            businessEmail: user.email,
-            status: RestaurantStatus.PENDING,
-            subscriptionPlan: planTier,
-            baseCurrency: market === 'UK' ? 'GBP' : market === 'EU' ? 'EUR' : 'NGN',
-          });
-        }
-        restaurantId = found._id.toString();
+      // Sanitize restaurantId if passed as empty string or string 'undefined'
+      if (
+        restaurantId &&
+        (typeof restaurantId !== 'string' ||
+          restaurantId.trim() === '' ||
+          restaurantId === 'undefined' ||
+          restaurantId === 'null')
+      ) {
+        restaurantId = undefined;
       }
 
-      if (!restaurantId) {
+      // Safe market resolution helper
+      const marketStr = (market && typeof market === 'string' ? market.toUpperCase().trim() : '') as 'UK' | 'NG' | 'EU';
+
+      let restaurant: any = null;
+      if (restaurantId && mongoose.Types.ObjectId.isValid(restaurantId)) {
+        restaurant = await Restaurant.findById(restaurantId);
+      }
+
+      // If restaurant not found by provided ID, try finding by owner
+      if (!restaurant && user?._id) {
+        restaurant = await Restaurant.findOne({ owner: user._id });
+        if (restaurant) {
+          restaurantId = restaurant._id.toString();
+        }
+      }
+
+      // If still no restaurant, auto-provision pending storefront with full valid schema defaults
+      if (!restaurant && user) {
+        const resolvedCountry = marketStr === 'UK' ? 'United Kingdom' : 'Nigeria';
+        const resolvedCountryCode = marketStr === 'UK' ? 'GB' : 'NG';
+        const resolvedCity = marketStr === 'UK' ? 'London' : 'Lagos';
+        const resolvedZip = marketStr === 'UK' ? 'EC1A 1BB' : '100001';
+        const defaultCoords: [number, number] = marketStr === 'UK' ? [-0.1276, 51.5074] : [3.3792, 6.5244];
+
+        restaurant = await Restaurant.create({
+          owner: user._id,
+          name: `${user.name || 'Partner'}'s Kitchen`,
+          description: `Storefront for ${user.name || 'Partner'}`,
+          phone: user.phoneNumber || user.phone || '08000000000',
+          businessEmail: user.email,
+          status: RestaurantStatus.PENDING,
+          subscriptionPlan: planTier || 'plus',
+          baseCurrency: marketStr === 'UK' ? 'GBP' : marketStr === 'EU' ? 'EUR' : 'NGN',
+          country: resolvedCountry,
+          countryCode: resolvedCountryCode,
+          isNigeria: marketStr !== 'UK' && marketStr !== 'EU',
+          isUk: marketStr === 'UK',
+          isItaly: marketStr === 'EU',
+          address: {
+            street: 'Storefront Location Pending',
+            city: resolvedCity,
+            state: resolvedCity,
+            zipCode: resolvedZip,
+            country: resolvedCountry,
+            countryCode: resolvedCountryCode,
+          },
+          location: {
+            type: 'Point',
+            coordinates: defaultCoords,
+          },
+          outletType: 'Restaurant',
+        });
+        restaurantId = restaurant._id.toString();
+      }
+
+      if (!restaurantId || !restaurant) {
         return res.status(401).json({
           success: false,
           message: 'Authentication or valid Restaurant ID is required to initialize subscription',
@@ -293,12 +343,9 @@ export class SubscriptionController {
         });
       }
 
-      const restaurant = await Restaurant.findById(restaurantId);
-      if (!restaurant) {
-        return res.status(404).json({ success: false, message: 'Restaurant not found' });
-      }
-
-      const resolvedMarket = market || SubscriptionService.getRestaurantMarket(restaurant);
+      const resolvedMarket = ['UK', 'NG', 'EU'].includes(marketStr)
+        ? marketStr
+        : SubscriptionService.getRestaurantMarket(restaurant);
       const config = SUBSCRIPTION_PLAN_CONFIGS[resolvedMarket as 'UK' | 'NG' | 'EU']?.[planTier as SubscriptionPlanTier];
 
       if (!config) {
@@ -376,7 +423,9 @@ export class SubscriptionController {
         ...checkoutResult,
       });
     } catch (error: any) {
-      return res.status(500).json({
+      logger.error(`[SubscriptionCheckout] Initialization error: ${error?.stack || error?.message || error}`);
+      const status = error.statusCode || error.status || 500;
+      return res.status(status >= 400 && status < 600 ? status : 500).json({
         success: false,
         message: error.message || 'Failed to initialize subscription checkout',
       });

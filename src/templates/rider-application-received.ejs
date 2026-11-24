@@ -1,5 +1,5 @@
 <h2 style="color: #06462f; margin-top: 0; font-size: 24px; font-weight: 800; letter-spacing: -0.4px;">Courier Application Received</h2>
-<p style="font-size: 15px; font-weight: 700; color: #1F2937; margin: 0 0 10px;">Hello <%= typeof riderName !== 'undefined' && riderName ? riderName : 'Courier Partner' %>,</p>
+<p style="font-size: 15px; font-weight: 700; color: #1F2937; margin: 0 0 10px;">Hello <%= (typeof riderName !== 'undefined' && riderName && String(riderName).trim()) ? String(riderName).trim() : 'Courier Partner' %>,</p>
 <p style="font-size: 14px; line-height: 1.65; color: #4B5563; margin: 0 0 18px;">Thank you for completing your GoEatOne courier verification application. We have received your uploaded verification documents and personal profile details.</p>
 
 <div style="background-color: #f5f8f5; border: 1px solid #deebe3; border-left: 4px solid #ffc629; border-radius: 12px; padding: 18px 20px; margin: 20px 0 24px;">

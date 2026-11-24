@@ -783,7 +783,7 @@ export class PaymentService {
   async getBankVerificationConfig(userCountryCode?: string, user?: any): Promise<{
     countryCode: string;
     countryName: string;
-    provider: 'paystack' | 'stripe' | 'flutterwave' | 'monnify';
+    provider: 'paystack' | 'stripe' | 'flutterwave' | 'monnify' | 'bachs';
     accountFormat: 'nuban' | 'uk_sort_code' | 'iban' | 'us_routing' | 'general';
     currency: string;
     requiresRoutingNumber: boolean;
@@ -803,6 +803,7 @@ export class PaymentService {
     if (countryCode === 'UK') countryCode = 'GB';
 
     // 2. Check Provider Kill-Switches
+    const bachsEnabled = setting?.enableBachs !== false;
     const paystackEnabled = setting?.enableBankVerificationPaystack !== false;
     const stripeEnabled = setting?.enableBankVerificationStripe !== false;
     const monnifyEnabled = setting?.enableBankVerificationMonnify !== false && setting?.enableMonnify !== false;
@@ -869,7 +870,7 @@ export class PaymentService {
       return {
         countryCode: 'NG',
         countryName: 'Nigeria',
-        provider: paystackEnabled ? 'paystack' : 'stripe',
+        provider: bachsEnabled ? ('bachs' as any) : ('stripe' as any),
         accountFormat: 'nuban',
         currency: 'NGN',
         requiresRoutingNumber: false,
@@ -945,7 +946,7 @@ export class PaymentService {
     bankName: string;
     bankCode: string;
     currency: string;
-    provider: 'paystack' | 'stripe' | 'flutterwave' | 'monnify';
+    provider: 'paystack' | 'stripe' | 'flutterwave' | 'monnify' | 'bachs';
     isVerified: boolean;
   }> {
     const config = await this.getBankVerificationConfig(params.countryCode, params.user);
@@ -978,16 +979,16 @@ export class PaymentService {
       };
     }
 
-    // Default to Paystack
+    // Default to Bachs.io for Nigerian account resolution & verification
     const cleanBankCode = params.bankCode || '044';
-    const paystackRes = await paystackModule.resolveAccountNumber(params.accountNumber, cleanBankCode);
+    const bachsRes = await bachsModule.resolveAccountNumber(params.accountNumber, cleanBankCode);
     return {
-      accountNumber: paystackRes.accountNumber,
-      accountName: paystackRes.accountName,
+      accountNumber: bachsRes.accountNumber,
+      accountName: bachsRes.accountName,
       bankName: 'Nigerian Commercial Bank',
       bankCode: cleanBankCode,
       currency: 'NGN',
-      provider: 'paystack',
+      provider: 'bachs' as any,
       isVerified: true,
     };
   }

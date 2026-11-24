@@ -182,25 +182,9 @@
             <td style="height: 6px; background-color: #ffc629; font-size: 0; line-height: 0;">&nbsp;</td>
           </tr>
 
-          <% if (typeof heroTitle !== 'undefined' && heroTitle && (typeof hideHeaderTitle === 'undefined' || !hideHeaderTitle)) { %>
-          <!-- Master Title Section -->
-          <tr>
-            <td style="padding: 34px 40px 10px; background-color: #FFFFFF; text-align: center;">
-              <% if (typeof heroSubtitle !== 'undefined' && heroSubtitle) { %>
-              <div style="font-family: Arial, Helvetica, sans-serif; font-size: 11px; font-weight: bold; color: #997000; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 8px;">
-                <%= heroSubtitle %>
-              </div>
-              <% } %>
-              <h1 class="brand-heading" style="font-family: Arial, Helvetica, sans-serif; font-size: 28px; line-height: 1.25; font-weight: 800; color: #06462f; margin: 0; text-align: center; letter-spacing: -0.5px;">
-                <%= heroTitle %>
-              </h1>
-            </td>
-          </tr>
-          <% } %>
-
           <!-- Dynamic Email Content Body (Generous 40px side margins) -->
           <tr>
-            <td class="email-body" style="padding: 32px 40px 38px; background-color: #FFFFFF; border-radius: 0; font-family: Arial, Helvetica, sans-serif;">
+            <td class="email-body" style="padding: 36px 40px 38px; background-color: #FFFFFF; border-radius: 0; font-family: Arial, Helvetica, sans-serif;">
               <%- body %>
             </td>
           </tr>
