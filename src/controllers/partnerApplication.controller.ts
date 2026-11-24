@@ -266,30 +266,7 @@ export const applyForPartnership = catchAsync(async (req: Request, res: Response
     status: 'pending',
   });
 
-  // 1. Dispatch Welcome Partner email with login credentials
-  try {
-    await emailService.sendTemplateEmail(
-      normalizedEmail,
-      'WELCOME_PARTNER',
-      'Welcome to GoEatOne — Your Partner Account is Ready!',
-      {
-        partnerName: resolvedOwnerName,
-        businessName: businessName.trim(),
-        restaurantName: businessName.trim(),
-        country: resolvedCountry,
-        isFoundingPartner: true,
-        loginUrl: process.env.VENDOR_DASHBOARD_URL || 'https://go-eat-webapp.vercel.app/partners/login',
-        email: normalizedEmail,
-        password: generatedPassword,
-      },
-      'partners'
-    );
-    logger.info(`📧 Welcome partner email successfully dispatched to ${normalizedEmail}`);
-  } catch (mailErr: any) {
-    logger.error(`Failed to dispatch partner welcome credentials email: ${mailErr.message}`);
-  }
-
-  // 2. Dispatch application confirmation email to the applicant
+  // 1. Dispatch application confirmation email to the applicant with their login credentials
   try {
     await emailService.sendPartnerApplicationReceived(
       normalizedEmail,
@@ -300,13 +277,17 @@ export const applyForPartnership = catchAsync(async (req: Request, res: Response
         businessAddress: businessAddress.trim(),
         email: normalizedEmail,
         phoneNumber: normalizedPhone,
+        password: generatedPassword,
+        loginUrl: process.env.VENDOR_DASHBOARD_URL || 'https://go-eat-webapp.vercel.app/partners/login',
+        country: resolvedCountry,
       }
     );
+    logger.info(`📧 Partner application received email with credentials dispatched to ${normalizedEmail}`);
   } catch (err: any) {
     logger.warn(`Failed to dispatch partner application confirmation email to ${email}: ${err.message}`);
   }
 
-  // 3. Dispatch operational alert to support@goeatone.com (Awaiting admin review & approval)
+  // 2. Dispatch operational alert to support@goeatone.com (Awaiting admin review & approval)
   try {
     const uploadedDocs: string[] = [];
     if (cacUrl) uploadedDocs.push('CAC Certificate');
@@ -452,6 +433,37 @@ export const updatePartnerApplicationStatus = catchAsync(async (req: Request, re
 
   if (!application) {
     throw new AppError('Partner application not found', 404);
+  }
+
+  // If status is updated to approved in the admin dashboard, activate restaurant and dispatch Founding Partner Onboarding Email
+  if (status === 'approved') {
+    try {
+      if (application.onboardedRestaurant) {
+        await Restaurant.findByIdAndUpdate(application.onboardedRestaurant, {
+          status: RestaurantStatus.ACTIVE,
+          complianceStatus: 'approved',
+        });
+      }
+      await emailService.sendFoundingPartnerOnboarded(application.email.toLowerCase().trim(), {
+        partnerName: application.ownerName,
+        ownerName: application.ownerName,
+        businessName: application.businessName,
+        restaurantName: application.businessName,
+        businessType: application.businessType || 'Restaurant',
+        outletType: application.businessType || 'Restaurant',
+        businessAddress: application.businessAddress || '',
+        address: application.businessAddress || '',
+        phone: application.phoneNumber,
+        phoneNumber: application.phoneNumber,
+        email: application.email.toLowerCase().trim(),
+        country: (application as any).country || 'Nigeria',
+        isFoundingPartner: true,
+        loginUrl: process.env.VENDOR_DASHBOARD_URL || 'https://go-eat-webapp.vercel.app/partners/login',
+      });
+      logger.info(`📧 Founding partner onboarding email dispatched upon status approval for ${application.email}`);
+    } catch (appMailErr: any) {
+      logger.warn(`Failed to dispatch founding partner email on status update to approved: ${appMailErr.message}`);
+    }
   }
 
   res.status(200).json({
@@ -667,25 +679,27 @@ export const adminApproveApplication = catchAsync(async (req: Request, res: Resp
   application.reviewedAt = new Date();
   await application.save();
 
-  // If user was newly created, send their welcome credentials
-  if (newlyCreatedUser) {
-    try {
-      await emailService.sendTemplateEmail(
-        normalizedEmail,
-        'WELCOME_PARTNER',
-        'Welcome to GoEat — Application Approved!',
-        {
-          partnerName: application.ownerName,
-          restaurantName: application.businessName,
-          loginUrl: process.env.VENDOR_DASHBOARD_URL || 'https://partner.goeat.com',
-          email: normalizedEmail,
-          password: generatedPassword,
-        },
-        'partners'
-      );
-    } catch (mailErr: any) {
-      logger.warn(`Failed to dispatch approval email: ${mailErr.message}`);
-    }
+  // Dispatch Founding Partner Onboarding Email with verified business details (No login credentials)
+  try {
+    await emailService.sendFoundingPartnerOnboarded(normalizedEmail, {
+      partnerName: application.ownerName,
+      ownerName: application.ownerName,
+      businessName: application.businessName,
+      restaurantName: application.businessName,
+      businessType: application.businessType || restaurant.outletType || 'Restaurant',
+      outletType: restaurant.outletType || application.businessType || 'Restaurant',
+      businessAddress: application.businessAddress || (typeof restaurant.address === 'object' ? (restaurant.address as any)?.street : restaurant.address) || '',
+      address: application.businessAddress || (typeof restaurant.address === 'object' ? (restaurant.address as any)?.street : restaurant.address) || '',
+      phone: normalizedPhone,
+      phoneNumber: normalizedPhone,
+      email: normalizedEmail,
+      country: (application as any).country || 'Nigeria',
+      isFoundingPartner: true,
+      loginUrl: process.env.VENDOR_DASHBOARD_URL || 'https://go-eat-webapp.vercel.app/partners/login',
+    });
+    logger.info(`📧 Founding partner onboarding email dispatched upon approval to ${normalizedEmail}`);
+  } catch (mailErr: any) {
+    logger.warn(`Failed to dispatch founding partner onboarding email: ${mailErr.message}`);
   }
 
   res.status(200).json({

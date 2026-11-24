@@ -261,24 +261,7 @@ exports.applyForPartnership = (0, catchAsync_1.catchAsync)(async (req, res) => {
         coverImageUrl,
         status: 'pending',
     });
-    // 1. Dispatch Welcome Partner email with login credentials
-    try {
-        await email_service_1.default.sendTemplateEmail(normalizedEmail, 'WELCOME_PARTNER', 'Welcome to GoEatOne — Your Partner Account is Ready!', {
-            partnerName: resolvedOwnerName,
-            businessName: businessName.trim(),
-            restaurantName: businessName.trim(),
-            country: resolvedCountry,
-            isFoundingPartner: true,
-            loginUrl: process.env.VENDOR_DASHBOARD_URL || 'https://go-eat-webapp.vercel.app/partners/login',
-            email: normalizedEmail,
-            password: generatedPassword,
-        }, 'partners');
-        logger_1.default.info(`📧 Welcome partner email successfully dispatched to ${normalizedEmail}`);
-    }
-    catch (mailErr) {
-        logger_1.default.error(`Failed to dispatch partner welcome credentials email: ${mailErr.message}`);
-    }
-    // 2. Dispatch application confirmation email to the applicant
+    // 1. Dispatch application confirmation email to the applicant with their login credentials
     try {
         await email_service_1.default.sendPartnerApplicationReceived(normalizedEmail, {
             ownerName: resolvedOwnerName,
@@ -287,12 +270,16 @@ exports.applyForPartnership = (0, catchAsync_1.catchAsync)(async (req, res) => {
             businessAddress: businessAddress.trim(),
             email: normalizedEmail,
             phoneNumber: normalizedPhone,
+            password: generatedPassword,
+            loginUrl: process.env.VENDOR_DASHBOARD_URL || 'https://go-eat-webapp.vercel.app/partners/login',
+            country: resolvedCountry,
         });
+        logger_1.default.info(`📧 Partner application received email with credentials dispatched to ${normalizedEmail}`);
     }
     catch (err) {
         logger_1.default.warn(`Failed to dispatch partner application confirmation email to ${email}: ${err.message}`);
     }
-    // 3. Dispatch operational alert to support@goeatone.com (Awaiting admin review & approval)
+    // 2. Dispatch operational alert to support@goeatone.com (Awaiting admin review & approval)
     try {
         const uploadedDocs = [];
         if (cacUrl)
@@ -422,6 +409,37 @@ exports.updatePartnerApplicationStatus = (0, catchAsync_1.catchAsync)(async (req
     const application = await partnerApplication_model_1.default.findByIdAndUpdate(id, updateData, { returnDocument: 'after', runValidators: true });
     if (!application) {
         throw new appError_1.default('Partner application not found', 404);
+    }
+    // If status is updated to approved in the admin dashboard, activate restaurant and dispatch Founding Partner Onboarding Email
+    if (status === 'approved') {
+        try {
+            if (application.onboardedRestaurant) {
+                await restaurant_model_1.default.findByIdAndUpdate(application.onboardedRestaurant, {
+                    status: restaurant_model_1.RestaurantStatus.ACTIVE,
+                    complianceStatus: 'approved',
+                });
+            }
+            await email_service_1.default.sendFoundingPartnerOnboarded(application.email.toLowerCase().trim(), {
+                partnerName: application.ownerName,
+                ownerName: application.ownerName,
+                businessName: application.businessName,
+                restaurantName: application.businessName,
+                businessType: application.businessType || 'Restaurant',
+                outletType: application.businessType || 'Restaurant',
+                businessAddress: application.businessAddress || '',
+                address: application.businessAddress || '',
+                phone: application.phoneNumber,
+                phoneNumber: application.phoneNumber,
+                email: application.email.toLowerCase().trim(),
+                country: application.country || 'Nigeria',
+                isFoundingPartner: true,
+                loginUrl: process.env.VENDOR_DASHBOARD_URL || 'https://go-eat-webapp.vercel.app/partners/login',
+            });
+            logger_1.default.info(`📧 Founding partner onboarding email dispatched upon status approval for ${application.email}`);
+        }
+        catch (appMailErr) {
+            logger_1.default.warn(`Failed to dispatch founding partner email on status update to approved: ${appMailErr.message}`);
+        }
     }
     res.status(200).json({
         status: 'success',
@@ -610,20 +628,28 @@ exports.adminApproveApplication = (0, catchAsync_1.catchAsync)(async (req, res) 
     application.reviewedBy = req.user?._id;
     application.reviewedAt = new Date();
     await application.save();
-    // If user was newly created, send their welcome credentials
-    if (newlyCreatedUser) {
-        try {
-            await email_service_1.default.sendTemplateEmail(normalizedEmail, 'WELCOME_PARTNER', 'Welcome to GoEat — Application Approved!', {
-                partnerName: application.ownerName,
-                restaurantName: application.businessName,
-                loginUrl: process.env.VENDOR_DASHBOARD_URL || 'https://partner.goeat.com',
-                email: normalizedEmail,
-                password: generatedPassword,
-            }, 'partners');
-        }
-        catch (mailErr) {
-            logger_1.default.warn(`Failed to dispatch approval email: ${mailErr.message}`);
-        }
+    // Dispatch Founding Partner Onboarding Email with verified business details (No login credentials)
+    try {
+        await email_service_1.default.sendFoundingPartnerOnboarded(normalizedEmail, {
+            partnerName: application.ownerName,
+            ownerName: application.ownerName,
+            businessName: application.businessName,
+            restaurantName: application.businessName,
+            businessType: application.businessType || restaurant.outletType || 'Restaurant',
+            outletType: restaurant.outletType || application.businessType || 'Restaurant',
+            businessAddress: application.businessAddress || (typeof restaurant.address === 'object' ? restaurant.address?.street : restaurant.address) || '',
+            address: application.businessAddress || (typeof restaurant.address === 'object' ? restaurant.address?.street : restaurant.address) || '',
+            phone: normalizedPhone,
+            phoneNumber: normalizedPhone,
+            email: normalizedEmail,
+            country: application.country || 'Nigeria',
+            isFoundingPartner: true,
+            loginUrl: process.env.VENDOR_DASHBOARD_URL || 'https://go-eat-webapp.vercel.app/partners/login',
+        });
+        logger_1.default.info(`📧 Founding partner onboarding email dispatched upon approval to ${normalizedEmail}`);
+    }
+    catch (mailErr) {
+        logger_1.default.warn(`Failed to dispatch founding partner onboarding email: ${mailErr.message}`);
     }
     res.status(200).json({
         status: 'success',

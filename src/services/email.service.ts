@@ -400,7 +400,7 @@ class EmailService {
   }
 
   /**
-   * Sends partner merchant application acknowledgement email
+   * Sends partner merchant application acknowledgement email with provisioned login credentials
    */
   public async sendPartnerApplicationReceived(
     email: string,
@@ -411,13 +411,59 @@ class EmailService {
       businessAddress: string;
       email: string;
       phoneNumber: string;
+      password?: string;
+      loginUrl?: string;
+      country?: string;
     }
   ): Promise<void> {
-    const htmlContent = renderTemplate('PARTNER_APPLICATION_RECEIVED', data);
+    const htmlContent = renderTemplate('PARTNER_APPLICATION_RECEIVED', {
+      ...data,
+      loginUrl: data.loginUrl || process.env.VENDOR_DASHBOARD_URL || 'https://go-eat-webapp.vercel.app/partners/login',
+    });
     try {
-      await this.sendEmail(email, 'GoEatOne Partner Application Received', htmlContent, 'partners');
+      await this.sendEmail(email, 'GoEatOne Partner Application Received — Your Account Credentials', htmlContent, 'partners');
     } catch (err: any) {
       logger.error(`Partner application received email failed to ${email}:`, err?.message || err);
+    }
+  }
+
+  /**
+   * Sends Founding Partner Onboarding email when an admin onboards / approves a partner in admin dashboard
+   */
+  public async sendFoundingPartnerOnboarded(
+    email: string,
+    data: {
+      partnerName?: string;
+      ownerName?: string;
+      businessName: string;
+      restaurantName?: string;
+      businessType?: string;
+      outletType?: string;
+      businessAddress?: string;
+      address?: any;
+      phoneNumber?: string;
+      phone?: string;
+      email: string;
+      country?: string;
+      isFoundingPartner?: boolean;
+      loginUrl?: string;
+    }
+  ): Promise<void> {
+    const htmlContent = renderTemplate('WELCOME_PARTNER', {
+      ...data,
+      isFoundingPartner: data.isFoundingPartner !== false,
+      loginUrl: data.loginUrl || process.env.VENDOR_DASHBOARD_URL || 'https://go-eat-webapp.vercel.app/partners/login',
+    });
+    try {
+      await this.sendEmail(
+        email,
+        "We've given your business a head start — GoEatOne Founding Partner Onboarding",
+        htmlContent,
+        'partners'
+      );
+      logger.info(`📧 Founding partner onboarding email dispatched to ${email}`);
+    } catch (err: any) {
+      logger.error(`Founding partner onboarding email failed to ${email}:`, err?.message || err);
     }
   }
 

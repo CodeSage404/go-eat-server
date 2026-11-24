@@ -1,10 +1,13 @@
 <%
   var bName = (typeof businessName !== 'undefined' && businessName) ? businessName : ((typeof restaurantName !== 'undefined' && restaurantName) ? restaurantName : ((typeof partnerName !== 'undefined' && partnerName) ? partnerName : 'Partner'));
   var uEmail = (typeof email !== 'undefined' && email) ? email : (typeof username !== 'undefined' ? username : 'partner@business.com');
-  var tempPwd = (typeof password !== 'undefined' && password) ? password : '';
+  var bPhone = (typeof phone !== 'undefined' && phone) ? phone : ((typeof phoneNumber !== 'undefined' && phoneNumber) ? phoneNumber : '');
+  var bType = (typeof businessType !== 'undefined' && businessType) ? businessType : ((typeof outletType !== 'undefined' && outletType) ? outletType : 'Restaurant');
+  var bAddress = (typeof businessAddress !== 'undefined' && businessAddress) ? businessAddress : ((typeof address !== 'undefined' && address) ? (typeof address === 'object' ? (address.street || address.city || 'Registered Store Location') : address) : 'Registered Store Location');
   var isFounding = (typeof isFoundingPartner !== 'undefined') ? isFoundingPartner : true;
   var logoUrl = (typeof logoUrl !== 'undefined' && logoUrl) ? logoUrl : 'https://go-eat-webapp.vercel.app/images/goeatone_logo_dark.jpg';
   var badgeUrl = (typeof badgeUrl !== 'undefined' && badgeUrl) ? badgeUrl : 'https://go-eat-webapp.vercel.app/images/founding_partner_badge.jpg';
+  var dashboardUrl = (typeof loginUrl !== 'undefined' && loginUrl) ? loginUrl : 'https://go-eat-webapp.vercel.app/partners/login';
 %>
 <!DOCTYPE html>
 <html lang="en">
@@ -12,7 +15,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="color-scheme" content="light">
-  <title>GoEatOne – <%= isFounding ? 'Founding Partner Invitation' : 'Partner Invitation' %></title>
+  <title>GoEatOne – <%= isFounding ? 'Founding Partner Onboarding' : 'Partner Onboarding' %></title>
   <style>
     body { margin:0; padding:0; background:#f3f6f3; font-family:Arial,Helvetica,sans-serif; -webkit-text-size-adjust:100%; }
     table { border-collapse:collapse; }
@@ -20,8 +23,8 @@
     p { margin:0 0 15px; }
     @media screen and (max-width:640px) {
       .container { width:100%!important; }
-      .pad { padding:26px 23px!important; }
-      .hero-title { font-size:29px!important; }
+      .pad { padding:26px 20px!important; }
+      .hero-title { font-size:28px!important; }
       .badge-img { width:155px!important; }
       .logo-img { width:100%!important; max-width:100%!important; }
       .twocol { display:block!important; width:100%!important; }
@@ -30,7 +33,7 @@
   </style>
 </head>
 <body style="margin:0;padding:0;background:#f3f6f3;font-family:Arial,Helvetica,sans-serif;color:#173c2c;">
-<div style="display:none;max-height:0;overflow:hidden;opacity:0;">A head start for your business, plus 3 months of 0% sales commission for eligible founding partners.</div>
+<div style="display:none;max-height:0;overflow:hidden;opacity:0;">Congratulations! Your outlet has been officially approved and onboarded to the GoEatOne Partner Network.</div>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f3f6f3">
   <tr>
     <td align="center" style="padding:32px 12px">
@@ -47,41 +50,72 @@
         </tr>
         <!-- Headline & Intro -->
         <tr>
-          <td class="pad" style="padding:39px 43px 20px">
+          <td class="pad" style="padding:36px 40px 18px">
             <p style="margin:0 0 9px;color:#997000;font-size:12px;letter-spacing:2px;font-weight:bold;text-transform:uppercase">
-              GoEatOne · <%= isFounding ? 'Founding Partner Invitation' : 'Business Partner Invitation' %>
+              GoEatOne · <%= isFounding ? 'Founding Partner Onboarding' : 'Business Partner Onboarding' %>
             </p>
-            <h1 class="hero-title" style="margin:0 0 17px;font-size:35px;line-height:1.16;color:#06462f;letter-spacing:-0.8px">
+            <h1 class="hero-title" style="margin:0 0 16px;font-size:32px;line-height:1.2;color:#06462f;letter-spacing:-0.6px">
               We’ve given your business a head start.
             </h1>
-            <p style="font-size:16px;line-height:1.7;color:#40564b">Dear <strong><%= bName %></strong>,</p>
-            <p style="font-size:15px;line-height:1.72;color:#40564b">We know you’re busy running your business. To make exploring GoEatOne easier, we’ve prepared a <strong>provisional business profile</strong> and added a small selection of your menu items or products using information we are permitted to use.</p>
-            <p style="font-size:15px;line-height:1.72;color:#40564b">This is just a head start—not a confirmation of partnership. <strong>Your business is not live for customer orders, and no financial commitment has been made on your behalf.</strong></p>
+            <p style="font-size:15px;line-height:1.7;color:#40564b">Dear <strong><%= bName %></strong>,</p>
+            <p style="font-size:14.5px;line-height:1.7;color:#40564b">
+              Congratulations! Your merchant registration and documentation have been reviewed and approved by our administration team. Your business is now officially onboarded to the <strong>GoEatOne Partner Network</strong>!
+            </p>
+            <p style="font-size:14.5px;line-height:1.7;color:#40564b">
+              To give your kitchen and store the strongest momentum, your verified storefront profile has been initialized and is ready for customer ordering, dish curation, and priority delivery dispatch.
+            </p>
           </td>
         </tr>
-        <!-- Provisional Login Details Box -->
+
+        <!-- Onboarded Business Details Box (No Credentials, Pure Business Details) -->
         <tr>
-          <td class="pad" style="padding:4px 43px 22px">
-            <table role="presentation" width="100%" style="background:#f5f8f5;border:1px solid #deebe3;border-radius:12px">
+          <td class="pad" style="padding:4px 40px 22px">
+            <table role="presentation" width="100%" style="background:#f5f8f5;border:1px solid #deebe3;border-left:4px solid #ffc629;border-radius:12px">
               <tr>
-                <td style="padding:24px">
-                  <h2 style="margin:0 0 14px;color:#06462f;font-size:20px">Your provisional login details</h2>
-                  <p style="font-size:14px;line-height:1.6;color:#40564b">To review your profile, open your browser and <strong>type the address below</strong>. No login link is included in this email.</p>
-                  <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                <td style="padding:22px 24px">
+                  <h2 style="margin:0 0 6px;color:#06462f;font-size:18px;font-weight:bold">Your Onboarded Business Profile</h2>
+                  <p style="font-size:13px;line-height:1.55;color:#40564b;margin:0 0 16px">Below are your verified outlet registration details on the GoEatOne platform:</p>
+                  
+                  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="font-size:13px;">
                     <tr>
-                      <td style="padding:9px 0;font-size:13px;color:#557064;width:125px">Website</td>
-                      <td style="padding:9px 0;font-size:14px;font-weight:bold;color:#073f2d;word-break:break-word">goeatone.com/partners/login</td>
+                      <td style="padding:7px 0;color:#557064;width:140px;font-weight:500;">Business Name:</td>
+                      <td style="padding:7px 0;font-weight:bold;color:#073f2d;"><%= bName %></td>
                     </tr>
                     <tr>
-                      <td style="padding:9px 0;font-size:13px;color:#557064">Username</td>
-                      <td style="padding:9px 0;font-size:14px;font-weight:bold;color:#073f2d"><%= uEmail %></td>
+                      <td style="padding:7px 0;color:#557064;font-weight:500;">Category / Type:</td>
+                      <td style="padding:7px 0;font-weight:600;color:#073f2d;text-transform:capitalize;"><%= bType %></td>
                     </tr>
                     <tr>
-                      <td style="padding:9px 0;font-size:13px;color:#557064">Temporary password</td>
-                      <td style="padding:9px 0;font-size:14px;font-weight:bold;color:#073f2d"><%= tempPwd %></td>
+                      <td style="padding:7px 0;color:#557064;font-weight:500;">Registered Address:</td>
+                      <td style="padding:7px 0;font-weight:600;color:#073f2d;"><%= bAddress %></td>
+                    </tr>
+                    <tr>
+                      <td style="padding:7px 0;color:#557064;font-weight:500;">Registered Email:</td>
+                      <td style="padding:7px 0;font-weight:600;color:#073f2d;"><%= uEmail %></td>
+                    </tr>
+                    <% if (bPhone) { %>
+                    <tr>
+                      <td style="padding:7px 0;color:#557064;font-weight:500;">Contact Phone:</td>
+                      <td style="padding:7px 0;font-weight:600;color:#073f2d;"><%= bPhone %></td>
+                    </tr>
+                    <% } %>
+                    <tr>
+                      <td style="padding:7px 0;color:#557064;font-weight:500;">Onboarding Status:</td>
+                      <td style="padding:7px 0;font-weight:bold;color:#00753a;">
+                        <span style="display:inline-block;width:8px;height:8px;background:#00a854;border-radius:50%;margin-right:6px;"></span>Active &amp; Verified Partner
+                      </td>
+                    </tr>
+                    <tr>
+                      <td style="padding:7px 0;color:#557064;font-weight:500;">Commercial Tier:</td>
+                      <td style="padding:7px 0;font-weight:bold;color:#997000;">
+                        <%= isFounding ? 'Founding Partner (3 Months 0% Commission)' : 'Standard Marketplace Tier' %>
+                      </td>
                     </tr>
                   </table>
-                  <p style="margin:13px 0 0;color:#54675b;font-size:12px;line-height:1.6">For security, please change your temporary password at your first sign-in. Do not share these details.</p>
+
+                  <div style="margin-top:16px;padding-top:12px;border-top:1px solid #deebe3;font-size:12px;color:#54675b;line-height:1.55">
+                    You can access your partner dashboard using the sign-in credentials provided in your initial registration email. If you need to reset your password at any time, you can do so directly on the login screen.
+                  </div>
                 </td>
               </tr>
             </table>
@@ -91,34 +125,19 @@
         <% if (isFounding) { %>
         <!-- Founding Partner Badge -->
         <tr>
-          <td align="center" class="pad" style="padding:8px 43px 18px">
+          <td align="center" class="pad" style="padding:8px 40px 16px">
             <img class="badge-img" src="<%= badgeUrl %>" alt="GoEatOne Founding Partner" width="176" style="width:176px;max-width:65%;height:auto;border:0;">
           </td>
         </tr>
         <!-- Founding Partner Offer Banner -->
         <tr>
-          <td class="pad" style="padding:0 43px 27px">
+          <td class="pad" style="padding:0 40px 24px">
             <table role="presentation" width="100%" style="background:#004b32;border-radius:12px">
               <tr>
-                <td style="padding:28px 24px;text-align:center">
-                  <div style="color:#ffd34b;font-size:12px;font-weight:bold;letter-spacing:1.5px;text-transform:uppercase">Founding Partner Offer</div>
-                  <div style="font-size:37px;font-weight:800;line-height:1.15;color:#fff;margin:10px 0">3 MONTHS<br><span style="color:#ffd34b">0% COMMISSION</span></div>
-                  <div style="font-size:15px;line-height:1.5;color:#fff">on eligible sales, subject to the attached offer terms</div>
-                </td>
-              </tr>
-            </table>
-          </td>
-        </tr>
-        <% } else { %>
-        <!-- Standard Partner Banner -->
-        <tr>
-          <td class="pad" style="padding:8px 43px 22px">
-            <table role="presentation" width="100%" style="background:#004b32;border-radius:12px">
-              <tr>
-                <td style="padding:25px 24px;text-align:center">
-                  <div style="color:#ffd34b;font-size:12px;font-weight:bold;letter-spacing:1.5px;text-transform:uppercase">GoEatOne Partner Programme</div>
-                  <div style="font-size:25px;font-weight:bold;line-height:1.35;color:#fff;margin:9px 0">Your business, your decision.</div>
-                  <div style="font-size:14px;line-height:1.55;color:#fff">Review your profile and our attached fees before choosing to join.</div>
+                <td style="padding:26px 22px;text-align:center">
+                  <div style="color:#ffd34b;font-size:12px;font-weight:bold;letter-spacing:1.5px;text-transform:uppercase">Founding Partner Privilege</div>
+                  <div style="font-size:34px;font-weight:800;line-height:1.15;color:#fff;margin:10px 0">3 MONTHS<br><span style="color:#ffd34b">0% COMMISSION</span></div>
+                  <div style="font-size:14px;line-height:1.5;color:#fff">on all eligible marketplace sales, giving your revenue maximum growth</div>
                 </td>
               </tr>
             </table>
@@ -126,54 +145,43 @@
         </tr>
         <% } %>
 
-        <!-- Review at own pace & fee structure -->
+        <!-- Getting Started & Dashboard Access -->
         <tr>
-          <td class="pad" style="padding:1px 43px 31px">
-            <h2 style="font-size:21px;color:#06462f;margin:0 0 13px">Review it at your own pace</h2>
-            <p style="color:#40564b;font-size:15px;line-height:1.75">Check your business details, menu, prices, photographs and opening hours. If you want to join, you can confirm your participation and accept the relevant partner terms before your business is activated.</p>
-            <table role="presentation" width="100%" style="border-top:1px solid #e5ede7;margin-top:16px">
-              <tr>
-                <td style="padding:18px 0 0">
-                  <h2 style="font-size:18px;margin:0 0 9px;color:#06462f">Your fee structure is attached</h2>
-                  <p style="font-size:14px;color:#40564b;line-height:1.7">Please review the accompanying <strong>GoEatOne Partner Fee Structure</strong> for standard commissions, other applicable charges and the full terms of the introductory offer. Payment processing, delivery or other stated fees may still apply.</p>
-                </td>
-              </tr>
-            </table>
-            <!-- No Obligation Notice Box -->
-            <table role="presentation" width="100%" style="margin-top:10px;border-left:4px solid #ffc629;background:#fffaf0">
-              <tr>
-                <td style="padding:16px 18px;font-size:13px;line-height:1.65;color:#485b50">
-                  <strong>No obligation.</strong> The provisional profile is not publicly active. We will not accept customer orders for your business unless you approve activation and the applicable terms. If you would rather not proceed, simply reply to this email and request removal of the provisional profile.
-                </td>
-              </tr>
-            </table>
-            <p style="font-size:15px;line-height:1.7;color:#40564b;margin:27px 0 0">
-              <%= isFounding ? 'If your business meets the offer conditions, we’d be delighted to welcome you as a GoEatOne founding partner.' : 'We’d be delighted to welcome your business to GoEatOne.' %>
+          <td class="pad" style="padding:1px 40px 30px">
+            <h2 style="font-size:19px;color:#06462f;margin:0 0 12px">Start Receiving Orders &amp; Managing Your Kitchen</h2>
+            <p style="color:#40564b;font-size:14px;line-height:1.7">
+              Your partner outlet is fully operational. Open the <strong>GoEatOne Partner Hub</strong> to review your food catalog, adjust pricing, specify preparation times, set your daily operating hours, and link your payout bank account.
             </p>
-            <p style="font-size:14px;line-height:1.65;color:#40564b;margin:18px 0 0">
+
+            <div style="text-align:center;margin:24px 0 20px;">
+              <a href="<%= dashboardUrl %>" target="_blank" style="display:inline-block;padding:13px 34px;background:#06462f;color:#ffffff;font-size:14px;font-weight:bold;text-decoration:none;border-radius:30px;box-shadow:0 4px 14px rgba(6,70,47,0.25);">
+                Open Partner Dashboard &rarr;
+              </a>
+            </div>
+
+            <p style="font-size:14px;line-height:1.65;color:#40564b;margin:22px 0 0">
+              Welcome to the family. We look forward to scaling your business with you!<br><br>
               Warm regards,<br>
               <strong>GoEatOne Partner Onboarding Team</strong>
             </p>
           </td>
         </tr>
+
         <!-- Footer -->
         <tr>
-          <td style="background:#06462f;padding:28px 38px;text-align:center">
-            <div style="font-size:18px;font-weight:bold;color:#fff">GoEatOne</div>
-            <div style="font-size:12px;color:#f9cd4e;margin-top:7px">One App. Every Craving. Delivered Fresh &amp; Fast.</div>
-            <div style="color:#e4eee7;font-size:13px;margin-top:13px">
+          <td style="background:#06462f;padding:28px 36px;text-align:center">
+            <div style="font-size:17px;font-weight:bold;color:#fff">GoEatOne</div>
+            <div style="font-size:12px;color:#f9cd4e;margin-top:6px">One App. Every Craving. Delivered Fresh &amp; Fast.</div>
+            <div style="color:#e4eee7;font-size:12.5px;margin-top:12px">
               <a href="https://goeatone.com" style="color:#ffc629;text-decoration:none;margin:0 8px;font-weight:600">Website</a> •
               <a href="https://goeatone.com/privacy-policy" style="color:#ffc629;text-decoration:none;margin:0 8px;font-weight:600">Privacy Policy</a> •
               <a href="https://goeatone.com/terms" style="color:#ffc629;text-decoration:none;margin:0 8px;font-weight:600">Terms</a> •
               <a href="mailto:support@goeatone.com" style="color:#ffc629;text-decoration:none;margin:0 8px;font-weight:600">Support</a>
             </div>
-            <div style="color:#b9d1c3;font-size:11px;line-height:1.6;margin-top:16px">
+            <div style="color:#b9d1c3;font-size:11px;line-height:1.6;margin-top:15px">
               &copy; <%= typeof year !== 'undefined' ? year : 2026 %> GoEatOne. All rights reserved.<br>
               <strong style="color:#d4e8dc">FOREMADE GLOBAL</strong><br>
               71-75 Shelton Street, Covent Garden, London, WC2H 9JQ, United Kingdom
-            </div>
-            <div style="color:#8ba898;font-size:11px;line-height:1.5;margin-top:14px">
-              You are receiving this invitation because your business may be suitable for the GoEatOne partner programme. Reply to this email to decline further invitations or request removal of your provisional profile.
             </div>
           </td>
         </tr>

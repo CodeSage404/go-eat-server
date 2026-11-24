@@ -604,23 +604,28 @@ class AdminController {
         logger.warn('Failed to update matching PartnerApplication status:', appErr);
       }
 
-      // Send Welcome / Partner email to the vendor owner!
+      // Send Founding Partner Onboarding email to the vendor owner with verified business details
       try {
-        await emailUtil.sendTemplateEmail(
+        await emailUtil.sendFoundingPartnerOnboarded(
           email.toLowerCase(),
-          'WELCOME_PARTNER',
-          'Welcome to the Go-Eat Family — Partner Onboarding Successful!',
           {
             partnerName: oName,
+            ownerName: oName,
+            businessName: name,
             restaurantName: name,
-            loginUrl: process.env.VENDOR_DASHBOARD_URL || 'https://go-eat-webapp.vercel.app/partners/login',
+            businessType: req.body.outletType || 'Restaurant',
+            outletType: req.body.outletType || 'Restaurant',
+            businessAddress: typeof finalLocation === 'string' ? finalLocation : (req.body.address || ''),
+            address: typeof finalLocation === 'string' ? finalLocation : (req.body.address || ''),
+            phone: phone,
+            phoneNumber: phone,
             email: email.toLowerCase(),
-            password
-          },
-          'partners'
+            isFoundingPartner: true,
+            loginUrl: process.env.VENDOR_DASHBOARD_URL || 'https://go-eat-webapp.vercel.app/partners/login',
+          }
         );
       } catch (mailErr) {
-        console.error('Failed to send partner onboarding welcome email:', mailErr);
+        console.error('Failed to send partner onboarding founding partner email:', mailErr);
       }
 
       res.status(201).json({

@@ -303,15 +303,35 @@ class EmailService {
             .catch(err => logger_1.default.error(`Background courier correction email failed to ${email}:`, err?.message || err));
     }
     /**
-     * Sends partner merchant application acknowledgement email
+     * Sends partner merchant application acknowledgement email with provisioned login credentials
      */
     async sendPartnerApplicationReceived(email, data) {
-        const htmlContent = (0, templateEngine_1.renderTemplate)('PARTNER_APPLICATION_RECEIVED', data);
+        const htmlContent = (0, templateEngine_1.renderTemplate)('PARTNER_APPLICATION_RECEIVED', {
+            ...data,
+            loginUrl: data.loginUrl || process.env.VENDOR_DASHBOARD_URL || 'https://go-eat-webapp.vercel.app/partners/login',
+        });
         try {
-            await this.sendEmail(email, 'GoEatOne Partner Application Received', htmlContent, 'partners');
+            await this.sendEmail(email, 'GoEatOne Partner Application Received — Your Account Credentials', htmlContent, 'partners');
         }
         catch (err) {
             logger_1.default.error(`Partner application received email failed to ${email}:`, err?.message || err);
+        }
+    }
+    /**
+     * Sends Founding Partner Onboarding email when an admin onboards / approves a partner in admin dashboard
+     */
+    async sendFoundingPartnerOnboarded(email, data) {
+        const htmlContent = (0, templateEngine_1.renderTemplate)('WELCOME_PARTNER', {
+            ...data,
+            isFoundingPartner: data.isFoundingPartner !== false,
+            loginUrl: data.loginUrl || process.env.VENDOR_DASHBOARD_URL || 'https://go-eat-webapp.vercel.app/partners/login',
+        });
+        try {
+            await this.sendEmail(email, "We've given your business a head start — GoEatOne Founding Partner Onboarding", htmlContent, 'partners');
+            logger_1.default.info(`📧 Founding partner onboarding email dispatched to ${email}`);
+        }
+        catch (err) {
+            logger_1.default.error(`Founding partner onboarding email failed to ${email}:`, err?.message || err);
         }
     }
     /**

@@ -14,7 +14,7 @@
 </div>
 
 <!-- Greeting & Message -->
-<div style="text-align: center; max-width: 440px; margin: 0 auto 24px;">
+<div style="text-align: center; max-width: 480px; margin: 0 auto 24px;">
   <p style="font-size: 14px; font-weight: 700; color: #1F2937; margin: 0 0 8px;">
     Hello <%= typeof ownerName !== 'undefined' && ownerName ? ownerName : 'Valued Partner' %>,
   </p>
@@ -23,15 +23,53 @@
   </p>
 </div>
 
+<!-- Partner Login Credentials Card -->
+<div style="background-color: #f5f8f5; border: 1px solid #deebe3; border-left: 4px solid #ffc629; border-radius: 12px; padding: 20px 22px; max-width: 480px; margin: 0 auto 24px; text-align: left;">
+  <div style="font-size: 12px; font-weight: 800; color: #06462f; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 6px;">
+    Your Partner Account Credentials
+  </div>
+  <p style="font-size: 12.5px; line-height: 1.6; color: #40564b; margin: 0 0 14px;">
+    Your partner merchant account has been provisioned. You can sign in immediately to the <strong>GoEatOne Partner Portal</strong> to explore the portal, set up your digital menu, and configure your store details while our compliance team verifies your documentation.
+  </p>
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="font-size: 13px;">
+    <tr>
+      <td style="padding: 6px 0; color: #557064; width: 135px; font-weight: 500;">Portal Website:</td>
+      <td style="padding: 6px 0; font-weight: 700; color: #06462f;">
+        <a href="<%= typeof loginUrl !== 'undefined' && loginUrl ? loginUrl : 'https://go-eat-webapp.vercel.app/partners/login' %>" target="_blank" style="color: #06462f; text-decoration: underline;">
+          goeatone.com/partners/login
+        </a>
+      </td>
+    </tr>
+    <tr>
+      <td style="padding: 6px 0; color: #557064; font-weight: 500;">Username / Email:</td>
+      <td style="padding: 6px 0; font-weight: 700; color: #073f2d;"><%= email %></td>
+    </tr>
+    <% if (typeof password !== 'undefined' && password) { %>
+    <tr>
+      <td style="padding: 6px 0; color: #557064; font-weight: 500;">Initial Password:</td>
+      <td style="padding: 6px 0; font-weight: 700; color: #073f2d; font-family: monospace; font-size: 13.5px;"><%= password %></td>
+    </tr>
+    <% } %>
+  </table>
+  <p style="margin: 12px 0 0; color: #6b8276; font-size: 11px; line-height: 1.5;">
+    For security, please change your password upon your first sign-in. Do not share these credentials with anyone.
+  </p>
+  <div style="text-align: center; margin-top: 16px;">
+    <a href="<%= typeof loginUrl !== 'undefined' && loginUrl ? loginUrl : 'https://go-eat-webapp.vercel.app/partners/login' %>" target="_blank" style="display: inline-block; padding: 11px 26px; background-color: #06462f; color: #ffffff; font-size: 13px; font-weight: 700; text-decoration: none; border-radius: 24px;">
+      Sign In to Partner Portal &rarr;
+    </a>
+  </div>
+</div>
+
 <!-- Outlet Summary Box -->
-<div style="background-color: #F9FAFB; border: 1px solid #E5E7EB; border-radius: 18px; padding: 20px 22px; max-width: 480px; margin: 0 auto 24px;">
+<div style="background-color: #F9FAFB; border: 1px solid #E5E7EB; border-radius: 14px; padding: 18px 22px; max-width: 480px; margin: 0 auto 24px; text-align: left;">
   <div style="font-size: 12px; font-weight: 800; color: #133824; margin-bottom: 12px; border-bottom: 1px solid #E5E7EB; padding-bottom: 8px;">
     Submitted Outlet Details
   </div>
 
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="font-size: 13px;">
     <tr>
-      <td style="padding: 6px 0; color: #6B7280; width: 120px;">Business Name:</td>
+      <td style="padding: 6px 0; color: #6B7280; width: 130px;">Business Name:</td>
       <td style="padding: 6px 0; font-weight: 700; color: #111827;"><%= businessName %></td>
     </tr>
     <tr>
@@ -54,11 +92,11 @@
 </div>
 
 <!-- What Happens Next Section -->
-<div style="background-color: #ECFDF5; border: 1px solid #A7F3D0; border-radius: 16px; padding: 16px 20px; max-width: 480px; margin: 0 auto 24px; text-align: left;">
+<div style="background-color: #ECFDF5; border: 1px solid #A7F3D0; border-radius: 14px; padding: 16px 20px; max-width: 480px; margin: 0 auto 10px; text-align: left;">
   <div style="font-size: 12.5px; font-weight: 800; color: #064E3B; margin-bottom: 4px;">
     What happens next?
   </div>
   <p style="font-size: 12px; color: #047857; line-height: 1.5; margin: 0;">
-    Your partner login credentials have been sent to your inbox. You can log into the <strong>GoEatOne Partner App & Portal</strong> right away to set up your digital menu, working hours, and dishes! Our admin compliance team will review your submitted verification documentation to activate live order dispatch.
+    Our compliance team will review your submitted registration and verification documents within <strong>24 to 48 hours</strong>. Once your outlet is approved by an administrator, you will receive your official <strong>GoEatOne Founding Partner Onboarding Confirmation</strong> and your store will be activated for live customer ordering and dispatch.
   </p>
 </div>
