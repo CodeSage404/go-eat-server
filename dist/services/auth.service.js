@@ -325,12 +325,12 @@ class AuthService {
             // 🔒 Role Enforcement on Social Login
             if (role && user.role !== role) {
                 const portalName = user.role === user_model_1.UserRole.VENDOR
-                    ? 'Go-Eat Partner / Vendor'
+                    ? 'GoEatOne Partner'
                     : user.role === user_model_1.UserRole.RIDER
-                        ? 'Go-Eat Delivery'
+                        ? 'GoEatOne Courier'
                         : user.role === user_model_1.UserRole.ADMIN
-                            ? 'Go-Eat Admin'
-                            : 'Go-Eat Customer';
+                            ? 'GoEatOne Admin'
+                            : 'GoEatOne Customer';
                 throw new appError_1.default(`Access denied. This account is registered as a ${user.role}. Please log in using the ${portalName} application.`, 403);
             }
             if (type === 'google' && !user.googleId)

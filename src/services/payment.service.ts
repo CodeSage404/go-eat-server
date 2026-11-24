@@ -490,7 +490,7 @@ export class PaymentService {
             emailService.sendTemplateEmail(
               customerUser.email,
               'ORDER_CONFIRMED',
-              `Order Confirmed: #${shortId} from ${restaurantDoc?.name || 'Go-Eat Partner'}`,
+              `Order Confirmed: #${shortId} from ${restaurantDoc?.name || 'GoEatOne Partner'}`,
               {
                 orderId: order._id,
                 customerName: customerUser.name || 'Customer',

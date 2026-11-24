@@ -372,7 +372,7 @@ class SubscriptionController {
             }
             // Paid tiers (Plus / Unlimited)
             const userEmail = user?.email || restaurant.businessEmail || 'partner@goeatone.com';
-            const userName = user?.name || restaurant.name || 'Go-Eat Partner';
+            const userName = user?.name || restaurant.name || 'GoEatOne Partner';
             const reference = `SUB_${restaurantId}_${planTier.toUpperCase()}_${Date.now()}`;
             const returnUrl = callbackUrl ||
                 `https://go-eat-server-z96s.onrender.com/api/v1/subscriptions/verify-payment?reference=${encodeURIComponent(reference)}&provider=${resolvedMarket === 'NG' ? 'bachs' : 'stripe'}&restaurantId=${restaurantId}&planTier=${planTier}`;
@@ -391,7 +391,7 @@ class SubscriptionController {
                     },
                     callbackUrl: returnUrl,
                     cancelUrl: cancelUrl || 'https://goeatone.com/partners/tiers',
-                    description: `Go-Eat Partner ${planTier.toUpperCase()} Plan Subscription`,
+                    description: `GoEatOne Partner ${planTier.toUpperCase()} Plan Subscription`,
                 });
                 checkoutResult = {
                     authorizationUrl: result.authorizationUrl,

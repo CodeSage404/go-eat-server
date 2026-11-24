@@ -1,0 +1,40 @@
+<div style="text-align: center; margin-bottom: 24px;">
+  <span style="display: inline-block; background-color: #ECFDF5; border: 1px solid #A7F3D0; color: #065F46; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.1em; padding: 6px 14px; border-radius: 9999px;">
+    <%= badgeText || 'Chef’s Selection' %>
+  </span>
+  <h2 style="color: #0F3725; margin: 14px 0 8px 0; font-weight: 800; font-size: 26px; line-height: 1.25;">
+    <%= headline %>
+  </h2>
+  <p style="color: #4B5563; font-size: 14px; margin: 0 auto; max-width: 440px; line-height: 1.5;">
+    <%= subheadline %>
+  </p>
+</div>
+
+<p style="font-size: 14px; color: #374151; line-height: 1.6; margin-bottom: 16px;">
+  Hello <strong><%= name %></strong>,
+</p>
+
+<p style="font-size: 14px; color: #4B5563; line-height: 1.6; margin-bottom: 20px;">
+  <%= introText || 'Your next memorable culinary experience is just around the corner. Top-rated restaurants, local artisan kitchens, and fresh bakeries on GoEatOne are cooking up fresh specials right now.' %>
+</p>
+
+<!-- Feature Box -->
+<div style="background-color: #F8FAF9; border-radius: 16px; border: 1px solid #E5E7EB; padding: 20px; margin: 24px 0; text-align: left;">
+  <div style="font-size: 13px; font-weight: 700; color: #0F3725; margin-bottom: 6px;">
+    ✨ <%= highlightTitle || 'Handpicked for Your Cravings' %>
+  </div>
+  <p style="font-size: 13px; color: #4B5563; margin: 0; line-height: 1.5;">
+    <%= highlightText || 'Explore fast doorstep delivery from top food hubs in your neighborhood with real-time tracking.' %>
+  </p>
+</div>
+
+<!-- Call To Action Button -->
+<div style="text-align: center; margin: 32px 0;">
+  <a href="<%= actionUrl || 'https://goeatone.com' %>" class="btn" style="background-color: #0F3725; color: #FFFFFF !important; padding: 15px 36px; font-size: 14px; font-weight: 700; text-decoration: none; border-radius: 14px; display: inline-block; box-shadow: 0 4px 14px rgba(15, 55, 37, 0.2);">
+    <%= buttonText || 'Explore Restaurants Near You' %>
+  </a>
+</div>
+
+<p style="color: #9CA3AF; font-size: 11px; text-align: center; margin-top: 24px; line-height: 1.5;">
+  You are receiving this periodic recommendation because you have enabled notifications on your GoEatOne account. You can update your preferences anytime in your account settings.
+</p>

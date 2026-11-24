@@ -21,6 +21,7 @@ import Category from '../models/category.model';
 import PartnerApplication from '../models/partnerApplication.model';
 import AccountDeletionRequest from '../models/accountDeletionRequest.model';
 import notificationService from '../services/notification.service';
+import marketingService from '../services/marketing.service';
 import emailUtil from '../utils/email.util';
 import { sendSMS } from '../utils/sms.util';
 import logger from '../utils/logger';
@@ -430,6 +431,18 @@ class AdminController {
     res.status(200).json({
       status: 'success',
       message: 'Admin password updated successfully',
+    });
+  });
+
+  /**
+   * Triggers an on-demand bi-weekly promotional marketing campaign scan
+   */
+  public triggerPromotionalCampaign = catchAsync(async (req: Request, res: Response) => {
+    const result = await marketingService.runBiWeeklyPromotionalCampaign();
+    res.status(200).json({
+      status: 'success',
+      message: 'Bi-weekly promotional marketing campaign executed successfully',
+      data: result,
     });
   });
 

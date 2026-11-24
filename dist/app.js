@@ -55,6 +55,7 @@ const securityReport_routes_1 = __importDefault(require("./routes/securityReport
 const catalogImport_routes_1 = __importDefault(require("./routes/catalogImport.routes"));
 const legalDocument_routes_1 = __importDefault(require("./routes/legalDocument.routes"));
 const activity_service_1 = __importDefault(require("./services/activity.service"));
+const marketing_service_1 = __importDefault(require("./services/marketing.service"));
 const keepAlive_1 = require("./utils/keepAlive");
 const swagger_ui_express_1 = __importDefault(require("swagger-ui-express"));
 const swagger_1 = require("./config/swagger");
@@ -106,6 +107,7 @@ class App {
         this.sockets();
         this.handleErrors();
         activity_service_1.default.startInactivityCron();
+        marketing_service_1.default.startCampaignCron();
     }
     database() {
         (0, db_1.default)();

@@ -275,6 +275,13 @@ const userSchema = new mongoose_1.Schema({
     lastInactivityAlertAt: {
         type: Date,
     },
+    lastPromotionalNotificationAt: {
+        type: Date,
+    },
+    lastPromotionalThemeIndex: {
+        type: Number,
+        default: 0,
+    },
     responsiblePurchasing: {
         spendingLimit: {
             enabled: { type: Boolean, default: false },
@@ -376,5 +383,6 @@ userSchema.index({ isItaly: 1 });
 userSchema.index({ isUk: 1 });
 userSchema.index({ lastActiveAt: 1 });
 userSchema.index({ lastInactivityAlertAt: 1 });
+userSchema.index({ lastPromotionalNotificationAt: 1 });
 const User = mongoose_1.default.model('User', userSchema);
 exports.default = User;

@@ -190,7 +190,7 @@ class VoiceService {
         const displayOrderId = orderId ? orderId.slice(-6).toUpperCase() : '';
         (0, io_1.emitToUser)(recipientUserId, 'incoming_call', {
             orderId: orderId || '',
-            callerName: callerName || 'Go-Eat Partner',
+            callerName: callerName || 'GoEatOne Partner',
             displayOrderId,
         });
     }

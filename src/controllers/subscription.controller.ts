@@ -365,7 +365,7 @@ export class SubscriptionController {
 
       // Paid tiers (Plus / Unlimited)
       const userEmail = user?.email || restaurant.businessEmail || 'partner@goeatone.com';
-      const userName = user?.name || restaurant.name || 'Go-Eat Partner';
+      const userName = user?.name || restaurant.name || 'GoEatOne Partner';
       const reference = `SUB_${restaurantId}_${planTier.toUpperCase()}_${Date.now()}`;
       const returnUrl =
         callbackUrl ||
@@ -389,7 +389,7 @@ export class SubscriptionController {
           },
           callbackUrl: returnUrl,
           cancelUrl: cancelUrl || 'https://goeatone.com/partners/tiers',
-          description: `Go-Eat Partner ${planTier.toUpperCase()} Plan Subscription`,
+          description: `GoEatOne Partner ${planTier.toUpperCase()} Plan Subscription`,
         });
         checkoutResult = {
           authorizationUrl: result.authorizationUrl,

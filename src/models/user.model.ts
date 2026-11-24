@@ -95,6 +95,8 @@ export interface IUser extends Document {
     lastSeenAt: Date;
   }>;
   lastInactivityAlertAt?: Date;
+  lastPromotionalNotificationAt?: Date;
+  lastPromotionalThemeIndex?: number;
   responsiblePurchasing?: {
     spendingLimit?: {
       enabled: boolean;
@@ -360,6 +362,13 @@ const userSchema = new Schema<IUser>(
     lastInactivityAlertAt: {
       type: Date,
     },
+    lastPromotionalNotificationAt: {
+      type: Date,
+    },
+    lastPromotionalThemeIndex: {
+      type: Number,
+      default: 0,
+    },
     responsiblePurchasing: {
       spendingLimit: {
         enabled: { type: Boolean, default: false },
@@ -469,6 +478,7 @@ userSchema.index({ isItaly: 1 });
 userSchema.index({ isUk: 1 });
 userSchema.index({ lastActiveAt: 1 });
 userSchema.index({ lastInactivityAlertAt: 1 });
+userSchema.index({ lastPromotionalNotificationAt: 1 });
 
 const User = mongoose.model<IUser>('User', userSchema);
 

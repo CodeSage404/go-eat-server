@@ -106,6 +106,45 @@ router.post('/auth/refresh-token', adminController.refreshAdminToken);
 
 /**
  * @openapi
+ * /api/v1/admin/marketing/trigger-campaign:
+ *   post:
+ *     tags:
+ *       - Admin Marketing
+ *     summary: Trigger On-Demand Bi-Weekly Promotional Campaign
+ *     description: Executes an immediate scan and dispatches dynamic rotating marketing push notifications and emails to eligible customers who have reached their 14-day cooldown window.
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Promotional campaign executed successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: success
+ *                 message:
+ *                   type: string
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     scannedCount:
+ *                       type: integer
+ *                     pushSentCount:
+ *                       type: integer
+ *                     emailSentCount:
+ *                       type: integer
+ *       401:
+ *         description: Unauthorized. Admin authentication required.
+ *       500:
+ *         description: Internal server error.
+ */
+router.post('/marketing/trigger-campaign', protect, restrictTo(UserRole.ADMIN), adminController.triggerPromotionalCampaign);
+
+/**
+ * @openapi
  * /api/v1/admin/platform-stats:
  *   get:
  *     tags:

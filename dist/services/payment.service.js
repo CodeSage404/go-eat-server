@@ -493,7 +493,7 @@ class PaymentService {
                     const restaurantDoc = populatedOrder?.restaurant;
                     const shortId = order._id.toString().slice(-6).toUpperCase();
                     if (customerUser && customerUser.email && !customerUser.email.includes('customer@goeat.com')) {
-                        email_service_1.default.sendTemplateEmail(customerUser.email, 'ORDER_CONFIRMED', `Order Confirmed: #${shortId} from ${restaurantDoc?.name || 'Go-Eat Partner'}`, {
+                        email_service_1.default.sendTemplateEmail(customerUser.email, 'ORDER_CONFIRMED', `Order Confirmed: #${shortId} from ${restaurantDoc?.name || 'GoEatOne Partner'}`, {
                             orderId: order._id,
                             customerName: customerUser.name || 'Customer',
                             total: order.totalAmount,

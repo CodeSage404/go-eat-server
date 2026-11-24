@@ -317,12 +317,12 @@ class AuthService {
       // 🔒 Role Enforcement on Social Login
       if (role && user.role !== role) {
         const portalName = user.role === UserRole.VENDOR
-          ? 'Go-Eat Partner / Vendor'
+          ? 'GoEatOne Partner'
           : user.role === UserRole.RIDER
-          ? 'Go-Eat Delivery'
+          ? 'GoEatOne Courier'
           : user.role === UserRole.ADMIN
-          ? 'Go-Eat Admin'
-          : 'Go-Eat Customer';
+          ? 'GoEatOne Admin'
+          : 'GoEatOne Customer';
 
         throw new AppError(
           `Access denied. This account is registered as a ${user.role}. Please log in using the ${portalName} application.`,

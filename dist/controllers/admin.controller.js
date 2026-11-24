@@ -56,6 +56,7 @@ const category_model_1 = __importDefault(require("../models/category.model"));
 const partnerApplication_model_1 = __importDefault(require("../models/partnerApplication.model"));
 const accountDeletionRequest_model_1 = __importDefault(require("../models/accountDeletionRequest.model"));
 const notification_service_1 = __importDefault(require("../services/notification.service"));
+const marketing_service_1 = __importDefault(require("../services/marketing.service"));
 const email_util_1 = __importDefault(require("../utils/email.util"));
 const sms_util_1 = require("../utils/sms.util");
 const logger_1 = __importDefault(require("../utils/logger"));
@@ -355,6 +356,17 @@ class AdminController {
             res.status(200).json({
                 status: 'success',
                 message: 'Admin password updated successfully',
+            });
+        });
+        /**
+         * Triggers an on-demand bi-weekly promotional marketing campaign scan
+         */
+        this.triggerPromotionalCampaign = (0, catchAsync_1.catchAsync)(async (req, res) => {
+            const result = await marketing_service_1.default.runBiWeeklyPromotionalCampaign();
+            res.status(200).json({
+                status: 'success',
+                message: 'Bi-weekly promotional marketing campaign executed successfully',
+                data: result,
             });
         });
         /**

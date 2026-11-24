@@ -51,6 +51,7 @@ import securityReportRoutes from './routes/securityReport.routes';
 import catalogImportRoutes from './routes/catalogImport.routes';
 import legalDocumentRoutes from './routes/legalDocument.routes';
 import activityService from './services/activity.service';
+import marketingService from './services/marketing.service';
 import { startKeepAlivePing } from './utils/keepAlive';
 
 import swaggerUi from 'swagger-ui-express';
@@ -112,6 +113,7 @@ class App {
     this.sockets();
     this.handleErrors();
     activityService.startInactivityCron();
+    marketingService.startCampaignCron();
   }
 
   private database(): void {

@@ -356,6 +356,29 @@ class EmailService {
   }
 
   /**
+   * Sends rotating bi-weekly promotional marketing campaign emails to customers
+   */
+  public async sendPromotionalEngagement(
+    email: string,
+    data: {
+      name: string;
+      headline: string;
+      subheadline: string;
+      badgeText?: string;
+      introText?: string;
+      highlightTitle?: string;
+      highlightText?: string;
+      buttonText?: string;
+      actionUrl?: string;
+    },
+    subject: string
+  ): Promise<void> {
+    const htmlContent = renderTemplate('PROMOTIONAL_ENGAGEMENT', data);
+    this.sendEmail(email, subject, htmlContent, 'default')
+      .catch(err => logger.error(`Background promotional campaign email failed to ${email}:`, err?.message || err));
+  }
+
+  /**
    * Sends courier verification application received email
    */
   public async sendRiderApplicationReceived(

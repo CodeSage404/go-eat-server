@@ -210,7 +210,7 @@ class VoiceService {
 
     emitToUser(recipientUserId, 'incoming_call', {
       orderId: orderId || '',
-      callerName: callerName || 'Go-Eat Partner',
+      callerName: callerName || 'GoEatOne Partner',
       displayOrderId,
     });
   }

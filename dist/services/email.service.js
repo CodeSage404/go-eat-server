@@ -279,6 +279,14 @@ class EmailService {
             .catch(err => logger_1.default.error(`Background inactivity email failed to ${email}:`, err?.message || err));
     }
     /**
+     * Sends rotating bi-weekly promotional marketing campaign emails to customers
+     */
+    async sendPromotionalEngagement(email, data, subject) {
+        const htmlContent = (0, templateEngine_1.renderTemplate)('PROMOTIONAL_ENGAGEMENT', data);
+        this.sendEmail(email, subject, htmlContent, 'default')
+            .catch(err => logger_1.default.error(`Background promotional campaign email failed to ${email}:`, err?.message || err));
+    }
+    /**
      * Sends courier verification application received email
      */
     async sendRiderApplicationReceived(email, data) {
