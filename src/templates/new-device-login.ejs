@@ -1,22 +1,22 @@
-<h2 style="color: #0F3725; margin-top: 0; font-weight: 800;">Security Alert: New Device Login</h2>
-<p>Dear <strong><%= name %></strong>,</p>
-<p>We noticed a login to your GoEatOne account (<strong><%= email %></strong>) from a new or unrecognized device:</p>
+<h2 style="color: #06462f; margin-top: 0; font-size: 24px; font-weight: 800; letter-spacing: -0.4px;">Security Alert: New Device Login</h2>
+<p style="font-size: 15px; font-weight: 700; color: #1F2937; margin: 0 0 10px;">Dear <strong><%= typeof name !== 'undefined' && name ? name : 'User' %></strong>,</p>
+<p style="font-size: 14px; line-height: 1.65; color: #4B5563; margin: 0 0 18px;">We noticed a login to your GoEatOne account (<strong><%= email %></strong>) from a new or unrecognized device:</p>
 
-<div class="highlight-box" style="border-left-color: #EF4444; background-color: #FEF2F2; font-family: inherit;">
-  <p style="margin: 6px 0;"><strong>Device / Browser:</strong> <%= deviceName || 'Unknown Device' %></p>
-  <p style="margin: 6px 0;"><strong>IP Address:</strong> <%= ipAddress || 'Undisclosed' %></p>
-  <p style="margin: 6px 0;"><strong>Timestamp:</strong> <%= timestamp %></p>
+<div style="background-color: #FEF2F2; border: 1px solid #FEE2E2; border-left: 4px solid #EF4444; border-radius: 12px; padding: 18px 20px; margin: 20px 0 24px;">
+  <p style="margin: 0 0 6px; font-size: 13px; color: #7F1D1D;"><strong>Device / Browser:</strong> <span style="color: #991B1B;"><%= deviceName || 'Unknown Device' %></span></p>
+  <p style="margin: 0 0 6px; font-size: 13px; color: #7F1D1D;"><strong>IP Address:</strong> <span style="color: #991B1B; font-family: monospace;"><%= ipAddress || 'Undisclosed' %></span></p>
+  <p style="margin: 0 0 6px; font-size: 13px; color: #7F1D1D;"><strong>Timestamp:</strong> <span style="color: #991B1B;"><%= timestamp %></span></p>
   <% if (locals.location) { %>
-    <p style="margin: 6px 0;"><strong>Approximate Location:</strong> <%= location %></p>
+    <p style="margin: 0; font-size: 13px; color: #7F1D1D;"><strong>Approximate Location:</strong> <span style="color: #991B1B;"><%= location %></span></p>
   <% } %>
 </div>
 
-<p style="color: #111827; font-weight: 600;">Was this you?</p>
-<p style="color: #4B5563; font-size: 13px;">If you recently signed in from this device, you can safely ignore this notification. Your account remains secure.</p>
+<p style="color: #111827; font-weight: 700; font-size: 14px; margin: 0 0 6px;">Was this you?</p>
+<p style="color: #4B5563; font-size: 13.5px; line-height: 1.6; margin: 0 0 18px;">If you recently signed in from this device, you can safely ignore this notification. Your account remains secure.</p>
 
-<div style="background-color: #FFFBEB; border: 1px solid #FDE68A; border-radius: 8px; padding: 14px; margin: 18px 0;">
-  <p style="margin: 0; color: #92400E; font-size: 13px; font-weight: 600;">Don't recognize this activity?</p>
-  <p style="margin: 6px 0 0 0; color: #B45309; font-size: 12px; line-height: 1.5;">
-    If you did not sign in from this device, your password may be compromised. Please reset your password immediately via the GoEatOne app or contact our security team at <a href="mailto:verify@goeatone.com" style="color: #0F3725; font-weight: bold;">verify@goeatone.com</a>.
+<div style="background-color: #FFFBEB; border: 1px solid #FDE68A; border-left: 4px solid #F59E0B; border-radius: 12px; padding: 16px 18px; margin: 18px 0;">
+  <p style="margin: 0 0 4px; color: #92400E; font-size: 13px; font-weight: 700;">Don't recognize this activity?</p>
+  <p style="margin: 0; color: #B45309; font-size: 12.5px; line-height: 1.55;">
+    If you did not sign in from this device, your password may be compromised. Please reset your password immediately via the GoEatOne app or contact our security team at <a href="mailto:verify@goeatone.com" style="color: #06462f; font-weight: bold; text-decoration: underline;">verify@goeatone.com</a>.
   </p>
 </div>
