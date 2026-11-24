@@ -662,11 +662,29 @@ class AuthController {
                 if (role === 'vendor' || role === 'partner') {
                     throw new appError_1.default('No registered GoEatOne partner account found with this email. Please check your email or contact support.', 404);
                 }
+                if (role === 'customer') {
+                    throw new appError_1.default('No registered customer account found with this email or phone number. Please check your credentials or sign up.', 404);
+                }
                 throw new appError_1.default('No user found with that email or phone number', 404);
             }
             // Role check: Ensure partner password reset is strictly restricted to partner accounts
             if ((role === 'vendor' || role === 'partner') && user.role !== user_model_1.UserRole.VENDOR) {
                 throw new appError_1.default('This email is not registered as a GoEatOne partner account. Please check your credentials or log in as a customer.', 403);
+            }
+            // Role check: Ensure customer modal/portal password reset is strictly restricted to customer accounts
+            if (role === 'customer' && user.role !== user_model_1.UserRole.CUSTOMER) {
+                if (user.role === user_model_1.UserRole.VENDOR) {
+                    throw new appError_1.default('This email is registered as a GoEatOne Partner account. Please use the Partner Portal to reset your password.', 403);
+                }
+                else if (user.role === user_model_1.UserRole.RIDER) {
+                    throw new appError_1.default('This email is registered as a GoEatOne Courier account. Please use the Courier app to manage your account.', 403);
+                }
+                else if (user.role === user_model_1.UserRole.ADMIN) {
+                    throw new appError_1.default('Administrative accounts must use the official GoEatOne Admin Portal.', 403);
+                }
+                else {
+                    throw new appError_1.default('This account is not registered as a customer account.', 403);
+                }
             }
             if (phoneNumber) {
                 await this.initiateVerification(phoneNumber, 'phone');
@@ -702,6 +720,14 @@ class AuthController {
             }
             if ((role === 'vendor' || role === 'partner') && user.role !== user_model_1.UserRole.VENDOR) {
                 throw new appError_1.default('This account is not registered as a GoEatOne partner account.', 403);
+            }
+            if (role === 'customer' && user.role !== user_model_1.UserRole.CUSTOMER) {
+                if (user.role === user_model_1.UserRole.VENDOR) {
+                    throw new appError_1.default('This email is registered as a GoEatOne Partner account. Please use the Partner Portal to reset your password.', 403);
+                }
+                else {
+                    throw new appError_1.default('This account is not registered as a customer account.', 403);
+                }
             }
             user.password = newPassword;
             await user.save();

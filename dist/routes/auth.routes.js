@@ -266,7 +266,7 @@ router.post('/login', rateLimiter_1.authLimiter, auth_controller_1.default.login
  *     tags:
  *       - Auth
  *     summary: Request Password Reset OTP
- *     description: Sends an OTP to the user's email or phone number for password reset. Supports role enforcement (e.g. vendor).
+ *     description: Sends an OTP to the user's email or phone number for password reset. Supports strict portal role enforcement (e.g. vendor, customer).
  *     requestBody:
  *       required: true
  *       content:
@@ -287,7 +287,7 @@ router.post('/login', rateLimiter_1.authLimiter, auth_controller_1.default.login
  *       400:
  *         description: Missing identifier
  *       403:
- *         description: Account role mismatch (e.g. non-partner email requested on partner portal)
+ *         description: Account role mismatch (e.g. partner email entered in customer modal, or customer email entered in partner portal)
  *       404:
  *         description: User not found
  */
