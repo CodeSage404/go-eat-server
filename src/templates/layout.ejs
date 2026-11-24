@@ -45,7 +45,7 @@
     h1, h2, h3, h4, .brand-heading {
       font-family: 'Bricolage Grotesque', 'Poppins', -apple-system, BlinkMacSystemFont, sans-serif !important;
     }
-    /* Mobile-Specific Responsive Overrides: Big images reaching far ends, image first */
+    /* Mobile-Specific Responsive Overrides */
     @media only screen and (max-width: 600px) {
       .email-wrapper {
         padding: 0 !important;
@@ -55,6 +55,9 @@
         max-width: 100% !important;
         border-radius: 0 !important;
         border: none !important;
+      }
+      .email-body {
+        padding: 24px 20px 30px !important;
       }
       .welcome-content {
         padding: 24px 16px 30px !important;
@@ -134,21 +137,11 @@
         height: 28px !important;
       }
     }
-    /* Dark Mode High-Contrast Overrides */
+    /* Clean Email Canvas: Keep email container pristine across all email clients */
     @media (prefers-color-scheme: dark) {
-      body, .email-wrapper { background-color: #07130C !important; color: #D1E5D9 !important; }
-      .email-container { background-color: #0F2318 !important; border-color: #1A3E2B !important; }
-      .email-body, .welcome-content, .email-content-padding { background-color: #0F2318 !important; color: #D1E5D9 !important; }
-      h1, h2, h3, h4, .brand-heading, .welcome-main-title, .welcome-section-heading, .feature-title { color: #FFFFFF !important; }
-      p, .feature-desc, .welcome-intro-text { color: #B5D2C2 !important; }
-      strong, b { color: #FFFFFF !important; }
-      [style*="color: #111827"], [style*="color: #1F2937"], [style*="color: #133824"], [style*="color: #000000"] { color: #FFFFFF !important; }
-      [style*="color: #4B5563"], [style*="color: #6B7280"] { color: #B5D2C2 !important; }
-      .partner-pwd-box, td[style*="background-color: #F1FBF4"], div[style*="background-color: #F1FBF4"] {
-        background-color: #0B1E13 !important;
-        border-left: 3px solid #10B981 !important;
-        color: #34D399 !important;
-      }
+      body, .email-wrapper { background-color: #121815 !important; }
+      .email-container { background-color: #FFFFFF !important; }
+      .email-body { background-color: #FFFFFF !important; }
     }
   </style>
 </head>
@@ -205,9 +198,9 @@
           </tr>
           <% } %>
 
-          <!-- Dynamic Email Content Body -->
+          <!-- Dynamic Email Content Body (Generous 40px side margins) -->
           <tr>
-            <td class="email-body" style="padding: 0; background-color: #FFFFFF; border-radius: 0;">
+            <td class="email-body" style="padding: 32px 40px 38px; background-color: #FFFFFF; border-radius: 0; font-family: Arial, Helvetica, sans-serif;">
               <%- body %>
             </td>
           </tr>

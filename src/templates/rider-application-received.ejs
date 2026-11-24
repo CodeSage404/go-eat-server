@@ -1,23 +1,23 @@
-<h2 style="color: #06462f; margin-top: 0; font-weight: 800;">Courier Application Received</h2>
-<p>Hello <strong><%= riderName %></strong>,</p>
-<p>Thank you for completing your GoEatOne courier verification application. We have received your uploaded verification documents and personal profile details.</p>
+<h2 style="color: #06462f; margin-top: 0; font-size: 24px; font-weight: 800; letter-spacing: -0.4px;">Courier Application Received</h2>
+<p style="font-size: 15px; font-weight: 700; color: #1F2937; margin: 0 0 10px;">Hello <%= typeof riderName !== 'undefined' && riderName ? riderName : 'Courier Partner' %>,</p>
+<p style="font-size: 14px; line-height: 1.65; color: #4B5563; margin: 0 0 18px;">Thank you for completing your GoEatOne courier verification application. We have received your uploaded verification documents and personal profile details.</p>
 
-<div class="highlight-box" style="border-left: 3px solid #06462f; background-color: #f5f8f5; border: 1px solid #deebe3; border-radius: 12px; padding: 18px; margin-bottom: 20px;">
-  <p style="margin: 0; color: #06462f; font-size: 14px; font-weight: 600;">
+<div style="background-color: #f5f8f5; border: 1px solid #deebe3; border-left: 4px solid #ffc629; border-radius: 12px; padding: 18px 20px; margin: 20px 0 24px;">
+  <p style="margin: 0; color: #06462f; font-size: 14px; font-weight: 700; line-height: 1.5;">
     Expected Review Timeline: Your documents will be reviewed by our compliance team within the next <strong><%= typeof timeline !== 'undefined' ? timeline : '24 to 48 hours' %></strong>.
   </p>
 </div>
 
-<p style="font-size: 14px; color: #4B5563; line-height: 1.6;">
+<p style="font-size: 14px; color: #4B5563; line-height: 1.65; margin: 0 0 14px;">
   Once approved, your courier account will be activated immediately, allowing you to go online and accept delivery dispatch requests in your city.
 </p>
 
-<p style="font-size: 14px; color: #4B5563; line-height: 1.6;">
+<p style="font-size: 14px; color: #4B5563; line-height: 1.65; margin: 0 0 24px;">
   You can track the live verification status of your documents anytime directly in your GoEatOne Courier Hub app.
 </p>
 
-<div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #F3F4F6; text-align: center;">
+<div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #E5E7EB; text-align: center;">
   <p style="font-size: 12px; color: #9CA3AF; margin: 0;">
-    Questions or need help? Contact our courier support team at <a href="mailto:support@goeatone.com" style="color: #0F3725; font-weight: bold;">support@goeatone.com</a>.
+    Questions or need help? Contact our courier support team at <a href="mailto:support@goeatone.com" style="color: #06462f; font-weight: bold; text-decoration: underline;">support@goeatone.com</a>.
   </p>
 </div>
