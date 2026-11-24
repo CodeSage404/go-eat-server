@@ -651,7 +651,7 @@ class AuthController {
             });
         });
         this.forgotPassword = (0, catchAsync_1.catchAsync)(async (req, res) => {
-            const { email, phoneNumber } = req.body;
+            const { email, phoneNumber, role } = req.body;
             const identifier = email || phoneNumber;
             if (!identifier) {
                 throw new appError_1.default('Please provide email or phone number', 400);
@@ -659,7 +659,14 @@ class AuthController {
             const query = email ? { email: email.toLowerCase() } : { phoneNumber };
             const user = await user_model_1.default.findOne(query);
             if (!user) {
+                if (role === 'vendor' || role === 'partner') {
+                    throw new appError_1.default('No registered partner account found with this email. Please check your email or contact support.', 404);
+                }
                 throw new appError_1.default('No user found with that email or phone number', 404);
+            }
+            // Role check: Ensure partner password reset is strictly restricted to partner accounts
+            if ((role === 'vendor' || role === 'partner') && user.role !== user_model_1.UserRole.VENDOR) {
+                throw new appError_1.default('This email is not registered as a GoEat partner account. Please check your credentials or log in as a customer.', 403);
             }
             if (phoneNumber) {
                 await this.initiateVerification(phoneNumber, 'phone');
@@ -673,7 +680,7 @@ class AuthController {
             });
         });
         this.resetPassword = (0, catchAsync_1.catchAsync)(async (req, res) => {
-            const { email, phoneNumber, otp, newPassword } = req.body;
+            const { email, phoneNumber, otp, newPassword, role } = req.body;
             const identifier = email || phoneNumber;
             if (!identifier || !otp || !newPassword) {
                 throw new appError_1.default('Please provide identifier, otp, and newPassword', 400);
@@ -692,6 +699,9 @@ class AuthController {
             const user = await user_model_1.default.findOne(query).select('+password');
             if (!user) {
                 throw new appError_1.default('User not found', 404);
+            }
+            if ((role === 'vendor' || role === 'partner') && user.role !== user_model_1.UserRole.VENDOR) {
+                throw new appError_1.default('This account is not registered as a GoEat partner account.', 403);
             }
             user.password = newPassword;
             await user.save();

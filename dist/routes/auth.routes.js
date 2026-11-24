@@ -266,7 +266,7 @@ router.post('/login', rateLimiter_1.authLimiter, auth_controller_1.default.login
  *     tags:
  *       - Auth
  *     summary: Request Password Reset OTP
- *     description: Sends an OTP to the user's email or phone number for password reset.
+ *     description: Sends an OTP to the user's email or phone number for password reset. Supports role enforcement (e.g. vendor).
  *     requestBody:
  *       required: true
  *       content:
@@ -278,9 +278,16 @@ router.post('/login', rateLimiter_1.authLimiter, auth_controller_1.default.login
  *                 type: string
  *               phoneNumber:
  *                 type: string
+ *               role:
+ *                 type: string
+ *                 description: Optional role filter to verify account type (e.g. vendor, customer)
  *     responses:
  *       200:
  *         description: OTP sent successfully
+ *       400:
+ *         description: Missing identifier
+ *       403:
+ *         description: Account role mismatch (e.g. non-partner email requested on partner portal)
  *       404:
  *         description: User not found
  */
@@ -305,6 +312,9 @@ router.post('/forgot-password', rateLimiter_1.authLimiter, auth_controller_1.def
  *                 type: string
  *               phoneNumber:
  *                 type: string
+ *               role:
+ *                 type: string
+ *                 description: Optional role filter to verify account type
  *               otp:
  *                 type: string
  *               newPassword:
@@ -313,7 +323,11 @@ router.post('/forgot-password', rateLimiter_1.authLimiter, auth_controller_1.def
  *       200:
  *         description: Password reset successful
  *       400:
- *         description: Invalid OTP or missing fields
+ *         description: Invalid or expired OTP code or missing fields
+ *       403:
+ *         description: Account role mismatch
+ *       404:
+ *         description: User not found
  */
 router.post('/reset-password', rateLimiter_1.authLimiter, auth_controller_1.default.resetPassword);
 /**
