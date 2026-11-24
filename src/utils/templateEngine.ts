@@ -70,56 +70,101 @@ export function renderTemplate(templateName: string, data: Record<string, any>):
       title: 'Welcome',
       hideHeaderTitle: true,
     },
+    'welcome-partner': {
+      title: 'Welcome, partner',
+      hideHeaderTitle: true,
+    },
+    'vendor-order-received': {
+      title: 'New Order Received',
+      subtitle: data.orderId ? `ORDER NO: #${String(data.orderId).slice(-8).toUpperCase()}` : 'NEW ORDER',
+      hideHeaderTitle: true,
+    },
+    'partner-application-received': {
+      title: 'Application Received',
+      hideHeaderTitle: true,
+    },
+    'rider-application-received': {
+      title: 'Courier Application Received',
+      hideHeaderTitle: true,
+    },
+    'rider-application-approved': {
+      title: 'Courier Application Approved',
+      hideHeaderTitle: true,
+    },
+    'rider-action-required': {
+      title: 'Action Required',
+      hideHeaderTitle: true,
+    },
+    'subscription-confirmation': {
+      title: 'Subscription Confirmed',
+      hideHeaderTitle: true,
+    },
+    'credentials-alert': {
+      title: 'Account Credentials',
+      hideHeaderTitle: true,
+    },
     'order-confirmed': {
-      title: 'Order confirmed',
+      title: 'Order Confirmed',
       subtitle: data.orderId ? `ORDER NO: #${String(data.orderId).slice(-8).toUpperCase()}` : 'ORDER CONFIRMED',
     },
     'order-on-the-way': {
-      title: 'Rider en route',
+      title: 'Rider En Route',
       subtitle: data.orderId ? `ORDER NO: #${String(data.orderId).slice(-8).toUpperCase()}` : 'COURIER DISPATCHED',
     },
     'otp-verification': {
-      title: 'Verify your account',
+      title: 'Verify Your Account',
       subtitle: 'ONE-TIME SECURITY PASSCODE',
     },
     'withdrawal-receipt': {
-      title: 'Payout processed',
+      title: 'Payout Processed',
       subtitle: data.reference ? `REF NO: #${data.reference}` : 'TRANSACTION SETTLED',
     },
     'password-reset': {
-      title: 'Reset your password',
+      title: 'Reset Your Password',
       subtitle: 'ACCOUNT SECURITY',
     },
     'new-device-login': {
-      title: 'New device login',
+      title: 'New Device Login',
       subtitle: 'SECURITY ALERT',
     },
     'bank-update-alert': {
-      title: 'Bank details updated',
+      title: 'Bank Details Updated',
+      subtitle: 'WALLET SECURITY NOTICE',
+    },
+    'pin-reset-alert': {
+      title: 'Security PIN Reset',
       subtitle: 'WALLET SECURITY NOTICE',
     },
     'order-preparing': {
-      title: 'Kitchen is cooking',
+      title: 'Kitchen Is Cooking',
       subtitle: data.orderId ? `ORDER NO: #${String(data.orderId).slice(-8).toUpperCase()}` : 'IN PREPARATION',
     },
     'order-picked-up': {
-      title: 'Order picked up',
+      title: 'Order Picked Up',
       subtitle: data.orderId ? `ORDER NO: #${String(data.orderId).slice(-8).toUpperCase()}` : 'EN ROUTE TO YOU',
     },
     'order-accepted': {
-      title: 'Order accepted',
+      title: 'Order Accepted',
       subtitle: data.orderId ? `ORDER NO: #${String(data.orderId).slice(-8).toUpperCase()}` : 'ACCEPTED BY RESTAURANT',
     },
-    'welcome-partner': {
-      title: 'Welcome, partner',
-      subtitle: 'GOEATONE MERCHANT PLATFORM',
-      hideHeaderTitle: true,
+    'admin-partner-submission-alert': {
+      title: 'New Partner Application',
+      subtitle: 'ADMIN ALERT',
+    },
+    'admin-rider-submission-alert': {
+      title: 'New Courier Application',
+      subtitle: 'ADMIN ALERT',
+    },
+    'inactivity-reengagement': {
+      title: 'We Miss You',
+      subtitle: 'SPECIAL OFFER',
     },
   };
 
   const defaultMeta = templateHeroMeta[filename] || {
-    title: data.subject || data.title || 'GoEatOne notification',
-    subtitle: 'GOEATONE NOTIFICATION',
+    title: data.subject || data.title || '',
+    subtitle: '',
+    hideHeaderTitle: true,
   };
 
   const commonLocals = {
