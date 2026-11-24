@@ -37,7 +37,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const wallet_model_1 = __importDefault(require("../models/wallet.model"));
-const user_model_1 = __importDefault(require("../models/user.model"));
+const user_model_1 = __importStar(require("../models/user.model"));
 const setting_model_1 = __importDefault(require("../models/setting.model"));
 const transaction_model_1 = __importStar(require("../models/transaction.model"));
 const catchAsync_1 = require("../utils/catchAsync");
@@ -361,7 +361,9 @@ class WalletController {
             const currentUser = await user_model_1.default.findById(req.user._id);
             const platformSettings = await setting_model_1.default.findOne();
             const shouldEnforceNameMatch = platformSettings?.enforceStrictBankNameMatch !== false;
-            if (shouldEnforceNameMatch && currentUser?.name) {
+            const isRider = currentUser?.role === user_model_1.UserRole.RIDER || currentUser?.role === 'rider';
+            // Strict individual courier KYC name matching applies strictly to couriers/riders
+            if (isRider && shouldEnforceNameMatch && currentUser?.name) {
                 const isMatch = isNameMatching(currentUser.name, String(accountName).trim());
                 if (!isMatch) {
                     throw new appError_1.default(`Bank account name mismatch: The bank account name "${accountName}" does not match your registered courier identity name "${currentUser.name}". Couriers may only link settlement accounts registered under their own verified identity.`, 400);
@@ -426,6 +428,23 @@ class WalletController {
                 }
             }
             await wallet.save();
+            // Also sync verified settlement bank details to the merchant's restaurant if vendor
+            try {
+                const vendorRestaurant = await restaurant_model_1.default.findOne({ owner: req.user._id });
+                if (vendorRestaurant) {
+                    vendorRestaurant.bankDetails = {
+                        bankName: wallet.bankAccount.bankName || 'Settlement Bank',
+                        bankCode: effectiveBankCode,
+                        accountNumber: String(accountNumber).trim(),
+                        accountName: String(accountName).trim(),
+                        isVerified: true,
+                    };
+                    await vendorRestaurant.save();
+                }
+            }
+            catch (restErr) {
+                logger_1.default.warn('Could not sync bank details to Restaurant document:', restErr?.message || restErr);
+            }
             res.status(200).json({
                 status: 'success',
                 message: hasExistingBank

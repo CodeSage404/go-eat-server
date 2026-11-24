@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import Wallet from '../models/wallet.model';
-import User from '../models/user.model';
+import User, { UserRole } from '../models/user.model';
 import Setting from '../models/setting.model';
 import Transaction, { TransactionType, TransactionStatus } from '../models/transaction.model';
 import { catchAsync } from '../utils/catchAsync';
@@ -409,7 +409,10 @@ class WalletController {
     const platformSettings = await Setting.findOne();
     const shouldEnforceNameMatch = platformSettings?.enforceStrictBankNameMatch !== false;
 
-    if (shouldEnforceNameMatch && currentUser?.name) {
+    const isRider = currentUser?.role === UserRole.RIDER || (currentUser?.role as any) === 'rider';
+
+    // Strict individual courier KYC name matching applies strictly to couriers/riders
+    if (isRider && shouldEnforceNameMatch && currentUser?.name) {
       const isMatch = isNameMatching(currentUser.name, String(accountName).trim());
       if (!isMatch) {
         throw new AppError(
@@ -487,6 +490,23 @@ class WalletController {
     }
 
     await wallet.save();
+
+    // Also sync verified settlement bank details to the merchant's restaurant if vendor
+    try {
+      const vendorRestaurant = await Restaurant.findOne({ owner: req.user!._id });
+      if (vendorRestaurant) {
+        vendorRestaurant.bankDetails = {
+          bankName: wallet.bankAccount.bankName || 'Settlement Bank',
+          bankCode: effectiveBankCode,
+          accountNumber: String(accountNumber).trim(),
+          accountName: String(accountName).trim(),
+          isVerified: true,
+        };
+        await vendorRestaurant.save();
+      }
+    } catch (restErr: any) {
+      logger.warn('Could not sync bank details to Restaurant document:', restErr?.message || restErr);
+    }
 
     res.status(200).json({
       status: 'success',
