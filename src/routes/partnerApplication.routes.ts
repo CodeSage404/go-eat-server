@@ -6,6 +6,9 @@ import {
   updatePartnerApplicationStatus,
   adminGrantAccess,
   adminApproveApplication,
+  verifyClaimCode,
+  claimPartnerProfile,
+  optOutPartner,
 } from '../controllers/partnerApplication.controller';
 import { protect, restrictTo } from '../middleware/auth.middleware';
 import { UserRole } from '../models/user.model';
@@ -163,6 +166,156 @@ router.post(
   ]),
   applyForPartnership
 );
+
+/**
+ * @openapi
+ * /api/v1/partners/verify-claim:
+ *   get:
+ *     tags:
+ *       - Partners
+ *     summary: Verify single-use claim code for a partner application
+ *     description: Validates that a partner claim code is valid, unexpired, and not yet claimed before presenting the password setup interface (UK GDPR & security compliance).
+ *     parameters:
+ *       - in: query
+ *         name: email
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: email
+ *         description: Registered partner email address
+ *       - in: query
+ *         name: code
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Single-use 6-digit claim verification code
+ *     responses:
+ *       200:
+ *         description: Code is valid and profile is eligible to be claimed
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: success
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     businessName:
+ *                       type: string
+ *                     ownerName:
+ *                       type: string
+ *                     email:
+ *                       type: string
+ *                     isValid:
+ *                       type: boolean
+ *       400:
+ *         description: Expired or already claimed verification code
+ *       404:
+ *         description: Code or email not found
+ */
+router.get('/verify-claim', verifyClaimCode);
+
+/**
+ * @openapi
+ * /api/v1/partners/claim-profile:
+ *   post:
+ *     tags:
+ *       - Partners
+ *     summary: Claim provisional business profile and establish password
+ *     description: Allows the business owner to verify their single-use code, establish their private password, and receive an active session token (UK compliance replacement for plaintext password emails).
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - email
+ *               - code
+ *               - password
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 format: email
+ *                 example: merchant@artisanburger.co.uk
+ *               code:
+ *                 type: string
+ *                 example: "742915"
+ *               password:
+ *                 type: string
+ *                 format: password
+ *                 minLength: 8
+ *                 example: SecurePass123!
+ *     responses:
+ *       200:
+ *         description: Profile successfully claimed and authenticated
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: success
+ *                 token:
+ *                   type: string
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     user:
+ *                       type: object
+ *       400:
+ *         description: Invalid input, expired code, or password too short
+ *       404:
+ *         description: Profile not found
+ */
+router.post('/claim-profile', claimPartnerProfile);
+
+/**
+ * @openapi
+ * /api/v1/partners/opt-out:
+ *   post:
+ *     tags:
+ *       - Partners
+ *     summary: Decline partner invitation and request profile removal
+ *     description: Allows a restaurant owner to decline an invitation and request immediate unpublishing and removal of their business profile in accordance with UK GDPR Article 17 (Right to Erasure).
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - email
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 format: email
+ *                 example: owner@restaurant.co.uk
+ *               token:
+ *                 type: string
+ *                 description: Optional security opt-out token from the email invitation
+ *               reason:
+ *                 type: string
+ *                 example: Not interested in delivery platform listing
+ *     responses:
+ *       200:
+ *         description: Profile removed and invitation declined successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: success
+ *                 message:
+ *                   type: string
+ */
+router.post('/opt-out', optOutPartner);
 
 /**
  * @openapi

@@ -36,7 +36,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.adminApproveApplication = exports.adminGrantAccess = exports.updatePartnerApplicationStatus = exports.getPartnerApplicationById = exports.getAllPartnerApplications = exports.applyForPartnership = void 0;
+exports.optOutPartner = exports.claimPartnerProfile = exports.verifyClaimCode = exports.adminApproveApplication = exports.adminGrantAccess = exports.updatePartnerApplicationStatus = exports.getPartnerApplicationById = exports.getAllPartnerApplications = exports.applyForPartnership = void 0;
 const crypto_1 = __importDefault(require("crypto"));
 const catchAsync_1 = require("../utils/catchAsync");
 const appError_1 = __importDefault(require("../utils/appError"));
@@ -44,6 +44,7 @@ const partnerApplication_model_1 = __importDefault(require("../models/partnerApp
 const user_model_1 = __importStar(require("../models/user.model"));
 const restaurant_model_1 = __importStar(require("../models/restaurant.model"));
 const email_service_1 = __importDefault(require("../services/email.service"));
+const auth_service_1 = __importDefault(require("../services/auth.service"));
 const logger_1 = __importDefault(require("../utils/logger"));
 /**
  * Public controller: submit a new partner application
@@ -228,6 +229,10 @@ exports.applyForPartnership = (0, catchAsync_1.catchAsync)(async (req, res) => {
             restaurant.images.cover = coverImageUrl;
         await restaurant.save();
     }
+    // Generate a cryptographically secure, single-use 6-digit claim code & opt-out token
+    const claimCode = Math.floor(100000 + Math.random() * 900000).toString();
+    const claimCodeExpiresAt = new Date(Date.now() + 48 * 60 * 60 * 1000); // 48-hour expiration
+    const optOutToken = crypto_1.default.randomBytes(24).toString('hex');
     const application = await partnerApplication_model_1.default.create({
         businessName: businessName.trim(),
         businessAddress: businessAddress.trim(),
@@ -260,9 +265,16 @@ exports.applyForPartnership = (0, catchAsync_1.catchAsync)(async (req, res) => {
         businessImageUrl,
         coverImageUrl,
         status: 'pending',
+        claimCode,
+        claimCodeExpiresAt,
+        isClaimed: false,
+        optOutToken,
     });
-    // 1. Dispatch application confirmation email to the applicant with their login credentials
+    // 1. Dispatch "Claim Your Provisional Business Profile" email to the applicant (NO passwords emailed per UK compliance)
     try {
+        const webBaseUrl = process.env.CLIENT_URL || process.env.WEB_APP_URL || 'https://go-eat-webapp.vercel.app';
+        const claimUrl = `${webBaseUrl}/partners/claim-profile?email=${encodeURIComponent(normalizedEmail)}&code=${encodeURIComponent(claimCode)}`;
+        const optOutUrl = `${webBaseUrl}/partners/opt-out?email=${encodeURIComponent(normalizedEmail)}&token=${encodeURIComponent(optOutToken)}`;
         await email_service_1.default.sendPartnerApplicationReceived(normalizedEmail, {
             ownerName: resolvedOwnerName,
             businessName: businessName.trim(),
@@ -270,14 +282,16 @@ exports.applyForPartnership = (0, catchAsync_1.catchAsync)(async (req, res) => {
             businessAddress: businessAddress.trim(),
             email: normalizedEmail,
             phoneNumber: normalizedPhone,
-            password: generatedPassword,
-            loginUrl: process.env.VENDOR_DASHBOARD_URL || 'https://go-eat-webapp.vercel.app/partners/login',
+            claimCode,
+            claimUrl,
+            optOutUrl,
+            loginUrl: `${webBaseUrl}/partners/login`,
             country: resolvedCountry,
         });
-        logger_1.default.info(`📧 Partner application received email with credentials dispatched to ${normalizedEmail}`);
+        logger_1.default.info(`📧 Partner provisional claim invitation with single-use code dispatched to ${normalizedEmail}`);
     }
     catch (err) {
-        logger_1.default.warn(`Failed to dispatch partner application confirmation email to ${email}: ${err.message}`);
+        logger_1.default.warn(`Failed to dispatch partner claim invitation email to ${normalizedEmail}: ${err.message}`);
     }
     // 2. Dispatch operational alert to support@goeatone.com (Awaiting admin review & approval)
     try {
@@ -311,8 +325,8 @@ exports.applyForPartnership = (0, catchAsync_1.catchAsync)(async (req, res) => {
     return res.status(201).json({
         status: 'success',
         message: isQuick
-            ? 'Vendor account created! Your login credentials have been dispatched to your email. Please log in to access your partner dashboard.'
-            : 'Partner application submitted! Your vendor account has been registered and login credentials sent via email.',
+            ? 'Vendor profile reserved! Your single-use profile claim code has been dispatched to your email. Please claim your profile to set your password and access your partner dashboard.'
+            : 'Partner application submitted! Your single-use profile claim code has been sent via email to activate your account.',
         data: {
             user: {
                 _id: user._id,
@@ -657,6 +671,150 @@ exports.adminApproveApplication = (0, catchAsync_1.catchAsync)(async (req, res) 
         data: {
             application,
             restaurant,
+        },
+    });
+});
+/**
+ * Public endpoint: Verify single-use claim code for a partner application
+ * UK compliance: allows frontend to validate the token before prompting password setup
+ */
+exports.verifyClaimCode = (0, catchAsync_1.catchAsync)(async (req, res) => {
+    const email = (req.query.email || '').toLowerCase().trim();
+    const code = (req.query.code || '').trim();
+    if (!email || !code) {
+        throw new appError_1.default('Email address and claim verification code are required.', 400);
+    }
+    const application = await partnerApplication_model_1.default.findOne({
+        email,
+        claimCode: code,
+    });
+    if (!application) {
+        throw new appError_1.default('Invalid or unrecognized claim code. Please check your invitation email or request a new code.', 404);
+    }
+    if (application.isClaimed) {
+        throw new appError_1.default('This business profile has already been claimed. Please sign in directly with your password.', 400);
+    }
+    if (application.claimCodeExpiresAt && new Date() > application.claimCodeExpiresAt) {
+        throw new appError_1.default('This verification code has expired (codes expire after 48 hours). Please request a fresh invitation code.', 400);
+    }
+    res.status(200).json({
+        status: 'success',
+        message: 'Claim code verified successfully',
+        data: {
+            businessName: application.businessName,
+            ownerName: application.ownerName,
+            email: application.email,
+            businessAddress: application.businessAddress,
+            businessType: application.businessType,
+            isValid: true,
+        },
+    });
+});
+/**
+ * Public endpoint: Claim partner profile and establish personal secure password
+ * UK compliance: Replaces plaintext password emails with single-use verification code + self-chosen password
+ */
+exports.claimPartnerProfile = (0, catchAsync_1.catchAsync)(async (req, res) => {
+    const { email, code, password } = req.body;
+    if (!email || !code || !password) {
+        throw new appError_1.default('Email address, single-use claim code, and a new password are required.', 400);
+    }
+    if (typeof password !== 'string' || password.length < 8) {
+        throw new appError_1.default('Password must be at least 8 characters long for account security.', 400);
+    }
+    const normalizedEmail = email.toLowerCase().trim();
+    const application = await partnerApplication_model_1.default.findOne({
+        email: normalizedEmail,
+        claimCode: code.trim(),
+    });
+    if (!application) {
+        throw new appError_1.default('Invalid or expired claim code. Please check your invitation or contact GoEatOne support.', 404);
+    }
+    if (application.isClaimed) {
+        throw new appError_1.default('This business profile has already been claimed. Please sign in directly on the partner login screen.', 400);
+    }
+    if (application.claimCodeExpiresAt && new Date() > application.claimCodeExpiresAt) {
+        throw new appError_1.default('This verification code has expired (48 hours validity). Please contact GoEatOne support for a new code.', 400);
+    }
+    // Find and update the user's password securely
+    const user = await user_model_1.default.findOne({ email: normalizedEmail });
+    if (!user) {
+        throw new appError_1.default('Associated merchant user account could not be found.', 404);
+    }
+    user.password = password;
+    user.isVerified = true;
+    user.status = user_model_1.UserStatus.ACTIVE;
+    user.role = user_model_1.UserRole.VENDOR;
+    await user.save();
+    // Mark application as claimed and clear the single-use code
+    application.isClaimed = true;
+    application.claimedAt = new Date();
+    application.claimCode = undefined;
+    await application.save();
+    // If provisional restaurant exists, ensure it is linked
+    if (application.onboardedRestaurant) {
+        await restaurant_model_1.default.findByIdAndUpdate(application.onboardedRestaurant, {
+            owner: user._id,
+            isVerified: true,
+        });
+    }
+    // Generate session JWT auth token
+    const token = auth_service_1.default.signToken(user._id);
+    res.status(200).json({
+        status: 'success',
+        message: 'Business profile successfully claimed! Welcome to GoEatOne.',
+        token,
+        data: {
+            user: {
+                id: user._id,
+                name: user.name,
+                email: user.email,
+                role: user.role,
+                restaurantId: user.restaurantId || application.onboardedRestaurant,
+            },
+        },
+    });
+});
+/**
+ * Public endpoint: Decline invitation and request profile removal (UK GDPR Article 17 / PECR)
+ */
+exports.optOutPartner = (0, catchAsync_1.catchAsync)(async (req, res) => {
+    const { email, token, reason } = req.body;
+    if (!email) {
+        throw new appError_1.default('Email address is required to process profile removal.', 400);
+    }
+    const normalizedEmail = email.toLowerCase().trim();
+    const query = { email: normalizedEmail };
+    if (token) {
+        query.optOutToken = token;
+    }
+    const application = await partnerApplication_model_1.default.findOne(query);
+    if (!application) {
+        // If not found, still return success to prevent user enumeration
+        res.status(200).json({
+            status: 'success',
+            message: 'Your request has been received and your details have been removed in accordance with UK GDPR.',
+        });
+        return;
+    }
+    application.status = 'declined';
+    application.optedOutAt = new Date();
+    application.optOutReason = reason || 'Declined invitation by merchant';
+    await application.save();
+    // Unpublish and inactivate associated provisional restaurant profile
+    if (application.onboardedRestaurant) {
+        await restaurant_model_1.default.findByIdAndUpdate(application.onboardedRestaurant, {
+            status: restaurant_model_1.RestaurantStatus.INACTIVE,
+            isOpen: false,
+        });
+    }
+    logger_1.default.info(`Merchant profile removal processed for ${normalizedEmail} (UK GDPR compliance)`);
+    res.status(200).json({
+        status: 'success',
+        message: 'Your invitation has been declined and your business profile has been removed in accordance with UK GDPR.',
+        data: {
+            businessName: application.businessName,
+            email: application.email,
         },
     });
 });

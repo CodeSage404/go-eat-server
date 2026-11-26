@@ -183,6 +183,13 @@
               <strong style="color:#d4e8dc">GoEatOne GLOBAL</strong><br>
               71-75 Shelton Street, Covent Garden, London, WC2H 9JQ, United Kingdom
             </div>
+            <!-- Opt-out Link (Smaller) -->
+            <div style="margin-top:14px;padding-top:10px;border-top:1px solid rgba(255,255,255,0.12);font-size:10.5px;color:#9cb8a7">
+              Do not wish to have your restaurant listed on GoEatOne? 
+              <a href="<%= typeof optOutUrl !== 'undefined' && optOutUrl ? optOutUrl : 'https://go-eat-webapp.vercel.app/partners/opt-out' %>" target="_blank" style="color:#fca5a5;text-decoration:underline;font-weight:600">
+                Decline invitation &amp; request profile removal
+              </a>
+            </div>
           </td>
         </tr>
       </table>

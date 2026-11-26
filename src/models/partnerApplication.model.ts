@@ -1,6 +1,6 @@
 import mongoose, { Schema, Document } from 'mongoose';
 
-export type PartnerApplicationStatus = 'pending' | 'under_review' | 'approved' | 'rejected';
+export type PartnerApplicationStatus = 'pending' | 'under_review' | 'approved' | 'rejected' | 'declined';
 
 export interface IPartnerDocuments {
   ninUrl?: string;
@@ -40,6 +40,13 @@ export interface IPartnerApplication extends Document {
   reviewedBy?: mongoose.Types.ObjectId;
   reviewedAt?: Date;
   onboardedRestaurant?: mongoose.Types.ObjectId;
+  claimCode?: string;
+  claimCodeExpiresAt?: Date;
+  isClaimed?: boolean;
+  claimedAt?: Date;
+  optOutToken?: string;
+  optedOutAt?: Date;
+  optOutReason?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -145,7 +152,7 @@ const partnerApplicationSchema = new Schema<IPartnerApplication>(
     },
     status: {
       type: String,
-      enum: ['pending', 'under_review', 'approved', 'rejected'],
+      enum: ['pending', 'under_review', 'approved', 'rejected', 'declined'],
       default: 'pending',
       index: true,
     },
@@ -163,6 +170,34 @@ const partnerApplicationSchema = new Schema<IPartnerApplication>(
     onboardedRestaurant: {
       type: Schema.Types.ObjectId,
       ref: 'Restaurant',
+    },
+    claimCode: {
+      type: String,
+      trim: true,
+      index: true,
+    },
+    claimCodeExpiresAt: {
+      type: Date,
+    },
+    isClaimed: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
+    claimedAt: {
+      type: Date,
+    },
+    optOutToken: {
+      type: String,
+      trim: true,
+      index: true,
+    },
+    optedOutAt: {
+      type: Date,
+    },
+    optOutReason: {
+      type: String,
+      default: '',
     },
   },
   {

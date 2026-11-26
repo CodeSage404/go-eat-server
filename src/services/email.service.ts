@@ -423,7 +423,7 @@ class EmailService {
   }
 
   /**
-   * Sends partner merchant application acknowledgement email with provisioned login credentials
+   * Sends partner merchant application acknowledgement email to claim provisional business profile
    */
   public async sendPartnerApplicationReceived(
     email: string,
@@ -434,17 +434,26 @@ class EmailService {
       businessAddress: string;
       email: string;
       phoneNumber: string;
-      password?: string;
+      claimCode?: string;
+      claimUrl?: string;
+      optOutUrl?: string;
       loginUrl?: string;
       country?: string;
     }
   ): Promise<void> {
+    const webBaseUrl = process.env.CLIENT_URL || process.env.WEB_APP_URL || 'https://go-eat-webapp.vercel.app';
+    const claimUrl = data.claimUrl || `${webBaseUrl}/partners/claim-profile?email=${encodeURIComponent(email)}&code=${encodeURIComponent(data.claimCode || '')}`;
+    const optOutUrl = data.optOutUrl || `${webBaseUrl}/partners/opt-out?email=${encodeURIComponent(email)}`;
+
     const htmlContent = renderTemplate('PARTNER_APPLICATION_RECEIVED', {
       ...data,
-      loginUrl: data.loginUrl || process.env.VENDOR_DASHBOARD_URL || 'https://go-eat-webapp.vercel.app/partners/login',
+      claimCode: data.claimCode || '',
+      claimUrl,
+      optOutUrl,
+      loginUrl: data.loginUrl || `${webBaseUrl}/partners/login`,
     });
     try {
-      await this.sendEmail(email, 'GoEatOne Partner Application Received — Your Account Credentials', htmlContent, 'partners');
+      await this.sendEmail(email, 'Claim Your Provisional Business Profile on GoEatOne', htmlContent, 'partners');
     } catch (err: any) {
       logger.error(`Partner application received email failed to ${email}:`, err?.message || err);
     }
@@ -470,12 +479,15 @@ class EmailService {
       country?: string;
       isFoundingPartner?: boolean;
       loginUrl?: string;
+      optOutUrl?: string;
     }
   ): Promise<void> {
+    const webBaseUrl = process.env.CLIENT_URL || process.env.WEB_APP_URL || 'https://go-eat-webapp.vercel.app';
     const htmlContent = renderTemplate('WELCOME_PARTNER', {
       ...data,
       isFoundingPartner: data.isFoundingPartner !== false,
-      loginUrl: data.loginUrl || process.env.VENDOR_DASHBOARD_URL || 'https://go-eat-webapp.vercel.app/partners/login',
+      loginUrl: data.loginUrl || `${webBaseUrl}/partners/login`,
+      optOutUrl: data.optOutUrl || `${webBaseUrl}/partners/opt-out?email=${encodeURIComponent(email)}`,
     });
     try {
       await this.sendEmail(

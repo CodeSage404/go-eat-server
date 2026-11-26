@@ -134,7 +134,7 @@ const partnerApplicationSchema = new mongoose_1.Schema({
     },
     status: {
         type: String,
-        enum: ['pending', 'under_review', 'approved', 'rejected'],
+        enum: ['pending', 'under_review', 'approved', 'rejected', 'declined'],
         default: 'pending',
         index: true,
     },
@@ -152,6 +152,34 @@ const partnerApplicationSchema = new mongoose_1.Schema({
     onboardedRestaurant: {
         type: mongoose_1.Schema.Types.ObjectId,
         ref: 'Restaurant',
+    },
+    claimCode: {
+        type: String,
+        trim: true,
+        index: true,
+    },
+    claimCodeExpiresAt: {
+        type: Date,
+    },
+    isClaimed: {
+        type: Boolean,
+        default: false,
+        index: true,
+    },
+    claimedAt: {
+        type: Date,
+    },
+    optOutToken: {
+        type: String,
+        trim: true,
+        index: true,
+    },
+    optedOutAt: {
+        type: Date,
+    },
+    optOutReason: {
+        type: String,
+        default: '',
     },
 }, {
     timestamps: true,

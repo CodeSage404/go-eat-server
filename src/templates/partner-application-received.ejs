@@ -1,14 +1,14 @@
 <!-- Partner Application Received Pill -->
 <div style="text-align: center; margin: 12px 0 16px;">
   <span style="display: inline-block; padding: 6px 16px; background-color: #eef7f0; border: 1px solid #cce5d4; border-radius: 20px; font-size: 11.5px; font-weight: 700; color: #06462f; letter-spacing: 0.8px; text-transform: uppercase;">
-    Partner Registration Received
+    Provisional Partner Profile Reserved
   </span>
 </div>
 
 <!-- Title & Accent Bar -->
 <div style="text-align: center;">
   <h1 style="margin: 0; font-size: 24px; font-weight: 800; color: #06462f; letter-spacing: -0.3px;">
-    Partner Application Received
+    Claim Your Provisional Business Profile
   </h1>
   <div style="width: 44px; height: 3px; background-color: #ffc629; border-radius: 2px; margin: 10px auto 18px;"></div>
 </div>
@@ -19,44 +19,46 @@
     Hello <%= typeof ownerName !== 'undefined' && ownerName ? ownerName : 'Valued Partner' %>,
   </p>
   <p style="font-size: 13px; line-height: 1.6; color: #4B5563; margin: 0;">
-    Thank you for applying to partner with GoEatOne for <strong><%= typeof businessName !== 'undefined' ? businessName : 'Your Outlet' %></strong>! We have received your merchant registration application.
+    A provisional merchant profile has been initialized for <strong><%= typeof businessName !== 'undefined' ? businessName : 'Your Business' %></strong> on the GoEatOne Partner Network.
   </p>
 </div>
 
-<!-- Partner Login Credentials Card -->
-<div style="background-color: #f5f8f5; border: 1px solid #deebe3; border-left: 4px solid #ffc629; border-radius: 12px; padding: 20px 22px; max-width: 480px; margin: 0 auto 24px; text-align: left;">
+<!-- Claim Your Provisional Business Profile Card -->
+<div style="background-color: #f5f8f5; border: 1px solid #deebe3; border-left: 4px solid #ffc629; border-radius: 12px; padding: 22px 24px; max-width: 480px; margin: 0 auto 24px; text-align: left;">
   <div style="font-size: 12px; font-weight: 800; color: #06462f; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 6px;">
-    Your Partner Account Credentials
+    Claim Your Provisional Business Profile
   </div>
-  <p style="font-size: 12.5px; line-height: 1.6; color: #40564b; margin: 0 0 14px;">
-    Your partner merchant account has been provisioned. You can sign in immediately to the <strong>GoEatOne Partner Portal</strong> to explore the portal, set up your digital menu, and configure your store details while our compliance team verifies your documentation.
+  <p style="font-size: 12.5px; line-height: 1.6; color: #40564b; margin: 0 0 16px;">
+    To protect your business and comply with UK security standards, we never transmit passwords via email. Use your secure, single-use verification code below to claim your store, set your confidential password, and complete your partner setup.
   </p>
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="font-size: 13px;">
+
+  <!-- Single-Use Verification Code Box -->
+  <div style="background-color: #ffffff; border: 2px dashed #06462f; border-radius: 10px; padding: 14px; text-align: center; margin-bottom: 16px;">
+    <div style="font-size: 11px; font-weight: 700; color: #557064; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px;">
+      Single-Use Claim Verification Code
+    </div>
+    <div style="font-size: 26px; font-weight: 900; color: #06462f; letter-spacing: 6px; font-family: monospace;">
+      <%= typeof claimCode !== 'undefined' && claimCode ? claimCode : '------' %>
+    </div>
+    <div style="font-size: 11px; color: #82978d; margin-top: 4px;">
+      Single-use code • Valid for 48 hours
+    </div>
+  </div>
+
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="font-size: 13px; margin-bottom: 16px;">
     <tr>
-      <td style="padding: 6px 0; color: #557064; width: 135px; font-weight: 500;">Portal Website:</td>
-      <td style="padding: 6px 0; font-weight: 700; color: #06462f;">
-        <a href="<%= typeof loginUrl !== 'undefined' && loginUrl ? loginUrl : 'https://go-eat-webapp.vercel.app/partners/login' %>" target="_blank" style="color: #06462f; text-decoration: underline;">
-          goeatone.com/partners/login
-        </a>
-      </td>
+      <td style="padding: 5px 0; color: #557064; width: 135px; font-weight: 500;">Registered Email:</td>
+      <td style="padding: 5px 0; font-weight: 700; color: #073f2d;"><%= email %></td>
     </tr>
     <tr>
-      <td style="padding: 6px 0; color: #557064; font-weight: 500;">Username / Email:</td>
-      <td style="padding: 6px 0; font-weight: 700; color: #073f2d;"><%= email %></td>
+      <td style="padding: 5px 0; color: #557064; font-weight: 500;">Action Required:</td>
+      <td style="padding: 5px 0; font-weight: 600; color: #997000;">Claim Profile &amp; Create Password</td>
     </tr>
-    <% if (typeof password !== 'undefined' && password) { %>
-    <tr>
-      <td style="padding: 6px 0; color: #557064; font-weight: 500;">Initial Password:</td>
-      <td style="padding: 6px 0; font-weight: 700; color: #073f2d; font-family: monospace; font-size: 13.5px;"><%= password %></td>
-    </tr>
-    <% } %>
   </table>
-  <p style="margin: 12px 0 0; color: #6b8276; font-size: 11px; line-height: 1.5;">
-    For security, please change your password upon your first sign-in. Do not share these credentials with anyone.
-  </p>
-  <div style="text-align: center; margin-top: 16px;">
-    <a href="<%= typeof loginUrl !== 'undefined' && loginUrl ? loginUrl : 'https://go-eat-webapp.vercel.app/partners/login' %>" target="_blank" style="display: inline-block; padding: 11px 26px; background-color: #06462f; color: #ffffff; font-size: 13px; font-weight: 700; text-decoration: none; border-radius: 24px;">
-      Sign In to Partner Portal &rarr;
+
+  <div style="text-align: center; margin-top: 14px;">
+    <a href="<%= typeof claimUrl !== 'undefined' && claimUrl ? claimUrl : 'https://go-eat-webapp.vercel.app/partners/claim-profile' %>" target="_blank" style="display: inline-block; padding: 12px 28px; background-color: #06462f; color: #ffffff; font-size: 13.5px; font-weight: 700; text-decoration: none; border-radius: 24px; box-shadow: 0 3px 10px rgba(6,70,47,0.2);">
+      Claim Your Business Profile &rarr;
     </a>
   </div>
 </div>
@@ -64,7 +66,7 @@
 <!-- Outlet Summary Box -->
 <div style="background-color: #F9FAFB; border: 1px solid #E5E7EB; border-radius: 14px; padding: 18px 22px; max-width: 480px; margin: 0 auto 24px; text-align: left;">
   <div style="font-size: 12px; font-weight: 800; color: #133824; margin-bottom: 12px; border-bottom: 1px solid #E5E7EB; padding-bottom: 8px;">
-    Submitted Outlet Details
+    Submitted Outlet Information
   </div>
 
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="font-size: 13px;">
@@ -92,11 +94,19 @@
 </div>
 
 <!-- What Happens Next Section -->
-<div style="background-color: #ECFDF5; border: 1px solid #A7F3D0; border-radius: 14px; padding: 16px 20px; max-width: 480px; margin: 0 auto 10px; text-align: left;">
+<div style="background-color: #ECFDF5; border: 1px solid #A7F3D0; border-radius: 14px; padding: 16px 20px; max-width: 480px; margin: 0 auto 16px; text-align: left;">
   <div style="font-size: 12.5px; font-weight: 800; color: #064E3B; margin-bottom: 4px;">
     What happens next?
   </div>
   <p style="font-size: 12px; color: #047857; line-height: 1.5; margin: 0;">
-    Our compliance team will review your submitted registration and verification documents within <strong>24 to 48 hours</strong>. Once your outlet is approved by an administrator, you will receive your official <strong>GoEatOne Founding Partner Onboarding Confirmation</strong> and your store will be activated for live customer ordering and dispatch.
+    Once you claim your profile, you can configure your store menu and operating schedule. Our compliance team will review your submitted registration and verification documents within <strong>24 to 48 hours</strong> to activate your storefront for customer ordering.
   </p>
+</div>
+
+<!-- Opt-out & Profile Removal Footer (Smaller) -->
+<div style="text-align: center; max-width: 480px; margin: 24px auto 0; padding-top: 16px; border-top: 1px dashed #deebe3; font-size: 11px; color: #6b8276; line-height: 1.5;">
+  Not your business or do not wish to be listed on GoEatOne?<br>
+  <a href="<%= typeof optOutUrl !== 'undefined' && optOutUrl ? optOutUrl : 'https://go-eat-webapp.vercel.app/partners/opt-out' %>" target="_blank" style="color: #9b2c2c; font-size: 10.5px; font-weight: 600; text-decoration: underline; margin-top: 4px; display: inline-block;">
+    Decline invitation and request profile removal
+  </a>
 </div>
