@@ -255,4 +255,146 @@ router.post('/subscribe', auth_middleware_1.protect, subscription_controller_1.S
  *         description: Internal server error
  */
 router.get('/verify-payment', subscription_controller_1.SubscriptionController.verifySubscriptionPayment);
+/**
+ * @openapi
+ * /api/v1/subscriptions/bacs-mandate:
+ *   post:
+ *     summary: Set up UK Bacs Direct Debit instruction
+ *     description: Registers UK bank account sort code and account number for Bacs Direct Debit recurring billing, generates unique mandate reference, and initiates two-stage compliance verification.
+ *     tags:
+ *       - Subscriptions
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - accountHolderName
+ *               - sortCode
+ *               - accountNumber
+ *               - customerAgreedGuarantee
+ *             properties:
+ *               restaurantId:
+ *                 type: string
+ *                 description: Target restaurant ID (optional if user owns a restaurant)
+ *               planTier:
+ *                 type: string
+ *                 enum: [plus, unlimited]
+ *                 default: plus
+ *               accountHolderName:
+ *                 type: string
+ *                 description: Full legal name of bank account holder
+ *               sortCode:
+ *                 type: string
+ *                 description: 6-digit UK bank sort code (e.g. 20-00-00 or 200000)
+ *               accountNumber:
+ *                 type: string
+ *                 description: 8-digit UK bank account number
+ *               bankName:
+ *                 type: string
+ *                 description: Bank or building society name (e.g. Barclays, HSBC)
+ *               customerAgreedGuarantee:
+ *                 type: boolean
+ *                 description: Explicit confirmation that merchant has read and accepted the Direct Debit Guarantee
+ *               notes:
+ *                 type: string
+ *                 description: Internal or sales agent onboarding notes
+ *     responses:
+ *       200:
+ *         description: UK Direct Debit instruction registered successfully with mandate reference
+ *       400:
+ *         description: Invalid sort code, account number, or unaccepted guarantee
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: Restaurant not found
+ *       500:
+ *         description: Internal server error
+ */
+router.post('/bacs-mandate', auth_middleware_1.protect, subscription_controller_1.SubscriptionController.setupBacsDirectDebit);
+/**
+ * @openapi
+ * /api/v1/subscriptions/admin/bacs-mandates:
+ *   get:
+ *     summary: Get all UK Direct Debit mandates (Admin Queue)
+ *     description: Returns paginated list of restaurant Bacs Direct Debit instructions awaiting compliance verification or active.
+ *     tags:
+ *       - Subscriptions
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *           enum: [all, pending_verification, active, rejected, cancelled]
+ *           default: all
+ *         description: Filter mandates by verification status
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 20
+ *     responses:
+ *       200:
+ *         description: Mandate verification queue retrieved successfully
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Internal server error
+ */
+router.get('/admin/bacs-mandates', auth_middleware_1.protect, subscription_controller_1.SubscriptionController.getBacsMandatesAdmin);
+/**
+ * @openapi
+ * /api/v1/subscriptions/admin/bacs-mandates/{id}/verify:
+ *   patch:
+ *     summary: Verify / Approve or Reject UK Direct Debit mandate (Admin)
+ *     description: Approves or rejects a merchant's Direct Debit mandate, dispatches verified confirmation email/notification, and activates subscription billing.
+ *     tags:
+ *       - Subscriptions
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Subscription document ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - action
+ *             properties:
+ *               action:
+ *                 type: string
+ *                 enum: [approve, reject]
+ *               rejectionReason:
+ *                 type: string
+ *                 description: Explanation required if action is reject
+ *     responses:
+ *       200:
+ *         description: Mandate verification status updated successfully
+ *       400:
+ *         description: Invalid action parameter
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: Subscription or mandate not found
+ *       500:
+ *         description: Internal server error
+ */
+router.patch('/admin/bacs-mandates/:id/verify', auth_middleware_1.protect, subscription_controller_1.SubscriptionController.verifyBacsMandateAdmin);
 exports.default = router;

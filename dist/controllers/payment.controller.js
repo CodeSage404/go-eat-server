@@ -1,12 +1,46 @@
 "use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+const mongoose_1 = __importDefault(require("mongoose"));
 const payment_service_1 = __importDefault(require("../services/payment.service"));
 const catchAsync_1 = require("../utils/catchAsync");
 const appError_1 = __importDefault(require("../utils/appError"));
-const order_model_1 = __importDefault(require("../models/order.model"));
+const order_model_1 = __importStar(require("../models/order.model"));
 const restaurant_model_1 = __importDefault(require("../models/restaurant.model"));
 const setting_model_1 = __importDefault(require("../models/setting.model"));
 const paystack_module_1 = __importDefault(require("../services/payments/paystack.module"));
@@ -496,6 +530,28 @@ class PaymentController {
             const cleanBase = targetBaseUrl.replace(/\/$/, '');
             // 3. Handle Cancelled or Failed Payments cleanly
             if (isCancelled || isFailed) {
+                // Immediately cancel any pending unconfirmed orders in database so they never appear as placed
+                if (orderId) {
+                    try {
+                        const targetIds = orderId.includes(',')
+                            ? orderId.split(',').map((id) => id.trim()).filter((id) => mongoose_1.default.Types.ObjectId.isValid(id))
+                            : [orderId].filter((id) => mongoose_1.default.Types.ObjectId.isValid(id));
+                        if (targetIds.length > 0) {
+                            await order_model_1.default.updateMany({ _id: { $in: targetIds }, status: { $in: [order_model_1.OrderStatus.PAYMENT_PENDING, order_model_1.OrderStatus.PENDING] } }, {
+                                status: order_model_1.OrderStatus.CANCELLED,
+                                paymentStatus: 'failed',
+                                cancellationReason: isCancelled
+                                    ? 'Payment cancelled by customer at payment gateway'
+                                    : 'Payment transaction failed',
+                                cancelledAt: new Date(),
+                            });
+                            logger_1.default.info(`Cancelled unpaid pending orders in DB upon gateway abort: ${targetIds.join(', ')}`);
+                        }
+                    }
+                    catch (updateErr) {
+                        logger_1.default.warn(`Failed to update cancelled orders in callback: ${updateErr.message}`);
+                    }
+                }
                 const cancelStatus = isCancelled ? 'cancelled' : 'failed';
                 const cancelQueryParams = `status=${cancelStatus}&provider=${encodeURIComponent(provider)}${orderId ? `&orderId=${encodeURIComponent(orderId)}` : ''}${reference ? `&reference=${encodeURIComponent(reference)}` : ''}`;
                 const targetRedirectUrl = `${cleanBase}/checkout?${cancelQueryParams}`;

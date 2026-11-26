@@ -3,7 +3,33 @@ import mongoose, { Schema, Document } from 'mongoose';
 export type SubscriptionPlanTier = 'payg' | 'plus' | 'unlimited';
 export type SubscriptionMarket = 'UK' | 'NG' | 'EU';
 export type SubscriptionCurrency = 'GBP' | 'NGN' | 'EUR';
-export type SubscriptionStatus = 'active' | 'past_due' | 'cancelled' | 'trialing' | 'grace_period';
+export type SubscriptionStatus = 'active' | 'past_due' | 'cancelled' | 'trialing' | 'grace_period' | 'pending_verification';
+
+export type BacsMandateStatus = 'none' | 'pending_verification' | 'active' | 'rejected' | 'cancelled';
+
+export interface IBacsMandate {
+  accountHolderName?: string;
+  sortCode?: string; // e.g. "20-00-00" or "200000"
+  accountNumberMasked?: string; // e.g. "****5678"
+  bankName?: string;
+  mandateReference?: string; // e.g. GOEAT-BACS-1A2B3C4D
+  status: BacsMandateStatus;
+  submittedAt?: Date;
+  submittedBy?: {
+    userId?: mongoose.Types.ObjectId;
+    name?: string;
+    role?: string;
+  };
+  verifiedAt?: Date;
+  verifiedBy?: {
+    userId?: mongoose.Types.ObjectId;
+    name?: string;
+  };
+  rejectionReason?: string;
+  customerAgreedGuarantee: boolean;
+  agreedAt?: Date;
+  notes?: string;
+}
 
 export interface ISubscriptionPlanConfig {
   tier: SubscriptionPlanTier;
@@ -55,6 +81,9 @@ export interface IOutletSubscription extends Document {
   isFoundingPartnerPromo: boolean;
   foundingPartnerPromoEnd?: Date;
   
+  // UK Bacs Direct Debit Mandate
+  bacsMandate?: IBacsMandate;
+
   // Payment Processor details
   paymentProvider?: 'stripe' | 'paystack' | 'monnify' | 'bachs';
   processorSubscriptionId?: string;
@@ -74,7 +103,7 @@ const OutletSubscriptionSchema = new Schema<IOutletSubscription>(
     market: { type: String, enum: ['UK', 'NG', 'EU'], default: 'NG', required: true },
     currency: { type: String, enum: ['GBP', 'NGN', 'EUR'], default: 'NGN', required: true },
     monthlyFee: { type: Number, default: 0 },
-    status: { type: String, enum: ['active', 'past_due', 'cancelled', 'trialing', 'grace_period'], default: 'active' },
+    status: { type: String, enum: ['active', 'past_due', 'cancelled', 'trialing', 'grace_period', 'pending_verification'], default: 'active' },
     startDate: { type: Date, default: Date.now },
     currentCycleStart: { type: Date, default: Date.now },
     currentCycleEnd: { type: Date, required: true },
@@ -87,6 +116,34 @@ const OutletSubscriptionSchema = new Schema<IOutletSubscription>(
     
     isFoundingPartnerPromo: { type: Boolean, default: false },
     foundingPartnerPromoEnd: { type: Date },
+
+    bacsMandate: {
+      accountHolderName: { type: String },
+      sortCode: { type: String },
+      accountNumberMasked: { type: String },
+      bankName: { type: String },
+      mandateReference: { type: String, index: true },
+      status: {
+        type: String,
+        enum: ['none', 'pending_verification', 'active', 'rejected', 'cancelled'],
+        default: 'none',
+      },
+      submittedAt: { type: Date },
+      submittedBy: {
+        userId: { type: Schema.Types.ObjectId, ref: 'User' },
+        name: { type: String },
+        role: { type: String },
+      },
+      verifiedAt: { type: Date },
+      verifiedBy: {
+        userId: { type: Schema.Types.ObjectId, ref: 'User' },
+        name: { type: String },
+      },
+      rejectionReason: { type: String },
+      customerAgreedGuarantee: { type: Boolean, default: false },
+      agreedAt: { type: Date },
+      notes: { type: String },
+    },
     
     paymentProvider: { type: String, enum: ['stripe', 'paystack', 'monnify', 'bachs'] },
     processorSubscriptionId: { type: String },

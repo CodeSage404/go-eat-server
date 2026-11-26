@@ -1217,7 +1217,28 @@ class OrderService {
   }
 
   async getCustomerOrders(customerId: string): Promise<IOrder[]> {
-    return await Order.find({ customer: customerId })
+    // Auto-cancel any stale payment_pending orders older than 5 minutes for this customer
+    try {
+      await Order.updateMany(
+        {
+          customer: customerId,
+          status: OrderStatus.PAYMENT_PENDING,
+          createdAt: { $lt: new Date(Date.now() - 5 * 60 * 1000) },
+        },
+        {
+          status: OrderStatus.CANCELLED,
+          paymentStatus: 'failed',
+          cancellationReason: 'Payment abandoned at checkout by customer',
+          cancelledAt: new Date(),
+        }
+      );
+    } catch {}
+
+    // Never return unconfirmed/unpaid payment_pending orders as customer orders
+    return await Order.find({
+      customer: customerId,
+      status: { $ne: OrderStatus.PAYMENT_PENDING },
+    })
       .populate('restaurant', 'name address images image rating estimatedDeliveryTime isSponsored isSelfPickup hasDelivery location cuisine businessPhone phone phoneNumber phoneContact')
       .populate('rider', 'name phoneNumber profileImage vehicleType vehicleSpecs vehicleNumber')
       .populate('items.foodItem', 'name price image')

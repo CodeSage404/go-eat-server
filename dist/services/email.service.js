@@ -364,6 +364,90 @@ class EmailService {
         }
     }
     /**
+     * Sends advance notification of UK Bacs Direct Debit instruction submission to merchant
+     */
+    async sendBacsMandateNotice(email, data) {
+        const htmlContent = `
+      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; color: #1f2937;">
+        <div style="background-color: #0F3D26; padding: 24px; border-radius: 16px; text-align: center; margin-bottom: 24px;">
+          <h1 style="color: #ffffff; margin: 0; font-size: 22px; font-weight: 800;">GoEatOne UK Direct Debit Advance Notice</h1>
+          <p style="color: #A7F3D0; font-size: 13px; margin-top: 6px;">Bacs Direct Debit Instruction Received</p>
+        </div>
+        <p style="font-size: 15px;">Hello <strong>${data.partnerName || 'Partner'}</strong>,</p>
+        <p style="font-size: 14px; line-height: 1.6;">Thank you for setting up a Bacs Direct Debit instruction for <strong>${data.restaurantName}</strong> on GoEatOne. This email confirms that we have registered your Direct Debit details.</p>
+        
+        <div style="background-color: #F9FAFB; border: 1px solid #E5E7EB; border-radius: 12px; padding: 18px; margin: 20px 0;">
+          <h3 style="margin-top: 0; font-size: 14px; color: #0F3D26; text-transform: uppercase; letter-spacing: 0.5px;">Instruction Summary</h3>
+          <table style="width: 100%; font-size: 13px; border-collapse: collapse;">
+            <tr><td style="padding: 6px 0; color: #6B7280;">Service User Name:</td><td style="padding: 6px 0; font-weight: 600; text-align: right;">GoEatOne Global UK</td></tr>
+            <tr><td style="padding: 6px 0; color: #6B7280;">Mandate Reference:</td><td style="padding: 6px 0; font-weight: 700; color: #0F3D26; text-align: right;">${data.mandateReference}</td></tr>
+            <tr><td style="padding: 6px 0; color: #6B7280;">Account Sort Code:</td><td style="padding: 6px 0; font-weight: 600; text-align: right;">${data.sortCode}</td></tr>
+            <tr><td style="padding: 6px 0; color: #6B7280;">Bank Account Number:</td><td style="padding: 6px 0; font-weight: 600; text-align: right;">${data.accountNumberMasked}</td></tr>
+            <tr><td style="padding: 6px 0; color: #6B7280;">Subscription Plan:</td><td style="padding: 6px 0; font-weight: 600; text-align: right;">${data.planName} (${data.amountFormatted}/month)</td></tr>
+          </table>
+        </div>
+
+        <div style="background-color: #FEF3C7; border: 1px solid #FDE68A; border-radius: 12px; padding: 16px; margin: 20px 0;">
+          <h4 style="margin: 0 0 8px 0; font-size: 13px; color: #92400E; font-weight: 700;">Account Verification in Progress</h4>
+          <p style="margin: 0; font-size: 12px; color: #78350F; line-height: 1.5;">Our compliance verification team is currently verifying your business credentials. No funds will be debited until your account details have been formally verified. You will receive an immediate notification as soon as verification completes.</p>
+        </div>
+
+        <div style="border-top: 2px solid #E5E7EB; padding-top: 16px; margin-top: 24px;">
+          <h4 style="margin: 0 0 8px 0; font-size: 13px; color: #111827; font-weight: 700;">The Direct Debit Guarantee</h4>
+          <ul style="font-size: 11px; color: #6B7280; line-height: 1.5; padding-left: 18px; margin: 0;">
+            <li>This Guarantee is offered by all banks and building societies that accept instructions to pay Direct Debits.</li>
+            <li>If there are any changes to the amount, date or frequency of your Direct Debit GoEatOne will notify you 3 working days in advance of your account being debited or as otherwise agreed.</li>
+            <li>If an error is made in the payment of your Direct Debit, by GoEatOne or your bank or building society, you are entitled to a full and immediate refund of the amount paid from your bank or building society.</li>
+            <li>You can cancel a Direct Debit at any time by simply contacting your bank or building society. Written confirmation may be required. Please also notify us.</li>
+          </ul>
+        </div>
+        
+        <p style="font-size: 12px; color: #9CA3AF; text-align: center; margin-top: 24px;">© 2026 GoEatOne Global · 71-75 Shelton Street, Covent Garden, London, WC2H 9JQ, United Kingdom</p>
+      </div>
+    `;
+        try {
+            await this.sendEmail(email, `UK Direct Debit Instruction Registered: Ref ${data.mandateReference}`, htmlContent, 'partners');
+            logger_1.default.info(`📧 Bacs mandate notice email dispatched to ${email}`);
+        }
+        catch (err) {
+            logger_1.default.error(`Bacs mandate notice email failed to ${email}:`, err?.message || err);
+        }
+    }
+    /**
+     * Sends confirmation that the UK Bacs Direct Debit mandate has been verified and approved by admin
+     */
+    async sendBacsMandateApproved(email, data) {
+        const htmlContent = `
+      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; color: #1f2937;">
+        <div style="background-color: #0F3D26; padding: 24px; border-radius: 16px; text-align: center; margin-bottom: 24px;">
+          <h1 style="color: #ffffff; margin: 0; font-size: 22px; font-weight: 800;">Direct Debit Mandate Verified & Approved</h1>
+          <p style="color: #A7F3D0; font-size: 13px; margin-top: 6px;">GoEatOne UK Partner Account Active</p>
+        </div>
+        <p style="font-size: 15px;">Hello <strong>${data.partnerName || 'Partner'}</strong>,</p>
+        <p style="font-size: 14px; line-height: 1.6;">Great news! Your Bacs Direct Debit instruction for <strong>${data.restaurantName}</strong> has been successfully reviewed and approved by our compliance team.</p>
+        
+        <div style="background-color: #ECFDF5; border: 1px solid #A7F3D0; border-radius: 12px; padding: 18px; margin: 20px 0;">
+          <h3 style="margin-top: 0; font-size: 14px; color: #065F46; text-transform: uppercase;">Active Mandate Details</h3>
+          <p style="font-size: 13px; margin: 4px 0; color: #065F46;"><strong>Mandate Reference:</strong> ${data.mandateReference}</p>
+          <p style="font-size: 13px; margin: 4px 0; color: #065F46;"><strong>Plan Tier:</strong> ${data.planName}</p>
+          <p style="font-size: 13px; margin: 4px 0; color: #065F46;"><strong>Monthly Amount:</strong> ${data.monthlyFee}</p>
+          <p style="font-size: 13px; margin: 4px 0; color: #065F46;"><strong>First Debit Cycle:</strong> ${data.nextDebitDate}</p>
+        </div>
+
+        <p style="font-size: 14px; line-height: 1.5;">Your merchant dashboard features are now completely unlocked and active.</p>
+
+        <p style="font-size: 12px; color: #9CA3AF; text-align: center; margin-top: 24px;">© 2026 GoEatOne Global · 71-75 Shelton Street, Covent Garden, London, WC2H 9JQ, United Kingdom</p>
+      </div>
+    `;
+        try {
+            await this.sendEmail(email, `Direct Debit Verified & Active: Ref ${data.mandateReference}`, htmlContent, 'partners');
+            logger_1.default.info(`📧 Bacs mandate approved email dispatched to ${email}`);
+        }
+        catch (err) {
+            logger_1.default.error(`Bacs mandate approved email failed to ${email}:`, err?.message || err);
+        }
+    }
+    /**
      * Sends admin operational notification when a new partner registers and submits documents for review
      */
     async sendAdminPartnerSubmissionAlert(data) {

@@ -1,8 +1,9 @@
 import { Request, Response } from 'express';
+import mongoose from 'mongoose';
 import paymentService, { PaymentProvider } from '../services/payment.service';
 import { catchAsync } from '../utils/catchAsync';
 import AppError from '../utils/appError';
-import Order from '../models/order.model';
+import Order, { OrderStatus } from '../models/order.model';
 import Restaurant from '../models/restaurant.model';
 import Setting from '../models/setting.model';
 import paystackModule from '../services/payments/paystack.module';
@@ -558,6 +559,32 @@ class PaymentController {
 
     // 3. Handle Cancelled or Failed Payments cleanly
     if (isCancelled || isFailed) {
+      // Immediately cancel any pending unconfirmed orders in database so they never appear as placed
+      if (orderId) {
+        try {
+          const targetIds = orderId.includes(',')
+            ? orderId.split(',').map((id: string) => id.trim()).filter((id: string) => mongoose.Types.ObjectId.isValid(id))
+            : [orderId].filter((id: string) => mongoose.Types.ObjectId.isValid(id));
+
+          if (targetIds.length > 0) {
+            await Order.updateMany(
+              { _id: { $in: targetIds }, status: { $in: [OrderStatus.PAYMENT_PENDING, OrderStatus.PENDING] } },
+              {
+                status: OrderStatus.CANCELLED,
+                paymentStatus: 'failed',
+                cancellationReason: isCancelled
+                  ? 'Payment cancelled by customer at payment gateway'
+                  : 'Payment transaction failed',
+                cancelledAt: new Date(),
+              }
+            );
+            logger.info(`Cancelled unpaid pending orders in DB upon gateway abort: ${targetIds.join(', ')}`);
+          }
+        } catch (updateErr: any) {
+          logger.warn(`Failed to update cancelled orders in callback: ${updateErr.message}`);
+        }
+      }
+
       const cancelStatus = isCancelled ? 'cancelled' : 'failed';
       const cancelQueryParams = `status=${cancelStatus}&provider=${encodeURIComponent(provider)}${
         orderId ? `&orderId=${encodeURIComponent(orderId)}` : ''

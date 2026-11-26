@@ -1,11 +1,14 @@
 import { Request, Response } from 'express';
 import mongoose from 'mongoose';
+import crypto from 'crypto';
 import { SubscriptionService } from '../services/subscription.service';
 import { OutletSubscription, SUBSCRIPTION_PLAN_CONFIGS, SubscriptionPlanTier } from '../models/subscription.model';
 import Restaurant, { RestaurantStatus } from '../models/restaurant.model';
+import User from '../models/user.model';
 import bachsModule from '../services/payments/bachs.module';
 import stripeModule from '../services/payments/stripe.module';
 import emailService from '../services/email.service';
+import notificationService from '../services/notification.service';
 import logger from '../utils/logger';
 
 export class SubscriptionController {
@@ -562,6 +565,369 @@ export class SubscriptionController {
       return res.status(500).json({
         success: false,
         message: error.message || 'Failed to verify subscription payment',
+      });
+    }
+  }
+
+  /**
+   * Merchant / Sales Agent: Set up UK Bacs Direct Debit instruction for restaurant subscription
+   */
+  public static async setupBacsDirectDebit(req: Request, res: Response) {
+    try {
+      const user = (req as any).user;
+      const {
+        restaurantId: paramRestaurantId,
+        planTier = 'plus',
+        accountHolderName,
+        sortCode,
+        accountNumber,
+        bankName,
+        customerAgreedGuarantee,
+        notes,
+      } = req.body;
+
+      if (!customerAgreedGuarantee) {
+        return res.status(400).json({
+          success: false,
+          message: 'You must confirm and accept the UK Direct Debit Guarantee to proceed.',
+        });
+      }
+
+      if (!accountHolderName || !accountHolderName.trim()) {
+        return res.status(400).json({
+          success: false,
+          message: 'Account holder name is required.',
+        });
+      }
+
+      const cleanSortCode = String(sortCode || '').replace(/[^0-9]/g, '');
+      if (cleanSortCode.length !== 6) {
+        return res.status(400).json({
+          success: false,
+          message: 'Valid 6-digit UK sort code is required (e.g. 20-00-00).',
+        });
+      }
+
+      const cleanAccountNumber = String(accountNumber || '').replace(/[^0-9]/g, '');
+      if (cleanAccountNumber.length !== 8) {
+        return res.status(400).json({
+          success: false,
+          message: 'Valid 8-digit UK bank account number is required.',
+        });
+      }
+
+      let restaurantId = paramRestaurantId;
+      let restaurant = null;
+
+      if (restaurantId) {
+        restaurant = await Restaurant.findById(restaurantId).populate('owner');
+      } else if (user) {
+        restaurant = await Restaurant.findOne({ owner: user._id });
+        if (restaurant) {
+          restaurantId = restaurant._id.toString();
+        }
+      }
+
+      if (!restaurant) {
+        return res.status(404).json({
+          success: false,
+          message: 'Restaurant profile not found for Direct Debit mandate.',
+        });
+      }
+
+      const formattedSortCode = `${cleanSortCode.slice(0, 2)}-${cleanSortCode.slice(2, 4)}-${cleanSortCode.slice(4, 6)}`;
+      const accountNumberMasked = `****${cleanAccountNumber.slice(-4)}`;
+      const mandateReference = `GOEAT-BACS-${crypto.randomBytes(4).toString('hex').toUpperCase()}`;
+
+      const validTier: SubscriptionPlanTier = (['plus', 'unlimited'].includes(planTier) ? planTier : 'plus') as SubscriptionPlanTier;
+      const config = SUBSCRIPTION_PLAN_CONFIGS.UK[validTier];
+
+      const now = new Date();
+      const currentCycleEnd = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+
+      let subscription = await OutletSubscription.findOne({ restaurantId });
+
+      if (subscription) {
+        subscription.planTier = validTier;
+        subscription.market = 'UK';
+        subscription.currency = 'GBP';
+        subscription.monthlyFee = config.monthlyFee;
+        subscription.status = 'pending_verification';
+        subscription.paymentProvider = 'bachs';
+        subscription.bacsMandate = {
+          accountHolderName: accountHolderName.trim(),
+          sortCode: formattedSortCode,
+          accountNumberMasked,
+          bankName: bankName ? bankName.trim() : undefined,
+          mandateReference,
+          status: 'pending_verification',
+          submittedAt: now,
+          submittedBy: user
+            ? {
+                userId: user._id,
+                name: user.name || user.email,
+                role: user.role || 'partner',
+              }
+            : undefined,
+          customerAgreedGuarantee: true,
+          agreedAt: now,
+          notes: notes ? String(notes).trim() : undefined,
+        };
+        await subscription.save();
+      } else {
+        subscription = await OutletSubscription.create({
+          restaurantId,
+          planTier: validTier,
+          market: 'UK',
+          currency: 'GBP',
+          monthlyFee: config.monthlyFee,
+          status: 'pending_verification',
+          startDate: now,
+          currentCycleStart: now,
+          currentCycleEnd,
+          nextRenewalDate: currentCycleEnd,
+          paymentProvider: 'bachs',
+          bacsMandate: {
+            accountHolderName: accountHolderName.trim(),
+            sortCode: formattedSortCode,
+            accountNumberMasked,
+            bankName: bankName ? bankName.trim() : undefined,
+            mandateReference,
+            status: 'pending_verification',
+            submittedAt: now,
+            submittedBy: user
+              ? {
+                  userId: user._id,
+                  name: user.name || user.email,
+                  role: user.role || 'partner',
+                }
+              : undefined,
+            customerAgreedGuarantee: true,
+            agreedAt: now,
+            notes: notes ? String(notes).trim() : undefined,
+          },
+        });
+      }
+
+      // Send Advance Notice Email to Restaurant Owner
+      const ownerUser: any = (restaurant.owner as any)?.email ? restaurant.owner : await User.findById(restaurant.owner);
+      const recipientEmail = ownerUser?.email || restaurant.businessEmail || (restaurant as any).email;
+
+      if (recipientEmail && !recipientEmail.includes('@goeat.com')) {
+        await emailService.sendBacsMandateNotice(recipientEmail, {
+          partnerName: ownerUser?.name || restaurant.name || 'Partner',
+          restaurantName: restaurant.name,
+          mandateReference,
+          sortCode: formattedSortCode,
+          accountNumberMasked,
+          planName: validTier === 'unlimited' ? 'Unlimited (0% Commission)' : 'Plus (5% Commission)',
+          amountFormatted: `£${config.monthlyFee}`,
+        });
+      }
+
+      // Dispatch real-time in-app / push notification
+      if (ownerUser?._id) {
+        await notificationService.sendNotification(
+          ownerUser._id.toString(),
+          'UK Direct Debit Mandate Registered 📋',
+          `Mandate ${mandateReference} for ${restaurant.name} has been submitted for compliance verification.`,
+          {
+            type: 'bacs_mandate_submitted',
+            mandateReference,
+            restaurantId,
+          }
+        );
+      }
+
+      return res.status(200).json({
+        success: true,
+        message: 'UK Direct Debit instruction submitted successfully. Verification is pending.',
+        mandate: {
+          mandateReference,
+          status: 'pending_verification',
+          sortCode: formattedSortCode,
+          accountNumberMasked,
+          accountHolderName: accountHolderName.trim(),
+          planTier: validTier,
+          monthlyFee: config.monthlyFee,
+          submittedAt: now,
+        },
+        subscription,
+      });
+    } catch (error: any) {
+      logger.error(`[setupBacsDirectDebit] Error: ${error.stack || error.message}`);
+      return res.status(500).json({
+        success: false,
+        message: error.message || 'Failed to submit UK Direct Debit instruction',
+      });
+    }
+  }
+
+  /**
+   * Admin: Get all UK Direct Debit mandates with verification queue
+   */
+  public static async getBacsMandatesAdmin(req: Request, res: Response) {
+    try {
+      const { status = 'all', page = 1, limit = 20 } = req.query;
+      const skip = (Number(page) - 1) * Number(limit);
+
+      const filter: any = {
+        'bacsMandate.status': { $in: ['pending_verification', 'active', 'rejected', 'cancelled'] },
+      };
+
+      if (status && status !== 'all') {
+        filter['bacsMandate.status'] = status;
+      }
+
+      let query = OutletSubscription.find(filter)
+        .populate({
+          path: 'restaurantId',
+          select: 'name businessEmail phone businessPhone address location cuisine owner isUk',
+          populate: {
+            path: 'owner',
+            select: 'name email phoneNumber',
+          },
+        })
+        .sort({ 'bacsMandate.submittedAt': -1, createdAt: -1 });
+
+      const [mandates, total, pendingCount] = await Promise.all([
+        query.skip(skip).limit(Number(limit)),
+        OutletSubscription.countDocuments(filter),
+        OutletSubscription.countDocuments({ 'bacsMandate.status': 'pending_verification' }),
+      ]);
+
+      return res.status(200).json({
+        success: true,
+        mandates,
+        total,
+        page: Number(page),
+        totalPages: Math.ceil(total / Number(limit)),
+        pendingCount,
+      });
+    } catch (error: any) {
+      logger.error(`[getBacsMandatesAdmin] Error: ${error.message}`);
+      return res.status(500).json({
+        success: false,
+        message: error.message || 'Failed to retrieve Direct Debit mandates',
+      });
+    }
+  }
+
+  /**
+   * Admin: Verify / Approve or Reject UK Bacs Direct Debit mandate
+   */
+  public static async verifyBacsMandateAdmin(req: Request, res: Response) {
+    try {
+      const adminUser = (req as any).user;
+      const { id } = req.params;
+      const { action, rejectionReason } = req.body;
+
+      if (!['approve', 'reject'].includes(action)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid action. Must be "approve" or "reject".',
+        });
+      }
+
+      const subscription = await OutletSubscription.findById(id).populate({
+        path: 'restaurantId',
+        select: 'name businessEmail phone businessPhone owner',
+        populate: {
+          path: 'owner',
+          select: 'name email phoneNumber',
+        },
+      });
+
+      if (!subscription || !subscription.bacsMandate) {
+        return res.status(404).json({
+          success: false,
+          message: 'Subscription or Direct Debit mandate not found.',
+        });
+      }
+
+      const now = new Date();
+      const restaurant = subscription.restaurantId as any;
+      const ownerUser = restaurant?.owner;
+      const recipientEmail = ownerUser?.email || restaurant?.businessEmail;
+
+      if (action === 'approve') {
+        subscription.bacsMandate.status = 'active';
+        subscription.bacsMandate.verifiedAt = now;
+        subscription.bacsMandate.verifiedBy = {
+          userId: adminUser?._id,
+          name: adminUser?.name || 'Compliance Team',
+        };
+        subscription.status = 'active';
+        subscription.currentCycleStart = now;
+        subscription.currentCycleEnd = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+        subscription.nextRenewalDate = subscription.currentCycleEnd;
+        await subscription.save();
+
+        const planName = subscription.planTier === 'unlimited' ? 'Unlimited (0% Commission)' : 'Plus (5% Commission)';
+        const monthlyFeeFormatted = `£${subscription.monthlyFee}`;
+        const nextDebitFormatted = subscription.nextRenewalDate.toLocaleDateString('en-GB', {
+          day: 'numeric',
+          month: 'short',
+          year: 'numeric',
+        });
+
+        if (recipientEmail && !recipientEmail.includes('@goeat.com')) {
+          await emailService.sendBacsMandateApproved(recipientEmail, {
+            partnerName: ownerUser?.name || restaurant?.name || 'Partner',
+            restaurantName: restaurant?.name || 'Your Kitchen',
+            mandateReference: subscription.bacsMandate.mandateReference || 'BACS-MANDATE',
+            planName,
+            monthlyFee: monthlyFeeFormatted,
+            nextDebitDate: nextDebitFormatted,
+          });
+        }
+
+        if (ownerUser?._id) {
+          await notificationService.sendNotification(
+            ownerUser._id.toString(),
+            'Direct Debit Mandate Approved! 🎉',
+            `Your UK Direct Debit mandate for ${restaurant?.name || 'your outlet'} is verified and active.`,
+            {
+              type: 'bacs_mandate_approved',
+              mandateReference: subscription.bacsMandate.mandateReference,
+            }
+          );
+        }
+
+        return res.status(200).json({
+          success: true,
+          message: 'Direct Debit mandate approved and subscription activated successfully',
+          subscription,
+        });
+      } else {
+        subscription.bacsMandate.status = 'rejected';
+        subscription.bacsMandate.rejectionReason = rejectionReason || 'Information could not be verified by compliance team';
+        subscription.status = 'past_due';
+        await subscription.save();
+
+        if (ownerUser?._id) {
+          await notificationService.sendNotification(
+            ownerUser._id.toString(),
+            'Direct Debit Verification Update ⚠️',
+            `Your Direct Debit mandate requires attention: ${subscription.bacsMandate.rejectionReason}`,
+            {
+              type: 'bacs_mandate_rejected',
+              rejectionReason: subscription.bacsMandate.rejectionReason,
+            }
+          );
+        }
+
+        return res.status(200).json({
+          success: true,
+          message: 'Direct Debit mandate marked as rejected',
+          subscription,
+        });
+      }
+    } catch (error: any) {
+      logger.error(`[verifyBacsMandateAdmin] Error: ${error.message}`);
+      return res.status(500).json({
+        success: false,
+        message: error.message || 'Failed to update Direct Debit mandate status',
       });
     }
   }
