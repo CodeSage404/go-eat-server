@@ -178,7 +178,7 @@ router.post('/:restaurantId/update', auth_middleware_1.protect, subscription_con
  * /api/v1/subscriptions/subscribe:
  *   post:
  *     summary: Initialize subscription checkout session
- *     description: Initializes a hosted checkout redirect session via Bachs.io (Nigeria / NGN) or Stripe (UK / GBP & EU / EUR) for partner outlet subscriptions
+ *     description: Initializes a hosted recurring checkout redirect session via Bachs.io (Nigeria / NGN) or Stripe Billing (UK / GBP with Bacs Direct Debit and Card, & EU / EUR) for partner outlet subscriptions
  *     tags:
  *       - Subscriptions
  *     security:
@@ -207,7 +207,7 @@ router.post('/:restaurantId/update', auth_middleware_1.protect, subscription_con
  *                 type: string
  *     responses:
  *       200:
- *         description: Checkout session initialized successfully or PAYG enrolled
+ *         description: Checkout session initialized successfully (includes Bacs Direct Debit for UK) or PAYG enrolled
  *       400:
  *         description: Invalid parameters
  *       401:

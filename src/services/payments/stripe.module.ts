@@ -10,6 +10,9 @@ export interface StripeInitializeParams {
   currency?: string;
   redirectUrl?: string;
   metadata?: Record<string, any>;
+  mode?: 'payment' | 'subscription';
+  isSubscription?: boolean;
+  productName?: string;
 }
 
 export interface StripeInitializeResult {
@@ -39,6 +42,13 @@ class StripeModule {
     const amountInCents = Math.round(params.amount * 100);
     const email = params.email && params.email.trim() !== '' ? params.email : 'support@goeatone.com';
     const currency = (params.currency || 'gbp').toLowerCase();
+    const isSubscription = Boolean(
+      params.isSubscription ||
+      params.mode === 'subscription' ||
+      params.metadata?.type === 'partner_subscription'
+    );
+    const productName =
+      params.productName || (isSubscription ? 'GoEatOne Partner Subscription' : 'GoEatOne Order');
 
     if (!this.secretKey) {
       throw new AppError('Stripe payment gateway is not properly configured. Missing STRIPE_SECRET_KEY in environment.', 500);
@@ -46,14 +56,35 @@ class StripeModule {
 
     try {
       const formData = new URLSearchParams();
-      formData.append('payment_method_types[]', 'card');
+
+      // Bacs Direct Debit for UK Subscriptions ONLY:
+      // Reference: https://docs.stripe.com/billing/subscriptions/bacs-debit
+      // Strictly applied to UK partner subscriptions (currency === 'gbp' + isSubscription).
+      // Never applied to one-off orders or non-UK regions.
+      if (isSubscription && currency === 'gbp') {
+        formData.append('payment_method_types[]', 'card');
+        formData.append('payment_method_types[]', 'bacs_debit');
+        // Stripe requires billing address collection for Bacs Direct Debit mandates
+        formData.append('billing_address_collection', 'required');
+        formData.append('mode', 'subscription');
+        formData.append('line_items[0][price_data][recurring][interval]', 'month');
+      } else if (isSubscription) {
+        // Non-UK subscription (e.g. EUR)
+        formData.append('payment_method_types[]', 'card');
+        formData.append('mode', 'subscription');
+        formData.append('line_items[0][price_data][recurring][interval]', 'month');
+      } else {
+        // One-off meal order payment
+        formData.append('payment_method_types[]', 'card');
+        formData.append('mode', 'payment');
+      }
+
       formData.append('line_items[0][price_data][currency]', currency);
-      formData.append('line_items[0][price_data][product_data][name]', 'GoEatOne Order');
+      formData.append('line_items[0][price_data][product_data][name]', productName);
       formData.append('line_items[0][price_data][unit_amount]', amountInCents.toString());
       formData.append('line_items[0][quantity]', '1');
-      formData.append('mode', 'payment');
 
-      const redirectBase = params.redirectUrl || `https://api.goeatalone.com/payment/callback?reference=${params.reference}&provider=stripe`;
+      const redirectBase = params.redirectUrl || `https://api.goeatone.com/payment/callback?reference=${params.reference}&provider=stripe`;
       const separator = redirectBase.includes('?') ? '&' : '?';
 
       formData.append('success_url', `${redirectBase}${separator}session_id={CHECKOUT_SESSION_ID}&status=success`);
@@ -115,17 +146,27 @@ class StripeModule {
         throw new AppError('Transaction not found on Stripe', 404);
       }
 
-      if (session.payment_status !== 'paid') {
-        throw new AppError(`Stripe payment was not successful (status: ${session.payment_status})`, 400);
+      // Check payment status:
+      // For instant card payments: session.payment_status === 'paid'
+      // For Bacs Direct Debit subscriptions: session.status === 'complete' (asynchronous clearing takes 3 business days, mandate established)
+      const isPaid = session.payment_status === 'paid';
+      const isComplete = session.status === 'complete';
+
+      if (!isPaid && !isComplete) {
+        throw new AppError(`Stripe payment was not successful (status: ${session.payment_status}, session: ${session.status})`, 400);
       }
 
       return {
         id: session.id,
         status: 'success',
+        subscriptionId: session.subscription,
         metadata: {
           orderId: session.metadata?.orderId || (session.client_reference_id ? session.client_reference_id.split('_')[1] : undefined),
           orderIds: session.metadata?.orderIds,
           customerId: session.metadata?.customerId,
+          restaurantId: session.metadata?.restaurantId,
+          planTier: session.metadata?.planTier,
+          type: session.metadata?.type,
         },
       };
     } catch (error: any) {

@@ -168,7 +168,7 @@ class PaymentService {
             };
         }
         const serverBaseUrl = (process.env.RENDER_EXTERNAL_URL || 'https://api.goeatone.com').replace(/\/$/, '');
-        const webRedirectDestination = callbackUrl || 'https://goeatone.com/checkout?status=success';
+        const webRedirectDestination = callbackUrl || 'https://goeatone.com/checkout';
         const serverCallbackUrl = `${serverBaseUrl}/api/v1/payments/callback?redirect_url=${encodeURIComponent(webRedirectDestination)}`;
         if (activeProvider.toLowerCase() === 'flutterwave') {
             const result = await flutterwave_module_1.default.initializePayment({

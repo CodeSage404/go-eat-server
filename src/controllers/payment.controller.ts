@@ -461,11 +461,19 @@ class PaymentController {
     const provider = String(req.query.provider || 'paystack');
     const customRedirect = (req.query.redirect_url || req.query.redirectUrl || req.query.return_url || '') as string;
 
+    const rawStatus = String(req.query.status || '').toLowerCase().trim();
+    const isCancelled =
+      rawStatus === 'cancelled' ||
+      rawStatus === 'cancel' ||
+      rawStatus === 'canceled' ||
+      req.query.cancel === 'true';
+    const isFailed = rawStatus === 'failed' || rawStatus === 'error';
+
     let orderId = '';
     let isVerified = false;
 
-    // 1. Verify transaction with gateway immediately
-    if (reference) {
+    // 1. Verify transaction with gateway immediately ONLY if not cancelled/failed
+    if (reference && !isCancelled && !isFailed) {
       try {
         const verifyRes = await paymentService.verifyPayment(reference, provider as any);
         const orderList = verifyRes?.orders || (verifyRes?.order ? [verifyRes.order] : []);
@@ -490,6 +498,29 @@ class PaymentController {
           }
         } catch {}
       }
+    } else if (isCancelled) {
+      // For cancelled transactions, attempt to resolve the orderId without marking paid
+      if (reference) {
+        try {
+          const matchedOrder = await Order.findOne({
+            $or: [
+              { 'paymentResult.id': reference },
+              { _id: reference.includes('_') ? reference.split('_')[1] : reference },
+            ],
+          });
+          if (matchedOrder) {
+            orderId = matchedOrder._id.toString();
+          }
+        } catch {}
+      }
+    }
+
+    if (!orderId && customRedirect) {
+      try {
+        const parsed = new URL(customRedirect);
+        const qOrderId = parsed.searchParams.get('orderId');
+        if (qOrderId) orderId = qOrderId;
+      } catch {}
     }
 
     if (orderId && orderId.includes(',')) {
@@ -524,6 +555,113 @@ class PaymentController {
     }
 
     const cleanBase = targetBaseUrl.replace(/\/$/, '');
+
+    // 3. Handle Cancelled or Failed Payments cleanly
+    if (isCancelled || isFailed) {
+      const cancelStatus = isCancelled ? 'cancelled' : 'failed';
+      const cancelQueryParams = `status=${cancelStatus}&provider=${encodeURIComponent(provider)}${
+        orderId ? `&orderId=${encodeURIComponent(orderId)}` : ''
+      }${reference ? `&reference=${encodeURIComponent(reference)}` : ''}`;
+
+      const targetRedirectUrl = `${cleanBase}/checkout?${cancelQueryParams}`;
+
+      const cancelHtml = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta http-equiv="refresh" content="2;url=${targetRedirectUrl}">
+  <title>Payment ${isCancelled ? 'Cancelled' : 'Failed'} - GoEatOne</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 24px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      background: #FDFCF9;
+      color: #111827;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+    }
+    .card {
+      background: #FFFFFF;
+      border: 1px solid #E5E7EB;
+      border-radius: 28px;
+      padding: 44px 32px;
+      width: 100%;
+      max-width: 440px;
+      box-shadow: 0 20px 45px -10px rgba(0, 0, 0, 0.07);
+    }
+    .icon-badge {
+      width: 68px;
+      height: 68px;
+      border-radius: 34px;
+      background: ${isCancelled ? '#FEF3C7' : '#FEE2E2'};
+      border: 2px solid ${isCancelled ? '#FDE68A' : '#FECACA'};
+      color: ${isCancelled ? '#D97706' : '#DC2626'};
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 30px;
+      font-weight: 800;
+      margin-bottom: 20px;
+    }
+    h1 {
+      font-size: 22px;
+      margin: 0 0 10px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      color: #111827;
+    }
+    p {
+      margin: 0 0 18px;
+      font-size: 14px;
+      color: #4B5563;
+      line-height: 1.55;
+    }
+    .btn {
+      display: block;
+      width: 100%;
+      padding: 15px 20px;
+      background: #111827;
+      color: #FFFFFF;
+      font-weight: 700;
+      font-size: 14px;
+      text-decoration: none;
+      border-radius: 14px;
+      margin-top: 10px;
+      transition: background 0.2s ease;
+    }
+    .btn:hover {
+      background: #000000;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="icon-badge">${isCancelled ? '↺' : '✕'}</div>
+    <h1>Payment ${isCancelled ? 'Cancelled' : 'Unsuccessful'}</h1>
+    <p>
+      ${
+        isCancelled
+          ? 'You cancelled the payment or returned back. Your account has not been charged.'
+          : 'The payment could not be completed.'
+      }<br>Redirecting you back to your cart to try again or choose another payment method...
+    </p>
+    <a href="${targetRedirectUrl}" class="btn">Return to Checkout &rarr;</a>
+  </div>
+</body>
+</html>`;
+
+      res.setHeader('Content-Type', 'text/html; charset=utf-8');
+      return res.status(200).send(cancelHtml);
+    }
+
+    // 4. Success Flow
     const queryParams = `status=success&reference=${encodeURIComponent(reference)}${
       orderId ? `&orderId=${encodeURIComponent(orderId)}` : ''
     }&provider=${encodeURIComponent(provider)}`;

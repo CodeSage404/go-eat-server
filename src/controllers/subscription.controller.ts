@@ -397,12 +397,16 @@ export class SubscriptionController {
           provider: 'bachs',
         };
       } else {
+        const isUkMarket = resolvedMarket === 'UK';
         const result = await stripeModule.initializePayment({
           email: userEmail,
           amount: config.monthlyFee,
           reference,
           currency: config.currency.toLowerCase(),
           redirectUrl: returnUrl,
+          isSubscription: true,
+          mode: 'subscription',
+          productName: `GoEatOne Partner ${planTier.toUpperCase()} Plan (${isUkMarket ? 'UK Direct Debit / Card' : 'Subscription'})`,
           metadata: {
             type: 'partner_subscription',
             restaurantId,
