@@ -36,27 +36,22 @@ class StripeModule {
         }
         try {
             const formData = new URLSearchParams();
-            // Bacs Direct Debit for UK Subscriptions ONLY:
-            // Reference: https://docs.stripe.com/billing/subscriptions/bacs-debit
-            // Strictly applied to UK partner subscriptions (currency === 'gbp' + isSubscription).
-            // Never applied to one-off orders or non-UK regions.
+            // Dynamic Payment Methods (Stripe 2024+ migration):
+            // Do not append deprecated payment_method_types. Stripe Checkout dynamically displays
+            // payment methods configured in Stripe Dashboard settings based on currency and customer location.
             if (isSubscription && currency === 'gbp') {
-                formData.append('payment_method_types[]', 'card');
-                formData.append('payment_method_types[]', 'bacs_debit');
-                // Stripe requires billing address collection for Bacs Direct Debit mandates
+                // Stripe requires billing address collection for UK Bacs Direct Debit mandates
                 formData.append('billing_address_collection', 'required');
                 formData.append('mode', 'subscription');
                 formData.append('line_items[0][price_data][recurring][interval]', 'month');
             }
             else if (isSubscription) {
                 // Non-UK subscription (e.g. EUR)
-                formData.append('payment_method_types[]', 'card');
                 formData.append('mode', 'subscription');
                 formData.append('line_items[0][price_data][recurring][interval]', 'month');
             }
             else {
                 // One-off meal order payment
-                formData.append('payment_method_types[]', 'card');
                 formData.append('mode', 'payment');
             }
             formData.append('line_items[0][price_data][currency]', currency);

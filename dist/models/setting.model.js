@@ -91,6 +91,11 @@ const settingSchema = new mongoose_1.Schema({
         enum: ['none', 'paystack', 'flutterwave', 'stripe', 'monnify', 'bachs'],
         default: 'none',
     },
+    forceSubscriptionPaymentProvider: {
+        type: String,
+        enum: ['none', 'stripe', 'bachs'],
+        default: 'none',
+    },
     countryPaymentProviders: {
         type: [
             {

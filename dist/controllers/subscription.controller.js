@@ -127,9 +127,12 @@ class SubscriptionController {
                     metrics: {
                         totalSubscribers: total,
                         activeCount: allActive.length,
+                        activeSubscribers: allActive.length,
                         mrrNGN,
                         mrrGBP,
                         mrrEUR,
+                        totalGeneratedNGN: mrrNGN,
+                        totalGeneratedGBP: mrrGBP,
                         plusCount,
                         unlimitedCount,
                         paygCount,
@@ -374,14 +377,35 @@ class SubscriptionController {
             const userEmail = user?.email || restaurant.businessEmail || 'partner@goeatone.com';
             const userName = user?.name || restaurant.name || 'GoEatOne Partner';
             const reference = `SUB_${restaurantId}_${planTier.toUpperCase()}_${Date.now()}`;
+            // Resolve subscription payment provider with Admin Override support
+            const Setting = require('../models/setting.model').default;
+            const setting = await Setting.findOne();
+            let effectiveProvider = resolvedMarket === 'NG' ? 'bachs' : 'stripe';
+            if (setting?.forceSubscriptionPaymentProvider === 'stripe') {
+                effectiveProvider = 'stripe';
+            }
+            else if (setting?.forceSubscriptionPaymentProvider === 'bachs') {
+                effectiveProvider = 'bachs';
+            }
+            else if (setting?.forceGlobalPaymentProvider === 'stripe') {
+                effectiveProvider = 'stripe';
+            }
+            else if (setting?.forceGlobalPaymentProvider === 'bachs') {
+                effectiveProvider = 'bachs';
+            }
             const returnUrl = callbackUrl ||
-                `https://go-eat-server-z96s.onrender.com/api/v1/subscriptions/verify-payment?reference=${encodeURIComponent(reference)}&provider=${resolvedMarket === 'NG' ? 'bachs' : 'stripe'}&restaurantId=${restaurantId}&planTier=${planTier}`;
+                `https://go-eat-server-z96s.onrender.com/api/v1/subscriptions/verify-payment?reference=${encodeURIComponent(reference)}&provider=${effectiveProvider}&restaurantId=${restaurantId}&planTier=${planTier}`;
             let checkoutResult;
-            if (resolvedMarket === 'NG') {
+            if (effectiveProvider === 'bachs') {
+                const bachsAmount = config.currency === 'GBP'
+                    ? config.monthlyFee * 2000
+                    : config.currency === 'EUR'
+                        ? config.monthlyFee * 1700
+                        : config.monthlyFee;
                 const result = await bachs_module_1.default.initializePayment({
                     email: userEmail,
                     name: userName,
-                    amount: config.monthlyFee,
+                    amount: bachsAmount,
                     reference,
                     metadata: {
                         type: 'partner_subscription',
@@ -401,11 +425,16 @@ class SubscriptionController {
             }
             else {
                 const isUkMarket = resolvedMarket === 'UK';
+                // When Stripe is forced on an NGN market subscription, convert to GBP base for checkout
+                const stripeCurrency = (config.currency === 'NGN' ? 'gbp' : config.currency || 'gbp').toLowerCase();
+                const stripeAmount = config.currency === 'NGN'
+                    ? Math.round((config.monthlyFee / 2000) * 100) / 100
+                    : config.monthlyFee;
                 const result = await stripe_module_1.default.initializePayment({
                     email: userEmail,
-                    amount: config.monthlyFee,
+                    amount: stripeAmount,
                     reference,
-                    currency: config.currency.toLowerCase(),
+                    currency: stripeCurrency,
                     redirectUrl: returnUrl,
                     isSubscription: true,
                     mode: 'subscription',

@@ -1664,7 +1664,7 @@ class AdminController {
       'serviceFee', 'smallOrderFee',
       'smallOrderFeeThreshold', 'batchPickupThresholdKm', 'multiOutletExtraStopFee',
       'riderBasePayout', 'riderPerKmPayout', 'riderPayoutSchedule', 'riderPayoutDayOfWeek', 'defaultPaymentProvider',
-      'enablePaystack', 'enableFlutterwave', 'enableStripe', 'enableMonnify', 'forceGlobalPaymentProvider',
+      'enablePaystack', 'enableFlutterwave', 'enableStripe', 'enableMonnify', 'forceGlobalPaymentProvider', 'forceSubscriptionPaymentProvider',
       'monnifyApiKey', 'monnifySecretKey', 'monnifyContractCode', 'monnifyWalletAccountNumber', 'monnifyMode',
       'countryPaymentProviders',
       'defaultBankVerificationProvider', 'enableBankVerificationPaystack',

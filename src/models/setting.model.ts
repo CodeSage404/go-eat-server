@@ -61,6 +61,7 @@ export interface ISetting extends Document {
   monnifyWalletAccountNumber?: string;
   monnifyMode?: 'sandbox' | 'live';
   forceGlobalPaymentProvider: 'none' | 'paystack' | 'flutterwave' | 'stripe' | 'monnify' | 'bachs';
+  forceSubscriptionPaymentProvider?: 'none' | 'stripe' | 'bachs';
   countryPaymentProviders: ICountryPaymentProvider[];
   // Bank Account Verification Configuration
   defaultBankVerificationProvider: 'paystack' | 'stripe' | 'flutterwave' | 'monnify';
@@ -142,6 +143,11 @@ const settingSchema = new Schema<ISetting>(
     forceGlobalPaymentProvider: {
       type: String,
       enum: ['none', 'paystack', 'flutterwave', 'stripe', 'monnify', 'bachs'],
+      default: 'none',
+    },
+    forceSubscriptionPaymentProvider: {
+      type: String,
+      enum: ['none', 'stripe', 'bachs'],
       default: 'none',
     },
     countryPaymentProviders: {
