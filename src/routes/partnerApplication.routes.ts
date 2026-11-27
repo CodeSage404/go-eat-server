@@ -9,6 +9,7 @@ import {
   verifyClaimCode,
   claimPartnerProfile,
   optOutPartner,
+  deletePartnerApplication,
 } from '../controllers/partnerApplication.controller';
 import { protect, restrictTo } from '../middleware/auth.middleware';
 import { UserRole } from '../models/user.model';
@@ -439,6 +440,40 @@ router.patch(
   protect,
   restrictTo(UserRole.ADMIN),
   updatePartnerApplicationStatus
+);
+
+/**
+ * @openapi
+ * /api/v1/partners/applications/{id}:
+ *   delete:
+ *     tags:
+ *       - Partners
+ *     summary: Delete partner application (Admin only)
+ *     description: Permanently removes a partner onboarding application from the system.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Application ID
+ *     responses:
+ *       200:
+ *         description: Application deleted successfully
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden - Admin role required
+ *       404:
+ *         description: Application not found
+ */
+router.delete(
+  '/applications/:id',
+  protect,
+  restrictTo(UserRole.ADMIN),
+  deletePartnerApplication
 );
 
 /**

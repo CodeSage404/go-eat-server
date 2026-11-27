@@ -460,6 +460,31 @@ class EmailService {
   }
 
   /**
+   * Sends Partner Application Declined / Action Required email when status is set to rejected
+   */
+  public async sendPartnerApplicationDeclined(
+    email: string,
+    data: {
+      businessName: string;
+      ownerName?: string;
+      adminNotes?: string;
+    }
+  ): Promise<void> {
+    try {
+      const htmlContent = renderTemplate('PARTNER_APPLICATION_DECLINED', data);
+      await this.sendEmail(
+        email,
+        `Update on your GoEatOne partner application for ${data.businessName}`,
+        htmlContent,
+        'partners'
+      );
+      logger.info(`📧 Partner application declined email dispatched to ${email}`);
+    } catch (err: any) {
+      logger.error(`Partner application declined email failed to ${email}:`, err?.message || err);
+    }
+  }
+
+  /**
    * Sends Founding Partner Onboarding email when an admin onboards / approves a partner in admin dashboard
    */
   public async sendFoundingPartnerOnboarded(

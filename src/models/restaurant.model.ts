@@ -131,7 +131,7 @@ export interface IRestaurant extends Document {
     idNumber?: string;
     submittedAt?: Date;
   };
-  complianceStatus?: 'pending' | 'approved' | 'rejected' | 'expired';
+  complianceStatus?: 'pending' | 'under_review' | 'approved' | 'rejected' | 'expired';
   isDocumentExpired?: boolean;
   documentExpiryFlagReason?: string;
   expiredDocumentsList?: string[];
@@ -477,7 +477,7 @@ const restaurantSchema = new Schema<IRestaurant>(
     },
     complianceStatus: {
       type: String,
-      enum: ['pending', 'approved', 'rejected', 'expired'],
+      enum: ['pending', 'under_review', 'approved', 'rejected', 'expired'],
       default: 'pending',
     },
     isDocumentExpired: {

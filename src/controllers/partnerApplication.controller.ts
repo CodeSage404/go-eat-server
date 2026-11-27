@@ -450,15 +450,32 @@ export const updatePartnerApplicationStatus = catchAsync(async (req: Request, re
     throw new AppError('Partner application not found', 404);
   }
 
-  // If status is updated to approved in the admin dashboard, activate restaurant and dispatch Founding Partner Onboarding Email
+  // Synchronize status with the linked restaurant outlet if present
+  if (application.onboardedRestaurant) {
+    try {
+      const restUpdate: any = {};
+      if (status === 'approved') {
+        restUpdate.status = RestaurantStatus.ACTIVE;
+        restUpdate.complianceStatus = 'approved';
+        restUpdate.isVerified = true;
+      } else if (status === 'rejected') {
+        restUpdate.status = RestaurantStatus.INACTIVE;
+        restUpdate.complianceStatus = 'rejected';
+        restUpdate.isVerified = false;
+      } else if (status === 'under_review') {
+        restUpdate.complianceStatus = 'under_review';
+      } else if (status === 'pending') {
+        restUpdate.complianceStatus = 'pending';
+      }
+      await Restaurant.findByIdAndUpdate(application.onboardedRestaurant, restUpdate);
+    } catch (restSyncErr: any) {
+      logger.warn(`Could not sync restaurant status: ${restSyncErr.message}`);
+    }
+  }
+
+  // If status is updated to approved in the admin dashboard, dispatch Founding Partner Onboarding Email
   if (status === 'approved') {
     try {
-      if (application.onboardedRestaurant) {
-        await Restaurant.findByIdAndUpdate(application.onboardedRestaurant, {
-          status: RestaurantStatus.ACTIVE,
-          complianceStatus: 'approved',
-        });
-      }
       await emailService.sendFoundingPartnerOnboarded(application.email.toLowerCase().trim(), {
         partnerName: application.ownerName,
         ownerName: application.ownerName,
@@ -479,6 +496,17 @@ export const updatePartnerApplicationStatus = catchAsync(async (req: Request, re
     } catch (appMailErr: any) {
       logger.warn(`Failed to dispatch founding partner email on status update to approved: ${appMailErr.message}`);
     }
+  } else if (status === 'rejected') {
+    try {
+      await emailService.sendPartnerApplicationDeclined(application.email.toLowerCase().trim(), {
+        businessName: application.businessName,
+        ownerName: application.ownerName,
+        adminNotes: application.adminNotes,
+      });
+      logger.info(`📧 Partner application declined email dispatched for ${application.email}`);
+    } catch (declErr: any) {
+      logger.warn(`Failed to dispatch partner application declined email: ${declErr.message}`);
+    }
   }
 
   res.status(200).json({
@@ -487,6 +515,23 @@ export const updatePartnerApplicationStatus = catchAsync(async (req: Request, re
     data: {
       application,
     },
+  });
+});
+
+/**
+ * Admin: Delete a partner application
+ */
+export const deletePartnerApplication = catchAsync(async (req: Request, res: Response) => {
+  const { id } = req.params;
+  const application = await PartnerApplication.findByIdAndDelete(id);
+
+  if (!application) {
+    throw new AppError('Partner application not found', 404);
+  }
+
+  res.status(200).json({
+    status: 'success',
+    message: 'Partner application deleted successfully',
   });
 });
 
